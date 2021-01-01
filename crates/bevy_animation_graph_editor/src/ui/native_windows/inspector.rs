@@ -12,19 +12,21 @@ use bevy_animation_graph::{
         state_machine::high_level::{DirectTransition, State, StateMachine},
     },
 };
-use bevy_inspector_egui::reflect_inspector::InspectorUi;
 use egui::Widget;
 use egui_dock::egui;
 
 use crate::ui::{
     actions::{
         EditorAction,
-        fsm::{CreateTransition, FsmAction, UpdateState, UpdateTransition},
+        fsm::{FsmAction, UpdateState, UpdateTransition},
         graph::{EditNode, GraphAction, RenameNode, UpdateDefaultData, UpdateGraphSpec},
     },
     generic_widgets::{
         data_value::DataValueWidget,
-        fsm::{direct_transition::DirectTransitionWidget, state::StateWidget},
+        fsm::{
+            direct_transition::DirectTransitionWidget, state::StateWidget,
+            state_id_mut::StateIdWidget,
+        },
         graph_input_pin::GraphInputPinWidget,
         hashmap::HashMapWidget,
         io_spec::IoSpecWidget,
@@ -42,7 +44,7 @@ use crate::ui::{
         get_global_state,
         inspector_selection::InspectorSelection,
     },
-    utils::{self, using_inspector_env, with_assets_all},
+    utils::{self, with_assets_all},
 };
 
 #[derive(Debug)]
@@ -295,7 +297,7 @@ fn fsm_inspector(
 
     let active_fsm = get_global_state::<ActiveFsm>(world)?.clone();
 
-    world.resource_scope::<Assets<StateMachine>, _>(|world, fsm_assets| {
+    world.resource_scope::<Assets<StateMachine>, _>(|_, fsm_assets| {
         // We should make sure to include the fsm id in the buffer id salt to avoid reusing buffers
         // when active FSM changes
         let buffer_id = |ui: &mut egui::Ui, s: &str| ui.id().with(s).with(active_fsm.handle.id());
@@ -323,8 +325,11 @@ fn fsm_inspector(
         let r = ui
             .horizontal(|ui| {
                 ui.label("start state:");
-                ui.label("TODO")
-                // ui.text_edit_singleline(start_state_buffer)
+                ui.add(
+                    StateIdWidget::new(start_state_buffer)
+                        .salted("fsm start state")
+                        .with_fsm(Some(fsm)),
+                )
             })
             .inner;
 
@@ -336,41 +341,8 @@ fn fsm_inspector(
             });
         }
 
-        using_inspector_env(world, |mut env| {
-            if let Some(transition) = add_transition_ui(ui, &mut env, ctx) {
-                ctx.editor_actions
-                    .push(EditorAction::Fsm(FsmAction::CreateTransition(
-                        CreateTransition {
-                            fsm: active_fsm.handle.clone(),
-                            transition,
-                        },
-                    )));
-            }
-        });
         Some(())
     })
-}
-
-fn add_transition_ui(
-    ui: &mut egui::Ui,
-    env: &mut InspectorUi,
-    ctx: &mut EditorWindowContext,
-) -> Option<DirectTransition> {
-    ui.push_id("fsm add transition", |ui| {
-        ui.separator();
-        ui.label("Transition creation");
-        let buffer = ctx
-            .buffers
-            .get_mut_or_insert_with(ui.id(), DirectTransition::default);
-
-        env.ui_for_reflect_with_options(buffer, ui, egui::Id::new("Transition creation"), &());
-        if ui.button("Create transition").clicked() {
-            Some(buffer.clone())
-        } else {
-            None
-        }
-    })
-    .inner
 }
 
 fn select_graph_context(
