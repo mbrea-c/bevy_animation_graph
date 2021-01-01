@@ -56,6 +56,7 @@ impl EditorWindowContext<'_> {
 
 pub struct OwnedQueue {
     pub window_entity: Entity,
+    #[allow(dead_code)]
     pub view_entity: Entity,
     pub command_queue: CommandQueue,
 }
@@ -73,6 +74,7 @@ impl OwnedQueue {
         self.command_queue.push(trigger(event));
     }
 
+    #[allow(dead_code)]
     pub fn trigger_view<'b>(&mut self, mut event: impl Event<Trigger<'b>: Default> + EntityEvent) {
         *event.event_target_mut() = self.view_entity;
         self.command_queue.push(trigger(event));

@@ -5,7 +5,6 @@
 
 pub mod clip_preview;
 pub mod event_tracks;
-pub mod fsm;
 pub mod graph;
 pub mod ragdoll;
 pub mod saving;

@@ -25,7 +25,9 @@ use crate::ui::{
         active_fsm::ActiveFsm,
         active_fsm_state::{ActiveFsmState, SetActiveFsmState},
         active_fsm_transition::{ActiveFsmTransition, SetActiveFsmTransition},
-        fsm::{CreateDirectTransition, CreateState, DeleteStates, MoveStates},
+        fsm::{
+            CreateDirectTransition, CreateState, DeleteDirectTransitions, DeleteStates, MoveStates,
+        },
         get_global_state,
         inspector_selection::{InspectorSelection, SetInspectorSelection},
         register_if_missing,
@@ -92,6 +94,11 @@ impl NativeEditorWindowExtension for FsmEditorWindow {
             ctx.trigger(DeleteStates {
                 fsm: active_fsm.handle.clone(),
                 states: window_state.selected_states.clone(),
+            });
+
+            ctx.trigger(DeleteDirectTransitions {
+                fsm: active_fsm.handle.clone(),
+                transitions: window_state.selected_transitions.clone(),
             });
         }
 

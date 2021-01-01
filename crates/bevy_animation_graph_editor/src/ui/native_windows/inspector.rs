@@ -18,7 +18,6 @@ use egui_dock::egui;
 use crate::ui::{
     actions::{
         EditorAction,
-        fsm::{FsmAction, UpdateState, UpdateTransition},
         graph::{EditNode, GraphAction, RenameNode, UpdateDefaultData, UpdateGraphSpec},
     },
     generic_widgets::{
@@ -40,7 +39,7 @@ use crate::ui::{
         active_graph::ActiveGraph,
         active_graph_context::{ActiveContexts, SetActiveContext},
         active_graph_node::ActiveGraphNode,
-        fsm::{SetFsmNodeSpec, SetFsmStartState},
+        fsm::{SetFsmNodeSpec, SetFsmStartState, UpdateDirectTransition, UpdateState},
         get_global_state,
         inspector_selection::InspectorSelection,
     },
@@ -170,12 +169,11 @@ fn state_inspector(
 
         let r = ui.add(StateWidget::new_salted(buffer, world, "state widget"));
         if r.changed() {
-            ctx.editor_actions
-                .push(EditorAction::Fsm(FsmAction::UpdateState(UpdateState {
-                    fsm: active_state.handle.clone(),
-                    state_id: active_state.state.clone(),
-                    new_state: buffer.clone(),
-                })));
+            let state = buffer.clone();
+            ctx.trigger(UpdateState {
+                fsm: active_state.handle.clone(),
+                state,
+            });
         }
 
         Some(())
@@ -208,14 +206,11 @@ fn transition_inspector(
                 .with_fsm(Some(fsm)),
         );
         if r.changed() {
-            ctx.editor_actions
-                .push(EditorAction::Fsm(FsmAction::UpdateTransition(
-                    UpdateTransition {
-                        fsm: active_transition.handle.clone(),
-                        transition_id: active_transition.transition.clone(),
-                        new_transition: buffer.clone(),
-                    },
-                )));
+            let transition = buffer.clone();
+            ctx.trigger(UpdateDirectTransition {
+                fsm: active_transition.handle.clone(),
+                transition,
+            });
         }
 
         Some(())

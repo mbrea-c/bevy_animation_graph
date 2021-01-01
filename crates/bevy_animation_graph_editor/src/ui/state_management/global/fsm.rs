@@ -13,7 +13,9 @@ use bevy::{
 };
 use bevy_animation_graph::core::{
     context::spec_context::NodeSpec,
-    state_machine::high_level::{DirectTransition, State, StateId, StateMachine},
+    state_machine::high_level::{
+        DirectTransition, DirectTransitionId, State, StateId, StateMachine,
+    },
 };
 
 use crate::ui::{actions::saving::DirtyAssets, state_management::global::RegisterStateComponent};
@@ -29,6 +31,9 @@ impl RegisterStateComponent for FsmManager {
         world.add_observer(CreateState::observe);
         world.add_observer(DeleteStates::observe);
         world.add_observer(CreateDirectTransition::observe);
+        world.add_observer(DeleteDirectTransitions::observe);
+        world.add_observer(UpdateState::observe);
+        world.add_observer(UpdateDirectTransition::observe);
     }
 }
 
@@ -100,7 +105,9 @@ pub struct CreateDirectTransition {
 impl CreateDirectTransition {
     pub fn observe(create_transition: On<CreateDirectTransition>, mut ctx: FsmContext) {
         ctx.provide_mut(&create_transition.fsm, |fsm| {
-            fsm.add_transition_from_ui(create_transition.transition.clone());
+            // For now, nothing happens if creation fails
+            // might want to notify or something eventually
+            let _ = fsm.add_transition_from_ui(create_transition.transition.clone());
         });
     }
 }
@@ -115,8 +122,55 @@ impl DeleteStates {
     pub fn observe(delete_states: On<DeleteStates>, mut ctx: FsmContext) {
         ctx.provide_mut(&delete_states.fsm, |fsm| {
             for state_id in &delete_states.states {
-                fsm.delete_state(*state_id);
+                let _ = fsm.delete_state(*state_id);
             }
+        });
+    }
+}
+
+#[derive(Event)]
+pub struct DeleteDirectTransitions {
+    pub fsm: Handle<StateMachine>,
+    pub transitions: HashSet<DirectTransitionId>,
+}
+
+impl DeleteDirectTransitions {
+    pub fn observe(delete_states: On<DeleteDirectTransitions>, mut ctx: FsmContext) {
+        ctx.provide_mut(&delete_states.fsm, |fsm| {
+            for transition_id in &delete_states.transitions {
+                let _ = fsm.delete_transition(*transition_id);
+            }
+        });
+    }
+}
+
+#[derive(Event)]
+pub struct UpdateState {
+    pub fsm: Handle<StateMachine>,
+    pub state: State,
+}
+
+impl UpdateState {
+    pub fn observe(update_state: On<UpdateState>, mut ctx: FsmContext) {
+        ctx.provide_mut(&update_state.fsm, |fsm| {
+            let _ = fsm.update_state(update_state.state.id, update_state.state.clone());
+        });
+    }
+}
+
+#[derive(Event)]
+pub struct UpdateDirectTransition {
+    pub fsm: Handle<StateMachine>,
+    pub transition: DirectTransition,
+}
+
+impl UpdateDirectTransition {
+    pub fn observe(update_transition: On<UpdateDirectTransition>, mut ctx: FsmContext) {
+        ctx.provide_mut(&update_transition.fsm, |fsm| {
+            let _ = fsm.update_transition(
+                update_transition.transition.id,
+                update_transition.transition.clone(),
+            );
         });
     }
 }

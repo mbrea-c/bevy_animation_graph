@@ -3,14 +3,13 @@ use bevy_animation_graph::core::state_machine::high_level::{TransitionData, Tran
 
 use crate::ui::{
     generic_widgets::{asset_picker::AssetPicker, option::CheapOptionWidget},
-    utils::{handle_path, handle_path_server},
+    utils::handle_path,
 };
 
 pub struct TransitionDataWidget<'a> {
     pub transition_data: &'a mut TransitionData,
     pub world: &'a mut World,
     pub id_hash: egui::Id,
-    pub width: f32,
 }
 
 impl<'a> TransitionDataWidget<'a> {
@@ -23,14 +22,7 @@ impl<'a> TransitionDataWidget<'a> {
             transition_data,
             world,
             id_hash: egui::Id::new(salt),
-            width: 300.,
         }
-    }
-
-    #[allow(dead_code)]
-    pub fn with_width(mut self, width: f32) -> Self {
-        self.width = width;
-        self
     }
 }
 

@@ -1,5 +1,5 @@
 use bevy::ecs::world::World;
-use bevy_animation_graph::core::state_machine::high_level::{State, StateMachine};
+use bevy_animation_graph::core::state_machine::high_level::State;
 
 use crate::ui::generic_widgets::{
     asset_picker::AssetPicker, fsm::transition_data::TransitionDataWidget,
@@ -9,9 +9,7 @@ use crate::ui::generic_widgets::{
 pub struct StateWidget<'a> {
     pub state: &'a mut State,
     pub world: &'a mut World,
-    pub fsm: Option<&'a StateMachine>,
     pub id_hash: egui::Id,
-    pub width: f32,
 }
 
 impl<'a> StateWidget<'a> {
@@ -24,20 +22,7 @@ impl<'a> StateWidget<'a> {
             state,
             world,
             id_hash: egui::Id::new(salt),
-            width: 300.,
-            fsm: None,
         }
-    }
-
-    pub fn with_state_machine(mut self, fsm: Option<&'a StateMachine>) -> Self {
-        self.fsm = fsm;
-        self
-    }
-
-    #[allow(dead_code)]
-    pub fn with_width(mut self, width: f32) -> Self {
-        self.width = width;
-        self
     }
 }
 
