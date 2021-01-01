@@ -8,12 +8,13 @@ use bevy::{
     utils::default,
 };
 use bevy_animation_graph::core::{
-    animation_graph::AnimationGraph,
+    animation_graph::{AnimationGraph, NodeId},
     animation_node::{AnimationNode, ReflectNodeLike, dyn_node_like::DynNodeLike},
     context::spec_context::SpecResources,
     state_machine::high_level::StateMachine,
 };
 use egui_dock::egui;
+use uuid::Uuid;
 
 use crate::{
     egui_nodes::lib::{GraphChange as EguiGraphChange, NodesContext},
@@ -315,10 +316,12 @@ impl GraphEditorWindow {
                     if submit_response.clicked()
                         && let Some(active_graph) = get_global_state::<ActiveGraph>(world)
                     {
+                        let mut node = buffer.node.clone();
+                        node.id = NodeId::from(Uuid::new_v4());
                         ctx.editor_actions
                             .push(EditorAction::Graph(GraphAction::CreateNode(CreateNode {
                                 graph: active_graph.handle.clone(),
-                                node: buffer.node.clone(),
+                                node,
                             })));
                     }
                 });

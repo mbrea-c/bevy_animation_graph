@@ -13,7 +13,7 @@ use bevy::{
 };
 use bevy_animation_graph::core::{
     context::spec_context::NodeSpec,
-    state_machine::high_level::{State, StateId, StateMachine},
+    state_machine::high_level::{DirectTransition, State, StateId, StateMachine},
 };
 
 use crate::ui::{actions::saving::DirtyAssets, state_management::global::RegisterStateComponent};
@@ -27,6 +27,8 @@ impl RegisterStateComponent for FsmManager {
         world.add_observer(SetFsmStartState::observe);
         world.add_observer(MoveStates::observe);
         world.add_observer(CreateState::observe);
+        world.add_observer(DeleteStates::observe);
+        world.add_observer(CreateDirectTransition::observe);
     }
 }
 
@@ -85,6 +87,36 @@ impl CreateState {
     pub fn observe(create_state: On<CreateState>, mut ctx: FsmContext) {
         ctx.provide_mut(&create_state.fsm, |fsm| {
             fsm.add_state(create_state.state.clone());
+        });
+    }
+}
+
+#[derive(Event)]
+pub struct CreateDirectTransition {
+    pub fsm: Handle<StateMachine>,
+    pub transition: DirectTransition,
+}
+
+impl CreateDirectTransition {
+    pub fn observe(create_transition: On<CreateDirectTransition>, mut ctx: FsmContext) {
+        ctx.provide_mut(&create_transition.fsm, |fsm| {
+            fsm.add_transition_from_ui(create_transition.transition.clone());
+        });
+    }
+}
+
+#[derive(Event)]
+pub struct DeleteStates {
+    pub fsm: Handle<StateMachine>,
+    pub states: HashSet<StateId>,
+}
+
+impl DeleteStates {
+    pub fn observe(delete_states: On<DeleteStates>, mut ctx: FsmContext) {
+        ctx.provide_mut(&delete_states.fsm, |fsm| {
+            for state_id in &delete_states.states {
+                fsm.delete_state(*state_id);
+            }
         });
     }
 }

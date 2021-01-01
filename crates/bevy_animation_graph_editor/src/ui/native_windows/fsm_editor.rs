@@ -9,13 +9,13 @@ use bevy::{
     prelude::World,
 };
 use bevy_animation_graph::core::state_machine::high_level::{
-    DirectTransitionId, State, StateId, StateMachine,
+    DirectTransition, DirectTransitionId, State, StateId, StateMachine,
 };
 use egui_dock::egui;
 use uuid::Uuid;
 
 use crate::ui::{
-    generic_widgets::fsm::state::StateWidget,
+    generic_widgets::fsm::{direct_transition::DirectTransitionWidget, state::StateWidget},
     native_windows::{
         EditorWindowContext, EditorWindowRegistrationContext, NativeEditorWindowExtension,
         OwnedQueue,
@@ -25,7 +25,7 @@ use crate::ui::{
         active_fsm::ActiveFsm,
         active_fsm_state::{ActiveFsmState, SetActiveFsmState},
         active_fsm_transition::{ActiveFsmTransition, SetActiveFsmTransition},
-        fsm::{CreateState, MoveStates},
+        fsm::{CreateDirectTransition, CreateState, DeleteStates, MoveStates},
         get_global_state,
         inspector_selection::{InspectorSelection, SetInspectorSelection},
         register_if_missing,
@@ -82,6 +82,19 @@ impl NativeEditorWindowExtension for FsmEditorWindow {
 
         ctx.consume_queue(queue);
 
+        // State deleteions
+        if ui.input(|i| {
+            i.pointer
+                .hover_pos()
+                .is_some_and(|p| outer_rect.contains(p))
+                && (i.key_pressed(egui::Key::Backspace) || i.key_pressed(egui::Key::Delete))
+        }) {
+            ctx.trigger(DeleteStates {
+                fsm: active_fsm.handle.clone(),
+                states: window_state.selected_states.clone(),
+            });
+        }
+
         CustomPopup::new()
             .with_salt(ui.id().with("Graph editor right click popup"))
             .with_sense_rect(outer_rect)
@@ -89,7 +102,7 @@ impl NativeEditorWindowExtension for FsmEditorWindow {
             .with_save_on_click(Some(()))
             .with_default_size(egui::Vec2::new(500., 300.))
             .show_if_saved(ui, |ui, ()| {
-                state_creator_popup(ui, world, ctx);
+                creation_popup(ui, world, ctx);
             });
     }
 
@@ -602,38 +615,94 @@ impl FsmEditorWindowState {
     }
 }
 
-fn state_creator_popup(ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
-    let buffer_id = ui.id().with("node creator popup");
-
+fn creation_popup(ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
+    let toggle_mem_id = ui.id().with("state or transition crate mode");
+    let mut create_transition: bool =
+        ui.memory_mut(|mem| *mem.data.get_temp_mut_or_default(toggle_mem_id));
+    let button_text = if create_transition {
+        "Switch to state creation"
+    } else {
+        "Switch to transition creation"
+    };
+    if ui.button(button_text).clicked() {
+        create_transition = !create_transition;
+    }
     egui::Frame::new().outer_margin(3).show(ui, |ui| {
         egui::ScrollArea::vertical()
             .auto_shrink(false)
             .show(ui, |ui| {
-                let buffer = ctx.buffers.get_mut_or_default::<State>(buffer_id);
-
-                ui.add(StateWidget::new_salted(
-                    buffer,
-                    world,
-                    "create fsm state widget",
-                ));
-
-                let submit_response = ui
-                    .with_layout(egui::Layout::bottom_up(egui::Align::RIGHT), |ui| {
-                        ui.button("Create node")
-                    })
-                    .inner;
-
-                if submit_response.clicked()
-                    && let Some(active_fsm) = get_global_state::<ActiveFsm>(world)
-                {
-                    let mut state = buffer.clone();
-                    state.id = StateId::from(Uuid::new_v4());
-                    ctx.trigger(CreateState {
-                        fsm: active_fsm.handle.clone(),
-                        state,
-                    });
+                if create_transition {
+                    transition_creation(ui, world, ctx);
+                } else {
+                    state_creation(ui, world, ctx);
                 }
             });
+    });
+
+    ui.memory_mut(|mem| mem.data.insert_temp(toggle_mem_id, create_transition));
+}
+
+fn state_creation(ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
+    let buffer_id = ui.id().with("state creator popup");
+    let buffer = ctx.buffers.get_mut_or_default::<State>(buffer_id);
+
+    ui.add(StateWidget::new_salted(
+        buffer,
+        world,
+        "create fsm state widget",
+    ));
+
+    let submit_response = ui
+        .with_layout(egui::Layout::bottom_up(egui::Align::RIGHT), |ui| {
+            ui.button("Create state")
+        })
+        .inner;
+
+    if submit_response.clicked()
+        && let Some(active_fsm) = get_global_state::<ActiveFsm>(world)
+    {
+        let mut state = buffer.clone();
+        state.id = StateId::from(Uuid::new_v4());
+        ctx.trigger(CreateState {
+            fsm: active_fsm.handle.clone(),
+            state,
+        });
+    }
+}
+
+fn transition_creation(ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
+    world.resource_scope::<Assets<StateMachine>, _>(|world, fsm_assets| {
+        let Some(active_fsm) = get_global_state::<ActiveFsm>(world) else {
+            return;
+        };
+        let buffer_id = ui.id().with("transition creator popup");
+        let buffer = ctx
+            .buffers
+            .get_mut_or_default::<DirectTransition>(buffer_id);
+
+        let fsm = fsm_assets.get(&active_fsm.handle);
+        ui.add(
+            DirectTransitionWidget::new(buffer, world)
+                .salted("create fsm state widget")
+                .with_fsm(fsm),
+        );
+
+        let submit_response = ui
+            .with_layout(egui::Layout::bottom_up(egui::Align::RIGHT), |ui| {
+                ui.button("Create state")
+            })
+            .inner;
+
+        if submit_response.clicked()
+            && let Some(active_fsm) = get_global_state::<ActiveFsm>(world)
+        {
+            let mut transition = buffer.clone();
+            transition.id = DirectTransitionId::from(Uuid::new_v4());
+            ctx.trigger(CreateDirectTransition {
+                fsm: active_fsm.handle.clone(),
+                transition,
+            });
+        }
     });
 }
 
