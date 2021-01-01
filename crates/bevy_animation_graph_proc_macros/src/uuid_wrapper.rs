@@ -61,6 +61,12 @@ pub(crate) fn uuid_wrapper(input: TokenStream) -> TokenStream {
                 self.#uuid_field_accessor
             }
         }
+
+        impl From<::uuid::Uuid> for #name {
+            fn from(value: ::uuid::Uuid) -> Self {
+                Self(value)
+            }
+        }
     })
 }
 

@@ -1,7 +1,10 @@
 use bevy::{ecs::world::World, utils::default};
 use bevy_animation_graph::core::state_machine::high_level::{TransitionData, TransitionKind};
 
-use crate::ui::generic_widgets::{asset_picker::AssetPicker, option::CheapOptionWidget};
+use crate::ui::{
+    generic_widgets::{asset_picker::AssetPicker, option::CheapOptionWidget},
+    utils::{handle_path, handle_path_server},
+};
 
 pub struct TransitionDataWidget<'a> {
     pub transition_data: &'a mut TransitionData,
@@ -69,11 +72,17 @@ impl<'a> egui::Widget for TransitionDataWidget<'a> {
                     TransitionKind::Immediate => {}
                     TransitionKind::Graph { graph, timed } => {
                         response |= ui.label("transition graph:");
-                        response |= ui.add(AssetPicker::new_salted(
-                            graph,
-                            self.world,
-                            "state transition graph handle",
-                        ));
+                        let r = ui.menu_button(handle_path(graph.clone().untyped()), |ui| {
+                            ui.add(AssetPicker::new_salted(
+                                graph,
+                                self.world,
+                                "state transition graph handle",
+                            ))
+                        });
+                        response |= r.response;
+                        if r.inner.is_some_and(|r| r.changed()) {
+                            response.mark_changed();
+                        }
                         ui.end_row();
 
                         response |= ui.label("timed:");

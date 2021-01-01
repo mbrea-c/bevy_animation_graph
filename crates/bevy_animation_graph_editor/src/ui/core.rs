@@ -1,5 +1,5 @@
 use core::any::TypeId;
-use std::{any::Any, default};
+use std::any::Any;
 
 use bevy::{ecs::world::CommandQueue, platform::collections::HashMap, prelude::*};
 use bevy_egui::{EguiContext, PrimaryEguiContext};

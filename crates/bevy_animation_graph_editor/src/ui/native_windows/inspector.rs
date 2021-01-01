@@ -23,8 +23,11 @@ use crate::ui::{
         graph::{EditNode, GraphAction, RenameNode, UpdateDefaultData, UpdateGraphSpec},
     },
     generic_widgets::{
-        data_value::DataValueWidget, fsm::state::StateWidget, graph_input_pin::GraphInputPinWidget,
-        hashmap::HashMapWidget, io_spec::IoSpecWidget,
+        data_value::DataValueWidget,
+        fsm::{direct_transition::DirectTransitionWidget, state::StateWidget},
+        graph_input_pin::GraphInputPinWidget,
+        hashmap::HashMapWidget,
+        io_spec::IoSpecWidget,
     },
     native_windows::{EditorWindowContext, NativeEditorWindowExtension},
     node_editors::{ReflectEditable, reflect_editor::ReflectNodeEditor},
@@ -156,7 +159,7 @@ fn state_inspector(
     with_assets_all(world, [active_state.handle.id()], |world, [fsm]| {
         let state = fsm.states.get(&active_state.state)?;
 
-        let buffer_id = ui.id().with("state buffer").with(active_state.state);
+        let buffer_id = ui.id().with("state buffer");
         let buffer = ctx.buffers.get_mut_or_insert_with_condition(
             buffer_id,
             |v: &State| v.id != active_state.state,
@@ -190,20 +193,29 @@ fn transition_inspector(
     with_assets_all(world, [active_transition.handle.id()], |world, [fsm]| {
         let transition = fsm.transitions.get(&active_transition.transition)?;
 
-        using_inspector_env(world, |mut env| {
-            let mut copy = transition.clone();
-            let changed = env.ui_for_reflect(&mut copy, ui);
-            if changed {
-                ctx.editor_actions
-                    .push(EditorAction::Fsm(FsmAction::UpdateTransition(
-                        UpdateTransition {
-                            fsm: active_transition.handle.clone(),
-                            transition_id: active_transition.transition.clone(),
-                            new_transition: copy,
-                        },
-                    )));
-            }
-        });
+        let buffer_id = ui.id().with("transition buffer");
+        let buffer = ctx.buffers.get_mut_or_insert_with_condition(
+            buffer_id,
+            |v: &DirectTransition| v.id != transition.id,
+            || transition.clone(),
+        );
+
+        let r = ui.add(
+            DirectTransitionWidget::new(buffer, world)
+                .salted("state widget")
+                .with_fsm(Some(fsm)),
+        );
+        if r.changed() {
+            ctx.editor_actions
+                .push(EditorAction::Fsm(FsmAction::UpdateTransition(
+                    UpdateTransition {
+                        fsm: active_transition.handle.clone(),
+                        transition_id: active_transition.transition.clone(),
+                        new_transition: buffer.clone(),
+                    },
+                )));
+        }
+
         Some(())
     })
     .flatten()
@@ -358,6 +370,7 @@ fn add_transition_ui(
         let buffer = ctx
             .buffers
             .get_mut_or_insert_with(ui.id(), DirectTransition::default);
+
         env.ui_for_reflect_with_options(buffer, ui, egui::Id::new("Transition creation"), &());
         if ui.button("Create transition").clicked() {
             Some(buffer.clone())

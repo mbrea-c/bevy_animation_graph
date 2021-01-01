@@ -5,7 +5,7 @@ use bevy::{
 
 use crate::ui::{
     generic_widgets::tree::{Tree, TreeWidget, paths::PathTreeRenderer},
-    utils::{asset_sort_key, handle_path},
+    utils::{asset_sort_key, handle_path_server},
 };
 
 pub struct AssetPicker<'a, A: Asset> {
@@ -37,7 +37,7 @@ impl<'a, A: Asset> egui::Widget for AssetPicker<'a, A> {
                 asset_ids.sort_by_key(|id| asset_sort_key(*id, asset_server));
                 let paths = asset_ids
                     .into_iter()
-                    .map(|id| (handle_path(id.untyped(), asset_server), id))
+                    .map(|id| (handle_path_server(id.untyped(), asset_server), id))
                     .collect();
                 let path_tree = Tree::from_paths(paths);
                 TreeWidget::new_salted(

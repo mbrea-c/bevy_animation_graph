@@ -146,10 +146,16 @@ pub(crate) fn get_animation_graph_player_mut(
         .map(|player| player.into_inner())
 }
 
-pub fn handle_path(handle: UntypedAssetId, asset_server: &AssetServer) -> PathBuf {
+pub fn handle_path_server(handle: UntypedAssetId, asset_server: &AssetServer) -> PathBuf {
     asset_server
         .get_path(handle)
-        .map_or("Unsaved Asset".into(), |p| p.path().to_owned())
+        .map_or("<asset without path>".into(), |p| p.path().to_owned())
+}
+
+pub fn handle_path(handle: UntypedHandle) -> String {
+    handle
+        .path()
+        .map_or("<asset without path>".into(), |p| p.to_string())
 }
 
 pub fn render_image(ui: &mut egui::Ui, world: &mut World, image: &Handle<Image>) -> egui::Response {

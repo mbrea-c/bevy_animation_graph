@@ -80,11 +80,23 @@ impl<'a> egui::Widget for StateWidget<'a> {
             CheapOptionWidget::new_salted(&mut self.state.state_transition, "state transition")
                 .with_checkbox_label(Some("enable state transition:".into()))
                 .ui(ui, |ui, data| {
-                    ui.add(TransitionDataWidget::new_salted(
-                        data,
-                        self.world,
-                        "transition data",
-                    ))
+                    egui::Frame::new()
+                        .stroke(egui::Stroke {
+                            width: 1.,
+                            color: ui.visuals().weak_text_color(),
+                        })
+                        .fill(ui.visuals().faint_bg_color)
+                        .outer_margin(3.)
+                        .inner_margin(4.)
+                        .corner_radius(5.)
+                        .show(ui, |ui| {
+                            ui.add(TransitionDataWidget::new_salted(
+                                data,
+                                self.world,
+                                "transition data",
+                            ))
+                        })
+                        .inner
                 });
 
         response
