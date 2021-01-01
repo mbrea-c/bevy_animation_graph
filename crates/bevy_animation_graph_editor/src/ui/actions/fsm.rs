@@ -20,7 +20,6 @@ pub enum FsmAction {
     MoveState(MoveState),
     UpdateState(UpdateState),
     UpdateTransition(UpdateTransition),
-    CreateState(CreateState),
     CreateTransition(CreateTransition),
     RemoveState(RemoveState),
     RemoveTransition(RemoveTransition),
@@ -44,11 +43,6 @@ pub struct UpdateTransition {
     pub fsm: Handle<StateMachine>,
     pub transition_id: DirectTransitionId,
     pub new_transition: DirectTransition,
-}
-
-pub struct CreateState {
-    pub fsm: Handle<StateMachine>,
-    pub state: State,
 }
 
 pub struct CreateTransition {
@@ -83,9 +77,6 @@ pub fn handle_fsm_action(world: &mut World, action: FsmAction) {
         FsmAction::UpdateTransition(action) => {
             run_handler(world, FSM_ERR)(handle_update_transition_system, action)
         }
-        FsmAction::CreateState(action) => {
-            run_handler(world, FSM_ERR)(handle_create_state_system, action)
-        }
         FsmAction::CreateTransition(action) => {
             run_handler(world, FSM_ERR)(handle_create_transition_system, action)
         }
@@ -114,12 +105,6 @@ pub fn handle_update_state_system(In(action): In<UpdateState>, mut ctx: FsmConte
 pub fn handle_update_transition_system(In(action): In<UpdateTransition>, mut ctx: FsmContext) {
     ctx.provide_mut(&action.fsm, |fsm| {
         let _ = fsm.update_transition(action.transition_id, action.new_transition);
-    });
-}
-
-pub fn handle_create_state_system(In(action): In<CreateState>, mut ctx: FsmContext) {
-    ctx.provide_mut(&action.fsm, |fsm| {
-        fsm.add_state(action.state);
     });
 }
 

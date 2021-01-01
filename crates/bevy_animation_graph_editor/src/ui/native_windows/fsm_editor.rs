@@ -12,8 +12,10 @@ use bevy_animation_graph::core::state_machine::high_level::{
     DirectTransitionId, State, StateId, StateMachine,
 };
 use egui_dock::egui;
+use uuid::Uuid;
 
 use crate::ui::{
+    generic_widgets::fsm::state::StateWidget,
     native_windows::{
         EditorWindowContext, EditorWindowRegistrationContext, NativeEditorWindowExtension,
         OwnedQueue,
@@ -23,11 +25,12 @@ use crate::ui::{
         active_fsm::ActiveFsm,
         active_fsm_state::{ActiveFsmState, SetActiveFsmState},
         active_fsm_transition::{ActiveFsmTransition, SetActiveFsmTransition},
-        fsm::MoveStates,
+        fsm::{CreateState, MoveStates},
         get_global_state,
         inspector_selection::{InspectorSelection, SetInspectorSelection},
         register_if_missing,
     },
+    utils::popup::CustomPopup,
 };
 
 pub struct FsmEditBuffer {
@@ -61,6 +64,8 @@ impl NativeEditorWindowExtension for FsmEditorWindow {
             return;
         };
 
+        let outer_rect = ui.available_rect_before_wrap();
+
         let mut queue = ctx.make_queue();
         let window = ctx.window_entity;
 
@@ -76,6 +81,16 @@ impl NativeEditorWindowExtension for FsmEditorWindow {
         });
 
         ctx.consume_queue(queue);
+
+        CustomPopup::new()
+            .with_salt(ui.id().with("Graph editor right click popup"))
+            .with_sense_rect(outer_rect)
+            .with_allow_opening(true)
+            .with_save_on_click(Some(()))
+            .with_default_size(egui::Vec2::new(500., 300.))
+            .show_if_saved(ui, |ui, ()| {
+                state_creator_popup(ui, world, ctx);
+            });
     }
 
     fn display_name(&self) -> String {
@@ -585,6 +600,41 @@ impl FsmEditorWindowState {
             ),
         });
     }
+}
+
+fn state_creator_popup(ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
+    let buffer_id = ui.id().with("node creator popup");
+
+    egui::Frame::new().outer_margin(3).show(ui, |ui| {
+        egui::ScrollArea::vertical()
+            .auto_shrink(false)
+            .show(ui, |ui| {
+                let buffer = ctx.buffers.get_mut_or_default::<State>(buffer_id);
+
+                ui.add(StateWidget::new_salted(
+                    buffer,
+                    world,
+                    "create fsm state widget",
+                ));
+
+                let submit_response = ui
+                    .with_layout(egui::Layout::bottom_up(egui::Align::RIGHT), |ui| {
+                        ui.button("Create node")
+                    })
+                    .inner;
+
+                if submit_response.clicked()
+                    && let Some(active_fsm) = get_global_state::<ActiveFsm>(world)
+                {
+                    let mut state = buffer.clone();
+                    state.id = StateId::from(Uuid::new_v4());
+                    ctx.trigger(CreateState {
+                        fsm: active_fsm.handle.clone(),
+                        state,
+                    });
+                }
+            });
+    });
 }
 
 fn egui_pos2(vec2: Vec2) -> egui::Pos2 {

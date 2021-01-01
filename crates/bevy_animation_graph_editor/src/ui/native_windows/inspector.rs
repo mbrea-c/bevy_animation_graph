@@ -19,7 +19,7 @@ use egui_dock::egui;
 use crate::ui::{
     actions::{
         EditorAction,
-        fsm::{CreateState, CreateTransition, FsmAction, UpdateState, UpdateTransition},
+        fsm::{CreateTransition, FsmAction, UpdateState, UpdateTransition},
         graph::{EditNode, GraphAction, RenameNode, UpdateDefaultData, UpdateGraphSpec},
     },
     generic_widgets::{
@@ -337,14 +337,6 @@ fn fsm_inspector(
         }
 
         using_inspector_env(world, |mut env| {
-            if let Some(state) = add_state_ui(ui, &mut env, ctx) {
-                ctx.editor_actions
-                    .push(EditorAction::Fsm(FsmAction::CreateState(CreateState {
-                        fsm: active_fsm.handle.clone(),
-                        state,
-                    })));
-            }
-
             if let Some(transition) = add_transition_ui(ui, &mut env, ctx) {
                 ctx.editor_actions
                     .push(EditorAction::Fsm(FsmAction::CreateTransition(
@@ -373,25 +365,6 @@ fn add_transition_ui(
 
         env.ui_for_reflect_with_options(buffer, ui, egui::Id::new("Transition creation"), &());
         if ui.button("Create transition").clicked() {
-            Some(buffer.clone())
-        } else {
-            None
-        }
-    })
-    .inner
-}
-
-fn add_state_ui(
-    ui: &mut egui::Ui,
-    env: &mut InspectorUi,
-    ctx: &mut EditorWindowContext,
-) -> Option<State> {
-    ui.push_id("fsm add state", |ui| {
-        ui.separator();
-        ui.label("State creation");
-        let buffer = ctx.buffers.get_mut_or_insert_with(ui.id(), State::default);
-        env.ui_for_reflect_with_options(buffer, ui, egui::Id::new("State creation"), &());
-        if ui.button("Create state").clicked() {
             Some(buffer.clone())
         } else {
             None

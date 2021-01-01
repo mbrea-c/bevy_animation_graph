@@ -13,7 +13,7 @@ use bevy::{
 };
 use bevy_animation_graph::core::{
     context::spec_context::NodeSpec,
-    state_machine::high_level::{StateId, StateMachine},
+    state_machine::high_level::{State, StateId, StateMachine},
 };
 
 use crate::ui::{actions::saving::DirtyAssets, state_management::global::RegisterStateComponent};
@@ -26,6 +26,7 @@ impl RegisterStateComponent for FsmManager {
         world.add_observer(SetFsmNodeSpec::observe);
         world.add_observer(SetFsmStartState::observe);
         world.add_observer(MoveStates::observe);
+        world.add_observer(CreateState::observe);
     }
 }
 
@@ -70,6 +71,20 @@ impl MoveStates {
             for state_id in &move_states.states {
                 fsm.extra.move_state(*state_id, move_states.delta);
             }
+        });
+    }
+}
+
+#[derive(Event)]
+pub struct CreateState {
+    pub fsm: Handle<StateMachine>,
+    pub state: State,
+}
+
+impl CreateState {
+    pub fn observe(create_state: On<CreateState>, mut ctx: FsmContext) {
+        ctx.provide_mut(&create_state.fsm, |fsm| {
+            fsm.add_state(create_state.state.clone());
         });
     }
 }
