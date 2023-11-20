@@ -176,15 +176,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "animation_test"
-version = "0.1.0"
-dependencies = [
- "bevy",
- "bevy_egui_editor",
- "bevy_xpbd_3d",
-]
-
-[[package]]
 name = "approx"
 version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -435,6 +426,15 @@ dependencies = [
  "bevy_time",
  "bevy_transform",
  "bevy_utils",
+]
+
+[[package]]
+name = "bevy_animation_graph"
+version = "0.1.0"
+dependencies = [
+ "bevy",
+ "bevy_egui_editor",
+ "bevy_xpbd_3d",
 ]
 
 [[package]]

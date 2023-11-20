@@ -1,10 +1,12 @@
-use animation_test::animation::{AnimationGraph, AnimationPlayer, AnimationPlugin, WrapEnd};
-use animation_test::nodes::{
-    chain_node::ChainNode, clip_node::ClipNode, flip_lr_node::FlipLRNode, loop_node::LoopNode,
-    speed_node::SpeedNode,
-};
 use bevy::{
     asset::RecursiveDependencyLoadState, gltf::Gltf, pbr::CascadeShadowConfigBuilder, prelude::*,
+};
+use bevy_animation_graph::animation::{
+    AnimationGraph, AnimationPlayer, AnimationPlugin, InterpolationMode, WrapEnd,
+};
+use bevy_animation_graph::nodes::{
+    chain_node::ChainNode, clip_node::ClipNode, flip_lr_node::FlipLRNode, loop_node::LoopNode,
+    speed_node::SpeedNode,
 };
 use std::f32::consts::PI;
 
@@ -25,8 +27,6 @@ fn main() {
                 process_graphs,
                 setup_scene_once_loaded,
                 keyboard_animation_control,
-                // setup_scene_once_loaded_theirs,
-                // keyboard_animation_control_theirs,
             ),
         )
         .run();
@@ -121,7 +121,7 @@ fn process_graphs(
         .wrapped(),
         Some(ClipNode::OUTPUT.into()),
     );
-    graph.set_interpolation(animation_test::animation::InterpolationMode::Linear);
+    graph.set_interpolation(InterpolationMode::Linear);
     graph.add_node("Flip LR".into(), FlipLRNode::new().wrapped(), None);
     graph.add_node("Chain".into(), ChainNode::new().wrapped(), None);
     graph.add_node("Speed".into(), SpeedNode::new(1.5).wrapped(), None);

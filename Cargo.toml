@@ -1,5 +1,5 @@
 [package]
-name = "animation_test"
+name = "bevy_animation_graph"
 version = "0.1.0"
 edition = "2021"
 

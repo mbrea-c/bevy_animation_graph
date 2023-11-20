@@ -516,7 +516,7 @@ fn entity_from_path(
         return None;
     }
 
-    for (idx, part) in parts {
+    for (_idx, part) in parts {
         let mut found = false;
         let children = children.get(current_entity).ok()?;
         if !found {
