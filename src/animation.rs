@@ -1,3 +1,4 @@
+use crate::sampling::linear::SampleLinear;
 use bevy::app::{App, Plugin, PostUpdate};
 use bevy::asset::{Asset, AssetApp, Assets, Handle};
 use bevy::core::Name;
@@ -5,7 +6,7 @@ use bevy::ecs::prelude::*;
 use bevy::hierarchy::{Children, Parent};
 use bevy::math::{Quat, Vec3};
 use bevy::prelude::PreUpdate;
-use bevy::reflect::{Reflect, TypePath};
+use bevy::reflect::{FromReflect, Reflect, TypePath};
 use bevy::render::mesh::morph::MorphWeights;
 use bevy::time::Time;
 use bevy::transform::{prelude::Transform, TransformSystem};
@@ -34,54 +35,49 @@ pub enum Keyframes {
 
 /// Vertical slice of a [`Keyframes`] that represents an instant in an animation [`Transform`].
 #[derive(Asset, Reflect, Clone, Debug, Default)]
-pub struct ChannelPose {
+pub struct BonePose {
     pub(crate) rotation: Option<Quat>,
     pub(crate) translation: Option<Vec3>,
     pub(crate) scale: Option<Vec3>,
     pub(crate) weights: Option<Vec<f32>>,
 }
 
-impl ChannelPose {
-    pub fn interpolate_linear(&self, other: &Self, f: f32) -> Self {
-        let mut result = Self::default();
+#[derive(Asset, Reflect, Clone, Debug, Default)]
+pub struct ValueFrame<T: FromReflect + TypePath> {
+    pub(crate) prev: T,
+    pub(crate) prev_timestamp: f32,
+    pub(crate) next: T,
+    pub(crate) next_timestamp: f32,
+    pub(crate) next_is_wrapped: bool,
+}
 
-        match (self.rotation, other.rotation) {
-            (Some(a), Some(b)) => {
-                result.rotation = Some(a.slerp(b, f));
-            }
-            (None, None) => {}
-            (None, Some(b)) => result.rotation = Some(b),
-            (Some(a), None) => result.rotation = Some(a),
-        }
+impl<T: FromReflect + TypePath> ValueFrame<T> {
+    pub fn map_ts<F>(&mut self, f: F)
+    where
+        F: Fn(f32) -> f32,
+    {
+        self.prev_timestamp = f(self.prev_timestamp);
+        self.next_timestamp = f(self.next_timestamp);
+    }
+}
 
-        match (self.translation, other.translation) {
-            (Some(a), Some(b)) => {
-                result.translation = Some(a.lerp(b, f));
-            }
-            (None, None) => {}
-            (None, Some(b)) => result.translation = Some(b),
-            (Some(a), None) => result.translation = Some(a),
-        }
+#[derive(Asset, Reflect, Clone, Debug, Default)]
+pub struct BoneFrame {
+    pub(crate) rotation: Option<ValueFrame<Quat>>,
+    pub(crate) translation: Option<ValueFrame<Vec3>>,
+    pub(crate) scale: Option<ValueFrame<Vec3>>,
+    pub(crate) weights: Option<ValueFrame<Vec<f32>>>,
+}
 
-        match (self.scale, other.scale) {
-            (Some(a), Some(b)) => {
-                result.scale = Some(a.lerp(b, f));
-            }
-            (None, None) => {}
-            (None, Some(b)) => result.scale = Some(b),
-            (Some(a), None) => result.scale = Some(a),
-        }
-
-        match (&self.weights, &other.weights) {
-            (Some(a), Some(b)) => {
-                result.weights = Some(lerp_morph_weights(&a, &b, f));
-            }
-            (None, None) => {}
-            (None, Some(b)) => result.weights = Some(b.clone()),
-            (Some(a), None) => result.weights = Some(a.clone()),
-        }
-
-        result
+impl BoneFrame {
+    pub fn map_ts<F>(&mut self, f: F)
+    where
+        F: Fn(f32) -> f32,
+    {
+        self.rotation.as_mut().map(|v| v.map_ts(&f));
+        self.translation.as_mut().map(|v| v.map_ts(&f));
+        self.scale.as_mut().map(|v| v.map_ts(&f));
+        self.weights.as_mut().map(|v| v.map_ts(&f));
     }
 }
 
@@ -172,75 +168,57 @@ impl From<bevy::animation::AnimationClip> for AnimationClip {
 /// Vertical slice of an [`AnimationClip`]
 #[derive(Asset, Reflect, Clone, Debug, Default)]
 pub struct Pose {
-    pub(crate) channels: Vec<ChannelPose>,
+    pub(crate) bones: Vec<BonePose>,
     pub(crate) paths: HashMap<EntityPath, usize>,
 }
 
 impl Pose {
-    pub fn add_channel(&mut self, pose: ChannelPose, path: EntityPath) {
-        let id = self.channels.len();
-        self.channels.insert(id, pose);
+    pub fn add_bone(&mut self, pose: BonePose, path: EntityPath) {
+        let id = self.bones.len();
+        self.bones.insert(id, pose);
         self.paths.insert(path, id);
     }
-
-    pub fn interpolate_linear(&self, other: &Self, f: f32) -> Pose {
-        if f.is_nan() {
-            return self.clone();
-        }
-
-        let mut result = Pose::default();
-
-        for (path, bone_id) in self.paths.iter() {
-            let Some(other_bone_id) = other.paths.get(path) else {
-                continue;
-            };
-
-            result.add_channel(
-                self.channels[*bone_id].interpolate_linear(&other.channels[*other_bone_id], f),
-                path.clone(),
-            );
-        }
-
-        result
-    }
+    //
+    // pub fn interpolate_linear(&self, other: &Self, f: f32) -> Pose {
+    //     if f.is_nan() {
+    //         return self.clone();
+    //     }
+    //
+    //     let mut result = Pose::default();
+    //
+    //     for (path, bone_id) in self.paths.iter() {
+    //         let Some(other_bone_id) = other.paths.get(path) else {
+    //             continue;
+    //         };
+    //
+    //         result.add_bone(
+    //             self.bones[*bone_id].interpolate_linear(&other.bones[*other_bone_id], f),
+    //             path.clone(),
+    //         );
+    //     }
+    //
+    //     result
+    // }
 }
 
 #[derive(Asset, Reflect, Clone, Debug, Default)]
 pub struct PoseFrame {
-    pub(crate) prev: Pose,
-    pub(crate) prev_timestamp: f32,
-    pub(crate) next: Pose,
-    pub(crate) next_timestamp: f32,
-    pub(crate) next_is_wrapped: bool,
+    pub(crate) bones: Vec<BoneFrame>,
+    pub(crate) paths: HashMap<EntityPath, usize>,
 }
 
 impl PoseFrame {
-    pub fn interpolate_linear(&self, time: f32) -> Pose {
-        if time < self.prev_timestamp || time > self.next_timestamp {
-            warn!(
-                "Interpolation time {time} is outside of the frame timestamps {} -- {}",
-                self.prev_timestamp, self.next_timestamp
-            );
-        }
-        let time = time.clamp(self.prev_timestamp, self.next_timestamp);
-
-        let f = (time - self.prev_timestamp) / (self.next_timestamp - self.prev_timestamp);
-        if f.is_nan() {
-            return self.prev.clone();
-        }
-
-        self.prev.interpolate_linear(&self.next, f)
+    pub(crate) fn add_bone(&mut self, frame: BoneFrame, path: EntityPath) {
+        let id = self.bones.len();
+        self.bones.insert(id, frame);
+        self.paths.insert(path, id);
     }
 
-    pub fn interpolate_constant(&self, time: f32) -> Pose {
-        if time < self.prev_timestamp || time > self.next_timestamp {
-            warn!(
-                "Interpolation time {time} is outside of the frame timestamps {} -- {}",
-                self.prev_timestamp, self.next_timestamp
-            );
-        }
-
-        self.prev.clone()
+    pub fn map_ts<F>(&mut self, f: F)
+    where
+        F: Fn(f32) -> f32,
+    {
+        self.bones.iter_mut().for_each(|v| v.map_ts(&f));
     }
 }
 
@@ -421,8 +399,8 @@ impl AnimationGraph {
             .unwrap()
         {
             EdgeValue::PoseFrame(p) => match self.output_interpolation {
-                InterpolationMode::Constant => p.interpolate_constant(time),
-                InterpolationMode::Linear => p.interpolate_linear(time),
+                InterpolationMode::Constant => todo!(),
+                InterpolationMode::Linear => p.sample_linear(time),
             },
             EdgeValue::F32(_) => panic!("Output edge did not output a pose"),
         }
@@ -703,7 +681,7 @@ fn apply_pose(
             continue;
         };
 
-        let pose = &animation_pose.channels[*bone_id];
+        let pose = &animation_pose.bones[*bone_id];
         let mut morphs = unsafe { morphs.get_unchecked(target) };
         if let Some(rotation) = pose.rotation {
             transform.rotation = rotation;

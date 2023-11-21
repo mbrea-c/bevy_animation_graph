@@ -1,5 +1,8 @@
-use crate::animation::{
-    AnimationNode, EdgeSpec, EdgeValue, NodeInput, NodeOutput, NodeWrapper, PoseFrame,
+use crate::{
+    animation::{
+        AnimationNode, EdgeSpec, EdgeValue, NodeInput, NodeOutput, NodeWrapper, PoseFrame,
+    },
+    chaining::Chainable,
 };
 use bevy::utils::HashMap;
 
@@ -43,9 +46,7 @@ impl AnimationNode for ChainNode {
         let mut t2 = time;
 
         if let Some(duration_1) = self.source_duration_1 {
-            if time > duration_1 {
-                t2 = time - duration_1;
-            }
+            t2 = time - duration_1;
         }
 
         HashMap::from([(Self::INPUT_1.into(), t1), (Self::INPUT_2.into(), t2)])
@@ -67,33 +68,17 @@ impl AnimationNode for ChainNode {
             .clone()
             .unwrap_pose_frame();
 
-        let mut out_pose;
+        let out_pose;
 
-        match self.source_duration_1 {
-            Some(duration_1) if time > duration_1 => {
-                out_pose = in_pose_2;
-                out_pose.prev_timestamp += duration_1;
-                out_pose.next_timestamp += duration_1;
-                if out_pose.next_is_wrapped {
-                    out_pose.next = in_pose_1.next;
-                    out_pose.next_timestamp = in_pose_1.next_timestamp + duration_1;
-                }
-            }
-            Some(_) if in_pose_1.next_is_wrapped => {
-                out_pose = PoseFrame {
-                    prev: in_pose_1.prev,
-                    prev_timestamp: in_pose_1.prev_timestamp,
-                    next: in_pose_2.next,
-                    next_timestamp: in_pose_2.next_timestamp,
-                    next_is_wrapped: false,
-                };
-            }
-            Some(_) => {
-                out_pose = in_pose_1;
-            }
-            None => {
-                out_pose = in_pose_1;
-            }
+        if let Some(duration_1) = self.source_duration_1 {
+            out_pose = in_pose_1.chain(
+                &in_pose_2,
+                duration_1,
+                self.source_duration_2.unwrap_or(f32::MAX),
+                time,
+            );
+        } else {
+            out_pose = in_pose_1;
         }
 
         HashMap::from([(Self::OUTPUT.into(), EdgeValue::PoseFrame(out_pose))])

@@ -4,10 +4,11 @@ use bevy::{
 use bevy_animation_graph::animation::{
     AnimationGraph, AnimationPlayer, AnimationPlugin, InterpolationMode, WrapEnd,
 };
-use bevy_animation_graph::nodes::{
-    chain_node::ChainNode, clip_node::ClipNode, flip_lr_node::FlipLRNode, loop_node::LoopNode,
-    speed_node::SpeedNode,
-};
+use bevy_animation_graph::nodes::blend_node::BlendNode;
+use bevy_animation_graph::nodes::chain_node::ChainNode;
+use bevy_animation_graph::nodes::clip_node::ClipNode;
+use bevy_animation_graph::nodes::flip_lr_node::FlipLRNode;
+use bevy_animation_graph::nodes::loop_node::LoopNode;
 use std::f32::consts::PI;
 
 fn main() {
@@ -111,53 +112,81 @@ fn process_graphs(
 
     let mut graph = AnimationGraph::new();
     graph.add_node(
-        "AnimClip".into(),
-        ClipNode::new(
-            walk_clip.into(),
-            WrapEnd::Loop,
-            Some(1.),
-            Some(vec![0., 0.5]),
-        )
-        .wrapped(),
+        "WalkClip".into(),
+        ClipNode::new(walk_clip.into(), Some(1.)).wrapped(),
         Some(ClipNode::OUTPUT.into()),
     );
-    graph.set_interpolation(InterpolationMode::Linear);
+    graph.add_node(
+        "RunClip".into(),
+        ClipNode::new(run_clip.into(), Some(1.)).wrapped(),
+        Some(ClipNode::OUTPUT.into()),
+    );
+    graph.add_node("WalkChain".into(), ChainNode::new().wrapped(), None);
+    graph.add_node("RunChain".into(), ChainNode::new().wrapped(), None);
     graph.add_node("Flip LR".into(), FlipLRNode::new().wrapped(), None);
-    graph.add_node("Chain".into(), ChainNode::new().wrapped(), None);
-    graph.add_node("Speed".into(), SpeedNode::new(1.5).wrapped(), None);
+    graph.add_node("Run Flip LR".into(), FlipLRNode::new().wrapped(), None);
+    graph.add_node("Blend".into(), BlendNode::new(1.).wrapped(), None);
     graph.add_node(
         "Loop".into(),
         LoopNode::new().wrapped(),
         Some(LoopNode::OUTPUT.into()),
     );
 
+    graph.set_interpolation(InterpolationMode::Linear);
+
+    // graph.add_node("Speed".into(), SpeedNode::new(1.5).wrapped(), None);
+
     graph.add_edge(
-        "AnimClip".into(),
+        "WalkClip".into(),
+        ClipNode::OUTPUT.into(),
+        "WalkChain".into(),
+        ChainNode::INPUT_1.into(),
+    );
+    graph.add_edge(
+        "WalkClip".into(),
         ClipNode::OUTPUT.into(),
         "Flip LR".into(),
         FlipLRNode::INPUT.into(),
     );
     graph.add_edge(
-        "AnimClip".into(),
-        ClipNode::OUTPUT.into(),
-        "Chain".into(),
-        ChainNode::INPUT_1.into(),
-    );
-    graph.add_edge(
         "Flip LR".into(),
         FlipLRNode::OUTPUT.into(),
-        "Chain".into(),
+        "WalkChain".into(),
         ChainNode::INPUT_2.into(),
     );
     graph.add_edge(
-        "Chain".into(),
-        ChainNode::OUTPUT.into(),
-        "Speed".into(),
-        SpeedNode::INPUT.into(),
+        "RunClip".into(),
+        ClipNode::OUTPUT.into(),
+        "RunChain".into(),
+        ChainNode::INPUT_1.into(),
     );
     graph.add_edge(
-        "Speed".into(),
-        SpeedNode::OUTPUT.into(),
+        "RunClip".into(),
+        ClipNode::OUTPUT.into(),
+        "Run Flip LR".into(),
+        FlipLRNode::INPUT.into(),
+    );
+    graph.add_edge(
+        "Run Flip LR".into(),
+        FlipLRNode::OUTPUT.into(),
+        "RunChain".into(),
+        ChainNode::INPUT_2.into(),
+    );
+    graph.add_edge(
+        "WalkChain".into(),
+        ChainNode::OUTPUT.into(),
+        "Blend".into(),
+        BlendNode::INPUT_1.into(),
+    );
+    graph.add_edge(
+        "RunChain".into(),
+        ChainNode::OUTPUT.into(),
+        "Blend".into(),
+        BlendNode::INPUT_2.into(),
+    );
+    graph.add_edge(
+        "Blend".into(),
+        BlendNode::OUTPUT.into(),
         "Loop".into(),
         LoopNode::INPUT.into(),
     );

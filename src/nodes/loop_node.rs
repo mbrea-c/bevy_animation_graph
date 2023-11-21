@@ -49,8 +49,7 @@ impl AnimationNode for LoopNode {
 
         if let Some(duration) = self.source_duration {
             let t_extra = (time / duration).floor() * duration;
-            in_pose_frame.prev_timestamp += t_extra;
-            in_pose_frame.next_timestamp += t_extra;
+            in_pose_frame.map_ts(|t| t + t_extra);
         }
 
         HashMap::from([(Self::OUTPUT.into(), EdgeValue::PoseFrame(in_pose_frame))])

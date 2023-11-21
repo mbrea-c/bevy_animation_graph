@@ -1,19 +1,24 @@
 use bevy::utils::HashMap;
 
-use crate::animation::{
-    AnimationNode, EdgeSpec, EdgeValue, EntityPath, NodeInput, NodeOutput, NodeWrapper, Pose,
-    PoseFrame,
+use crate::{
+    animation::{
+        AnimationNode, EdgeSpec, EdgeValue, EntityPath, NodeInput, NodeOutput, NodeWrapper, Pose,
+        PoseFrame,
+    },
+    interpolation::linear::InterpolateLinear,
 };
 
-pub struct BlendNode {}
+pub struct BlendNode {
+    alpha: f32,
+}
 
 impl BlendNode {
     pub const INPUT_1: &'static str = "Input Pose 1";
     pub const INPUT_2: &'static str = "Input Pose 2";
     pub const OUTPUT: &'static str = "Pose";
 
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(alpha: f32) -> Self {
+        Self { alpha }
     }
 
     pub fn wrapped(self) -> NodeWrapper {
@@ -54,7 +59,10 @@ impl AnimationNode for BlendNode {
             .clone()
             .unwrap_pose_frame();
 
-        todo!()
+        HashMap::from([(
+            Self::OUTPUT.into(),
+            EdgeValue::PoseFrame(in_frame_1.interpolate_linear(&in_frame_2, self.alpha)),
+        )])
     }
 
     fn input_spec(&self) -> HashMap<NodeInput, EdgeSpec> {
