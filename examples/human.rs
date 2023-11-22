@@ -96,6 +96,10 @@ fn process_graphs(
     gltf_assets: Res<Assets<Gltf>>,
     asset_server: Res<AssetServer>,
 ) {
+    if !processed_graphs.0.is_empty() {
+        return;
+    }
+
     if asset_server.recursive_dependency_load_state(root_gltf.0.clone())
         != RecursiveDependencyLoadState::Loaded
     {
@@ -125,11 +129,18 @@ fn process_graphs(
     graph.add_node("RunChain".into(), ChainNode::new().wrapped(), None);
     graph.add_node("Flip LR".into(), FlipLRNode::new().wrapped(), None);
     graph.add_node("Run Flip LR".into(), FlipLRNode::new().wrapped(), None);
-    graph.add_node("Blend".into(), BlendNode::new(1.).wrapped(), None);
+    graph.add_node("Blend".into(), BlendNode::new().wrapped(), None);
     graph.add_node(
         "Loop".into(),
         LoopNode::new().wrapped(),
         Some(LoopNode::OUTPUT.into()),
+    );
+
+    graph.set_parameter("Blend Alpha".into(), 0.5.into());
+    graph.add_parameter_edge(
+        "Blend Alpha".into(),
+        "Blend".into(),
+        BlendNode::FACTOR.into(),
     );
 
     graph.set_interpolation(InterpolationMode::Linear);
@@ -176,13 +187,13 @@ fn process_graphs(
         "WalkChain".into(),
         ChainNode::OUTPUT.into(),
         "Blend".into(),
-        BlendNode::INPUT_1.into(),
+        BlendNode::INPUT_POSE_1.into(),
     );
     graph.add_edge(
         "RunChain".into(),
         ChainNode::OUTPUT.into(),
         "Blend".into(),
-        BlendNode::INPUT_2.into(),
+        BlendNode::INPUT_POSE_2.into(),
     );
     graph.add_edge(
         "Blend".into(),
@@ -211,6 +222,7 @@ fn keyboard_animation_control(
     keyboard_input: Res<Input<KeyCode>>,
     mut animation_players: Query<&mut AnimationPlayer>,
     animations: Res<ProcessedGraphs>,
+    mut animation_graphs: ResMut<Assets<AnimationGraph>>,
 ) {
     for mut player in &mut animation_players {
         if keyboard_input.just_pressed(KeyCode::Space) {
@@ -227,5 +239,18 @@ fn keyboard_animation_control(
         if keyboard_input.just_pressed(KeyCode::Key1) {
             player.start(animations.0[0].clone());
         }
+
+        let graph = animation_graphs.get_mut(animations.0[0].clone()).unwrap();
+        let old_alpha = graph.get_parameter("Blend Alpha").unwrap().unwrap_f32();
+        let mut alpha = old_alpha;
+        if keyboard_input.pressed(KeyCode::Up) {
+            alpha += 0.01;
+            println!("Alpha: {}", alpha);
+        }
+        if keyboard_input.pressed(KeyCode::Down) {
+            alpha -= 0.01;
+            println!("Alpha: {}", alpha);
+        }
+        graph.set_parameter("Blend Alpha".into(), alpha.into());
     }
 }

@@ -1,11 +1,11 @@
 use crate::{
-    animation::{
-        AnimationNode, EdgeSpec, EdgeValue, NodeInput, NodeOutput, NodeWrapper, PoseFrame,
-    },
+    animation::{AnimationNode, EdgeSpec, EdgeValue, NodeInput, NodeLike, NodeOutput},
     chaining::Chainable,
 };
+use bevy::prelude::*;
 use bevy::utils::HashMap;
 
+#[derive(Reflect, Clone, Debug)]
 pub struct ChainNode {
     source_duration_1: Option<f32>,
     source_duration_2: Option<f32>,
@@ -23,12 +23,12 @@ impl ChainNode {
         }
     }
 
-    pub fn wrapped(self) -> NodeWrapper {
-        NodeWrapper::new(Box::new(self))
+    pub fn wrapped(self) -> AnimationNode {
+        AnimationNode::Chain(self)
     }
 }
 
-impl AnimationNode for ChainNode {
+impl NodeLike for ChainNode {
     fn duration(&mut self, input_durations: HashMap<NodeInput, Option<f32>>) -> Option<f32> {
         self.source_duration_1 = *input_durations.get(Self::INPUT_1.into()).unwrap();
         self.source_duration_2 = *input_durations.get(Self::INPUT_2.into()).unwrap();

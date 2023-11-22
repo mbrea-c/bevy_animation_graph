@@ -1,9 +1,11 @@
 use crate::animation::{
     get_keyframe, AnimationClip, AnimationNode, BoneFrame, EdgeSpec, EdgeValue, Keyframes,
-    NodeInput, NodeOutput, NodeWrapper, PoseFrame, ValueFrame,
+    NodeInput, NodeLike, NodeOutput, PoseFrame, ValueFrame,
 };
+use bevy::prelude::*;
 use bevy::utils::HashMap;
 
+#[derive(Reflect, Clone, Debug)]
 pub struct ClipNode {
     clip: AnimationClip,
     override_duration: Option<f32>,
@@ -18,8 +20,8 @@ impl ClipNode {
         }
     }
 
-    pub fn wrapped(self) -> NodeWrapper {
-        NodeWrapper::new(Box::new(self))
+    pub fn wrapped(self) -> AnimationNode {
+        AnimationNode::Clip(self)
     }
 
     #[inline]
@@ -32,7 +34,7 @@ impl ClipNode {
     }
 }
 
-impl AnimationNode for ClipNode {
+impl NodeLike for ClipNode {
     fn duration(&mut self, _input_durations: HashMap<NodeInput, Option<f32>>) -> Option<f32> {
         Some(self.clip_duration())
     }

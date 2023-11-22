@@ -1,13 +1,11 @@
-use bevy::utils::HashMap;
-
 use crate::{
-    animation::{
-        AnimationNode, EdgeSpec, EdgeValue, EntityPath, NodeInput, NodeOutput, NodeWrapper, Pose,
-        PoseFrame,
-    },
+    animation::{AnimationNode, EdgeSpec, EdgeValue, NodeInput, NodeLike, NodeOutput},
     flipping::FlipXBySuffix,
 };
+use bevy::prelude::*;
+use bevy::utils::HashMap;
 
+#[derive(Reflect, Clone, Debug)]
 pub struct FlipLRNode {}
 
 impl FlipLRNode {
@@ -18,12 +16,12 @@ impl FlipLRNode {
         Self {}
     }
 
-    pub fn wrapped(self) -> NodeWrapper {
-        NodeWrapper::new(Box::new(self))
+    pub fn wrapped(self) -> AnimationNode {
+        AnimationNode::FlipLR(self)
     }
 }
 
-impl AnimationNode for FlipLRNode {
+impl NodeLike for FlipLRNode {
     fn duration(&mut self, input_durations: HashMap<NodeInput, Option<f32>>) -> Option<f32> {
         *input_durations.get(Self::INPUT.into()).unwrap()
     }
@@ -34,7 +32,7 @@ impl AnimationNode for FlipLRNode {
 
     fn backward(
         &self,
-        time: f32,
+        _time: f32,
         inputs: HashMap<NodeInput, EdgeValue>,
     ) -> HashMap<NodeOutput, EdgeValue> {
         let in_pose_frame = inputs.get(Self::INPUT).unwrap().clone().unwrap_pose_frame();

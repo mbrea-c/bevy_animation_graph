@@ -1,7 +1,8 @@
+use crate::animation::{AnimationNode, EdgeSpec, EdgeValue, NodeInput, NodeLike, NodeOutput};
+use bevy::prelude::*;
 use bevy::utils::HashMap;
 
-use crate::animation::{AnimationNode, EdgeSpec, EdgeValue, NodeInput, NodeOutput, NodeWrapper};
-
+#[derive(Reflect, Clone, Debug, Default)]
 pub struct LoopNode {
     source_duration: Option<f32>,
 }
@@ -16,12 +17,12 @@ impl LoopNode {
         }
     }
 
-    pub fn wrapped(self) -> NodeWrapper {
-        NodeWrapper::new(Box::new(self))
+    pub fn wrapped(self) -> AnimationNode {
+        AnimationNode::Loop(self)
     }
 }
 
-impl AnimationNode for LoopNode {
+impl NodeLike for LoopNode {
     fn duration(&mut self, input_durations: HashMap<NodeInput, Option<f32>>) -> Option<f32> {
         self.source_duration = *input_durations.get(Self::INPUT.into()).unwrap();
 

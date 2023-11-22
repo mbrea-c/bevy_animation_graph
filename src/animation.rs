@@ -1,9 +1,16 @@
+use crate::nodes::blend_node::BlendNode;
+use crate::nodes::chain_node::ChainNode;
+use crate::nodes::clip_node::ClipNode;
+use crate::nodes::dummy_node::DummyNode;
+use crate::nodes::flip_lr_node::FlipLRNode;
+use crate::nodes::loop_node::LoopNode;
 use crate::sampling::linear::SampleLinear;
 use bevy::app::{App, Plugin, PostUpdate};
 use bevy::asset::{Asset, AssetApp, Assets, Handle};
 use bevy::core::Name;
 use bevy::ecs::prelude::*;
 use bevy::hierarchy::{Children, Parent};
+use bevy::log::prelude::*;
 use bevy::math::{Quat, Vec3};
 use bevy::prelude::PreUpdate;
 use bevy::reflect::{FromReflect, Reflect, TypePath};
@@ -11,7 +18,8 @@ use bevy::render::mesh::morph::MorphWeights;
 use bevy::time::Time;
 use bevy::transform::{prelude::Transform, TransformSystem};
 use bevy::utils::{tracing::warn, HashMap};
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
+use std::sync::{Arc, Mutex};
 
 /// List of keyframes for one of the attribute of a [`Transform`].
 #[derive(Reflect, Clone, Debug)]
@@ -42,7 +50,7 @@ pub struct BonePose {
     pub(crate) weights: Option<Vec<f32>>,
 }
 
-#[derive(Asset, Reflect, Clone, Debug, Default)]
+#[derive(Asset, Reflect, Clone, Debug, Default, PartialEq)]
 pub struct ValueFrame<T: FromReflect + TypePath> {
     pub(crate) prev: T,
     pub(crate) prev_timestamp: f32,
@@ -178,27 +186,6 @@ impl Pose {
         self.bones.insert(id, pose);
         self.paths.insert(path, id);
     }
-    //
-    // pub fn interpolate_linear(&self, other: &Self, f: f32) -> Pose {
-    //     if f.is_nan() {
-    //         return self.clone();
-    //     }
-    //
-    //     let mut result = Pose::default();
-    //
-    //     for (path, bone_id) in self.paths.iter() {
-    //         let Some(other_bone_id) = other.paths.get(path) else {
-    //             continue;
-    //         };
-    //
-    //         result.add_bone(
-    //             self.bones[*bone_id].interpolate_linear(&other.bones[*other_bone_id], f),
-    //             path.clone(),
-    //         );
-    //     }
-    //
-    //     result
-    // }
 }
 
 #[derive(Asset, Reflect, Clone, Debug, Default)]
@@ -238,8 +225,21 @@ impl EdgeValue {
     pub fn unwrap_pose_frame(self) -> PoseFrame {
         match self {
             Self::PoseFrame(p) => p,
-            Self::F32(_) => panic!("Edge value is not a pose frame"),
+            _ => panic!("Edge value is not a pose frame"),
         }
+    }
+
+    pub fn unwrap_f32(self) -> f32 {
+        match self {
+            Self::F32(f) => f,
+            _ => panic!("Edge value is not a f32"),
+        }
+    }
+}
+
+impl From<f32> for EdgeValue {
+    fn from(value: f32) -> Self {
+        Self::F32(value)
     }
 }
 
@@ -255,7 +255,7 @@ impl From<EdgeValue> for EdgeSpec {
 pub type NodeInput = String;
 pub type NodeOutput = String;
 
-pub trait AnimationNode: Send + Sync {
+pub trait NodeLike: Send + Sync {
     fn duration(&mut self, input_durations: HashMap<NodeInput, Option<f32>>) -> Option<f32>;
     fn forward(&self, time: f32) -> HashMap<NodeInput, f32>;
     fn backward(
@@ -268,27 +268,152 @@ pub trait AnimationNode: Send + Sync {
     fn output_spec(&self) -> HashMap<NodeOutput, EdgeSpec>;
 }
 
-pub struct NodeWrapper {
-    node: Box<dyn AnimationNode>,
-    // Below are cached values for performance
-    duration_cached: Option<Option<f32>>,
+#[derive(Clone)]
+pub struct CustomNode {
+    pub node: Arc<Mutex<dyn NodeLike>>,
 }
 
-impl NodeWrapper {
-    pub fn new(node: Box<dyn AnimationNode>) -> Self {
+impl CustomNode {
+    pub fn new(node: impl NodeLike + 'static) -> Self {
         Self {
-            node,
-            duration_cached: None,
+            node: Arc::new(Mutex::new(node)),
         }
     }
 }
 
-impl From<Box<dyn AnimationNode>> for NodeWrapper {
-    fn from(value: Box<dyn AnimationNode>) -> Self {
+impl Default for CustomNode {
+    fn default() -> Self {
         Self {
-            node: value,
-            duration_cached: None,
+            node: Arc::new(Mutex::new(DummyNode::new())),
         }
+    }
+}
+
+impl std::fmt::Debug for CustomNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "CustomNode")
+    }
+}
+
+#[derive(Reflect, Clone, Debug)]
+pub enum AnimationNode {
+    Parameter(ParameterNode),
+    Clip(ClipNode),
+    Blend(BlendNode),
+    Chain(ChainNode),
+    FlipLR(FlipLRNode),
+    Loop(LoopNode),
+    Custom(#[reflect(ignore)] CustomNode),
+}
+
+impl AnimationNode {
+    pub fn map<O, F>(&self, f: F) -> O
+    where
+        F: FnOnce(&dyn NodeLike) -> O,
+    {
+        match self {
+            AnimationNode::Parameter(n) => f(n),
+            AnimationNode::Clip(n) => f(n),
+            AnimationNode::Blend(n) => f(n),
+            AnimationNode::Chain(n) => f(n),
+            AnimationNode::FlipLR(n) => f(n),
+            AnimationNode::Loop(n) => f(n),
+            AnimationNode::Custom(n) => f(n.node.lock().unwrap().deref()),
+        }
+    }
+
+    pub fn map_mut<O, F>(&mut self, mut f: F) -> O
+    where
+        F: FnMut(&mut dyn NodeLike) -> O,
+    {
+        match self {
+            AnimationNode::Parameter(n) => f(n),
+            AnimationNode::Clip(n) => f(n),
+            AnimationNode::Blend(n) => f(n),
+            AnimationNode::Chain(n) => f(n),
+            AnimationNode::FlipLR(n) => f(n),
+            AnimationNode::Loop(n) => f(n),
+            AnimationNode::Custom(n) => {
+                let mut nod = n.node.lock().unwrap();
+                f(nod.deref_mut())
+            }
+        }
+    }
+
+    pub fn unwrap_parameter(&self) -> &ParameterNode {
+        match self {
+            AnimationNode::Parameter(n) => n,
+            _ => panic!("Node is not a parameter node"),
+        }
+    }
+    pub fn unwrap_parameter_mut(&mut self) -> &mut ParameterNode {
+        match self {
+            AnimationNode::Parameter(n) => n,
+            _ => panic!("Node is not a parameter node"),
+        }
+    }
+}
+
+#[derive(Reflect, Default, Clone, Debug)]
+pub struct ParameterNode {
+    pub parameters: HashMap<String, EdgeValue>,
+}
+
+impl ParameterNode {
+    pub fn wrapped(self) -> AnimationNode {
+        AnimationNode::Parameter(self)
+    }
+}
+
+impl NodeLike for ParameterNode {
+    fn duration(&mut self, _: HashMap<NodeInput, Option<f32>>) -> Option<f32> {
+        None
+    }
+
+    fn forward(&self, _: f32) -> HashMap<NodeInput, f32> {
+        HashMap::new()
+    }
+
+    fn backward(&self, _: f32, _: HashMap<NodeInput, EdgeValue>) -> HashMap<NodeOutput, EdgeValue> {
+        self.parameters.clone()
+    }
+
+    fn input_spec(&self) -> HashMap<NodeInput, EdgeSpec> {
+        HashMap::new()
+    }
+
+    fn output_spec(&self) -> HashMap<NodeOutput, EdgeSpec> {
+        self.parameters
+            .clone()
+            .into_iter()
+            .map(|(k, v)| (k, EdgeSpec::from(v)))
+            .collect()
+    }
+}
+
+impl NodeLike for AnimationNode {
+    fn duration(&mut self, input_durations: HashMap<NodeInput, Option<f32>>) -> Option<f32> {
+        self.map_mut(|n| n.duration(input_durations.clone()))
+    }
+
+    fn forward(&self, time: f32) -> HashMap<NodeInput, f32> {
+        self.map(|n| n.forward(time))
+    }
+
+    fn backward(
+        &self,
+        time: f32,
+        inputs: HashMap<NodeInput, EdgeValue>,
+    ) -> HashMap<NodeOutput, EdgeValue> {
+        self.map(|n| n.backward(time, inputs))
+    }
+
+    fn input_spec(&self) -> HashMap<NodeInput, EdgeSpec> {
+        self.map(|n| n.input_spec())
+    }
+
+    fn output_spec(&self) -> HashMap<NodeOutput, EdgeSpec> {
+        self.map(|n| n.output_spec())
     }
 }
 
@@ -299,7 +424,7 @@ pub enum InterpolationMode {
 
 #[derive(Asset, TypePath)]
 pub struct AnimationGraph {
-    nodes: HashMap<String, NodeWrapper>,
+    nodes: HashMap<String, AnimationNode>,
     /// Inverted, indexed by output node name.
     edges: HashMap<(String, String), (String, String)>,
     out_node: String,
@@ -308,9 +433,14 @@ pub struct AnimationGraph {
 }
 
 impl AnimationGraph {
+    const PARAMETER_NODE: &'static str = "__PARAMETERS";
+
     pub fn new() -> Self {
         Self {
-            nodes: HashMap::new(),
+            nodes: HashMap::from([(
+                Self::PARAMETER_NODE.into(),
+                ParameterNode::default().wrapped(),
+            )]),
             edges: HashMap::new(),
             out_node: "".into(),
             out_edge: "".into(),
@@ -330,14 +460,51 @@ impl AnimationGraph {
     pub fn add_node(
         &mut self,
         node_name: String,
-        node: NodeWrapper,
+        node: AnimationNode,
         make_out_edge: Option<String>,
     ) {
+        if &node_name == Self::PARAMETER_NODE {
+            error!("Node name {node_name} is reserved");
+            panic!("Node name {node_name} is reserved")
+        }
         self.nodes.insert(node_name.clone(), node);
         if let Some(out_edge) = make_out_edge {
             self.out_node = node_name;
             self.out_edge = out_edge;
         }
+    }
+
+    pub fn set_parameter(&mut self, parameter_name: String, value: EdgeValue) {
+        self.nodes
+            .get_mut(Self::PARAMETER_NODE)
+            .unwrap()
+            .unwrap_parameter_mut()
+            .parameters
+            .insert(parameter_name, value);
+    }
+
+    pub fn get_parameter(&mut self, parameter_name: &str) -> Option<EdgeValue> {
+        self.nodes
+            .get_mut(Self::PARAMETER_NODE)
+            .unwrap()
+            .unwrap_parameter()
+            .parameters
+            .get(parameter_name)
+            .cloned()
+    }
+
+    pub fn add_parameter_edge(
+        &mut self,
+        parameter_name: String,
+        target_node: String,
+        target_edge: String,
+    ) {
+        self.add_edge(
+            Self::PARAMETER_NODE.into(),
+            parameter_name,
+            target_node,
+            target_edge,
+        )
     }
 
     pub fn add_edge(
@@ -356,20 +523,11 @@ impl AnimationGraph {
     }
 
     pub fn duration_pass(&mut self) {
-        // First clear all duration caches
-        for wrapper in self.nodes.values_mut() {
-            wrapper.duration_cached = None;
-        }
-
         self.update_duration_for(&self.out_node.clone());
     }
 
     fn update_duration_for(&mut self, node: &str) -> Option<f32> {
-        if let Some(duration) = self.nodes.get(node).unwrap().duration_cached {
-            return duration;
-        }
-
-        let input_spec = self.nodes.get(node).unwrap().node.input_spec();
+        let input_spec = self.nodes.get(node).unwrap().input_spec();
         let input_keys = input_spec.keys();
 
         let mut mapped_keys = HashMap::new();
@@ -388,16 +546,15 @@ impl AnimationGraph {
         }
 
         let wrapper = self.nodes.get_mut(node).unwrap();
-        wrapper.duration_cached = Some(wrapper.node.duration(input_durations));
-        wrapper.duration_cached.unwrap()
+        wrapper.duration(input_durations)
     }
 
     fn forward_pass(&self, time: f32) -> Pose {
-        match self
+        let out = self
             .forward_pass_for(&self.out_node, time)
             .remove(&self.out_edge)
-            .unwrap()
-        {
+            .unwrap();
+        match out {
             EdgeValue::PoseFrame(p) => match self.output_interpolation {
                 InterpolationMode::Constant => todo!(),
                 InterpolationMode::Linear => p.sample_linear(time),
@@ -409,7 +566,7 @@ impl AnimationGraph {
     fn forward_pass_for(&self, node: &str, time: f32) -> HashMap<String, EdgeValue> {
         let wrapper = self.nodes.get(node).unwrap();
 
-        let time_query = wrapper.node.forward(time);
+        let time_query = wrapper.forward(time);
         let extended_time_query = time_query
             .iter()
             .map(|(k, v)| (k, self.edges.get(&(node.into(), k.into())).unwrap(), *v));
@@ -427,7 +584,7 @@ impl AnimationGraph {
             HashMap::<String, EdgeValue>::new()
         };
 
-        wrapper.node.backward(time, backward_inputs)
+        wrapper.backward(time, backward_inputs)
     }
 }
 
@@ -607,16 +764,6 @@ fn run_animation_player(
         parents,
         children,
     );
-}
-
-/// Update `weights` based on weights in `keyframe` with a linear interpolation
-/// on `key_lerp`.
-fn lerp_morph_weights(weights: &[f32], new_weights: &[f32], key_lerp: f32) -> Vec<f32> {
-    weights
-        .iter()
-        .zip(new_weights)
-        .map(|(old, new)| (new - old) * key_lerp)
-        .collect()
 }
 
 /// Update `weights` based on weights in `keyframe` with a linear interpolation

@@ -40,12 +40,12 @@ impl<T: InterpolateLinear + FromReflect + TypePath> InterpolateLinear for ValueF
             inter.interpolate_linear(&other.prev, f)
         } else {
             let inter = other.sample_linear(self.prev_timestamp);
-            inter.interpolate_linear(&self.prev, f)
+            inter.interpolate_linear(&self.prev, 1. - f)
         };
 
         let next = if self.next_timestamp < other.next_timestamp {
             let inter = other.sample_linear(self.next_timestamp);
-            inter.interpolate_linear(&self.next, f)
+            inter.interpolate_linear(&self.next, 1. - f)
         } else {
             let inter = self.sample_linear(other.next_timestamp);
             inter.interpolate_linear(&other.next, f)
@@ -117,16 +117,128 @@ impl InterpolateLinear for PoseFrame {
         let mut result = PoseFrame::default();
 
         for (path, bone_id) in self.paths.iter() {
-            let Some(other_bone_id) = other.paths.get(path) else {
-                continue;
-            };
+            if let Some(other_bone_id) = other.paths.get(path) {
+                result.add_bone(
+                    self.bones[*bone_id].interpolate_linear(&other.bones[*other_bone_id], f),
+                    path.clone(),
+                );
+            } else {
+                result.add_bone(self.bones[*bone_id].clone(), path.clone());
+            }
+        }
 
-            result.add_bone(
-                self.bones[*bone_id].interpolate_linear(&other.bones[*other_bone_id], f),
-                path.clone(),
-            );
+        for (path, bone_id) in other.paths.iter() {
+            if self.paths.contains_key(path) {
+                continue;
+            }
+            result.add_bone(other.bones[*bone_id].clone(), path.clone());
         }
 
         result
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_interpolate_value_frame_nest_1() {
+        let frame_1 = ValueFrame {
+            prev: Vec3::new(0., 0., 0.),
+            prev_timestamp: 0.,
+            next: Vec3::new(1., 1., 1.),
+            next_timestamp: 1.,
+            next_is_wrapped: false,
+        };
+        let frame_2 = ValueFrame {
+            prev: Vec3::new(0., 0., 0.),
+            prev_timestamp: 0.2,
+            next: Vec3::new(1., 1., 1.),
+            next_timestamp: 0.8,
+            next_is_wrapped: false,
+        };
+
+        let interpolated_0 = frame_1.interpolate_linear(&frame_2, 0.);
+        let interpolated_half = frame_1.interpolate_linear(&frame_2, 0.5);
+        let interpolated_1 = frame_1.interpolate_linear(&frame_2, 1.);
+
+        let expected_0 = ValueFrame {
+            prev: Vec3::new(0.2, 0.2, 0.2),
+            prev_timestamp: 0.2,
+            next: Vec3::new(0.8, 0.8, 0.8),
+            next_timestamp: 0.8,
+            next_is_wrapped: false,
+        };
+
+        let expected_half = ValueFrame {
+            prev: Vec3::new(0.1, 0.1, 0.1),
+            prev_timestamp: 0.2,
+            next: Vec3::new(0.9, 0.9, 0.9),
+            next_timestamp: 0.8,
+            next_is_wrapped: false,
+        };
+
+        let expected_1 = ValueFrame {
+            prev: Vec3::new(0.0, 0.0, 0.0),
+            prev_timestamp: 0.2,
+            next: Vec3::new(1.0, 1.0, 1.0),
+            next_timestamp: 0.8,
+            next_is_wrapped: false,
+        };
+
+        assert_eq!(expected_0, interpolated_0);
+        assert_eq!(expected_1, interpolated_1);
+        assert_eq!(expected_half, interpolated_half);
+    }
+
+    #[test]
+    fn test_interpolate_value_frame_nest_2() {
+        let frame_2 = ValueFrame {
+            prev: Vec3::new(0., 0., 0.),
+            prev_timestamp: 0.,
+            next: Vec3::new(1., 1., 1.),
+            next_timestamp: 1.,
+            next_is_wrapped: false,
+        };
+        let frame_1 = ValueFrame {
+            prev: Vec3::new(0., 0., 0.),
+            prev_timestamp: 0.2,
+            next: Vec3::new(1., 1., 1.),
+            next_timestamp: 0.8,
+            next_is_wrapped: false,
+        };
+
+        let interpolated_1 = frame_1.interpolate_linear(&frame_2, 0.);
+        let interpolated_half = frame_1.interpolate_linear(&frame_2, 0.5);
+        let interpolated_0 = frame_1.interpolate_linear(&frame_2, 1.);
+
+        let expected_0 = ValueFrame {
+            prev: Vec3::new(0.2, 0.2, 0.2),
+            prev_timestamp: 0.2,
+            next: Vec3::new(0.8, 0.8, 0.8),
+            next_timestamp: 0.8,
+            next_is_wrapped: false,
+        };
+
+        let expected_half = ValueFrame {
+            prev: Vec3::new(0.1, 0.1, 0.1),
+            prev_timestamp: 0.2,
+            next: Vec3::new(0.9, 0.9, 0.9),
+            next_timestamp: 0.8,
+            next_is_wrapped: false,
+        };
+
+        let expected_1 = ValueFrame {
+            prev: Vec3::new(0.0, 0.0, 0.0),
+            prev_timestamp: 0.2,
+            next: Vec3::new(1.0, 1.0, 1.0),
+            next_timestamp: 0.8,
+            next_is_wrapped: false,
+        };
+
+        assert_eq!(expected_0, interpolated_0);
+        assert_eq!(expected_1, interpolated_1);
+        assert_eq!(expected_half, interpolated_half);
     }
 }
