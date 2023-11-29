@@ -1,6 +1,6 @@
-use crate::animation::{
-    AnimationNode, CustomNode, EdgeSpec, EdgeValue, NodeInput, NodeLike, NodeOutput,
-};
+use crate::core::animation_graph::{EdgeSpec, EdgeValue, NodeInput, NodeOutput};
+use crate::core::animation_node::{AnimationNode, AnimationNodeType, CustomNode, NodeLike};
+use crate::core::caches::{DurationCache, EdgePathCache, ParameterCache, TimeCache};
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 
@@ -12,33 +12,67 @@ impl DummyNode {
         Self {}
     }
 
-    pub fn wrapped(self) -> AnimationNode {
-        AnimationNode::Custom(CustomNode::new(self))
+    pub fn wrapped(self, name: String) -> AnimationNode {
+        AnimationNode::new_from_nodetype(name, AnimationNodeType::Custom(CustomNode::new(self)))
     }
 }
 
 impl NodeLike for DummyNode {
-    fn duration(&mut self, _input_durations: HashMap<NodeInput, Option<f32>>) -> Option<f32> {
+    fn parameter_pass(
+        &self,
+        inputs: HashMap<NodeInput, EdgeValue>,
+        _last_cache: Option<&EdgePathCache>,
+    ) -> HashMap<NodeOutput, EdgeValue> {
+        HashMap::new()
+    }
+
+    fn duration_pass(
+        &self,
+        inputs: HashMap<NodeInput, Option<f32>>,
+        parameters: &ParameterCache,
+        _last_cache: Option<&EdgePathCache>,
+    ) -> Option<f32> {
         None
     }
 
-    fn forward(&self, _time: f32) -> HashMap<NodeInput, f32> {
-        HashMap::from([])
-    }
-
-    fn backward(
+    fn time_pass(
         &self,
-        _time: f32,
-        _inputs: HashMap<NodeInput, EdgeValue>,
+        input: f32,
+        parameters: &ParameterCache,
+        durations: &DurationCache,
+        _last_cache: Option<&EdgePathCache>,
+    ) -> HashMap<NodeInput, f32> {
+        HashMap::new()
+    }
+
+    fn time_dependent_pass(
+        &self,
+        inputs: HashMap<NodeInput, EdgeValue>,
+        parameters: &ParameterCache,
+        durations: &DurationCache,
+        time: &TimeCache,
+        _last_cache: Option<&EdgePathCache>,
     ) -> HashMap<NodeOutput, EdgeValue> {
-        HashMap::from([])
+        HashMap::new()
     }
 
-    fn input_spec(&self) -> HashMap<NodeInput, EdgeSpec> {
-        HashMap::from([])
+    fn parameter_input_spec(&self) -> HashMap<NodeInput, EdgeSpec> {
+        HashMap::new()
     }
 
-    fn output_spec(&self) -> HashMap<NodeOutput, EdgeSpec> {
-        HashMap::from([])
+    fn parameter_output_spec(&self) -> HashMap<NodeOutput, EdgeSpec> {
+        HashMap::new()
+    }
+
+    fn duration_input_spec(&self) -> HashMap<NodeInput, ()> {
+        HashMap::new()
+    }
+
+    fn time_dependent_input_spec(&self) -> HashMap<NodeInput, EdgeSpec> {
+        HashMap::new()
+    }
+
+    fn time_dependent_output_spec(&self) -> HashMap<NodeOutput, EdgeSpec> {
+        HashMap::new()
     }
 }

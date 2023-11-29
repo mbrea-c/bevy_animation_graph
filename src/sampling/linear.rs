@@ -1,5 +1,8 @@
 use crate::{
-    animation::{BoneFrame, BonePose, Pose, PoseFrame, ValueFrame},
+    core::{
+        frame::{BoneFrame, PoseFrame, ValueFrame},
+        pose::{BonePose, Pose},
+    },
     interpolation::linear::InterpolateLinear,
 };
 use bevy::prelude::*;

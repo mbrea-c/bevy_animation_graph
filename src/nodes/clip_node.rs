@@ -1,8 +1,10 @@
-use crate::animation::{
-    get_keyframe, AnimationClip, AnimationNode, BoneFrame, EdgeSpec, EdgeValue, Keyframes,
-    NodeInput, NodeLike, NodeOutput, PoseFrame, ValueFrame,
-};
-use bevy::prelude::*;
+use crate::core::animation_clip::{AnimationClip, Keyframes};
+use crate::core::animation_graph::{EdgeSpec, EdgeValue, NodeInput, NodeOutput};
+use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
+use crate::core::caches::{DurationCache, EdgePathCache, ParameterCache, TimeCache};
+use crate::core::frame::{BoneFrame, PoseFrame, ValueFrame};
+use crate::core::systems::get_keyframe;
+use bevy::reflect::prelude::*;
 use bevy::utils::HashMap;
 
 #[derive(Reflect, Clone, Debug)]
@@ -12,7 +14,7 @@ pub struct ClipNode {
 }
 
 impl ClipNode {
-    pub const OUTPUT: &'static str = "Pose";
+    pub const OUTPUT: &'static str = "Clip Pose";
     pub fn new(clip: AnimationClip, override_duration: Option<f32>) -> Self {
         Self {
             clip,
@@ -20,8 +22,8 @@ impl ClipNode {
         }
     }
 
-    pub fn wrapped(self) -> AnimationNode {
-        AnimationNode::Clip(self)
+    pub fn wrapped(self, name: impl Into<String>) -> AnimationNode {
+        AnimationNode::new_from_nodetype(name.into(), AnimationNodeType::Clip(self))
     }
 
     #[inline]
@@ -35,20 +37,43 @@ impl ClipNode {
 }
 
 impl NodeLike for ClipNode {
-    fn duration(&mut self, _input_durations: HashMap<NodeInput, Option<f32>>) -> Option<f32> {
-        Some(self.clip_duration())
-    }
-
-    fn forward(&self, _time: f32) -> HashMap<NodeInput, f32> {
+    fn parameter_pass(
+        &self,
+        inputs: HashMap<NodeInput, EdgeValue>,
+        _last_cache: Option<&EdgePathCache>,
+    ) -> HashMap<NodeOutput, EdgeValue> {
         HashMap::new()
     }
 
-    fn backward(
+    fn duration_pass(
         &self,
-        time: f32,
-        _inputs: HashMap<NodeInput, EdgeValue>,
+        inputs: HashMap<NodeInput, Option<f32>>,
+        parameters: &ParameterCache,
+        _last_cache: Option<&EdgePathCache>,
+    ) -> Option<f32> {
+        Some(self.clip_duration())
+    }
+
+    fn time_pass(
+        &self,
+        input: f32,
+        parameters: &ParameterCache,
+        durations: &DurationCache,
+        _last_cache: Option<&EdgePathCache>,
+    ) -> HashMap<NodeInput, f32> {
+        HashMap::new()
+    }
+
+    fn time_dependent_pass(
+        &self,
+        inputs: HashMap<NodeInput, EdgeValue>,
+        parameters: &ParameterCache,
+        durations: &DurationCache,
+        time: &TimeCache,
+        _last_cache: Option<&EdgePathCache>,
     ) -> HashMap<NodeOutput, EdgeValue> {
-        let time = time.clamp(0., self.clip_duration());
+        let og_time = time.input;
+        let time = og_time.clamp(0., self.clip_duration());
         let mut animation_frame = PoseFrame::default();
         for (path, bone_id) in &self.clip.paths {
             let curves = self.clip.get_curves(*bone_id).unwrap();
@@ -94,6 +119,7 @@ impl NodeLike for ClipNode {
                         }
 
                         frame.rotation = Some(ValueFrame {
+                            timestamp: og_time,
                             prev: rot_start,
                             prev_timestamp: ts_start,
                             next: rot_end,
@@ -106,6 +132,7 @@ impl NodeLike for ClipNode {
                         let translation_end = keyframes[step_end];
 
                         frame.translation = Some(ValueFrame {
+                            timestamp: og_time,
                             prev: translation_start,
                             prev_timestamp: ts_start,
                             next: translation_end,
@@ -118,6 +145,7 @@ impl NodeLike for ClipNode {
                         let scale_start = keyframes[step_start];
                         let scale_end = keyframes[step_end];
                         frame.scale = Some(ValueFrame {
+                            timestamp: og_time,
                             prev: scale_start,
                             prev_timestamp: ts_start,
                             next: scale_end,
@@ -136,6 +164,7 @@ impl NodeLike for ClipNode {
                         let morph_start = get_keyframe(target_count, keyframes, step_start);
                         let morph_end = get_keyframe(target_count, keyframes, step_end);
                         frame.weights = Some(ValueFrame {
+                            timestamp: og_time,
                             prev: morph_start.into(),
                             prev_timestamp: ts_start,
                             next: morph_end.into(),
@@ -151,11 +180,23 @@ impl NodeLike for ClipNode {
         HashMap::from([(Self::OUTPUT.into(), EdgeValue::PoseFrame(animation_frame))])
     }
 
-    fn input_spec(&self) -> HashMap<NodeInput, EdgeSpec> {
-        return HashMap::new();
+    fn parameter_input_spec(&self) -> HashMap<NodeInput, EdgeSpec> {
+        HashMap::new()
     }
 
-    fn output_spec(&self) -> HashMap<NodeOutput, EdgeSpec> {
+    fn parameter_output_spec(&self) -> HashMap<NodeOutput, EdgeSpec> {
+        HashMap::new()
+    }
+
+    fn duration_input_spec(&self) -> HashMap<NodeInput, ()> {
+        HashMap::new()
+    }
+
+    fn time_dependent_input_spec(&self) -> HashMap<NodeInput, EdgeSpec> {
+        HashMap::new()
+    }
+
+    fn time_dependent_output_spec(&self) -> HashMap<NodeOutput, EdgeSpec> {
         return HashMap::from([(Self::OUTPUT.into(), EdgeSpec::PoseFrame)]);
     }
 }

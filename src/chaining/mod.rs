@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::animation::{BoneFrame, PoseFrame, ValueFrame};
+use crate::core::frame::{BoneFrame, PoseFrame, ValueFrame};
 
 pub trait Chainable {
     fn chain(&self, other: &Self, duration_first: f32, duration_second: f32, time: f32) -> Self;
@@ -21,6 +21,7 @@ impl<T: TypePath + FromReflect + Clone> Chainable for ValueFrame<T> {
         } else if self.next_is_wrapped {
             // First pose is active, but next pose wraps around
             let out_pose = Self {
+                timestamp: self.timestamp,
                 prev: self.prev.clone(),
                 prev_timestamp: self.prev_timestamp,
                 next: other.prev.clone(),

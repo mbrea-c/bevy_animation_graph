@@ -1,59 +1,116 @@
-use crate::animation::{AnimationNode, EdgeSpec, EdgeValue, NodeInput, NodeOutput, NodeWrapper};
-use bevy::utils::HashMap;
+use crate::core::animation_graph::{EdgeSpec, EdgeValue, NodeInput, NodeOutput};
+use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
+use crate::core::caches::{DurationCache, EdgePathCache, ParameterCache, TimeCache};
+use bevy::{reflect::Reflect, utils::HashMap};
 
-pub struct SpeedNode {
-    speed: f32,
-}
+#[derive(Reflect, Clone, Debug)]
+pub struct SpeedNode;
 
 impl SpeedNode {
     pub const INPUT: &'static str = "Input Pose";
-    pub const OUTPUT: &'static str = "Pose";
+    pub const OUTPUT: &'static str = "Speed Pose";
+    pub const SPEED: &'static str = "Speed";
 
-    pub fn new(speed: f32) -> Self {
-        Self { speed }
+    pub fn new() -> Self {
+        Self
     }
 
-    pub fn wrapped(self) -> NodeWrapper {
-        NodeWrapper::new(Box::new(self))
+    pub fn wrapped(self) -> AnimationNode {
+        AnimationNode::new_from_nodetype(AnimationNodeType::Speed(self))
     }
 }
 
-impl AnimationNode for SpeedNode {
-    fn duration(&mut self, input_durations: HashMap<NodeInput, Option<f32>>) -> Option<f32> {
-        if self.speed == 0. {
+impl NodeLike for SpeedNode {
+    fn parameter_pass(
+        &self,
+        _inputs: HashMap<NodeInput, EdgeValue>,
+        _last_cache: Option<&EdgePathCache>,
+    ) -> HashMap<NodeOutput, EdgeValue> {
+        HashMap::new()
+    }
+
+    fn duration_pass(
+        &self,
+        inputs: HashMap<NodeInput, Option<f32>>,
+        parameters: &ParameterCache,
+        _last_cache: Option<&EdgePathCache>,
+    ) -> Option<f32> {
+        let speed = parameters
+            .inputs
+            .get(Self::SPEED)
+            .unwrap()
+            .clone()
+            .unwrap_f32();
+
+        if speed == 0. {
             None
         } else {
-            let duration = input_durations.get(Self::INPUT).unwrap();
+            let duration = inputs.get(Self::INPUT).unwrap();
             if let Some(duration) = duration {
-                Some(duration / self.speed)
+                Some(duration / speed)
             } else {
                 None
             }
         }
     }
 
-    fn forward(&self, time: f32) -> HashMap<NodeInput, f32> {
-        HashMap::from([(Self::INPUT.into(), time * self.speed)])
+    fn time_pass(
+        &self,
+        input: f32,
+        parameters: &ParameterCache,
+        _durations: &DurationCache,
+        _last_cache: Option<&EdgePathCache>,
+    ) -> HashMap<NodeInput, f32> {
+        let speed = parameters
+            .inputs
+            .get(Self::SPEED)
+            .unwrap()
+            .clone()
+            .unwrap_f32();
+
+        HashMap::from([(Self::INPUT.into(), input * speed)])
     }
 
-    fn backward(
+    fn time_dependent_pass(
         &self,
-        time: f32,
         inputs: HashMap<NodeInput, EdgeValue>,
+        parameters: &ParameterCache,
+        _durations: &DurationCache,
+        _time: &TimeCache,
+        _last_cache: Option<&EdgePathCache>,
     ) -> HashMap<NodeOutput, EdgeValue> {
         let mut in_pose_frame = inputs.get(Self::INPUT).unwrap().clone().unwrap_pose_frame();
-        if self.speed != 0. {
-            in_pose_frame.prev_timestamp /= self.speed;
-            in_pose_frame.next_timestamp /= self.speed;
+        let speed = parameters
+            .inputs
+            .get(Self::SPEED)
+            .unwrap()
+            .clone()
+            .unwrap_f32();
+
+        if speed != 0. {
+            in_pose_frame.map_ts(|t| t / speed);
         }
+
         HashMap::from([(Self::OUTPUT.into(), EdgeValue::PoseFrame(in_pose_frame))])
     }
 
-    fn input_spec(&self) -> HashMap<NodeInput, EdgeSpec> {
+    fn parameter_input_spec(&self) -> HashMap<NodeInput, EdgeSpec> {
+        HashMap::from([(Self::SPEED.into(), EdgeSpec::F32)])
+    }
+
+    fn parameter_output_spec(&self) -> HashMap<NodeOutput, EdgeSpec> {
+        HashMap::new()
+    }
+
+    fn duration_input_spec(&self) -> HashMap<NodeInput, ()> {
+        HashMap::from([(Self::INPUT.into(), ())])
+    }
+
+    fn time_dependent_input_spec(&self) -> HashMap<NodeInput, EdgeSpec> {
         HashMap::from([(Self::INPUT.into(), EdgeSpec::PoseFrame)])
     }
 
-    fn output_spec(&self) -> HashMap<NodeOutput, EdgeSpec> {
+    fn time_dependent_output_spec(&self) -> HashMap<NodeOutput, EdgeSpec> {
         HashMap::from([(Self::OUTPUT.into(), EdgeSpec::PoseFrame)])
     }
 }

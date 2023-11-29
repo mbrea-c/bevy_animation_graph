@@ -1,5 +1,5 @@
 use crate::{
-    animation::{BoneFrame, PoseFrame, ValueFrame},
+    core::frame::{BoneFrame, PoseFrame, ValueFrame},
     sampling::linear::SampleLinear,
 };
 use bevy::prelude::*;
@@ -30,11 +30,18 @@ impl InterpolateLinear for Quat {
     }
 }
 
-impl<T: InterpolateLinear + FromReflect + TypePath> InterpolateLinear for ValueFrame<T> {
+impl<T: InterpolateLinear + FromReflect + TypePath + std::fmt::Debug + Clone> InterpolateLinear
+    for ValueFrame<T>
+{
     fn interpolate_linear(&self, other: &Self, f: f32) -> Self {
         // We discard the "edges"
         // |prev_1 xxxx|prev_2 <----keep---->|next_1 xxxx|next_2
 
+        if self.timestamp > self.next_timestamp {
+            return other.clone();
+        }
+
+        // Then consider overlapping frames
         let prev = if self.prev_timestamp < other.prev_timestamp {
             let inter = self.sample_linear(other.prev_timestamp);
             inter.interpolate_linear(&other.prev, f)
@@ -51,7 +58,15 @@ impl<T: InterpolateLinear + FromReflect + TypePath> InterpolateLinear for ValueF
             inter.interpolate_linear(&other.next, f)
         };
 
-        Self {
+        if (self.timestamp - other.timestamp).abs() > 0.00001 {
+            panic!(
+                "Timestamps of interpolated frames don't match! {:?} vs {:?}",
+                self.timestamp, other.timestamp
+            );
+        }
+
+        let out = Self {
+            timestamp: self.timestamp,
             prev,
             prev_timestamp: self.prev_timestamp.max(other.prev_timestamp),
             next,
@@ -62,7 +77,9 @@ impl<T: InterpolateLinear + FromReflect + TypePath> InterpolateLinear for ValueF
             } else {
                 other.next_is_wrapped
             },
-        }
+        };
+
+        out
     }
 }
 
@@ -145,6 +162,7 @@ mod tests {
     #[test]
     fn test_interpolate_value_frame_nest_1() {
         let frame_1 = ValueFrame {
+            timestamp: 0.5,
             prev: Vec3::new(0., 0., 0.),
             prev_timestamp: 0.,
             next: Vec3::new(1., 1., 1.),
@@ -152,6 +170,7 @@ mod tests {
             next_is_wrapped: false,
         };
         let frame_2 = ValueFrame {
+            timestamp: 0.5,
             prev: Vec3::new(0., 0., 0.),
             prev_timestamp: 0.2,
             next: Vec3::new(1., 1., 1.),
@@ -164,6 +183,7 @@ mod tests {
         let interpolated_1 = frame_1.interpolate_linear(&frame_2, 1.);
 
         let expected_0 = ValueFrame {
+            timestamp: 0.5,
             prev: Vec3::new(0.2, 0.2, 0.2),
             prev_timestamp: 0.2,
             next: Vec3::new(0.8, 0.8, 0.8),
@@ -172,6 +192,7 @@ mod tests {
         };
 
         let expected_half = ValueFrame {
+            timestamp: 0.5,
             prev: Vec3::new(0.1, 0.1, 0.1),
             prev_timestamp: 0.2,
             next: Vec3::new(0.9, 0.9, 0.9),
@@ -180,6 +201,7 @@ mod tests {
         };
 
         let expected_1 = ValueFrame {
+            timestamp: 0.5,
             prev: Vec3::new(0.0, 0.0, 0.0),
             prev_timestamp: 0.2,
             next: Vec3::new(1.0, 1.0, 1.0),
@@ -195,6 +217,7 @@ mod tests {
     #[test]
     fn test_interpolate_value_frame_nest_2() {
         let frame_2 = ValueFrame {
+            timestamp: 0.5,
             prev: Vec3::new(0., 0., 0.),
             prev_timestamp: 0.,
             next: Vec3::new(1., 1., 1.),
@@ -202,6 +225,7 @@ mod tests {
             next_is_wrapped: false,
         };
         let frame_1 = ValueFrame {
+            timestamp: 0.5,
             prev: Vec3::new(0., 0., 0.),
             prev_timestamp: 0.2,
             next: Vec3::new(1., 1., 1.),
@@ -214,6 +238,7 @@ mod tests {
         let interpolated_0 = frame_1.interpolate_linear(&frame_2, 1.);
 
         let expected_0 = ValueFrame {
+            timestamp: 0.5,
             prev: Vec3::new(0.2, 0.2, 0.2),
             prev_timestamp: 0.2,
             next: Vec3::new(0.8, 0.8, 0.8),
@@ -222,6 +247,7 @@ mod tests {
         };
 
         let expected_half = ValueFrame {
+            timestamp: 0.5,
             prev: Vec3::new(0.1, 0.1, 0.1),
             prev_timestamp: 0.2,
             next: Vec3::new(0.9, 0.9, 0.9),
@@ -230,6 +256,7 @@ mod tests {
         };
 
         let expected_1 = ValueFrame {
+            timestamp: 0.5,
             prev: Vec3::new(0.0, 0.0, 0.0),
             prev_timestamp: 0.2,
             next: Vec3::new(1.0, 1.0, 1.0),

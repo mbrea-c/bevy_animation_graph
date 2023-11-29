@@ -1,5 +1,8 @@
-use crate::animation::{self, BoneFrame, PoseFrame, ValueFrame};
-use bevy::prelude::*;
+use crate::core::{
+    animation_clip::EntityPath,
+    frame::{BoneFrame, PoseFrame, ValueFrame},
+};
+use bevy::math::prelude::*;
 
 pub trait FlipXBySuffix {
     fn flipped_by_suffix(&self, suffix_1: String, suffix_2: String) -> Self;
@@ -52,7 +55,7 @@ impl FlipXBySuffix for PoseFrame {
         for (path, bone_id) in self.paths.iter() {
             let channel =
                 self.bones[*bone_id].flipped_by_suffix(suffix_1.clone(), suffix_2.clone());
-            let new_path = animation::EntityPath {
+            let new_path = EntityPath {
                 parts: path
                     .parts
                     .iter()

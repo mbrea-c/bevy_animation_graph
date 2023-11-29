@@ -1,14 +1,11 @@
 use bevy::{
     asset::RecursiveDependencyLoadState, gltf::Gltf, pbr::CascadeShadowConfigBuilder, prelude::*,
 };
-use bevy_animation_graph::animation::{
-    AnimationGraph, AnimationPlayer, AnimationPlugin, InterpolationMode, WrapEnd,
-};
-use bevy_animation_graph::nodes::blend_node::BlendNode;
-use bevy_animation_graph::nodes::chain_node::ChainNode;
+use bevy_animation_graph::animation::AnimationPlugin;
+use bevy_animation_graph::core::animation_graph::AnimationGraph;
+use bevy_animation_graph::core::animation_graph::ToDot;
+use bevy_animation_graph::core::animation_player::AnimationPlayer;
 use bevy_animation_graph::nodes::clip_node::ClipNode;
-use bevy_animation_graph::nodes::flip_lr_node::FlipLRNode;
-use bevy_animation_graph::nodes::loop_node::LoopNode;
 use std::f32::consts::PI;
 
 fn main() {
@@ -117,92 +114,119 @@ fn process_graphs(
     let mut graph = AnimationGraph::new();
     graph.add_node(
         "WalkClip".into(),
-        ClipNode::new(walk_clip.into(), Some(1.)).wrapped(),
+        ClipNode::new(walk_clip.into(), Some(1.)).wrapped("WalkClip"),
         Some(ClipNode::OUTPUT.into()),
     );
-    graph.add_node(
-        "RunClip".into(),
-        ClipNode::new(run_clip.into(), Some(1.)).wrapped(),
-        Some(ClipNode::OUTPUT.into()),
-    );
-    graph.add_node("WalkChain".into(), ChainNode::new().wrapped(), None);
-    graph.add_node("RunChain".into(), ChainNode::new().wrapped(), None);
-    graph.add_node("Flip LR".into(), FlipLRNode::new().wrapped(), None);
-    graph.add_node("Run Flip LR".into(), FlipLRNode::new().wrapped(), None);
-    graph.add_node("Blend".into(), BlendNode::new().wrapped(), None);
-    graph.add_node(
-        "Loop".into(),
-        LoopNode::new().wrapped(),
-        Some(LoopNode::OUTPUT.into()),
-    );
+    // graph.add_node(
+    //     "RunClip".into(),
+    //     ClipNode::new(run_clip.into(), Some(1.)).wrapped(),
+    //     Some(ClipNode::OUTPUT.into()),
+    // );
+    // graph.add_node("WalkChain".into(), ChainNode::new().wrapped(), None);
+    // graph.add_node("RunChain".into(), ChainNode::new().wrapped(), None);
+    // graph.add_node("Flip LR".into(), FlipLRNode::new().wrapped(), None);
+    // graph.add_node("Run Flip LR".into(), FlipLRNode::new().wrapped(), None);
+    // graph.add_node("Walk speed".into(), SpeedNode::new().wrapped(), None);
+    // graph.add_node("Run speed".into(), SpeedNode::new().wrapped(), None);
+    // graph.add_node("Blend".into(), BlendNode::new().wrapped(), None);
+    // graph.add_node(
+    //     "Loop".into(),
+    //     LoopNode::new().wrapped(),
+    //     Some(LoopNode::OUTPUT.into()),
+    // );
 
-    graph.set_parameter("Blend Alpha".into(), 0.5.into());
-    graph.add_parameter_edge(
-        "Blend Alpha".into(),
-        "Blend".into(),
-        BlendNode::FACTOR.into(),
-    );
+    // graph.set_parameter("Blend Alpha".into(), 0.5.into());
+    // graph.set_parameter("Walk speed".into(), 1.0.into());
+    // graph.set_parameter("Run speed".into(), 1.0.into());
+    // graph.add_parameter_edge(
+    //     "Blend Alpha".into(),
+    //     "Blend".into(),
+    //     BlendNode::FACTOR.into(),
+    // );
+    // graph.add_parameter_edge(
+    //     "Walk speed".into(),
+    //     "Walk speed".into(),
+    //     SpeedNode::SPEED.into(),
+    // );
+    // graph.add_parameter_edge(
+    //     "Run speed".into(),
+    //     "Run speed".into(),
+    //     SpeedNode::SPEED.into(),
+    // );
 
-    graph.set_interpolation(InterpolationMode::Linear);
+    // graph.set_interpolation(InterpolationMode::Linear);
 
-    // graph.add_node("Speed".into(), SpeedNode::new(1.5).wrapped(), None);
+    // // graph.add_node("Speed".into(), SpeedNode::new(1.5).wrapped(), None);
 
-    graph.add_edge(
-        "WalkClip".into(),
-        ClipNode::OUTPUT.into(),
-        "WalkChain".into(),
-        ChainNode::INPUT_1.into(),
-    );
-    graph.add_edge(
-        "WalkClip".into(),
-        ClipNode::OUTPUT.into(),
-        "Flip LR".into(),
-        FlipLRNode::INPUT.into(),
-    );
-    graph.add_edge(
-        "Flip LR".into(),
-        FlipLRNode::OUTPUT.into(),
-        "WalkChain".into(),
-        ChainNode::INPUT_2.into(),
-    );
-    graph.add_edge(
-        "RunClip".into(),
-        ClipNode::OUTPUT.into(),
-        "RunChain".into(),
-        ChainNode::INPUT_1.into(),
-    );
-    graph.add_edge(
-        "RunClip".into(),
-        ClipNode::OUTPUT.into(),
-        "Run Flip LR".into(),
-        FlipLRNode::INPUT.into(),
-    );
-    graph.add_edge(
-        "Run Flip LR".into(),
-        FlipLRNode::OUTPUT.into(),
-        "RunChain".into(),
-        ChainNode::INPUT_2.into(),
-    );
-    graph.add_edge(
-        "WalkChain".into(),
-        ChainNode::OUTPUT.into(),
-        "Blend".into(),
-        BlendNode::INPUT_POSE_1.into(),
-    );
-    graph.add_edge(
-        "RunChain".into(),
-        ChainNode::OUTPUT.into(),
-        "Blend".into(),
-        BlendNode::INPUT_POSE_2.into(),
-    );
-    graph.add_edge(
-        "Blend".into(),
-        BlendNode::OUTPUT.into(),
-        "Loop".into(),
-        LoopNode::INPUT.into(),
-    );
+    // graph.add_edge(
+    //     "WalkClip".into(),
+    //     ClipNode::OUTPUT.into(),
+    //     "WalkChain".into(),
+    //     ChainNode::INPUT_1.into(),
+    // );
+    // graph.add_edge(
+    //     "WalkClip".into(),
+    //     ClipNode::OUTPUT.into(),
+    //     "Flip LR".into(),
+    //     FlipLRNode::INPUT.into(),
+    // );
+    // graph.add_edge(
+    //     "Flip LR".into(),
+    //     FlipLRNode::OUTPUT.into(),
+    //     "WalkChain".into(),
+    //     ChainNode::INPUT_2.into(),
+    // );
+    // graph.add_edge(
+    //     "RunClip".into(),
+    //     ClipNode::OUTPUT.into(),
+    //     "RunChain".into(),
+    //     ChainNode::INPUT_1.into(),
+    // );
+    // graph.add_edge(
+    //     "RunClip".into(),
+    //     ClipNode::OUTPUT.into(),
+    //     "Run Flip LR".into(),
+    //     FlipLRNode::INPUT.into(),
+    // );
+    // graph.add_edge(
+    //     "Run Flip LR".into(),
+    //     FlipLRNode::OUTPUT.into(),
+    //     "RunChain".into(),
+    //     ChainNode::INPUT_2.into(),
+    // );
+    // graph.add_edge(
+    //     "WalkChain".into(),
+    //     ChainNode::OUTPUT.into(),
+    //     "Walk speed".into(),
+    //     SpeedNode::INPUT.into(),
+    // );
+    // graph.add_edge(
+    //     "RunChain".into(),
+    //     ChainNode::OUTPUT.into(),
+    //     "Run speed".into(),
+    //     SpeedNode::INPUT.into(),
+    // );
+    // graph.add_edge(
+    //     "Walk speed".into(),
+    //     SpeedNode::OUTPUT.into(),
+    //     "Blend".into(),
+    //     BlendNode::INPUT_POSE_1.into(),
+    // );
+    // graph.add_edge(
+    //     "Run speed".into(),
+    //     SpeedNode::OUTPUT.into(),
+    //     "Blend".into(),
+    //     BlendNode::INPUT_POSE_2.into(),
+    // );
+    // graph.add_edge(
+    //     "Blend".into(),
+    //     BlendNode::OUTPUT.into(),
+    //     "Loop".into(),
+    //     LoopNode::INPUT.into(),
+    // );
 
-    graph.duration_pass();
+    graph.dot_to_tmp_file_and_open(None).unwrap();
+
     processed_graphs.0.push(graphs.add(graph));
 }
 
@@ -223,6 +247,7 @@ fn keyboard_animation_control(
     mut animation_players: Query<&mut AnimationPlayer>,
     animations: Res<ProcessedGraphs>,
     mut animation_graphs: ResMut<Assets<AnimationGraph>>,
+    mut velocity: Local<f32>,
 ) {
     for mut player in &mut animation_players {
         if keyboard_input.just_pressed(KeyCode::Space) {
@@ -241,16 +266,33 @@ fn keyboard_animation_control(
         }
 
         let graph = animation_graphs.get_mut(animations.0[0].clone()).unwrap();
-        let old_alpha = graph.get_parameter("Blend Alpha").unwrap().unwrap_f32();
-        let mut alpha = old_alpha;
+
+        let run_stride_length = 0.8;
+        let walk_stride_length = 0.3;
+
+        let blend_range = (1., 3.);
+
+        let speed_fac_for_speed_alpha = |alpha: f32, speed: f32| {
+            speed / (walk_stride_length * (1. - alpha) + run_stride_length * alpha)
+        };
+
+        let alpha_for_speed =
+            |speed: f32| ((speed - blend_range.0) / (blend_range.1 - blend_range.0)).clamp(0., 1.);
+
         if keyboard_input.pressed(KeyCode::Up) {
-            alpha += 0.01;
-            println!("Alpha: {}", alpha);
+            *velocity += 0.02;
+            println!("velocity: {}", *velocity);
         }
         if keyboard_input.pressed(KeyCode::Down) {
-            alpha -= 0.01;
-            println!("Alpha: {}", alpha);
+            *velocity -= 0.02;
+            println!("velocity: {}", *velocity);
         }
+
+        let alpha = alpha_for_speed(*velocity);
+        let k = speed_fac_for_speed_alpha(alpha, *velocity);
+
         graph.set_parameter("Blend Alpha".into(), alpha.into());
+        graph.set_parameter("Walk speed".into(), k.into());
+        graph.set_parameter("Run speed".into(), k.into());
     }
 }
