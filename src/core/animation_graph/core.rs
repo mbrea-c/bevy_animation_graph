@@ -2,12 +2,12 @@ use crate::{
     animation::{HashMapJoinExt, InterpolationMode},
     core::{
         animation_node::{AnimationNode, ParameterNode},
-        caches::{AnimationCaches, DurationCache, ParameterCache, TimeCache, TimeDependentCache},
+        caches::{DurationCache, ParameterCache, TimeCache, TimeDependentCache},
         frame::PoseFrame,
         graph_context::GraphContext,
         pose::Pose,
     },
-    sampling::linear::SampleLinear,
+    sampling::linear::{SampleLinear, SampleLinearAt},
 };
 use bevy::{prelude::*, reflect::TypeUuid, utils::HashMap};
 
@@ -60,9 +60,63 @@ impl From<&EdgeValue> for EdgeSpec {
 pub type NodeInput = String;
 pub type NodeOutput = String;
 
-pub struct TimeDelta {
-    delta: f32,
-    set_time: Option<f32>,
+#[derive(Reflect, Clone, Debug, Copy)]
+pub enum TimeUpdate {
+    Delta(f32),
+    Absolute(f32),
+}
+
+impl Default for TimeUpdate {
+    fn default() -> Self {
+        Self::Absolute(0.)
+    }
+}
+
+#[derive(Reflect, Clone, Debug, Copy)]
+pub struct TimeState {
+    pub update: TimeUpdate,
+    pub time: f32,
+}
+
+impl Default for TimeState {
+    fn default() -> Self {
+        Self {
+            update: TimeUpdate::Absolute(0.),
+            time: 0.,
+        }
+    }
+}
+
+pub trait UpdateTime<T> {
+    fn update(&self, update: T) -> Self;
+}
+
+impl UpdateTime<TimeUpdate> for TimeState {
+    fn update(&self, update: TimeUpdate) -> Self {
+        Self {
+            update,
+            time: match update {
+                TimeUpdate::Delta(dt) => self.time + dt,
+                TimeUpdate::Absolute(t) => t,
+            },
+        }
+    }
+}
+
+impl UpdateTime<Option<TimeUpdate>> for TimeState {
+    fn update(&self, update: Option<TimeUpdate>) -> Self {
+        if let Some(update) = update {
+            Self {
+                update,
+                time: match update {
+                    TimeUpdate::Delta(dt) => self.time + dt,
+                    TimeUpdate::Absolute(t) => t,
+                },
+            }
+        } else {
+            *self
+        }
+    }
 }
 
 #[derive(Debug, Clone, Asset, TypeUuid, Reflect)]
@@ -311,8 +365,8 @@ impl AnimationGraph {
         context
             .get_node_cache_or_insert_default(&n.name)
             .parameter_cache = Some(ParameterCache {
-            inputs,
-            output: outputs.clone(),
+            upstream: inputs,
+            downstream: outputs.clone(),
         });
 
         outputs
@@ -373,7 +427,10 @@ impl AnimationGraph {
         };
         context
             .get_node_cache_or_insert_default(&n.name)
-            .duration_cache = Some(DurationCache { inputs, output });
+            .duration_cache = Some(DurationCache {
+            upstream: inputs,
+            downstream: output,
+        });
 
         HashMap::from([(String::from(""), output)])
     }
@@ -407,12 +464,11 @@ impl AnimationGraph {
 
     fn time_mapper(
         n: &AnimationNode,
-        input: f32,
+        input: TimeUpdate,
         path: &EdgePath,
         context: &mut GraphContext,
-    ) -> HashMap<NodeInput, f32> {
-        let output = {
-            let input = input.clone();
+    ) -> HashMap<NodeInput, TimeUpdate> {
+        let (output, input_state) = {
             let param_cache = context
                 .get_node_cache(&n.name)
                 .unwrap()
@@ -429,8 +485,16 @@ impl AnimationGraph {
                 .get_node_other_cache(&n.name)
                 .map_or(None, |c| c.get(path));
             let last_caches_ref = last_caches.as_ref();
-            n.node
-                .map(move |sn| sn.time_pass(input, param_cache, duration_cache, last_caches_ref))
+            let last_time_state = last_caches
+                .as_ref()
+                .map_or(TimeState::default(), |c| c.time_cache.downstream);
+            let input_state = last_time_state.update(input);
+            (
+                n.node.map(move |sn| {
+                    sn.time_pass(input_state, param_cache, duration_cache, last_caches_ref)
+                }),
+                input_state,
+            )
         };
 
         context
@@ -439,19 +503,19 @@ impl AnimationGraph {
             .insert(
                 path.clone(),
                 TimeCache {
-                    input,
-                    outputs: output.clone(),
+                    downstream: input_state,
+                    upstream: output.clone(),
                 },
             );
 
         output
     }
 
-    pub fn time_pass(&self, node: &str, time: f32, context: &mut GraphContext) {
+    pub fn time_pass(&self, node: &str, time_update: TimeUpdate, context: &mut GraphContext) {
         let spec_extractor = |n: &_| Self::time_spec_extractor(n);
         let mapper = |n: &_, i, p: &_, c: &mut _| Self::time_mapper(n, i, p, c);
 
-        self.map_downwards_mut(node, vec![], time, &spec_extractor, &mapper, context);
+        self.map_downwards_mut(node, vec![], time_update, &spec_extractor, &mapper, context);
     }
 
     /// Which inputs are needed to calculate time-dependent output of this node
@@ -490,8 +554,8 @@ impl AnimationGraph {
             .insert(
                 path.clone(),
                 TimeDependentCache {
-                    inputs,
-                    output: outputs.clone(),
+                    upstream: inputs,
+                    downstream: outputs.clone(),
                 },
             );
 
@@ -525,20 +589,21 @@ impl AnimationGraph {
         )
     }
 
-    pub fn query(&self, time: f32, context: &mut GraphContext) -> Pose {
+    pub fn query(&self, time_update: TimeUpdate, context: &mut GraphContext) -> Pose {
         context.push_caches();
         let out_node = &self.out_node.clone();
         self.parameter_pass(out_node, context);
         self.duration_pass(out_node, context);
-        self.time_pass(out_node, time, context);
+        self.time_pass(out_node, time_update, context);
         let mut final_output = self.time_dependent_pass(out_node, context);
 
         // self.dot_to_tmp_file().unwrap();
 
-        final_output
+        let final_frame = final_output
             .remove(&self.out_edge)
             .unwrap()
-            .unwrap_pose_frame()
-            .sample_linear(time)
+            .unwrap_pose_frame();
+
+        final_frame.sample_linear()
     }
 }

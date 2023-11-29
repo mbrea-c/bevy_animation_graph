@@ -1,6 +1,6 @@
 use crate::{
     core::frame::{BoneFrame, PoseFrame, ValueFrame},
-    sampling::linear::SampleLinear,
+    sampling::linear::SampleLinearAt,
 };
 use bevy::prelude::*;
 
@@ -43,18 +43,18 @@ impl<T: InterpolateLinear + FromReflect + TypePath + std::fmt::Debug + Clone> In
 
         // Then consider overlapping frames
         let prev = if self.prev_timestamp < other.prev_timestamp {
-            let inter = self.sample_linear(other.prev_timestamp);
+            let inter = self.sample_linear_at(other.prev_timestamp);
             inter.interpolate_linear(&other.prev, f)
         } else {
-            let inter = other.sample_linear(self.prev_timestamp);
+            let inter = other.sample_linear_at(self.prev_timestamp);
             inter.interpolate_linear(&self.prev, 1. - f)
         };
 
         let next = if self.next_timestamp < other.next_timestamp {
-            let inter = other.sample_linear(self.next_timestamp);
+            let inter = other.sample_linear_at(self.next_timestamp);
             inter.interpolate_linear(&self.next, 1. - f)
         } else {
-            let inter = self.sample_linear(other.next_timestamp);
+            let inter = self.sample_linear_at(other.next_timestamp);
             inter.interpolate_linear(&other.next, f)
         };
 

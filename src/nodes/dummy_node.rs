@@ -1,4 +1,6 @@
-use crate::core::animation_graph::{EdgeSpec, EdgeValue, NodeInput, NodeOutput};
+use crate::core::animation_graph::{
+    EdgeSpec, EdgeValue, NodeInput, NodeOutput, TimeState, TimeUpdate,
+};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, CustomNode, NodeLike};
 use crate::core::caches::{DurationCache, EdgePathCache, ParameterCache, TimeCache};
 use bevy::prelude::*;
@@ -37,11 +39,11 @@ impl NodeLike for DummyNode {
 
     fn time_pass(
         &self,
-        input: f32,
+        input: TimeState,
         parameters: &ParameterCache,
         durations: &DurationCache,
         _last_cache: Option<&EdgePathCache>,
-    ) -> HashMap<NodeInput, f32> {
+    ) -> HashMap<NodeInput, TimeUpdate> {
         HashMap::new()
     }
 

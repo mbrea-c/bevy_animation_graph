@@ -1,7 +1,9 @@
 use std::ops::Deref;
 
 use super::{
-    animation_clip::EntityPath, animation_graph::AnimationGraph, animation_player::AnimationPlayer,
+    animation_clip::EntityPath,
+    animation_graph::{AnimationGraph, TimeUpdate, UpdateTime},
+    animation_player::AnimationPlayer,
     pose::Pose,
 };
 use bevy::{
@@ -123,14 +125,19 @@ pub fn run_animation_player(
         return;
     }
 
-    player.elapsed += time.delta_seconds();
+    player.elapsed = player
+        .elapsed
+        .update(TimeUpdate::Delta(time.delta_seconds()))
+        .update(player.pending_update);
+
+    player.pending_update = None;
 
     // Apply the main animation
     apply_pose(
         &graphs
             .get_mut(player.animation.as_ref().unwrap())
             .unwrap()
-            .query(player.elapsed, &mut player.context),
+            .query(player.elapsed.update, &mut player.context),
         root,
         names,
         transforms,

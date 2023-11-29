@@ -2,30 +2,30 @@ use bevy::{
     asset::prelude::*, core::prelude::*, math::prelude::*, reflect::prelude::*, utils::HashMap,
 };
 
-use super::animation_graph::{EdgePath, EdgeValue, NodeInput, NodeOutput};
+use super::animation_graph::{EdgePath, EdgeValue, NodeInput, NodeOutput, TimeState, TimeUpdate};
 
 #[derive(Reflect, Clone, Debug, Default)]
 pub struct ParameterCache {
-    pub inputs: HashMap<NodeInput, EdgeValue>,
-    pub output: HashMap<NodeOutput, EdgeValue>,
+    pub upstream: HashMap<NodeInput, EdgeValue>,
+    pub downstream: HashMap<NodeOutput, EdgeValue>,
 }
 
 #[derive(Reflect, Clone, Debug)]
 pub struct DurationCache {
-    pub inputs: HashMap<NodeInput, Option<f32>>,
-    pub output: Option<f32>,
+    pub upstream: HashMap<NodeInput, Option<f32>>,
+    pub downstream: Option<f32>,
 }
 
 #[derive(Reflect, Clone, Debug)]
 pub struct TimeCache {
-    pub input: f32,
-    pub outputs: HashMap<NodeOutput, f32>,
+    pub upstream: HashMap<NodeOutput, TimeUpdate>,
+    pub downstream: TimeState,
 }
 
 #[derive(Reflect, Clone, Debug, Default)]
 pub struct TimeDependentCache {
-    pub inputs: HashMap<NodeInput, EdgeValue>,
-    pub output: HashMap<NodeOutput, EdgeValue>,
+    pub upstream: HashMap<NodeInput, EdgeValue>,
+    pub downstream: HashMap<NodeOutput, EdgeValue>,
 }
 
 #[derive(Reflect, Clone, Debug)]

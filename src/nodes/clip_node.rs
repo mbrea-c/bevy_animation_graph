@@ -1,5 +1,7 @@
 use crate::core::animation_clip::{AnimationClip, Keyframes};
-use crate::core::animation_graph::{EdgeSpec, EdgeValue, NodeInput, NodeOutput};
+use crate::core::animation_graph::{
+    EdgeSpec, EdgeValue, NodeInput, NodeOutput, TimeState, TimeUpdate,
+};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::caches::{DurationCache, EdgePathCache, ParameterCache, TimeCache};
 use crate::core::frame::{BoneFrame, PoseFrame, ValueFrame};
@@ -56,11 +58,11 @@ impl NodeLike for ClipNode {
 
     fn time_pass(
         &self,
-        input: f32,
+        input: TimeState,
         parameters: &ParameterCache,
         durations: &DurationCache,
         _last_cache: Option<&EdgePathCache>,
-    ) -> HashMap<NodeInput, f32> {
+    ) -> HashMap<NodeInput, TimeUpdate> {
         HashMap::new()
     }
 
@@ -72,7 +74,7 @@ impl NodeLike for ClipNode {
         time: &TimeCache,
         _last_cache: Option<&EdgePathCache>,
     ) -> HashMap<NodeOutput, EdgeValue> {
-        let og_time = time.input;
+        let og_time = time.downstream.time;
         let time = og_time.clamp(0., self.clip_duration());
         let mut animation_frame = PoseFrame::default();
         for (path, bone_id) in &self.clip.paths {

@@ -7,15 +7,19 @@ use crate::{
 };
 use bevy::prelude::*;
 
-pub trait SampleLinear {
+pub trait SampleLinearAt {
     type Output;
-    fn sample_linear(&self, time: f32) -> Self::Output;
+    fn sample_linear_at(&self, time: f32) -> Self::Output;
 }
 
-impl<T: InterpolateLinear + FromReflect + TypePath> SampleLinear for ValueFrame<T> {
+pub trait SampleLinear: SampleLinearAt {
+    fn sample_linear(&self) -> Self::Output;
+}
+
+impl<T: InterpolateLinear + FromReflect + TypePath> SampleLinearAt for ValueFrame<T> {
     type Output = T;
 
-    fn sample_linear(&self, time: f32) -> Self::Output {
+    fn sample_linear_at(&self, time: f32) -> Self::Output {
         let time = time.clamp(self.prev_timestamp, self.next_timestamp);
         let f = if self.prev_timestamp == self.next_timestamp {
             0.
@@ -27,26 +31,56 @@ impl<T: InterpolateLinear + FromReflect + TypePath> SampleLinear for ValueFrame<
     }
 }
 
-impl SampleLinear for BoneFrame {
+impl<T: InterpolateLinear + FromReflect + TypePath> SampleLinear for ValueFrame<T> {
+    fn sample_linear(&self) -> Self::Output {
+        self.sample_linear_at(self.timestamp)
+    }
+}
+
+impl SampleLinearAt for BoneFrame {
     type Output = BonePose;
 
-    fn sample_linear(&self, time: f32) -> Self::Output {
+    fn sample_linear_at(&self, time: f32) -> Self::Output {
         BonePose {
-            rotation: self.rotation.as_ref().map(|v| v.sample_linear(time)),
-            translation: self.translation.as_ref().map(|v| v.sample_linear(time)),
-            scale: self.scale.as_ref().map(|v| v.sample_linear(time)),
-            weights: self.weights.as_ref().map(|v| v.sample_linear(time)),
+            rotation: self.rotation.as_ref().map(|v| v.sample_linear_at(time)),
+            translation: self.translation.as_ref().map(|v| v.sample_linear_at(time)),
+            scale: self.scale.as_ref().map(|v| v.sample_linear_at(time)),
+            weights: self.weights.as_ref().map(|v| v.sample_linear_at(time)),
+        }
+    }
+}
+
+impl SampleLinear for BoneFrame {
+    fn sample_linear(&self) -> Self::Output {
+        BonePose {
+            rotation: self.rotation.as_ref().map(|v| v.sample_linear()),
+            translation: self.translation.as_ref().map(|v| v.sample_linear()),
+            scale: self.scale.as_ref().map(|v| v.sample_linear()),
+            weights: self.weights.as_ref().map(|v| v.sample_linear()),
+        }
+    }
+}
+
+impl SampleLinearAt for PoseFrame {
+    type Output = Pose;
+
+    fn sample_linear_at(&self, time: f32) -> Self::Output {
+        Pose {
+            paths: self.paths.clone(),
+            bones: self
+                .bones
+                .iter()
+                .map(|b| b.sample_linear_at(time))
+                .collect(),
         }
     }
 }
 
 impl SampleLinear for PoseFrame {
-    type Output = Pose;
-
-    fn sample_linear(&self, time: f32) -> Self::Output {
+    fn sample_linear(&self) -> Self::Output {
         Pose {
             paths: self.paths.clone(),
-            bones: self.bones.iter().map(|b| b.sample_linear(time)).collect(),
+            bones: self.bones.iter().map(|b| b.sample_linear()).collect(),
         }
     }
 }

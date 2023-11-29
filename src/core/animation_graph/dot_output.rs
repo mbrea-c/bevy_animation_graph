@@ -1,4 +1,4 @@
-use super::{AnimationGraph, EdgeSpec, EdgeValue};
+use super::{AnimationGraph, EdgeSpec, EdgeValue, TimeState, TimeUpdate};
 use crate::{
     animation::HashMapJoinExt,
     core::{
@@ -183,6 +183,21 @@ impl AsDotLabel for f32 {
     }
 }
 
+impl AsDotLabel for TimeUpdate {
+    fn as_dot_label(&self) -> String {
+        match self {
+            TimeUpdate::Delta(dt) => format!("Δt({:.3})", dt),
+            TimeUpdate::Absolute(t) => format!("t🡠{:.3}", t),
+        }
+    }
+}
+
+impl AsDotLabel for TimeState {
+    fn as_dot_label(&self) -> String {
+        format!("{:.3} after {}", self.time, self.update.as_dot_label())
+    }
+}
+
 fn write_debugdump(
     f: &mut impl std::io::Write,
     node: &AnimationNode,
@@ -196,10 +211,10 @@ fn write_debugdump(
         write!(f, "<TR><TD COLSPAN=\"2\">Parameters</TD></TR>")?;
         write!(f, "<TR>")?;
         write!(f, "<TD>")?;
-        write_values(f, &param_cache.inputs)?;
+        write_values(f, &param_cache.upstream)?;
         write!(f, "</TD>")?;
         write!(f, "<TD>")?;
-        write_values(f, &param_cache.output)?;
+        write_values(f, &param_cache.downstream)?;
         write!(f, "</TD>")?;
         write!(f, "</TR>")?;
     }
@@ -210,10 +225,10 @@ fn write_debugdump(
         write!(f, "<TR><TD COLSPAN=\"2\">Durations</TD></TR>")?;
         write!(f, "<TR>")?;
         write!(f, "<TD>")?;
-        write_values(f, &duration_cache.inputs)?;
+        write_values(f, &duration_cache.upstream)?;
         write!(f, "</TD>")?;
         write!(f, "<TD>")?;
-        write!(f, "{:?}", duration_cache.output)?;
+        write!(f, "{:?}", duration_cache.downstream)?;
         write!(f, "</TD>")?;
         write!(f, "</TR>")?;
     }
@@ -225,10 +240,10 @@ fn write_debugdump(
             for (_, time_cache) in time_caches.iter() {
                 write!(f, "<TR>")?;
                 write!(f, "<TD>")?;
-                write_values(f, &time_cache.outputs)?;
+                write_values(f, &time_cache.upstream)?;
                 write!(f, "</TD>")?;
                 write!(f, "<TD>")?;
-                write!(f, "{}", time_cache.input.as_dot_label())?;
+                write!(f, "{}", time_cache.downstream.as_dot_label())?;
                 write!(f, "</TD>")?;
                 write!(f, "</TR>")?;
             }
@@ -243,10 +258,10 @@ fn write_debugdump(
             for (t_u32, time_dependent_cache) in time_dependent_caches.iter() {
                 write!(f, "<TR>")?;
                 write!(f, "<TD>")?;
-                write_values(f, &time_dependent_cache.inputs)?;
+                write_values(f, &time_dependent_cache.upstream)?;
                 write!(f, "</TD>")?;
                 write!(f, "<TD>")?;
-                write_values(f, &time_dependent_cache.output)?;
+                write_values(f, &time_dependent_cache.downstream)?;
                 write!(f, "</TD>")?;
                 write!(f, "</TR>")?;
             }

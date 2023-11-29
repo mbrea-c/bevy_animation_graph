@@ -1,5 +1,5 @@
 use super::{
-    animation_graph::{EdgeSpec, EdgeValue, NodeInput, NodeOutput},
+    animation_graph::{EdgeSpec, EdgeValue, NodeInput, NodeOutput, TimeState, TimeUpdate},
     caches::{DurationCache, EdgePathCache, ParameterCache, TimeCache},
 };
 use crate::nodes::{
@@ -28,11 +28,11 @@ pub trait NodeLike: Send + Sync {
     ) -> Option<f32>;
     fn time_pass(
         &self,
-        input: f32,
+        input: TimeState,
         parameters: &ParameterCache,
         durations: &DurationCache,
         last_cache: Option<&EdgePathCache>,
-    ) -> HashMap<NodeInput, f32>;
+    ) -> HashMap<NodeInput, TimeUpdate>;
     fn time_dependent_pass(
         &self,
         inputs: HashMap<NodeInput, EdgeValue>,
@@ -210,11 +210,11 @@ impl NodeLike for ParameterNode {
 
     fn time_pass(
         &self,
-        _input: f32,
+        _input: TimeState,
         _parameters: &ParameterCache,
         _durations: &DurationCache,
         _last_cache: Option<&EdgePathCache>,
-    ) -> HashMap<NodeInput, f32> {
+    ) -> HashMap<NodeInput, TimeUpdate> {
         HashMap::new()
     }
 
