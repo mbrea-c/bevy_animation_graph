@@ -13,9 +13,8 @@ impl<T: TypePath + FromReflect + Clone> Chainable for ValueFrame<T> {
             let mut out_pose = other.clone();
             out_pose.map_ts(|t| t + duration_first);
             if out_pose.next_is_wrapped {
-                out_pose.next = self.next.clone();
-                // We assume `self.next` already wraps around, and thus duration_first is added
-                out_pose.next_timestamp = self.next_timestamp + duration_second;
+                out_pose.next = self.prev.clone();
+                out_pose.next_timestamp = self.prev_timestamp + duration_first + duration_second;
             }
             out_pose
         } else if self.next_is_wrapped {

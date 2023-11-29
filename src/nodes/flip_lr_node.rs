@@ -1,6 +1,8 @@
-use crate::core::animation_graph::{EdgeSpec, EdgeValue, NodeInput, NodeOutput};
+use crate::core::animation_graph::{
+    EdgePath, EdgeSpec, EdgeValue, NodeInput, NodeOutput, TimeState, TimeUpdate,
+};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
-use crate::core::caches::{DurationCache, EdgePathCache, ParameterCache, TimeCache};
+use crate::core::graph_context::GraphContext;
 use crate::flipping::FlipXBySuffix;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
@@ -16,16 +18,18 @@ impl FlipLRNode {
         Self {}
     }
 
-    pub fn wrapped(self) -> AnimationNode {
-        AnimationNode::new_from_nodetype(AnimationNodeType::FlipLR(self))
+    pub fn wrapped(self, name: impl Into<String>) -> AnimationNode {
+        AnimationNode::new_from_nodetype(name.into(), AnimationNodeType::FlipLR(self))
     }
 }
 
 impl NodeLike for FlipLRNode {
     fn parameter_pass(
         &self,
-        inputs: HashMap<NodeInput, EdgeValue>,
-        _last_cache: Option<&EdgePathCache>,
+        _inputs: HashMap<NodeInput, EdgeValue>,
+        _name: &str,
+        _path: &EdgePath,
+        _context: &mut GraphContext,
     ) -> HashMap<NodeOutput, EdgeValue> {
         HashMap::new()
     }
@@ -33,29 +37,30 @@ impl NodeLike for FlipLRNode {
     fn duration_pass(
         &self,
         inputs: HashMap<NodeInput, Option<f32>>,
-        parameters: &ParameterCache,
-        _last_cache: Option<&EdgePathCache>,
+        _name: &str,
+        _path: &EdgePath,
+        _context: &mut GraphContext,
     ) -> Option<f32> {
         *inputs.get(Self::INPUT.into()).unwrap()
     }
 
     fn time_pass(
         &self,
-        input: f32,
-        parameters: &ParameterCache,
-        durations: &DurationCache,
-        _last_cache: Option<&EdgePathCache>,
-    ) -> HashMap<NodeInput, f32> {
-        HashMap::from([(Self::INPUT.into(), input)])
+        input: TimeState,
+        _name: &str,
+        _path: &EdgePath,
+        _context: &mut GraphContext,
+    ) -> HashMap<NodeInput, TimeUpdate> {
+        // Propagate the time update without modification
+        HashMap::from([(Self::INPUT.into(), input.update)])
     }
 
     fn time_dependent_pass(
         &self,
         inputs: HashMap<NodeInput, EdgeValue>,
-        parameters: &ParameterCache,
-        durations: &DurationCache,
-        time: &TimeCache,
-        _last_cache: Option<&EdgePathCache>,
+        _name: &str,
+        _path: &EdgePath,
+        _context: &mut GraphContext,
     ) -> HashMap<NodeOutput, EdgeValue> {
         let in_pose_frame = inputs.get(Self::INPUT).unwrap().clone().unwrap_pose_frame();
         let flipped_pose_frame = in_pose_frame.flipped_by_suffix(" R".into(), " L".into());

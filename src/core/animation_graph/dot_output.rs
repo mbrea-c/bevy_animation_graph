@@ -2,7 +2,7 @@ use super::{AnimationGraph, EdgeSpec, EdgeValue, TimeState, TimeUpdate};
 use crate::{
     animation::HashMapJoinExt,
     core::{
-        animation_node::AnimationNode,
+        animation_node::{AnimationNode, NodeLike},
         frame::{BoneFrame, PoseFrame, ValueFrame},
         graph_context::GraphContext,
     },
@@ -84,7 +84,7 @@ pub trait ToDot {
 fn write_col(f: &mut impl std::io::Write, row: HashMap<String, EdgeSpec>) -> std::io::Result<()> {
     if !row.is_empty() {
         write!(f, "<TABLE BORDER=\"0\">")?;
-        for (param_name, param_spec) in row.iter() {
+        for (param_name, _) in row.iter() {
             write!(
                 f,
                 "<TR><TD PORT=\"{}\">{}</TD></TR>",
@@ -255,7 +255,7 @@ fn write_debugdump(
     if let Some(time_dependent_caches) = tdc {
         if !time_dependent_caches.is_empty() {
             write!(f, "<TR><TD COLSPAN=\"2\">Time-dependent queries</TD></TR>")?;
-            for (t_u32, time_dependent_cache) in time_dependent_caches.iter() {
+            for (_, time_dependent_cache) in time_dependent_caches.iter() {
                 write!(f, "<TR>")?;
                 write!(f, "<TD>")?;
                 write_values(f, &time_dependent_cache.upstream)?;
@@ -303,6 +303,7 @@ impl ToDot for AnimationGraph {
             writeln!(f, "</TABLE>>]")?;
         }
 
+        writeln!(f, "OUTPUT [shape=cds];")?;
         writeln!(
             f,
             "\t\"{}\":\"{}\" -> OUTPUT;",

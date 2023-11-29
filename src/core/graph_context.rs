@@ -1,7 +1,10 @@
-use super::caches::AnimationCaches;
+use super::{
+    animation_graph::EdgePath,
+    caches::{AnimationCaches, DurationCache, ParameterCache, TimeCache, TimeDependentCache},
+};
 use bevy::{reflect::prelude::*, utils::HashMap};
 
-#[derive(Reflect)]
+#[derive(Reflect, Debug)]
 pub struct GraphContext {
     /// Caches are double buffered
     caches: [HashMap<String, AnimationCaches>; 2],
@@ -49,6 +52,50 @@ impl GraphContext {
 
     pub fn get_node_other_cache(&self, node: &str) -> Option<&AnimationCaches> {
         self.get_other_cache().get(node)
+    }
+
+    pub fn get_parameters(&self, node: &str) -> Option<&ParameterCache> {
+        self.get_node_cache(node)
+            .and_then(|c| c.parameter_cache.as_ref())
+    }
+
+    pub fn get_durations(&self, node: &str) -> Option<&DurationCache> {
+        self.get_node_cache(node)
+            .and_then(|c| c.duration_cache.as_ref())
+    }
+
+    pub fn get_times(&self, node: &str, path: &EdgePath) -> Option<&TimeCache> {
+        self.get_node_cache(node)
+            .and_then(|c| c.time_caches.get(path))
+    }
+
+    pub fn get_time_dependent(&self, node: &str, path: &EdgePath) -> Option<&TimeDependentCache> {
+        self.get_node_cache(node)
+            .and_then(|c| c.time_dependent_caches.get(path))
+    }
+
+    pub fn get_other_parameters(&self, node: &str) -> Option<&ParameterCache> {
+        self.get_node_other_cache(node)
+            .map_or(None, |c| c.parameter_cache.as_ref())
+    }
+
+    pub fn get_other_durations(&self, node: &str) -> Option<&DurationCache> {
+        self.get_node_other_cache(node)
+            .map_or(None, |c| c.duration_cache.as_ref())
+    }
+
+    pub fn get_other_times(&self, node: &str, path: &EdgePath) -> Option<&TimeCache> {
+        self.get_node_other_cache(node)
+            .and_then(|c| c.time_caches.get(path))
+    }
+
+    pub fn get_other_time_dependent(
+        &self,
+        node: &str,
+        path: &EdgePath,
+    ) -> Option<&TimeDependentCache> {
+        self.get_node_other_cache(node)
+            .and_then(|c| c.time_dependent_caches.get(path))
     }
 
     pub fn get_node_cache_mut(&mut self, node: &str) -> Option<&mut AnimationCaches> {

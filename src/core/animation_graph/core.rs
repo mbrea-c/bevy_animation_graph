@@ -1,15 +1,17 @@
 use crate::{
     animation::{HashMapJoinExt, InterpolationMode},
     core::{
-        animation_node::{AnimationNode, ParameterNode},
+        animation_node::{AnimationNode, NodeLike, ParameterNode},
         caches::{DurationCache, ParameterCache, TimeCache, TimeDependentCache},
         frame::PoseFrame,
         graph_context::GraphContext,
         pose::Pose,
     },
-    sampling::linear::{SampleLinear, SampleLinearAt},
+    sampling::linear::SampleLinear,
 };
 use bevy::{prelude::*, reflect::TypeUuid, utils::HashMap};
+
+use super::ToDot;
 
 #[derive(Reflect, Clone, Copy, Debug)]
 pub enum EdgeSpec {
@@ -162,21 +164,18 @@ impl AnimationGraph {
         self.out_edge = edge;
     }
 
-    pub fn add_node(
-        &mut self,
-        node_name: String,
-        node: AnimationNode,
-        make_out_edge: Option<String>,
-    ) {
+    pub fn add_node(&mut self, node: AnimationNode) {
+        let node_name = node.name.clone();
         if &node_name == Self::PARAMETER_NODE {
             error!("Node name {node_name} is reserved");
             panic!("Node name {node_name} is reserved")
         }
         self.nodes.insert(node_name.clone(), node);
-        if let Some(out_edge) = make_out_edge {
-            self.out_node = node_name;
-            self.out_edge = out_edge;
-        }
+    }
+
+    pub fn set_out_edge(&mut self, node: impl Into<String>, edge: impl Into<String>) {
+        self.out_node = node.into();
+        self.out_edge = edge.into();
     }
 
     pub fn set_parameter(&mut self, parameter_name: String, value: EdgeValue) {
@@ -202,12 +201,12 @@ impl AnimationGraph {
 
     pub fn add_parameter_edge(
         &mut self,
-        parameter_name: String,
-        target_node: String,
-        target_edge: String,
+        parameter_name: impl Into<String>,
+        target_node: impl Into<String>,
+        target_edge: impl Into<String>,
     ) {
         self.add_edge(
-            Self::PARAMETER_NODE.into(),
+            Self::PARAMETER_NODE,
             parameter_name,
             target_node,
             target_edge,
@@ -216,13 +215,15 @@ impl AnimationGraph {
 
     pub fn add_edge(
         &mut self,
-        source_node: String,
-        source_edge: String,
-        target_node: String,
-        target_edge: String,
+        source_node: impl Into<String>,
+        source_edge: impl Into<String>,
+        target_node: impl Into<String>,
+        target_edge: impl Into<String>,
     ) {
-        self.edges
-            .insert((target_node, target_edge), (source_node, source_edge));
+        self.edges.insert(
+            (target_node.into(), target_edge.into()),
+            (source_node.into(), source_edge.into()),
+        );
     }
 
     pub fn map_upwards_mut<
@@ -353,14 +354,7 @@ impl AnimationGraph {
         path: &EdgePath,
         context: &mut GraphContext,
     ) -> HashMap<NodeOutput, EdgeValue> {
-        let outputs = {
-            let inputs = inputs.clone();
-            let last_caches = context
-                .get_node_other_cache(&n.name)
-                .map_or(None, |c| c.get(path));
-            let last_caches_ref = last_caches.as_ref();
-            n.node.map(|ns| ns.parameter_pass(inputs, last_caches_ref))
-        };
+        let outputs = n.parameter_pass(inputs.clone(), &n.name, path, context);
 
         context
             .get_node_cache_or_insert_default(&n.name)
@@ -408,23 +402,7 @@ impl AnimationGraph {
         path: &EdgePath,
         context: &mut GraphContext,
     ) -> HashMap<NodeOutput, Option<f32>> {
-        let output = {
-            let cache_ref = context
-                .get_node_cache(&n.name)
-                .unwrap()
-                .parameter_cache
-                .as_ref()
-                .unwrap();
-
-            let last_caches = context
-                .get_node_other_cache(&n.name)
-                .map_or(None, |c| c.get(path));
-            let last_caches_ref = last_caches.as_ref();
-            let inputs = inputs.clone();
-
-            n.node
-                .map(move |sn| sn.duration_pass(inputs, cache_ref, last_caches_ref))
-        };
+        let output = n.duration_pass(inputs.clone(), &n.name, path, context);
         context
             .get_node_cache_or_insert_default(&n.name)
             .duration_cache = Some(DurationCache {
@@ -437,7 +415,7 @@ impl AnimationGraph {
 
     fn duration_output_extractor(
         outputs: HashMap<NodeOutput, Option<f32>>,
-        edge: &str,
+        _edge: &str,
     ) -> Option<f32> {
         outputs.get("").unwrap().clone()
     }
@@ -468,35 +446,13 @@ impl AnimationGraph {
         path: &EdgePath,
         context: &mut GraphContext,
     ) -> HashMap<NodeInput, TimeUpdate> {
-        let (output, input_state) = {
-            let param_cache = context
-                .get_node_cache(&n.name)
-                .unwrap()
-                .parameter_cache
-                .as_ref()
-                .unwrap();
-            let duration_cache = context
-                .get_node_cache(&n.name)
-                .unwrap()
-                .duration_cache
-                .as_ref()
-                .unwrap();
-            let last_caches = context
-                .get_node_other_cache(&n.name)
-                .map_or(None, |c| c.get(path));
-            let last_caches_ref = last_caches.as_ref();
-            let last_time_state = last_caches
-                .as_ref()
-                .map_or(TimeState::default(), |c| c.time_cache.downstream);
-            let input_state = last_time_state.update(input);
-            (
-                n.node.map(move |sn| {
-                    sn.time_pass(input_state, param_cache, duration_cache, last_caches_ref)
-                }),
-                input_state,
-            )
+        let input_state = {
+            let last_time_state = context
+                .get_other_times(&n.name, path)
+                .map_or(TimeState::default(), |c| c.downstream);
+            last_time_state.update(input)
         };
-
+        let output = n.time_pass(input_state, &n.name, path, context);
         context
             .get_node_cache_or_insert_default(&n.name)
             .time_caches
@@ -530,23 +486,7 @@ impl AnimationGraph {
         path: &EdgePath,
         context: &mut GraphContext,
     ) -> HashMap<NodeOutput, EdgeValue> {
-        let node_cache = context.get_node_cache(&n.name).unwrap();
-        let param_cache = node_cache.parameter_cache.as_ref().unwrap();
-        let duration_cache = node_cache.duration_cache.as_ref().unwrap();
-        let time_cache = node_cache.time_caches.get(path).unwrap();
-        let last_caches = context
-            .get_node_other_cache(&n.name)
-            .map_or(None, |c| c.get(path));
-        let last_caches_ref = last_caches.as_ref();
-        let outputs = n.node.map(|sn| {
-            sn.time_dependent_pass(
-                inputs.clone(),
-                param_cache,
-                duration_cache,
-                time_cache,
-                last_caches_ref,
-            )
-        });
+        let outputs = n.time_dependent_pass(inputs.clone(), &n.name, path, context);
 
         context
             .get_node_cache_or_insert_default(&n.name)
@@ -597,7 +537,7 @@ impl AnimationGraph {
         self.time_pass(out_node, time_update, context);
         let mut final_output = self.time_dependent_pass(out_node, context);
 
-        // self.dot_to_tmp_file().unwrap();
+        // self.dot_to_tmp_file(Some(context)).unwrap();
 
         let final_frame = final_output
             .remove(&self.out_edge)

@@ -1,6 +1,8 @@
-use crate::core::animation_graph::{EdgeSpec, EdgeValue, NodeInput, NodeOutput};
+use crate::core::animation_graph::{
+    EdgePath, EdgeSpec, EdgeValue, NodeInput, NodeOutput, TimeState, TimeUpdate,
+};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
-use crate::core::caches::{DurationCache, EdgePathCache, ParameterCache, TimeCache};
+use crate::core::graph_context::GraphContext;
 use bevy::{reflect::Reflect, utils::HashMap};
 
 #[derive(Reflect, Clone, Debug)]
@@ -15,8 +17,8 @@ impl SpeedNode {
         Self
     }
 
-    pub fn wrapped(self) -> AnimationNode {
-        AnimationNode::new_from_nodetype(AnimationNodeType::Speed(self))
+    pub fn wrapped(self, name: impl Into<String>) -> AnimationNode {
+        AnimationNode::new_from_nodetype(name.into(), AnimationNodeType::Speed(self))
     }
 }
 
@@ -24,7 +26,9 @@ impl NodeLike for SpeedNode {
     fn parameter_pass(
         &self,
         _inputs: HashMap<NodeInput, EdgeValue>,
-        _last_cache: Option<&EdgePathCache>,
+        _name: &str,
+        _path: &EdgePath,
+        _context: &mut GraphContext,
     ) -> HashMap<NodeOutput, EdgeValue> {
         HashMap::new()
     }
@@ -32,11 +36,13 @@ impl NodeLike for SpeedNode {
     fn duration_pass(
         &self,
         inputs: HashMap<NodeInput, Option<f32>>,
-        parameters: &ParameterCache,
-        _last_cache: Option<&EdgePathCache>,
+        name: &str,
+        _path: &EdgePath,
+        context: &mut GraphContext,
     ) -> Option<f32> {
+        let parameters = context.get_parameters(name).unwrap();
         let speed = parameters
-            .inputs
+            .upstream
             .get(Self::SPEED)
             .unwrap()
             .clone()
@@ -56,32 +62,36 @@ impl NodeLike for SpeedNode {
 
     fn time_pass(
         &self,
-        input: f32,
-        parameters: &ParameterCache,
-        _durations: &DurationCache,
-        _last_cache: Option<&EdgePathCache>,
-    ) -> HashMap<NodeInput, f32> {
+        input: TimeState,
+        name: &str,
+        _path: &EdgePath,
+        context: &mut GraphContext,
+    ) -> HashMap<NodeInput, TimeUpdate> {
+        let parameters = context.get_parameters(name).unwrap();
         let speed = parameters
-            .inputs
+            .upstream
             .get(Self::SPEED)
             .unwrap()
             .clone()
             .unwrap_f32();
-
-        HashMap::from([(Self::INPUT.into(), input * speed)])
+        let fw_upd = match input.update {
+            TimeUpdate::Delta(dt) => TimeUpdate::Delta(dt * speed),
+            TimeUpdate::Absolute(t) => TimeUpdate::Absolute(t * speed),
+        };
+        HashMap::from([(Self::INPUT.into(), fw_upd)])
     }
 
     fn time_dependent_pass(
         &self,
         inputs: HashMap<NodeInput, EdgeValue>,
-        parameters: &ParameterCache,
-        _durations: &DurationCache,
-        _time: &TimeCache,
-        _last_cache: Option<&EdgePathCache>,
+        name: &str,
+        _path: &EdgePath,
+        context: &mut GraphContext,
     ) -> HashMap<NodeOutput, EdgeValue> {
         let mut in_pose_frame = inputs.get(Self::INPUT).unwrap().clone().unwrap_pose_frame();
+        let parameters = context.get_parameters(name).unwrap();
         let speed = parameters
-            .inputs
+            .upstream
             .get(Self::SPEED)
             .unwrap()
             .clone()

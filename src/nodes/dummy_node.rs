@@ -1,8 +1,8 @@
 use crate::core::animation_graph::{
-    EdgeSpec, EdgeValue, NodeInput, NodeOutput, TimeState, TimeUpdate,
+    EdgePath, EdgeSpec, EdgeValue, NodeInput, NodeOutput, TimeState, TimeUpdate,
 };
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, CustomNode, NodeLike};
-use crate::core::caches::{DurationCache, EdgePathCache, ParameterCache, TimeCache};
+use crate::core::graph_context::GraphContext;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 
@@ -22,38 +22,40 @@ impl DummyNode {
 impl NodeLike for DummyNode {
     fn parameter_pass(
         &self,
-        inputs: HashMap<NodeInput, EdgeValue>,
-        _last_cache: Option<&EdgePathCache>,
+        _inputs: HashMap<NodeInput, EdgeValue>,
+        _name: &str,
+        _path: &EdgePath,
+        _context: &mut GraphContext,
     ) -> HashMap<NodeOutput, EdgeValue> {
         HashMap::new()
     }
 
     fn duration_pass(
         &self,
-        inputs: HashMap<NodeInput, Option<f32>>,
-        parameters: &ParameterCache,
-        _last_cache: Option<&EdgePathCache>,
+        _inputs: HashMap<NodeInput, Option<f32>>,
+        _name: &str,
+        _path: &EdgePath,
+        _context: &mut GraphContext,
     ) -> Option<f32> {
         None
     }
 
     fn time_pass(
         &self,
-        input: TimeState,
-        parameters: &ParameterCache,
-        durations: &DurationCache,
-        _last_cache: Option<&EdgePathCache>,
+        _input: TimeState,
+        _name: &str,
+        _path: &EdgePath,
+        _context: &mut GraphContext,
     ) -> HashMap<NodeInput, TimeUpdate> {
         HashMap::new()
     }
 
     fn time_dependent_pass(
         &self,
-        inputs: HashMap<NodeInput, EdgeValue>,
-        parameters: &ParameterCache,
-        durations: &DurationCache,
-        time: &TimeCache,
-        _last_cache: Option<&EdgePathCache>,
+        _inputs: HashMap<NodeInput, EdgeValue>,
+        _name: &str,
+        _path: &EdgePath,
+        _context: &mut GraphContext,
     ) -> HashMap<NodeOutput, EdgeValue> {
         HashMap::new()
     }

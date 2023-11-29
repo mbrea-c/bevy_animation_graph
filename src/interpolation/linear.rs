@@ -38,6 +38,10 @@ impl<T: InterpolateLinear + FromReflect + TypePath + std::fmt::Debug + Clone> In
         // |prev_1 xxxx|prev_2 <----keep---->|next_1 xxxx|next_2
 
         if self.timestamp > self.next_timestamp {
+            println!(
+                "Yo we skippin? {} --[ {} ]-- {}",
+                self.prev_timestamp, self.timestamp, self.next_timestamp
+            );
             return other.clone();
         }
 
