@@ -1,9 +1,10 @@
 use std::ops::Deref;
 
 use super::{
-    animation_clip::EntityPath,
+    animation_clip::{EntityPath, GraphClip},
     animation_graph::{AnimationGraph, TimeUpdate, UpdateTime},
     animation_player::AnimationPlayer,
+    graph_context::GraphContextTmp,
     pose::Pose,
 };
 use bevy::{
@@ -81,7 +82,8 @@ fn verify_no_ancestor_player(
 #[allow(clippy::too_many_arguments)]
 pub fn animation_player(
     time: Res<Time>,
-    mut graphs: ResMut<Assets<AnimationGraph>>,
+    graphs: Res<Assets<AnimationGraph>>,
+    graph_clips: Res<Assets<GraphClip>>,
     children: Query<&Children>,
     names: Query<&Name>,
     transforms: Query<&mut Transform>,
@@ -94,7 +96,8 @@ pub fn animation_player(
             root,
             player,
             &time,
-            &mut graphs,
+            &graphs,
+            &graph_clips,
             &names,
             &transforms,
             &morphs,
@@ -110,7 +113,8 @@ pub fn run_animation_player(
     root: Entity,
     mut player: Mut<AnimationPlayer>,
     time: &Time,
-    graphs: &mut Assets<AnimationGraph>,
+    graphs: &Assets<AnimationGraph>,
+    graph_clips: &Assets<GraphClip>,
     names: &Query<&Name>,
     transforms: &Query<&mut Transform>,
     morphs: &Query<&mut MorphWeights>,
@@ -132,12 +136,18 @@ pub fn run_animation_player(
 
     player.pending_update = None;
 
+    let mut context_tmp = GraphContextTmp {
+        graph_clip_assets: graph_clips,
+        animation_graph_assets: &graphs,
+    };
+
+    let Some(graph) = graphs.get(player.animation.as_ref().unwrap()) else {
+        return;
+    };
+
     // Apply the main animation
     apply_pose(
-        &graphs
-            .get_mut(player.animation.as_ref().unwrap())
-            .unwrap()
-            .query(player.elapsed.update, &mut player.context),
+        &graph.query(player.elapsed.update, &mut player.context, &mut context_tmp),
         root,
         names,
         transforms,

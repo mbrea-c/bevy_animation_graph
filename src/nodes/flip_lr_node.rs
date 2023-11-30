@@ -2,7 +2,7 @@ use crate::core::animation_graph::{
     EdgePath, EdgeSpec, EdgeValue, NodeInput, NodeOutput, TimeState, TimeUpdate,
 };
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
-use crate::core::graph_context::GraphContext;
+use crate::core::graph_context::{GraphContext, GraphContextTmp};
 use crate::flipping::FlipXBySuffix;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
@@ -11,8 +11,8 @@ use bevy::utils::HashMap;
 pub struct FlipLRNode {}
 
 impl FlipLRNode {
-    pub const INPUT: &'static str = "Input Pose";
-    pub const OUTPUT: &'static str = "Flip Pose";
+    pub const INPUT: &'static str = "Pose In";
+    pub const OUTPUT: &'static str = "Pose Out";
 
     pub fn new() -> Self {
         Self {}
@@ -30,6 +30,7 @@ impl NodeLike for FlipLRNode {
         _name: &str,
         _path: &EdgePath,
         _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeOutput, EdgeValue> {
         HashMap::new()
     }
@@ -40,6 +41,7 @@ impl NodeLike for FlipLRNode {
         _name: &str,
         _path: &EdgePath,
         _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
     ) -> Option<f32> {
         *inputs.get(Self::INPUT.into()).unwrap()
     }
@@ -50,6 +52,7 @@ impl NodeLike for FlipLRNode {
         _name: &str,
         _path: &EdgePath,
         _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeInput, TimeUpdate> {
         // Propagate the time update without modification
         HashMap::from([(Self::INPUT.into(), input.update)])
@@ -61,6 +64,7 @@ impl NodeLike for FlipLRNode {
         _name: &str,
         _path: &EdgePath,
         _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeOutput, EdgeValue> {
         let in_pose_frame = inputs.get(Self::INPUT).unwrap().clone().unwrap_pose_frame();
         let flipped_pose_frame = in_pose_frame.flipped_by_suffix(" R".into(), " L".into());

@@ -2,7 +2,7 @@ use crate::core::animation_graph::{
     EdgePath, EdgeSpec, EdgeValue, NodeInput, NodeOutput, TimeState, TimeUpdate,
 };
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
-use crate::core::graph_context::GraphContext;
+use crate::core::graph_context::{GraphContext, GraphContextTmp};
 use crate::interpolation::linear::InterpolateLinear;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
@@ -11,10 +11,10 @@ use bevy::utils::HashMap;
 pub struct BlendNode;
 
 impl BlendNode {
-    pub const INPUT_1: &'static str = "Input Pose 1";
-    pub const INPUT_2: &'static str = "Input Pose 2";
+    pub const INPUT_1: &'static str = "Pose In 1";
+    pub const INPUT_2: &'static str = "Pose In 2";
     pub const FACTOR: &'static str = "Factor";
-    pub const OUTPUT: &'static str = "Blend Pose";
+    pub const OUTPUT: &'static str = "Pose Out";
 
     pub fn new() -> Self {
         Self
@@ -32,6 +32,7 @@ impl NodeLike for BlendNode {
         _name: &str,
         _path: &EdgePath,
         _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeOutput, EdgeValue> {
         HashMap::new()
     }
@@ -42,6 +43,7 @@ impl NodeLike for BlendNode {
         _name: &str,
         _path: &EdgePath,
         _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
     ) -> Option<f32> {
         let duration_1 = *inputs.get(Self::INPUT_1.into()).unwrap();
         let duration_2 = *inputs.get(Self::INPUT_2.into()).unwrap();
@@ -60,6 +62,7 @@ impl NodeLike for BlendNode {
         _name: &str,
         _path: &EdgePath,
         _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeInput, TimeUpdate> {
         HashMap::from([
             (Self::INPUT_1.into(), input.update),
@@ -73,6 +76,7 @@ impl NodeLike for BlendNode {
         name: &str,
         _path: &EdgePath,
         context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeOutput, EdgeValue> {
         let in_frame_1 = inputs
             .get(Self::INPUT_1)
@@ -92,8 +96,6 @@ impl NodeLike for BlendNode {
             .unwrap()
             .clone()
             .unwrap_f32();
-
-        let time = context.get_times(name, _path).unwrap().downstream.time;
 
         HashMap::from([(
             Self::OUTPUT.into(),

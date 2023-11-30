@@ -3,7 +3,7 @@ use crate::core::animation_graph::{
     EdgePath, EdgeSpec, EdgeValue, NodeInput, NodeOutput, TimeState, TimeUpdate,
 };
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
-use crate::core::graph_context::GraphContext;
+use crate::core::graph_context::{GraphContext, GraphContextTmp};
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 
@@ -11,9 +11,9 @@ use bevy::utils::HashMap;
 pub struct ChainNode {}
 
 impl ChainNode {
-    pub const INPUT_1: &'static str = "Input Pose 1";
-    pub const INPUT_2: &'static str = "Input Pose 2";
-    pub const OUTPUT: &'static str = "Chain Pose";
+    pub const INPUT_1: &'static str = "Pose In 1";
+    pub const INPUT_2: &'static str = "Pose In 2";
+    pub const OUTPUT: &'static str = "Pose Out";
 
     pub fn new() -> Self {
         Self {}
@@ -31,6 +31,7 @@ impl NodeLike for ChainNode {
         _name: &str,
         _path: &EdgePath,
         _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeOutput, EdgeValue> {
         HashMap::new()
     }
@@ -41,6 +42,7 @@ impl NodeLike for ChainNode {
         _name: &str,
         _path: &EdgePath,
         _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
     ) -> Option<f32> {
         let source_duration_1 = *inputs.get(Self::INPUT_1.into()).unwrap();
         let source_duration_2 = *inputs.get(Self::INPUT_2.into()).unwrap();
@@ -59,6 +61,7 @@ impl NodeLike for ChainNode {
         name: &str,
         path: &EdgePath,
         context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeInput, TimeUpdate> {
         let durations = context.get_durations(name).unwrap();
         let duration_1 = durations.upstream.get(Self::INPUT_1).unwrap();
@@ -107,6 +110,7 @@ impl NodeLike for ChainNode {
         name: &str,
         path: &EdgePath,
         context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeOutput, EdgeValue> {
         let in_pose_1 = inputs
             .get(Self::INPUT_1.into())

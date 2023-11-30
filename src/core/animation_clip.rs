@@ -42,13 +42,13 @@ pub struct EntityPath {
 
 /// A list of [`VariableCurve`], and the [`EntityPath`] to which they apply.
 #[derive(Asset, Reflect, Clone, Debug, Default)]
-pub struct AnimationClip {
+pub struct GraphClip {
     pub(crate) curves: Vec<Vec<VariableCurve>>,
     pub(crate) paths: HashMap<EntityPath, usize>,
     pub(crate) duration: f32,
 }
 
-impl AnimationClip {
+impl GraphClip {
     #[inline]
     /// [`VariableCurve`]s for each bone. Indexed by the bone ID.
     pub fn curves(&self) -> &Vec<Vec<VariableCurve>> {
@@ -98,7 +98,7 @@ impl AnimationClip {
     }
 }
 
-impl From<bevy::animation::AnimationClip> for AnimationClip {
+impl From<bevy::animation::AnimationClip> for GraphClip {
     fn from(value: bevy::animation::AnimationClip) -> Self {
         // HACK: to get the corret type, since bevy's AnimationClip
         // does not expose its internals

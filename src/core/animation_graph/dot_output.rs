@@ -84,11 +84,16 @@ pub trait ToDot {
 fn write_col(f: &mut impl std::io::Write, row: HashMap<String, EdgeSpec>) -> std::io::Result<()> {
     if !row.is_empty() {
         write!(f, "<TABLE BORDER=\"0\">")?;
-        for (param_name, _) in row.iter() {
+        for (param_name, param_spec) in row.iter() {
+            let icon = match param_spec {
+                EdgeSpec::PoseFrame => String::from("🯅"),
+                EdgeSpec::F32 => String::from("#"),
+            };
+
             write!(
                 f,
-                "<TR><TD PORT=\"{}\">{}</TD></TR>",
-                param_name, param_name
+                "<TR><TD PORT=\"{}\">{} {}</TD></TR>",
+                param_name, icon, param_name
             )?;
         }
         write!(f, "</TABLE>")?;
@@ -283,8 +288,14 @@ impl ToDot for AnimationGraph {
         for (name, node) in self.nodes.iter() {
             write!(
                 f,
-                "\t\"{}\" [label=<<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\"><TR><TD COLSPAN=\"2\"><B>{}</B></TD></TR>",
-                name, name
+                "\t\"{}\" [label=<<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">",
+                name
+            )?;
+            write!(
+                f,
+                "<TR><TD COLSPAN=\"2\"><B>{}</B><BR/><i>{}</i></TD></TR>",
+                name,
+                node.node_type_str()
             )?;
 
             let in_param = node.parameter_input_spec();

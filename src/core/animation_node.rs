@@ -2,7 +2,7 @@ use super::{
     animation_graph::{
         EdgePath, EdgeSpec, EdgeValue, NodeInput, NodeOutput, TimeState, TimeUpdate,
     },
-    graph_context::GraphContext,
+    graph_context::{GraphContext, GraphContextTmp},
 };
 use crate::nodes::{
     blend_node::BlendNode, chain_node::ChainNode, clip_node::ClipNode, dummy_node::DummyNode,
@@ -21,6 +21,7 @@ pub trait NodeLike: Send + Sync {
         name: &str,
         path: &EdgePath,
         context: &mut GraphContext,
+        context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeOutput, EdgeValue>;
     fn duration_pass(
         &self,
@@ -28,6 +29,7 @@ pub trait NodeLike: Send + Sync {
         name: &str,
         path: &EdgePath,
         context: &mut GraphContext,
+        context_tmp: &mut GraphContextTmp,
     ) -> Option<f32>;
     fn time_pass(
         &self,
@@ -35,6 +37,7 @@ pub trait NodeLike: Send + Sync {
         name: &str,
         path: &EdgePath,
         context: &mut GraphContext,
+        context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeInput, TimeUpdate>;
     fn time_dependent_pass(
         &self,
@@ -42,6 +45,7 @@ pub trait NodeLike: Send + Sync {
         name: &str,
         path: &EdgePath,
         context: &mut GraphContext,
+        context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeOutput, EdgeValue>;
 
     fn parameter_input_spec(&self) -> HashMap<NodeInput, EdgeSpec>;
@@ -90,6 +94,19 @@ impl AnimationNode {
     pub fn new_from_nodetype(name: String, node: AnimationNodeType) -> Self {
         Self { name, node }
     }
+
+    pub fn node_type_str(&self) -> String {
+        match self.node {
+            AnimationNodeType::Parameter(_) => "Parameter".into(),
+            AnimationNodeType::Clip(_) => "Animation Clip".into(),
+            AnimationNodeType::Blend(_) => "Blend".into(),
+            AnimationNodeType::Chain(_) => "Chain".into(),
+            AnimationNodeType::FlipLR(_) => "Flip LR".into(),
+            AnimationNodeType::Loop(_) => "Loop".into(),
+            AnimationNodeType::Speed(_) => "Speed".into(),
+            AnimationNodeType::Custom(_) => "Custom".into(),
+        }
+    }
 }
 
 impl NodeLike for AnimationNode {
@@ -99,9 +116,10 @@ impl NodeLike for AnimationNode {
         name: &str,
         path: &EdgePath,
         context: &mut GraphContext,
+        context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeOutput, EdgeValue> {
         self.node
-            .map(|n| n.parameter_pass(inputs, name, path, context))
+            .map(|n| n.parameter_pass(inputs, name, path, context, context_tmp))
     }
 
     fn duration_pass(
@@ -110,9 +128,10 @@ impl NodeLike for AnimationNode {
         name: &str,
         path: &EdgePath,
         context: &mut GraphContext,
+        context_tmp: &mut GraphContextTmp,
     ) -> Option<f32> {
         self.node
-            .map(|n| n.duration_pass(inputs, name, path, context))
+            .map(|n| n.duration_pass(inputs, name, path, context, context_tmp))
     }
 
     fn time_pass(
@@ -121,8 +140,10 @@ impl NodeLike for AnimationNode {
         name: &str,
         path: &EdgePath,
         context: &mut GraphContext,
+        context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeInput, TimeUpdate> {
-        self.node.map(|n| n.time_pass(input, name, path, context))
+        self.node
+            .map(|n| n.time_pass(input, name, path, context, context_tmp))
     }
 
     fn time_dependent_pass(
@@ -131,9 +152,10 @@ impl NodeLike for AnimationNode {
         name: &str,
         path: &EdgePath,
         context: &mut GraphContext,
+        context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeOutput, EdgeValue> {
         self.node
-            .map(|n| n.time_dependent_pass(inputs, name, path, context))
+            .map(|n| n.time_dependent_pass(inputs, name, path, context, context_tmp))
     }
 
     fn parameter_input_spec(&self) -> HashMap<NodeInput, EdgeSpec> {
@@ -244,6 +266,7 @@ impl NodeLike for ParameterNode {
         _name: &str,
         _path: &EdgePath,
         _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeOutput, EdgeValue> {
         self.parameters.clone()
     }
@@ -254,6 +277,7 @@ impl NodeLike for ParameterNode {
         _name: &str,
         _path: &EdgePath,
         _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
     ) -> Option<f32> {
         None
     }
@@ -264,6 +288,7 @@ impl NodeLike for ParameterNode {
         _name: &str,
         _path: &EdgePath,
         _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeInput, TimeUpdate> {
         HashMap::new()
     }
@@ -274,6 +299,7 @@ impl NodeLike for ParameterNode {
         _name: &str,
         _path: &EdgePath,
         _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeOutput, EdgeValue> {
         HashMap::new()
     }

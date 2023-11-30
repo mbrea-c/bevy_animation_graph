@@ -1,4 +1,5 @@
-use crate::core::animation_clip::AnimationClip;
+use crate::core::animation_clip::GraphClip;
+use crate::core::animation_graph::loader::{AnimationGraphLoader, GraphClipLoader};
 use crate::core::animation_graph::{AnimationGraph, EdgeSpec};
 use crate::core::animation_player::AnimationPlayer;
 use crate::core::systems::{animation_player, replace_animation_players};
@@ -68,10 +69,15 @@ pub struct AnimationPlugin;
 impl Plugin for AnimationPlugin {
     fn build(&self, app: &mut App) {
         app //
-            .init_asset::<AnimationClip>()
-            .init_asset::<AnimationGraph>()
-            .register_asset_reflect::<AnimationClip>()
+            .register_type::<AnimationGraph>()
+            .register_asset_reflect::<AnimationGraph>()
+            .register_type::<GraphClip>()
+            .register_asset_reflect::<GraphClip>()
             .register_type::<AnimationPlayer>()
+            .init_asset::<GraphClip>()
+            .init_asset_loader::<GraphClipLoader>()
+            .init_asset::<AnimationGraph>()
+            .init_asset_loader::<AnimationGraphLoader>()
             .add_systems(PreUpdate, replace_animation_players)
             .add_systems(
                 PostUpdate,

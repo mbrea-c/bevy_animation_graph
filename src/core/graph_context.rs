@@ -1,8 +1,9 @@
 use super::{
-    animation_graph::EdgePath,
+    animation_clip::GraphClip,
+    animation_graph::{AnimationGraph, EdgePath},
     caches::{AnimationCaches, DurationCache, ParameterCache, TimeCache, TimeDependentCache},
 };
-use bevy::{reflect::prelude::*, utils::HashMap};
+use bevy::{asset::Assets, reflect::prelude::*, utils::HashMap};
 
 #[derive(Reflect, Debug)]
 pub struct GraphContext {
@@ -18,6 +19,12 @@ impl Default for GraphContext {
             current_cache: 0,
         }
     }
+}
+
+/// Contains temprary data such as references to assets, gizmos, etc.
+pub struct GraphContextTmp<'a> {
+    pub graph_clip_assets: &'a Assets<GraphClip>,
+    pub animation_graph_assets: &'a Assets<AnimationGraph>,
 }
 
 impl GraphContext {

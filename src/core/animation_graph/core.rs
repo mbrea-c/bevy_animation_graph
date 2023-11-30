@@ -4,14 +4,15 @@ use crate::{
         animation_node::{AnimationNode, NodeLike, ParameterNode},
         caches::{DurationCache, ParameterCache, TimeCache, TimeDependentCache},
         frame::PoseFrame,
-        graph_context::GraphContext,
+        graph_context::{GraphContext, GraphContextTmp},
         pose::Pose,
     },
     sampling::linear::SampleLinear,
 };
 use bevy::{prelude::*, reflect::TypeUuid, utils::HashMap};
+use serde::{Deserialize, Serialize};
 
-use super::ToDot;
+// use super::ToDot;
 
 #[derive(Reflect, Clone, Copy, Debug)]
 pub enum EdgeSpec {
@@ -22,9 +23,9 @@ pub enum EdgeSpec {
 pub type Edge = ((String, String), (String, String));
 pub type EdgePath = Vec<Edge>;
 
-#[derive(Reflect, Clone, Debug)]
+#[derive(Reflect, Clone, Debug, Serialize, Deserialize)]
 pub enum EdgeValue {
-    PoseFrame(PoseFrame),
+    PoseFrame(#[serde(skip)] PoseFrame),
     F32(f32),
 }
 
@@ -138,6 +139,11 @@ impl Default for AnimationGraph {
     }
 }
 
+type SpecExtractor<S> = fn(&AnimationNode) -> HashMap<NodeInput, S>;
+type OutputExtractor<T> = fn(HashMap<NodeOutput, T>, &str) -> T;
+type Mapper<In, Out> =
+    fn(&AnimationNode, In, &EdgePath, &mut GraphContext, &mut GraphContextTmp) -> Out;
+
 impl AnimationGraph {
     pub const OUTPUT: &'static str = "Pose";
     const PARAMETER_NODE: &'static str = "__PARAMETERS";
@@ -159,11 +165,6 @@ impl AnimationGraph {
         self.output_interpolation = interpolation;
     }
 
-    pub fn set_output(&mut self, node: String, edge: String) {
-        self.out_node = node;
-        self.out_edge = edge;
-    }
-
     pub fn add_node(&mut self, node: AnimationNode) {
         let node_name = node.name.clone();
         if &node_name == Self::PARAMETER_NODE {
@@ -178,14 +179,14 @@ impl AnimationGraph {
         self.out_edge = edge.into();
     }
 
-    pub fn set_parameter(&mut self, parameter_name: String, value: EdgeValue) {
+    pub fn set_parameter(&mut self, parameter_name: impl Into<String>, value: EdgeValue) {
         self.nodes
             .get_mut(Self::PARAMETER_NODE)
             .unwrap()
             .node
             .unwrap_parameter_mut()
             .parameters
-            .insert(parameter_name, value);
+            .insert(parameter_name.into(), value);
     }
 
     pub fn get_parameter(&mut self, parameter_name: &str) -> Option<EdgeValue> {
@@ -226,38 +227,22 @@ impl AnimationGraph {
         );
     }
 
-    pub fn map_upwards_mut<
-        S,
-        T,
-        InputSpecExtractor,
-        RecurseSpecExtractor,
-        OutputExtractor,
-        Mapper,
-    >(
+    pub fn map_upwards_mut<SpecType, Data>(
         &self,
         node_name: &str,
         path_to_node: EdgePath,
-        input_spec_extractor: &InputSpecExtractor,
-        recurse_spec_extractor: &RecurseSpecExtractor,
-        output_extractor: &OutputExtractor,
-        mapper: &Mapper,
+        input_spec_extractor: SpecExtractor<SpecType>,
+        recurse_spec_extractor: SpecExtractor<SpecType>,
+        output_extractor: OutputExtractor<Data>,
+        mapper: Mapper<HashMap<NodeInput, Data>, HashMap<NodeOutput, Data>>,
         context: &mut GraphContext,
-    ) -> HashMap<NodeOutput, T>
-    where
-        InputSpecExtractor: Fn(&AnimationNode) -> HashMap<NodeInput, S>,
-        RecurseSpecExtractor: Fn(&AnimationNode) -> HashMap<NodeInput, S>,
-        OutputExtractor: Fn(HashMap<NodeOutput, T>, &str) -> T,
-        Mapper: Fn(
-            &AnimationNode,
-            HashMap<NodeInput, T>,
-            &EdgePath,
-            &mut GraphContext,
-        ) -> HashMap<NodeOutput, T>,
-    {
+        context_tmp: &mut GraphContextTmp,
+    ) -> HashMap<NodeOutput, Data>
+where {
         let in_spec = input_spec_extractor(self.nodes.get(node_name).unwrap());
         let recurse_spec = recurse_spec_extractor(self.nodes.get(node_name).unwrap());
 
-        let mut input: HashMap<NodeOutput, T> = HashMap::new();
+        let mut input: HashMap<NodeOutput, Data> = HashMap::new();
 
         for k in recurse_spec.keys() {
             let (in_node_name, in_edge_name) = self
@@ -281,6 +266,7 @@ impl AnimationGraph {
                 output_extractor,
                 mapper,
                 context,
+                context_tmp,
             );
             if in_spec.contains_key(k) {
                 let val = output_extractor(output, &in_edge_name);
@@ -289,25 +275,22 @@ impl AnimationGraph {
         }
 
         let node = self.nodes.get(node_name).unwrap();
-        mapper(node, input, &path_to_node, context)
+        mapper(node, input, &path_to_node, context, context_tmp)
     }
 
-    pub fn map_downwards_mut<Input, S, SpecExtractor, Mapper>(
+    pub fn map_downwards_mut<Data, SpecType>(
         &self,
         node_name: &str,
         path_to_node: EdgePath,
-        input: Input,
-        spec_extractor: &SpecExtractor,
-        mapper: &Mapper,
+        input: Data,
+        spec_extractor: SpecExtractor<SpecType>,
+        mapper: Mapper<Data, HashMap<NodeInput, Data>>,
         context: &mut GraphContext,
+        context_tmp: &mut GraphContextTmp,
     ) -> ()
-    where
-        SpecExtractor: Fn(&AnimationNode) -> HashMap<NodeInput, S>,
-        Mapper:
-            Fn(&AnimationNode, Input, &EdgePath, &mut GraphContext) -> HashMap<NodeOutput, Input>,
-    {
+where {
         let node = self.nodes.get(node_name).unwrap();
-        let mut output = mapper(node, input, &path_to_node, context);
+        let mut output = mapper(node, input, &path_to_node, context, context_tmp);
         let backprop_specs = spec_extractor(node);
 
         for k in backprop_specs.keys() {
@@ -331,6 +314,7 @@ impl AnimationGraph {
                 spec_extractor,
                 mapper,
                 context,
+                context_tmp,
             );
         }
     }
@@ -353,8 +337,9 @@ impl AnimationGraph {
         inputs: HashMap<NodeInput, EdgeValue>,
         path: &EdgePath,
         context: &mut GraphContext,
+        context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeOutput, EdgeValue> {
-        let outputs = n.parameter_pass(inputs.clone(), &n.name, path, context);
+        let outputs = n.parameter_pass(inputs.clone(), &n.name, path, context, context_tmp);
 
         context
             .get_node_cache_or_insert_default(&n.name)
@@ -373,20 +358,21 @@ impl AnimationGraph {
         outputs.get(edge).unwrap().clone()
     }
 
-    pub fn parameter_pass(&self, node: &str, context: &mut GraphContext) {
-        let recurse_spec_extractor = |n: &_| Self::parameter_recurse_spec_extractor(n);
-        let input_spec_extractor = |n: &_| Self::parameter_input_spec_extractor(n);
-        let mapper = |n: &_, i2, p: &_, c: &mut _| Self::parameter_mapper(n, i2, p, c);
-        let output_extractor = |o, e: &_| Self::parameter_output_extractor(o, e);
-
+    pub fn parameter_pass(
+        &self,
+        node: &str,
+        context: &mut GraphContext,
+        context_tmp: &mut GraphContextTmp,
+    ) {
         self.map_upwards_mut(
             node,
             vec![],
-            &input_spec_extractor,
-            &recurse_spec_extractor,
-            &output_extractor,
-            &mapper,
+            Self::parameter_input_spec_extractor,
+            Self::parameter_recurse_spec_extractor,
+            Self::parameter_output_extractor,
+            Self::parameter_mapper,
             context,
+            context_tmp,
         );
     }
 
@@ -401,8 +387,9 @@ impl AnimationGraph {
         inputs: HashMap<NodeInput, Option<f32>>,
         path: &EdgePath,
         context: &mut GraphContext,
+        context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeOutput, Option<f32>> {
-        let output = n.duration_pass(inputs.clone(), &n.name, path, context);
+        let output = n.duration_pass(inputs.clone(), &n.name, path, context, context_tmp);
         context
             .get_node_cache_or_insert_default(&n.name)
             .duration_cache = Some(DurationCache {
@@ -420,19 +407,21 @@ impl AnimationGraph {
         outputs.get("").unwrap().clone()
     }
 
-    pub fn duration_pass(&self, node: &str, context: &mut GraphContext) {
-        let spec_extractor = |n: &_| Self::duration_input_spec_extractor(n);
-        let mapper = |a: &_, c, d: &_, e: &mut _| Self::duration_mapper(a, c, d, e);
-        let output_extractor = |o, e: &_| Self::duration_output_extractor(o, e);
-
+    pub fn duration_pass(
+        &self,
+        node: &str,
+        context: &mut GraphContext,
+        context_tmp: &mut GraphContextTmp,
+    ) {
         self.map_upwards_mut(
             node,
             vec![],
-            &spec_extractor,
-            &spec_extractor,
-            &output_extractor,
-            &mapper,
+            Self::duration_input_spec_extractor,
+            Self::duration_input_spec_extractor,
+            Self::duration_output_extractor,
+            Self::duration_mapper,
             context,
+            context_tmp,
         );
     }
 
@@ -445,6 +434,7 @@ impl AnimationGraph {
         input: TimeUpdate,
         path: &EdgePath,
         context: &mut GraphContext,
+        context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeInput, TimeUpdate> {
         let input_state = {
             let last_time_state = context
@@ -452,7 +442,7 @@ impl AnimationGraph {
                 .map_or(TimeState::default(), |c| c.downstream);
             last_time_state.update(input)
         };
-        let output = n.time_pass(input_state, &n.name, path, context);
+        let output = n.time_pass(input_state, &n.name, path, context, context_tmp);
         context
             .get_node_cache_or_insert_default(&n.name)
             .time_caches
@@ -467,11 +457,22 @@ impl AnimationGraph {
         output
     }
 
-    pub fn time_pass(&self, node: &str, time_update: TimeUpdate, context: &mut GraphContext) {
-        let spec_extractor = |n: &_| Self::time_spec_extractor(n);
-        let mapper = |n: &_, i, p: &_, c: &mut _| Self::time_mapper(n, i, p, c);
-
-        self.map_downwards_mut(node, vec![], time_update, &spec_extractor, &mapper, context);
+    pub fn time_pass(
+        &self,
+        node: &str,
+        time_update: TimeUpdate,
+        context: &mut GraphContext,
+        context_tmp: &mut GraphContextTmp,
+    ) {
+        self.map_downwards_mut(
+            node,
+            vec![],
+            time_update,
+            Self::time_spec_extractor,
+            Self::time_mapper,
+            context,
+            context_tmp,
+        );
     }
 
     /// Which inputs are needed to calculate time-dependent output of this node
@@ -485,8 +486,9 @@ impl AnimationGraph {
         inputs: HashMap<NodeInput, EdgeValue>,
         path: &EdgePath,
         context: &mut GraphContext,
+        context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeOutput, EdgeValue> {
-        let outputs = n.time_dependent_pass(inputs.clone(), &n.name, path, context);
+        let outputs = n.time_dependent_pass(inputs.clone(), &n.name, path, context, context_tmp);
 
         context
             .get_node_cache_or_insert_default(&n.name)
@@ -513,29 +515,32 @@ impl AnimationGraph {
         &self,
         node: &str,
         context: &mut GraphContext,
+        context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeOutput, EdgeValue> {
-        let spec_extractor = |n: &_| Self::time_dependent_input_spec_extractor(n);
-        let output_extractor = |o, e: &_| Self::time_dependent_output_extractor(o, e);
-        let mapper = |n: &_, i, p: &_, c: &mut _| Self::time_dependent_mapper(n, i, p, c);
-
         self.map_upwards_mut(
             node,
             vec![],
-            &spec_extractor,
-            &spec_extractor,
-            &output_extractor,
-            &mapper,
+            Self::time_dependent_input_spec_extractor,
+            Self::time_dependent_input_spec_extractor,
+            Self::time_dependent_output_extractor,
+            Self::time_dependent_mapper,
             context,
+            context_tmp,
         )
     }
 
-    pub fn query(&self, time_update: TimeUpdate, context: &mut GraphContext) -> Pose {
+    pub fn query(
+        &self,
+        time_update: TimeUpdate,
+        context: &mut GraphContext,
+        context_tmp: &mut GraphContextTmp,
+    ) -> Pose {
         context.push_caches();
         let out_node = &self.out_node.clone();
-        self.parameter_pass(out_node, context);
-        self.duration_pass(out_node, context);
-        self.time_pass(out_node, time_update, context);
-        let mut final_output = self.time_dependent_pass(out_node, context);
+        self.parameter_pass(out_node, context, context_tmp);
+        self.duration_pass(out_node, context, context_tmp);
+        self.time_pass(out_node, time_update, context, context_tmp);
+        let mut final_output = self.time_dependent_pass(out_node, context, context_tmp);
 
         // self.dot_to_tmp_file(Some(context)).unwrap();
 

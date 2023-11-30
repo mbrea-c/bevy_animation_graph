@@ -1,23 +1,24 @@
-use crate::core::animation_clip::{AnimationClip, Keyframes};
+use crate::core::animation_clip::{GraphClip, Keyframes};
 use crate::core::animation_graph::{
     EdgePath, EdgeSpec, EdgeValue, NodeInput, NodeOutput, TimeState, TimeUpdate,
 };
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::frame::{BoneFrame, PoseFrame, ValueFrame};
-use crate::core::graph_context::GraphContext;
+use crate::core::graph_context::{GraphContext, GraphContextTmp};
 use crate::core::systems::get_keyframe;
+use bevy::asset::Handle;
 use bevy::reflect::prelude::*;
 use bevy::utils::HashMap;
 
 #[derive(Reflect, Clone, Debug)]
 pub struct ClipNode {
-    clip: AnimationClip,
+    clip: Handle<GraphClip>,
     override_duration: Option<f32>,
 }
 
 impl ClipNode {
-    pub const OUTPUT: &'static str = "Clip Pose";
-    pub fn new(clip: AnimationClip, override_duration: Option<f32>) -> Self {
+    pub const OUTPUT: &'static str = "Pose Out";
+    pub fn new(clip: Handle<GraphClip>, override_duration: Option<f32>) -> Self {
         Self {
             clip,
             override_duration,
@@ -29,11 +30,15 @@ impl ClipNode {
     }
 
     #[inline]
-    pub fn clip_duration(&self) -> f32 {
+    pub fn clip_duration(&self, context_tmp: &GraphContextTmp) -> f32 {
         if let Some(duration) = self.override_duration {
             duration
         } else {
-            self.clip.duration()
+            context_tmp
+                .graph_clip_assets
+                .get(&self.clip)
+                .unwrap()
+                .duration()
         }
     }
 }
@@ -45,6 +50,7 @@ impl NodeLike for ClipNode {
         _name: &str,
         _path: &EdgePath,
         _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeOutput, EdgeValue> {
         HashMap::new()
     }
@@ -55,8 +61,9 @@ impl NodeLike for ClipNode {
         _name: &str,
         _path: &EdgePath,
         _context: &mut GraphContext,
+        context_tmp: &mut GraphContextTmp,
     ) -> Option<f32> {
-        Some(self.clip_duration())
+        Some(self.clip_duration(context_tmp))
     }
 
     fn time_pass(
@@ -65,6 +72,7 @@ impl NodeLike for ClipNode {
         _name: &str,
         _path: &EdgePath,
         _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeInput, TimeUpdate> {
         HashMap::new()
     }
@@ -75,13 +83,17 @@ impl NodeLike for ClipNode {
         name: &str,
         path: &EdgePath,
         context: &mut GraphContext,
+        context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeOutput, EdgeValue> {
+        let clip_duration = self.clip_duration(context_tmp);
+        let clip = context_tmp.graph_clip_assets.get(&self.clip).unwrap();
+
         let time = context.get_times(name, path).unwrap();
         let timestamp = time.downstream.time;
-        let time = timestamp.clamp(0., self.clip_duration());
+        let time = timestamp.clamp(0., clip_duration);
         let mut animation_frame = PoseFrame::default();
-        for (path, bone_id) in &self.clip.paths {
-            let curves = self.clip.get_curves(*bone_id).unwrap();
+        for (path, bone_id) in &clip.paths {
+            let curves = clip.get_curves(*bone_id).unwrap();
             let mut frame = BoneFrame::default();
             for curve in curves {
                 // Some curves have only one keyframe used to set a transform
@@ -107,7 +119,7 @@ impl NodeLike for ClipNode {
                 let mut next_timestamp = curve.keyframe_timestamps[step_end];
 
                 let next_is_wrapped = if next_timestamp < prev_timestamp {
-                    next_timestamp += self.clip_duration();
+                    next_timestamp += clip_duration;
                     true
                 } else {
                     false

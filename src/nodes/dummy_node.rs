@@ -2,7 +2,7 @@ use crate::core::animation_graph::{
     EdgePath, EdgeSpec, EdgeValue, NodeInput, NodeOutput, TimeState, TimeUpdate,
 };
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, CustomNode, NodeLike};
-use crate::core::graph_context::GraphContext;
+use crate::core::graph_context::{GraphContext, GraphContextTmp};
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 
@@ -26,6 +26,7 @@ impl NodeLike for DummyNode {
         _name: &str,
         _path: &EdgePath,
         _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeOutput, EdgeValue> {
         HashMap::new()
     }
@@ -36,6 +37,7 @@ impl NodeLike for DummyNode {
         _name: &str,
         _path: &EdgePath,
         _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
     ) -> Option<f32> {
         None
     }
@@ -46,6 +48,7 @@ impl NodeLike for DummyNode {
         _name: &str,
         _path: &EdgePath,
         _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeInput, TimeUpdate> {
         HashMap::new()
     }
@@ -56,6 +59,7 @@ impl NodeLike for DummyNode {
         _name: &str,
         _path: &EdgePath,
         _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeOutput, EdgeValue> {
         HashMap::new()
     }

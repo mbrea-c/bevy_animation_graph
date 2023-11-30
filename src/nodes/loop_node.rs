@@ -2,7 +2,7 @@ use crate::core::animation_graph::{
     EdgePath, EdgeSpec, EdgeValue, NodeInput, NodeOutput, TimeState, TimeUpdate,
 };
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
-use crate::core::graph_context::GraphContext;
+use crate::core::graph_context::{GraphContext, GraphContextTmp};
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 
@@ -10,8 +10,8 @@ use bevy::utils::HashMap;
 pub struct LoopNode {}
 
 impl LoopNode {
-    pub const INPUT: &'static str = "Input Pose";
-    pub const OUTPUT: &'static str = "Loop Pose";
+    pub const INPUT: &'static str = "Pose In";
+    pub const OUTPUT: &'static str = "Pose Out";
 
     pub fn new() -> Self {
         Self {}
@@ -29,6 +29,7 @@ impl NodeLike for LoopNode {
         _name: &str,
         _path: &EdgePath,
         _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeOutput, EdgeValue> {
         HashMap::new()
     }
@@ -39,6 +40,7 @@ impl NodeLike for LoopNode {
         _name: &str,
         _path: &EdgePath,
         _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
     ) -> Option<f32> {
         None
     }
@@ -49,6 +51,7 @@ impl NodeLike for LoopNode {
         name: &str,
         _path: &EdgePath,
         context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeInput, TimeUpdate> {
         let durations = context.get_durations(name).unwrap();
         let duration = *durations.upstream.get(Self::INPUT).unwrap();
@@ -79,6 +82,7 @@ impl NodeLike for LoopNode {
         name: &str,
         path: &EdgePath,
         context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeOutput, EdgeValue> {
         let time = context.get_times(name, path).unwrap();
         let durations = context.get_durations(name).unwrap();

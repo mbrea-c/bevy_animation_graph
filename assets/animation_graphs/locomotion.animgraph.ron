@@ -1,0 +1,34 @@
+(
+    nodes: [
+        (name: "Walk Clip", node: Clip("animations/walk.anim.ron", Some(1.))), 
+        (name: "Run Clip",  node: Clip("animations/run.anim.ron", Some(1.))), 
+        (name: "Walk Flip LR", node: FlipLR), 
+        (name: "Run Flip LR", node: FlipLR), 
+        (name: "Walk Chain", node: Chain), 
+        (name: "Run Chain", node: Chain), 
+        (name: "Blend", node: Blend), 
+        (name: "Loop", node: Loop), 
+        (name: "Speed", node: Speed), 
+    ],
+    output: ("Speed", "Pose Out"),
+    parameters: {
+        "Blend Alpha": F32(0.5),
+        "Speed factor": F32(1.0),
+    },
+    parameter_edges: {
+        "Blend Alpha": ("Blend", "Factor"),
+        "Speed factor": ("Speed", "Speed"),
+    },
+    edges: [
+        (("Walk Clip", "Pose Out"), ("Walk Flip LR", "Pose In")),
+        (("Walk Clip", "Pose Out"), ("Walk Chain", "Pose In 1")),
+        (("Walk Flip LR", "Pose Out"), ("Walk Chain", "Pose In 2")),
+        (("Run Clip", "Pose Out"), ("Run Chain", "Pose In 1")),
+        (("Run Clip", "Pose Out"), ("Run Flip LR", "Pose In")),
+        (("Run Flip LR", "Pose Out"), ("Run Chain", "Pose In 2")),
+        (("Walk Chain", "Pose Out"), ("Blend", "Pose In 1")),
+        (("Run Chain", "Pose Out"), ("Blend", "Pose In 2")),
+        (("Blend", "Pose Out"), ("Loop", "Pose In")),
+        (("Loop", "Pose Out"), ("Speed", "Pose In")),
+    ],
+)

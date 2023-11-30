@@ -2,15 +2,15 @@ use crate::core::animation_graph::{
     EdgePath, EdgeSpec, EdgeValue, NodeInput, NodeOutput, TimeState, TimeUpdate,
 };
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
-use crate::core::graph_context::GraphContext;
+use crate::core::graph_context::{GraphContext, GraphContextTmp};
 use bevy::{reflect::Reflect, utils::HashMap};
 
 #[derive(Reflect, Clone, Debug)]
 pub struct SpeedNode;
 
 impl SpeedNode {
-    pub const INPUT: &'static str = "Input Pose";
-    pub const OUTPUT: &'static str = "Speed Pose";
+    pub const INPUT: &'static str = "Pose In";
+    pub const OUTPUT: &'static str = "Pose Out";
     pub const SPEED: &'static str = "Speed";
 
     pub fn new() -> Self {
@@ -29,6 +29,7 @@ impl NodeLike for SpeedNode {
         _name: &str,
         _path: &EdgePath,
         _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeOutput, EdgeValue> {
         HashMap::new()
     }
@@ -39,6 +40,7 @@ impl NodeLike for SpeedNode {
         name: &str,
         _path: &EdgePath,
         context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
     ) -> Option<f32> {
         let parameters = context.get_parameters(name).unwrap();
         let speed = parameters
@@ -66,6 +68,7 @@ impl NodeLike for SpeedNode {
         name: &str,
         _path: &EdgePath,
         context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeInput, TimeUpdate> {
         let parameters = context.get_parameters(name).unwrap();
         let speed = parameters
@@ -87,6 +90,7 @@ impl NodeLike for SpeedNode {
         name: &str,
         _path: &EdgePath,
         context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeOutput, EdgeValue> {
         let mut in_pose_frame = inputs.get(Self::INPUT).unwrap().clone().unwrap_pose_frame();
         let parameters = context.get_parameters(name).unwrap();
