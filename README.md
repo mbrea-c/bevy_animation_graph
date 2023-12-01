@@ -13,7 +13,13 @@ This library aims to fill this gap in the Bevy ecosystem.
 - Animation graphs are assets. They can be loaded from asset files, or created in code with an ergonomic API.
 - Available nodes:
   - Animation clip playback
-  - 
+  - Animation chaining (i.e. play one node after another)
+  - Looping
+  - Linear Blending (in bone space)
+  - Mirror animation about the YZ plane
+  - Arithmetic nodes:
+    - F32: Add, Subtract, Multiply, Divide, Clamp.
+- Support for custom nodes written in Rust (with the caveat that custom nodes cannot be serialized/deserialized as assets)
 
 ## Planned Features
 
