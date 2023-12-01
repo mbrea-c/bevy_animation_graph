@@ -7,3 +7,23 @@ your animations procedurally from very few keyframes, simple animation
 clip playback is not enough.
 
 This library aims to fill this gap in the Bevy ecosystem.
+
+## Current Features
+
+- Animation graphs are assets. They can be loaded from asset files, or created in code with an ergonomic API.
+- Available nodes:
+  - Animation clip playback
+  - 
+
+## Planned Features
+
+In order of priority:
+1. More procedural animation nodes:
+    1. Apply transform to bone
+    2. Two-bone IK
+2. Ragdoll and physics integration (inititally `bevy_xpbd`):
+    1. Using a bone mask to specify which bones are kinematically driven, and which bones are simulated (i.e. *ragdolled*)
+    2. Pose matching with joint motors (pending on joint motors being implemented in `bevy_xpbd`, currently WIP)
+3. FABRIK node.
+
+## Example
