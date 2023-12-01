@@ -24,6 +24,7 @@ This library aims to fill this gap in the Bevy ecosystem.
 ## Planned Features
 
 In order of priority:
+1. Finite state machines.
 1. More procedural animation nodes:
     1. Apply transform to bone
     2. Two-bone IK
