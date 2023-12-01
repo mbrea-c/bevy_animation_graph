@@ -43,4 +43,8 @@ impl AnimationPlayer {
         self.pending_update = Some(TimeUpdate::Absolute(0.));
         self
     }
+
+    pub fn get_animation_graph(&self) -> Option<Handle<AnimationGraph>> {
+        self.animation.clone()
+    }
 }

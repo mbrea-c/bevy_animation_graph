@@ -1,17 +1,9 @@
 use bevy::utils::HashMap;
-use bevy::{
-    asset::RecursiveDependencyLoadState, gltf::Gltf, pbr::CascadeShadowConfigBuilder, prelude::*,
-};
+use bevy::{gltf::Gltf, pbr::CascadeShadowConfigBuilder, prelude::*};
 use bevy_animation_graph::animation::AnimationPlugin;
 use bevy_animation_graph::core::animation_clip::GraphClip;
 use bevy_animation_graph::core::animation_graph::AnimationGraph;
 use bevy_animation_graph::core::animation_player::AnimationPlayer;
-use bevy_animation_graph::nodes::blend_node::BlendNode;
-use bevy_animation_graph::nodes::chain_node::ChainNode;
-use bevy_animation_graph::nodes::clip_node::ClipNode;
-use bevy_animation_graph::nodes::flip_lr_node::FlipLRNode;
-use bevy_animation_graph::nodes::loop_node::LoopNode;
-use bevy_animation_graph::nodes::speed_node::SpeedNode;
 use std::f32::consts::PI;
 
 fn main() {
@@ -27,11 +19,7 @@ fn main() {
         .add_systems(Startup, setup)
         .add_systems(
             Update,
-            (
-                // process_graphs,
-                setup_scene_once_loaded,
-                keyboard_animation_control,
-            ),
+            (setup_scene_once_loaded, keyboard_animation_control),
         )
         .run();
 }
@@ -98,88 +86,6 @@ fn setup(
     });
 }
 
-fn process_graphs(
-    mut processed_graphs: ResMut<ProcessedGraphs>,
-    mut graphs: ResMut<Assets<AnimationGraph>>,
-    graph_clips_loaded: Res<GraphClips>,
-    asset_server: Res<AssetServer>,
-) {
-    if !processed_graphs.0.is_empty() {
-        return;
-    }
-
-    for handle in graph_clips_loaded.0.values() {
-        if asset_server.recursive_dependency_load_state(handle)
-            != RecursiveDependencyLoadState::Loaded
-        {
-            return;
-        }
-    }
-
-    let h_run_clip = graph_clips_loaded.0.get("run").unwrap().clone();
-    let h_walk_clip = graph_clips_loaded.0.get("walk").unwrap().clone();
-
-    let mut graph = AnimationGraph::new();
-
-    graph.add_node(ClipNode::new(h_walk_clip, Some(1.)).wrapped("Walk Clip"));
-    graph.add_node(ClipNode::new(h_run_clip, Some(1.)).wrapped("Run Clip"));
-    graph.add_node(ChainNode::new().wrapped("Walk Chain"));
-    graph.add_node(ChainNode::new().wrapped("Run Chain"));
-    graph.add_node(FlipLRNode::new().wrapped("Flip LR"));
-    graph.add_node(FlipLRNode::new().wrapped("Run Flip LR"));
-    graph.add_node(BlendNode::new().wrapped("Blend"));
-    graph.add_node(LoopNode::new().wrapped("Loop"));
-    graph.add_node(SpeedNode::new().wrapped("Speed"));
-
-    graph.set_out_edge("Speed", SpeedNode::OUTPUT);
-
-    graph.set_parameter("Blend Alpha", 0.5.into());
-    graph.set_parameter("Speed factor", 1.0.into());
-    graph.add_parameter_edge("Blend Alpha", "Blend", BlendNode::FACTOR);
-    graph.add_parameter_edge("Speed factor", "Speed", SpeedNode::SPEED);
-
-    graph.add_edge(
-        "Walk Clip",
-        ClipNode::OUTPUT,
-        "Walk Chain",
-        ChainNode::INPUT_1,
-    );
-    graph.add_edge("Walk Clip", ClipNode::OUTPUT, "Flip LR", FlipLRNode::INPUT);
-    graph.add_edge(
-        "Flip LR",
-        FlipLRNode::OUTPUT,
-        "Walk Chain",
-        ChainNode::INPUT_2,
-    );
-    graph.add_edge(
-        "Run Clip",
-        ClipNode::OUTPUT,
-        "Run Chain",
-        ChainNode::INPUT_1,
-    );
-    graph.add_edge(
-        "Run Clip",
-        ClipNode::OUTPUT,
-        "Run Flip LR",
-        FlipLRNode::INPUT,
-    );
-    graph.add_edge(
-        "Run Flip LR",
-        FlipLRNode::OUTPUT,
-        "Run Chain",
-        ChainNode::INPUT_2,
-    );
-
-    graph.add_edge("Walk Chain", ChainNode::OUTPUT, "Blend", BlendNode::INPUT_1);
-    graph.add_edge("Run Chain", ChainNode::OUTPUT, "Blend", BlendNode::INPUT_2);
-    graph.add_edge("Blend", BlendNode::OUTPUT, "Loop", LoopNode::INPUT);
-    graph.add_edge("Loop", LoopNode::OUTPUT, "Speed", SpeedNode::INPUT);
-
-    // graph.dot_to_tmp_file_and_open(None).unwrap();
-
-    processed_graphs.0.push(graphs.add(graph));
-}
-
 // Once the scene is loaded, start the animation
 fn setup_scene_once_loaded(
     mut players: Query<&mut AnimationPlayer, Added<AnimationPlayer>>,
@@ -193,7 +99,6 @@ fn setup_scene_once_loaded(
 fn keyboard_animation_control(
     keyboard_input: Res<Input<KeyCode>>,
     mut animation_players: Query<&mut AnimationPlayer>,
-    animations: Res<ProcessedGraphs>,
     mut animation_graphs: ResMut<Assets<AnimationGraph>>,
     mut velocity: Local<f32>,
     time: Res<Time>,
@@ -210,11 +115,11 @@ fn keyboard_animation_control(
             player.reset();
         }
 
-        if keyboard_input.just_pressed(KeyCode::Key1) {
-            player.start(animations.0[0].clone());
-        }
+        let Some(graph_handle) = player.get_animation_graph() else {
+            continue;
+        };
 
-        let graph = animation_graphs.get_mut(animations.0[0].clone()).unwrap();
+        let graph = animation_graphs.get_mut(graph_handle).unwrap();
 
         let run_stride_length = 0.8;
         let walk_stride_length = 0.3;
