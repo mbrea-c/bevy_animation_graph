@@ -19,6 +19,7 @@ This library aims to fill this gap in the Bevy ecosystem.
   - Mirror animation about the YZ plane
   - Arithmetic nodes:
     - F32: Add, Subtract, Multiply, Divide, Clamp.
+  - Speed up or slow down animation playback
 - Support for custom nodes written in Rust (with the caveat that custom nodes cannot be serialized/deserialized as assets)
 
 ## Planned Features
