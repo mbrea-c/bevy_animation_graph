@@ -29,6 +29,7 @@ In order of priority:
 1. More procedural animation nodes:
     1. Apply transform to bone
     2. Two-bone IK
+1. Graph editor UI tool
 2. Ragdoll and physics integration (inititally `bevy_xpbd`):
     1. Using a bone mask to specify which bones are kinematically driven, and which bones are simulated (i.e. *ragdolled*)
     2. Pose matching with joint motors (pending on joint motors being implemented in `bevy_xpbd`, currently WIP)
