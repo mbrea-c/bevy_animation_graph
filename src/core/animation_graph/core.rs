@@ -1,5 +1,4 @@
 use crate::{
-    animation::{HashMapJoinExt, InterpolationMode},
     core::{
         animation_node::{AnimationNode, GraphInputNode, GraphOutputNode, NodeLike},
         caches::{DurationCache, ParameterCache, TimeCache, TimeDependentCache},
@@ -8,6 +7,7 @@ use crate::{
         pose::Pose,
     },
     sampling::linear::SampleLinear,
+    utils::hash_map_join::HashMapJoinExt,
 };
 use bevy::{prelude::*, reflect::TypeUuid, utils::HashMap};
 use serde::{Deserialize, Serialize};
@@ -127,7 +127,6 @@ pub struct AnimationGraph {
     /// Inverted, indexed by output node name.
     pub node_edges: HashMap<(String, String), (String, String)>,
     pub default_output: Option<String>,
-    pub output_interpolation: InterpolationMode,
 }
 
 impl Default for AnimationGraph {
@@ -195,12 +194,7 @@ impl AnimationGraph {
             ]),
             node_edges: HashMap::new(),
             default_output: None,
-            output_interpolation: InterpolationMode::Constant,
         }
-    }
-
-    pub fn set_interpolation(&mut self, interpolation: InterpolationMode) {
-        self.output_interpolation = interpolation;
     }
 
     pub fn add_node(&mut self, node: AnimationNode) {

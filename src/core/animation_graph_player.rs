@@ -7,7 +7,7 @@ use bevy::{asset::prelude::*, ecs::prelude::*, reflect::prelude::*};
 /// Animation controls
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
-pub struct AnimationPlayer {
+pub struct AnimationGraphPlayer {
     pub(crate) paused: bool,
     pub(crate) animation: Option<Handle<AnimationGraph>>,
     pub(crate) elapsed: TimeState,
@@ -15,7 +15,7 @@ pub struct AnimationPlayer {
     pub(crate) context: GraphContext,
 }
 
-impl AnimationPlayer {
+impl AnimationGraphPlayer {
     /// Start playing an animation, resetting state of the player.
     /// This will use a linear blending between the previous and the new animation to make a smooth transition.
     pub fn start(&mut self, handle: Handle<AnimationGraph>) -> &mut Self {

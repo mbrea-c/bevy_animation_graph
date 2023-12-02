@@ -3,7 +3,7 @@ use std::ops::Deref;
 use super::{
     animation_clip::{EntityPath, GraphClip},
     animation_graph::{AnimationGraph, TimeUpdate, UpdateTime},
-    animation_player::AnimationPlayer,
+    animation_graph_player::AnimationGraphPlayer,
     graph_context::GraphContextTmp,
     pose::Pose,
 };
@@ -57,7 +57,7 @@ fn entity_from_path(
 /// Verify that there are no ancestors of a given entity that have an [`AnimationPlayer`].
 fn verify_no_ancestor_player(
     player_parent: Option<&Parent>,
-    parents: &Query<(Has<AnimationPlayer>, Option<&Parent>)>,
+    parents: &Query<(Has<AnimationGraphPlayer>, Option<&Parent>)>,
 ) -> bool {
     let Some(mut current) = player_parent.map(Parent::get) else {
         return true;
@@ -88,8 +88,8 @@ pub fn animation_player(
     names: Query<&Name>,
     transforms: Query<&mut Transform>,
     morphs: Query<&mut MorphWeights>,
-    parents: Query<(Has<AnimationPlayer>, Option<&Parent>)>,
-    mut animation_players: Query<(Entity, Option<&Parent>, &mut AnimationPlayer)>,
+    parents: Query<(Has<AnimationGraphPlayer>, Option<&Parent>)>,
+    mut animation_players: Query<(Entity, Option<&Parent>, &mut AnimationGraphPlayer)>,
 ) {
     for (root, maybe_parent, player) in &mut animation_players {
         run_animation_player(
@@ -111,7 +111,7 @@ pub fn animation_player(
 #[allow(clippy::too_many_arguments)]
 pub fn run_animation_player(
     root: Entity,
-    mut player: Mut<AnimationPlayer>,
+    mut player: Mut<AnimationGraphPlayer>,
     time: &Time,
     graphs: &Assets<AnimationGraph>,
     graph_clips: &Assets<GraphClip>,
@@ -119,7 +119,7 @@ pub fn run_animation_player(
     transforms: &Query<&mut Transform>,
     morphs: &Query<&mut MorphWeights>,
     maybe_parent: Option<&Parent>,
-    parents: &Query<(Has<AnimationPlayer>, Option<&Parent>)>,
+    parents: &Query<(Has<AnimationGraphPlayer>, Option<&Parent>)>,
     children: &Query<&Children>,
 ) {
     // Continue if paused unless the `AnimationPlayer` was changed
@@ -189,7 +189,7 @@ fn apply_pose(
     transforms: &Query<&mut Transform>,
     morphs: &Query<&mut MorphWeights>,
     maybe_parent: Option<&Parent>,
-    parents: &Query<(Has<AnimationPlayer>, Option<&Parent>)>,
+    parents: &Query<(Has<AnimationGraphPlayer>, Option<&Parent>)>,
     children: &Query<&Children>,
 ) {
     if !verify_no_ancestor_player(maybe_parent, parents) {
@@ -250,6 +250,6 @@ pub fn replace_animation_players(
         commands
             .entity(entity)
             .remove::<bevy::animation::AnimationPlayer>()
-            .insert(AnimationPlayer::default());
+            .insert(AnimationGraphPlayer::default());
     }
 }

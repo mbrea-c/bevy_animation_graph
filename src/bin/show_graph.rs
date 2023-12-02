@@ -23,7 +23,7 @@ fn main() {
             // TaskPoolPlugin::default(),
             // AssetPlugin::default(),
             // GltfPlugin::default(),
-            bevy_animation_graph::animation::AnimationPlugin,
+            bevy_animation_graph::animation::AnimationGraphPlugin,
         ))
         .insert_resource(TargetGraph {
             name: args[1].clone(),

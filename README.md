@@ -1,3 +1,5 @@
+# bevy_animation_graph
+
 ## Motivation
 
 Animation graphs are an essential tool for managing the complexity present in
@@ -36,7 +38,29 @@ In order of priority:
 1. Ragdoll and physics integration (inititally `bevy_xpbd`, possibly rapier later):
    1. Using a bone mask to specify which bones are kinematically driven, and which bones are simulated (i.e. _ragdolled_)
    2. Pose matching with joint motors (pending on joint motors being implemented in `bevy_xpbd`, currently WIP)
-1. FABRIK node.
+1. FABRIK node (?).
+
+## Usage
+
+Animation clips are specified with asset files ending in `.anim.ron`. For
+example:
+
+```ron
+// In file: assets/animations/walk.anim.ron
+(
+    source: GltfNamed(
+        path: "models/character_rigged.gltf",
+        animation_name: "Walk",
+    ),
+)
+```
+
+Currently, the only supported source is `GltfNamed`, where the `path` field points to
+a gltf asset, and the `animation_name` field contains the name label of the animation.
+
+Animation graphs are stored as `.animgraph.ron` files. See the explained example below and
+the code in `examples/human.rs` for how to create, play and interact with
+animation graphs.
 
 ## Examples
 

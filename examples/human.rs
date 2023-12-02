@@ -1,22 +1,21 @@
 use bevy::utils::HashMap;
 use bevy::{gltf::Gltf, pbr::CascadeShadowConfigBuilder, prelude::*};
-use bevy_animation_graph::animation::AnimationPlugin;
-use bevy_animation_graph::core::animation_clip::GraphClip;
-use bevy_animation_graph::core::animation_graph::AnimationGraph;
-use bevy_animation_graph::core::animation_player::AnimationPlayer;
+use bevy_animation_graph::core::systems::replace_animation_players;
+use bevy_animation_graph::prelude::*;
 use std::f32::consts::PI;
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugins(AnimationPlugin)
+        .add_plugins(AnimationGraphPlugin)
         .add_plugins(bevy_egui_editor::EguiEditorPlugin)
         .insert_resource(AmbientLight {
             color: Color::WHITE,
-            brightness: 1.0,
+            brightness: 0.1,
         })
         .insert_resource(ProcessedGraphs(vec![]))
         .add_systems(Startup, setup)
+        .add_systems(PreUpdate, replace_animation_players)
         .add_systems(
             Update,
             (setup_scene_once_loaded, keyboard_animation_control),
@@ -39,13 +38,6 @@ fn setup(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
-    commands.insert_resource(RootGltf(asset_server.load("models/character_rigged.gltf")));
-    // Insert a resource with the current scene information
-    commands.insert_resource(GraphClips(HashMap::from([
-        ("walk".into(), asset_server.load("animations/walk.anim.ron")),
-        ("run".into(), asset_server.load("animations/run.anim.ron")),
-    ])));
-
     // Camera
     commands
         .spawn(Camera3dBundle {
@@ -88,7 +80,7 @@ fn setup(
 
 // Once the scene is loaded, start the animation
 fn setup_scene_once_loaded(
-    mut players: Query<&mut AnimationPlayer, Added<AnimationPlayer>>,
+    mut players: Query<&mut AnimationGraphPlayer, Added<AnimationGraphPlayer>>,
     asset_server: Res<AssetServer>,
 ) {
     for mut player in &mut players {
@@ -98,7 +90,7 @@ fn setup_scene_once_loaded(
 
 fn keyboard_animation_control(
     keyboard_input: Res<Input<KeyCode>>,
-    mut animation_players: Query<&mut AnimationPlayer>,
+    mut animation_players: Query<&mut AnimationGraphPlayer>,
     mut animation_graphs: ResMut<Assets<AnimationGraph>>,
     mut velocity: Local<f32>,
     time: Res<Time>,
@@ -123,16 +115,21 @@ fn keyboard_animation_control(
             continue;
         };
 
+        let mut velocity_changed = false;
         if keyboard_input.pressed(KeyCode::Up) {
             *velocity += 0.5 * time.delta_seconds();
-            println!("velocity: {}", *velocity);
+            velocity_changed = true;
         }
         if keyboard_input.pressed(KeyCode::Down) {
             *velocity -= 0.5 * time.delta_seconds();
-            println!("velocity: {}", *velocity);
+            velocity_changed = true;
         }
 
         *velocity = velocity.max(0.);
+
+        if velocity_changed {
+            println!("velocity: {}", *velocity);
+        }
 
         graph.set_input_parameter("Target Speed", (*velocity).into());
     }

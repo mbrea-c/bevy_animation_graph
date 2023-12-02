@@ -1,12 +1,12 @@
 use super::{AnimationGraph, EdgeSpec, EdgeValue, TimeState, TimeUpdate};
 use crate::{
-    animation::HashMapJoinExt,
     core::{
         animation_node::{AnimationNode, NodeLike},
         frame::{BoneFrame, PoseFrame, ValueFrame},
         graph_context::{GraphContext, GraphContextTmp},
     },
     nodes::{ClipNode, GraphNode},
+    utils::hash_map_join::HashMapJoinExt,
 };
 use bevy::{
     reflect::{FromReflect, TypePath},
