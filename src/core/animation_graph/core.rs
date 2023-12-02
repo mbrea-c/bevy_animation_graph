@@ -1,7 +1,7 @@
 use crate::{
     animation::{HashMapJoinExt, InterpolationMode},
     core::{
-        animation_node::{AnimationNode, NodeLike, ParameterNode},
+        animation_node::{AnimationNode, GraphInputNode, GraphOutputNode, NodeLike},
         caches::{DurationCache, ParameterCache, TimeCache, TimeDependentCache},
         frame::PoseFrame,
         graph_context::{GraphContext, GraphContextTmp},
@@ -12,9 +12,7 @@ use crate::{
 use bevy::{prelude::*, reflect::TypeUuid, utils::HashMap};
 use serde::{Deserialize, Serialize};
 
-// use super::ToDot;
-
-#[derive(Reflect, Clone, Copy, Debug)]
+#[derive(Reflect, Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum EdgeSpec {
     PoseFrame,
     F32,
@@ -127,9 +125,8 @@ impl UpdateTime<Option<TimeUpdate>> for TimeState {
 pub struct AnimationGraph {
     pub nodes: HashMap<String, AnimationNode>,
     /// Inverted, indexed by output node name.
-    pub edges: HashMap<(String, String), (String, String)>,
-    pub out_node: String,
-    pub out_edge: String,
+    pub node_edges: HashMap<(String, String), (String, String)>,
+    pub default_output: Option<String>,
     pub output_interpolation: InterpolationMode,
 }
 
@@ -139,24 +136,65 @@ impl Default for AnimationGraph {
     }
 }
 
-type SpecExtractor<S> = fn(&AnimationNode) -> HashMap<NodeInput, S>;
-type OutputExtractor<T> = fn(HashMap<NodeOutput, T>, &str) -> T;
+type SpecExtractor<S> =
+    fn(&AnimationNode, &mut GraphContext, &mut GraphContextTmp) -> HashMap<NodeInput, S>;
+type PrepareInput<In, Out> = fn(&Out, &str) -> In;
 type Mapper<In, Out> =
     fn(&AnimationNode, In, &EdgePath, &mut GraphContext, &mut GraphContextTmp) -> Out;
+type Combiner<Out> = fn(Out, Out) -> Out;
+
+struct UpFns<In, Out> {
+    pub prepare: PrepareInput<In, Out>,
+    pub mapper: Mapper<HashMap<NodeInput, In>, Out>,
+    pub combiner: Combiner<Out>,
+}
+
+struct DownFns<In, Out> {
+    pub prepare: PrepareInput<In, Out>,
+    pub mapper: Mapper<In, Out>,
+}
+
+impl<I, O> Clone for UpFns<I, O> {
+    fn clone(&self) -> Self {
+        UpFns {
+            prepare: self.prepare,
+            mapper: self.mapper,
+            combiner: self.combiner,
+        }
+    }
+}
+
+impl<I, O> Copy for UpFns<I, O> {}
+
+impl<I, O> Clone for DownFns<I, O> {
+    fn clone(&self) -> Self {
+        DownFns {
+            prepare: self.prepare,
+            mapper: self.mapper,
+        }
+    }
+}
+
+impl<I, O> Copy for DownFns<I, O> {}
 
 impl AnimationGraph {
-    pub const OUTPUT: &'static str = "Pose";
-    const PARAMETER_NODE: &'static str = "__PARAMETERS";
+    pub const INPUT_NODE: &'static str = "__INPUT";
+    pub const OUTPUT_NODE: &'static str = "__OUTPUT";
 
     pub fn new() -> Self {
         Self {
-            nodes: HashMap::from([(
-                Self::PARAMETER_NODE.into(),
-                ParameterNode::default().wrapped(Self::PARAMETER_NODE),
-            )]),
-            edges: HashMap::new(),
-            out_node: "".into(),
-            out_edge: "".into(),
+            nodes: HashMap::from([
+                (
+                    Self::INPUT_NODE.into(),
+                    GraphInputNode::default().wrapped(Self::INPUT_NODE),
+                ),
+                (
+                    Self::OUTPUT_NODE.into(),
+                    GraphOutputNode::default().wrapped(Self::OUTPUT_NODE),
+                ),
+            ]),
+            node_edges: HashMap::new(),
+            default_output: None,
             output_interpolation: InterpolationMode::Constant,
         }
     }
@@ -167,51 +205,84 @@ impl AnimationGraph {
 
     pub fn add_node(&mut self, node: AnimationNode) {
         let node_name = node.name.clone();
-        if &node_name == Self::PARAMETER_NODE {
+        if &node_name == Self::INPUT_NODE || &node_name == Self::OUTPUT_NODE {
             error!("Node name {node_name} is reserved");
             panic!("Node name {node_name} is reserved")
         }
         self.nodes.insert(node_name.clone(), node);
     }
 
-    pub fn set_out_edge(&mut self, node: impl Into<String>, edge: impl Into<String>) {
-        self.out_node = node.into();
-        self.out_edge = edge.into();
+    pub fn set_default_output(&mut self, name: impl Into<String>) {
+        self.default_output = Some(name.into());
     }
 
-    pub fn set_parameter(&mut self, parameter_name: impl Into<String>, value: EdgeValue) {
+    pub fn set_input_parameter(&mut self, parameter_name: impl Into<String>, value: EdgeValue) {
         self.nodes
-            .get_mut(Self::PARAMETER_NODE)
+            .get_mut(Self::INPUT_NODE)
             .unwrap()
             .node
-            .unwrap_parameter_mut()
+            .unwrap_input_mut()
             .parameters
             .insert(parameter_name.into(), value);
     }
 
-    pub fn get_parameter(&mut self, parameter_name: &str) -> Option<EdgeValue> {
+    pub fn get_input_parameter(&mut self, parameter_name: &str) -> Option<EdgeValue> {
         self.nodes
-            .get_mut(Self::PARAMETER_NODE)
+            .get_mut(Self::INPUT_NODE)
             .unwrap()
             .node
-            .unwrap_parameter()
+            .unwrap_input()
             .parameters
             .get(parameter_name)
             .cloned()
     }
 
-    pub fn add_parameter_edge(
+    pub fn register_input_td(&mut self, input_name: impl Into<String>, spec: EdgeSpec) {
+        self.nodes
+            .get_mut(Self::INPUT_NODE)
+            .unwrap()
+            .node
+            .unwrap_input_mut()
+            .time_dependent_spec
+            .insert(input_name.into(), spec);
+    }
+
+    pub fn register_output_parameter(&mut self, input_name: impl Into<String>, spec: EdgeSpec) {
+        self.nodes
+            .get_mut(Self::OUTPUT_NODE)
+            .unwrap()
+            .node
+            .unwrap_output_mut()
+            .parameters
+            .insert(input_name.into(), spec);
+    }
+
+    pub fn register_output_td(&mut self, input_name: impl Into<String>, spec: EdgeSpec) {
+        self.nodes
+            .get_mut(Self::OUTPUT_NODE)
+            .unwrap()
+            .node
+            .unwrap_output_mut()
+            .time_dependent
+            .insert(input_name.into(), spec);
+    }
+
+    pub fn add_input_edge(
         &mut self,
         parameter_name: impl Into<String>,
         target_node: impl Into<String>,
         target_edge: impl Into<String>,
     ) {
-        self.add_edge(
-            Self::PARAMETER_NODE,
-            parameter_name,
-            target_node,
-            target_edge,
-        )
+        self.add_edge(Self::INPUT_NODE, parameter_name, target_node, target_edge)
+    }
+
+    pub fn add_output_edge(
+        &mut self,
+        source_node: impl Into<String>,
+        source_edge: impl Into<String>,
+        output_name: impl Into<String>,
+    ) {
+        self.add_edge(source_node, source_edge, Self::OUTPUT_NODE, output_name)
     }
 
     pub fn add_edge(
@@ -221,35 +292,56 @@ impl AnimationGraph {
         target_node: impl Into<String>,
         target_edge: impl Into<String>,
     ) {
-        self.edges.insert(
+        self.node_edges.insert(
             (target_node.into(), target_edge.into()),
             (source_node.into(), source_edge.into()),
         );
     }
 
-    pub fn map_upwards_mut<SpecType, Data>(
+    fn map<SpecType, InputUp: Clone, OutputUp: Default, InputDown, OutputDown>(
         &self,
         node_name: &str,
         path_to_node: EdgePath,
         input_spec_extractor: SpecExtractor<SpecType>,
         recurse_spec_extractor: SpecExtractor<SpecType>,
-        output_extractor: OutputExtractor<Data>,
-        mapper: Mapper<HashMap<NodeInput, Data>, HashMap<NodeOutput, Data>>,
+        up: Option<UpFns<InputUp, OutputUp>>,
+        down: Option<DownFns<InputDown, OutputDown>>,
+        down_input: Option<InputDown>,
         context: &mut GraphContext,
         context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, Data>
-where {
-        let in_spec = input_spec_extractor(self.nodes.get(node_name).unwrap());
-        let recurse_spec = recurse_spec_extractor(self.nodes.get(node_name).unwrap());
+        overlay: &HashMap<String, AnimationNode>,
+    ) -> OutputUp {
+        let in_spec =
+            input_spec_extractor(self.nodes.get(node_name).unwrap(), context, context_tmp);
+        let recurse_spec =
+            recurse_spec_extractor(self.nodes.get(node_name).unwrap(), context, context_tmp);
 
-        let mut input: HashMap<NodeOutput, Data> = HashMap::new();
+        let mut node_stack = vec![];
+        if let Some(node) = overlay.get(node_name) {
+            node_stack.push(node);
+        }
+        if let Some(node) = self.nodes.get(node_name) {
+            node_stack.push(node);
+        }
+
+        let output_down = down.map(|down| {
+            (down.mapper)(
+                node_stack[0],
+                down_input.expect("Have down fns but missing down input"),
+                &path_to_node,
+                context,
+                context_tmp,
+            )
+        });
+
+        let mut input_up = up.map(|_| HashMap::new());
 
         for k in recurse_spec.keys() {
-            let (in_node_name, in_edge_name) = self
-                .edges
-                .get(&(node_name.into(), k.into()))
-                .expect(&format!("Missing edge into {node_name}.{k}"))
-                .clone();
+            let Some((in_node_name, in_edge_name)) =
+                self.node_edges.get(&(node_name.into(), k.into())).clone()
+            else {
+                continue;
+            };
 
             // Extend path to input node
             let mut new_path = path_to_node.clone();
@@ -258,76 +350,132 @@ where {
                 (node_name.to_string(), k.clone()),
             ));
 
-            let output = self.map_upwards_mut(
+            let new_down_input = down.map(|down| (down.prepare)(output_down.as_ref().unwrap(), k));
+
+            let output_up = self.map(
                 &in_node_name,
                 new_path,
                 input_spec_extractor,
                 recurse_spec_extractor,
-                output_extractor,
-                mapper,
+                up,
+                down,
+                new_down_input,
                 context,
                 context_tmp,
+                overlay,
             );
-            if in_spec.contains_key(k) {
-                let val = output_extractor(output, &in_edge_name);
-                input.insert(k.clone(), val);
+
+            if let Some(up) = up {
+                if in_spec.contains_key(k) {
+                    let val = (up.prepare)(&output_up, &in_edge_name);
+                    input_up.as_mut().unwrap().insert(k.clone(), val);
+                }
             }
         }
 
-        let node = self.nodes.get(node_name).unwrap();
-        mapper(node, input, &path_to_node, context, context_tmp)
-    }
-
-    pub fn map_downwards_mut<Data, SpecType>(
-        &self,
-        node_name: &str,
-        path_to_node: EdgePath,
-        input: Data,
-        spec_extractor: SpecExtractor<SpecType>,
-        mapper: Mapper<Data, HashMap<NodeInput, Data>>,
-        context: &mut GraphContext,
-        context_tmp: &mut GraphContextTmp,
-    ) -> ()
-where {
-        let node = self.nodes.get(node_name).unwrap();
-        let mut output = mapper(node, input, &path_to_node, context, context_tmp);
-        let backprop_specs = spec_extractor(node);
-
-        for k in backprop_specs.keys() {
-            let (in_node_name, in_edge_name) = self
-                .edges
-                .get(&(node_name.into(), k.into()))
-                .expect(&format!("Missing edge into {node_name}.{k}"))
-                .clone();
-
-            // Update path with new edge
-            let mut new_path = path_to_node.clone();
-            new_path.push((
-                (in_node_name.clone(), in_edge_name),
-                (node_name.to_string(), k.clone()),
-            ));
-
-            self.map_downwards_mut(
-                &in_node_name,
-                new_path,
-                output.remove(k).unwrap(),
-                spec_extractor,
-                mapper,
-                context,
-                context_tmp,
-            );
+        if let Some(up) = up {
+            node_stack
+                .iter()
+                .map(|node| {
+                    let input_up = input_up.clone();
+                    (up.mapper)(node, input_up.unwrap(), &path_to_node, context, context_tmp)
+                })
+                .reduce(|l, r| (up.combiner)(l, r))
+                .unwrap()
+        } else {
+            OutputUp::default()
         }
     }
 
+    fn map_up<SpecType, InputUp: Clone, OutputUp: Default>(
+        &self,
+        node_name: &str,
+        path_to_node: EdgePath,
+        input_spec_extractor: SpecExtractor<SpecType>,
+        recurse_spec_extractor: SpecExtractor<SpecType>,
+        up: UpFns<InputUp, OutputUp>,
+        context: &mut GraphContext,
+        context_tmp: &mut GraphContextTmp,
+        overlay: &HashMap<String, AnimationNode>,
+    ) -> OutputUp {
+        self.map::<SpecType, InputUp, OutputUp, (), ()>(
+            node_name,
+            path_to_node,
+            input_spec_extractor,
+            recurse_spec_extractor,
+            Some(up),
+            None,
+            None,
+            context,
+            context_tmp,
+            overlay,
+        )
+    }
+
+    fn map_down<SpecType, InputDown, OutputDown: Default>(
+        &self,
+        node_name: &str,
+        path_to_node: EdgePath,
+        input_spec_extractor: SpecExtractor<SpecType>,
+        recurse_spec_extractor: SpecExtractor<SpecType>,
+        down: DownFns<InputDown, OutputDown>,
+        down_input: InputDown,
+        context: &mut GraphContext,
+        context_tmp: &mut GraphContextTmp,
+        overlay: &HashMap<String, AnimationNode>,
+    ) {
+        self.map::<SpecType, (), (), InputDown, OutputDown>(
+            node_name,
+            path_to_node,
+            input_spec_extractor,
+            recurse_spec_extractor,
+            None,
+            Some(down),
+            Some(down_input),
+            context,
+            context_tmp,
+            overlay,
+        )
+    }
+
+    fn prepare_input_index_hashmap<T: Clone>(outputs: &HashMap<NodeOutput, T>, edge: &str) -> T {
+        outputs
+            .get(edge)
+            .expect(&format!("Edge output {} not found!", edge))
+            .clone()
+    }
+
+    fn combiner_hashmap<T>(
+        mut master: HashMap<String, T>,
+        mut slave: HashMap<String, T>,
+    ) -> HashMap<String, T> {
+        for (k, v) in slave.drain() {
+            if !master.contains_key(&k) {
+                master.insert(k, v);
+            }
+        }
+        master
+    }
+
     /// Which inputs are needed to calculate parameter output of this node
-    fn parameter_input_spec_extractor(n: &AnimationNode) -> HashMap<NodeInput, EdgeSpec> {
-        n.node.map(|n| n.parameter_input_spec())
+    fn parameter_input_spec_extractor(
+        n: &AnimationNode,
+        context: &mut GraphContext,
+        context_tmp: &mut GraphContextTmp,
+    ) -> HashMap<NodeInput, EdgeSpec> {
+        n.parameter_input_spec(context, context_tmp)
     }
 
     /// Which inputs should parameter recalculation be triggered for (superset of input spec)
-    fn parameter_recurse_spec_extractor(n: &AnimationNode) -> HashMap<NodeInput, EdgeSpec> {
-        let mut spec = n.parameter_input_spec();
-        spec.fill_up(&n.time_dependent_input_spec(), &|v| v.clone());
+    fn parameter_recurse_spec_extractor(
+        n: &AnimationNode,
+        context: &mut GraphContext,
+        context_tmp: &mut GraphContextTmp,
+    ) -> HashMap<NodeInput, EdgeSpec> {
+        let mut spec = n.parameter_input_spec(context, context_tmp);
+        spec.fill_up(&n.time_dependent_input_spec(context, context_tmp), &|v| {
+            v.clone()
+        });
         spec
     }
 
@@ -351,34 +499,38 @@ where {
         outputs
     }
 
-    fn parameter_output_extractor(
-        outputs: HashMap<NodeOutput, EdgeValue>,
-        edge: &str,
-    ) -> EdgeValue {
-        outputs.get(edge).unwrap().clone()
-    }
-
     pub fn parameter_pass(
         &self,
         node: &str,
+        path: EdgePath,
         context: &mut GraphContext,
         context_tmp: &mut GraphContextTmp,
+        overlay: &HashMap<String, AnimationNode>,
     ) {
-        self.map_upwards_mut(
+        self.map_up(
             node,
-            vec![],
+            path,
             Self::parameter_input_spec_extractor,
             Self::parameter_recurse_spec_extractor,
-            Self::parameter_output_extractor,
-            Self::parameter_mapper,
+            UpFns {
+                prepare: Self::prepare_input_index_hashmap,
+                mapper: Self::parameter_mapper,
+                combiner: Self::combiner_hashmap,
+            },
             context,
             context_tmp,
+            overlay,
         );
     }
 
     /// Which inputs are needed to calculate parameter output of this node
-    fn duration_input_spec_extractor(n: &AnimationNode) -> HashMap<NodeInput, EdgeSpec> {
-        n.node.map(|n| n.time_dependent_input_spec())
+    fn duration_input_spec_extractor(
+        n: &AnimationNode,
+        context: &mut GraphContext,
+        context_tmp: &mut GraphContextTmp,
+    ) -> HashMap<NodeInput, EdgeSpec> {
+        n.node
+            .map(|n| n.time_dependent_input_spec(context, context_tmp))
     }
 
     /// Computes node output and caches the result for later passes
@@ -394,39 +546,42 @@ where {
             .get_node_cache_or_insert_default(&n.name)
             .duration_cache = Some(DurationCache {
             upstream: inputs,
-            downstream: output,
+            downstream: output.clone(),
         });
 
-        HashMap::from([(String::from(""), output)])
-    }
-
-    fn duration_output_extractor(
-        outputs: HashMap<NodeOutput, Option<f32>>,
-        _edge: &str,
-    ) -> Option<f32> {
-        outputs.get("").unwrap().clone()
+        output
     }
 
     pub fn duration_pass(
         &self,
         node: &str,
+        path: EdgePath,
         context: &mut GraphContext,
         context_tmp: &mut GraphContextTmp,
+        overlay: &HashMap<String, AnimationNode>,
     ) {
-        self.map_upwards_mut(
+        self.map_up(
             node,
-            vec![],
+            path,
             Self::duration_input_spec_extractor,
             Self::duration_input_spec_extractor,
-            Self::duration_output_extractor,
-            Self::duration_mapper,
+            UpFns {
+                prepare: Self::prepare_input_index_hashmap,
+                mapper: Self::duration_mapper,
+                combiner: Self::combiner_hashmap,
+            },
             context,
             context_tmp,
+            overlay,
         );
     }
 
-    fn time_spec_extractor(n: &AnimationNode) -> HashMap<NodeInput, EdgeSpec> {
-        n.time_dependent_input_spec()
+    fn time_spec_extractor(
+        n: &AnimationNode,
+        context: &mut GraphContext,
+        context_tmp: &mut GraphContextTmp,
+    ) -> HashMap<NodeInput, EdgeSpec> {
+        n.time_dependent_input_spec(context, context_tmp)
     }
 
     fn time_mapper(
@@ -460,24 +615,35 @@ where {
     pub fn time_pass(
         &self,
         node: &str,
+        path: EdgePath,
         time_update: TimeUpdate,
         context: &mut GraphContext,
         context_tmp: &mut GraphContextTmp,
+        overlay: &HashMap<String, AnimationNode>,
     ) {
-        self.map_downwards_mut(
+        self.map_down(
             node,
-            vec![],
-            time_update,
+            path,
             Self::time_spec_extractor,
-            Self::time_mapper,
+            Self::time_spec_extractor,
+            DownFns {
+                prepare: Self::prepare_input_index_hashmap,
+                mapper: Self::time_mapper,
+            },
+            time_update,
             context,
             context_tmp,
+            overlay,
         );
     }
 
     /// Which inputs are needed to calculate time-dependent output of this node
-    fn time_dependent_input_spec_extractor(n: &AnimationNode) -> HashMap<NodeInput, EdgeSpec> {
-        n.time_dependent_input_spec()
+    fn time_dependent_input_spec_extractor(
+        n: &AnimationNode,
+        context: &mut GraphContext,
+        context_tmp: &mut GraphContextTmp,
+    ) -> HashMap<NodeInput, EdgeSpec> {
+        n.time_dependent_input_spec(context, context_tmp)
     }
 
     /// Computes node output and caches the result for later passes
@@ -504,28 +670,27 @@ where {
         outputs
     }
 
-    fn time_dependent_output_extractor(
-        outputs: HashMap<NodeOutput, EdgeValue>,
-        edge: &str,
-    ) -> EdgeValue {
-        outputs.get(edge).unwrap().clone()
-    }
-
     pub fn time_dependent_pass(
         &self,
         node: &str,
+        path: EdgePath,
         context: &mut GraphContext,
         context_tmp: &mut GraphContextTmp,
+        overlay: &HashMap<String, AnimationNode>,
     ) -> HashMap<NodeOutput, EdgeValue> {
-        self.map_upwards_mut(
+        self.map_up(
             node,
-            vec![],
+            path,
             Self::time_dependent_input_spec_extractor,
             Self::time_dependent_input_spec_extractor,
-            Self::time_dependent_output_extractor,
-            Self::time_dependent_mapper,
+            UpFns {
+                prepare: Self::prepare_input_index_hashmap,
+                mapper: Self::time_dependent_mapper,
+                combiner: Self::combiner_hashmap,
+            },
             context,
             context_tmp,
+            overlay,
         )
     }
 
@@ -536,19 +701,30 @@ where {
         context_tmp: &mut GraphContextTmp,
     ) -> Pose {
         context.push_caches();
-        let out_node = &self.out_node.clone();
-        self.parameter_pass(out_node, context, context_tmp);
-        self.duration_pass(out_node, context, context_tmp);
-        self.time_pass(out_node, time_update, context, context_tmp);
-        let mut final_output = self.time_dependent_pass(out_node, context, context_tmp);
-
+        let overlay = HashMap::new();
+        self.parameter_pass(Self::OUTPUT_NODE, vec![], context, context_tmp, &overlay);
+        // self.dot_to_tmp_file(Some(context)).unwrap();
+        self.duration_pass(Self::OUTPUT_NODE, vec![], context, context_tmp, &overlay);
+        self.time_pass(
+            Self::OUTPUT_NODE,
+            vec![],
+            time_update,
+            context,
+            context_tmp,
+            &overlay,
+        );
+        self.time_dependent_pass(Self::OUTPUT_NODE, vec![], context, context_tmp, &overlay);
         // self.dot_to_tmp_file(Some(context)).unwrap();
 
-        let final_frame = final_output
-            .remove(&self.out_edge)
+        let output = context
+            .get_time_dependent(Self::OUTPUT_NODE, &vec![])
             .unwrap()
+            .upstream
+            .get(self.default_output.as_ref().unwrap())
+            .unwrap()
+            .clone()
             .unwrap_pose_frame();
 
-        final_frame.sample_linear()
+        output.sample_linear()
     }
 }

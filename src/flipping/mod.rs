@@ -9,7 +9,7 @@ pub trait FlipXBySuffix {
 }
 
 impl FlipXBySuffix for ValueFrame<Vec3> {
-    fn flipped_by_suffix(&self, suffix_1: String, suffix_2: String) -> Self {
+    fn flipped_by_suffix(&self, _suffix_1: String, _suffix_2: String) -> Self {
         let mut out = self.clone();
 
         out.prev.x *= -1.;
@@ -20,7 +20,7 @@ impl FlipXBySuffix for ValueFrame<Vec3> {
 }
 
 impl FlipXBySuffix for ValueFrame<Quat> {
-    fn flipped_by_suffix(&self, suffix_1: String, suffix_2: String) -> Self {
+    fn flipped_by_suffix(&self, _suffix_1: String, _suffix_2: String) -> Self {
         let mut out = self.clone();
 
         out.prev.x *= -1.;

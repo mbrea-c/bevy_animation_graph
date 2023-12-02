@@ -119,19 +119,9 @@ fn keyboard_animation_control(
             continue;
         };
 
-        let graph = animation_graphs.get_mut(graph_handle).unwrap();
-
-        let run_stride_length = 0.8;
-        let walk_stride_length = 0.3;
-
-        let blend_range = (1., 3.);
-
-        let speed_fac_for_speed_alpha = |alpha: f32, speed: f32| {
-            speed / (walk_stride_length * (1. - alpha) + run_stride_length * alpha)
+        let Some(graph) = animation_graphs.get_mut(graph_handle) else {
+            continue;
         };
-
-        let alpha_for_speed =
-            |speed: f32| ((speed - blend_range.0) / (blend_range.1 - blend_range.0)).clamp(0., 1.);
 
         if keyboard_input.pressed(KeyCode::Up) {
             *velocity += 0.5 * time.delta_seconds();
@@ -144,10 +134,6 @@ fn keyboard_animation_control(
 
         *velocity = velocity.max(0.);
 
-        let alpha = alpha_for_speed(*velocity);
-        let k = speed_fac_for_speed_alpha(alpha, *velocity);
-
-        graph.set_parameter("Blend Alpha", alpha.into());
-        graph.set_parameter("Speed factor", k.into());
+        graph.set_input_parameter("Target Speed", (*velocity).into());
     }
 }

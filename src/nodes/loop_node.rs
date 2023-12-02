@@ -41,8 +41,8 @@ impl NodeLike for LoopNode {
         _path: &EdgePath,
         _context: &mut GraphContext,
         _context_tmp: &mut GraphContextTmp,
-    ) -> Option<f32> {
-        None
+    ) -> HashMap<NodeOutput, Option<f32>> {
+        HashMap::from([(Self::OUTPUT.into(), None)])
     }
 
     fn time_pass(
@@ -98,23 +98,39 @@ impl NodeLike for LoopNode {
         HashMap::from([(Self::OUTPUT.into(), EdgeValue::PoseFrame(in_pose_frame))])
     }
 
-    fn parameter_input_spec(&self) -> HashMap<NodeInput, EdgeSpec> {
+    fn parameter_input_spec(
+        &self,
+        _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
+    ) -> HashMap<NodeInput, EdgeSpec> {
         HashMap::new()
     }
 
-    fn parameter_output_spec(&self) -> HashMap<NodeOutput, EdgeSpec> {
+    fn parameter_output_spec(
+        &self,
+        _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
+    ) -> HashMap<NodeOutput, EdgeSpec> {
         HashMap::new()
     }
 
-    fn duration_input_spec(&self) -> HashMap<NodeInput, ()> {
-        HashMap::from([(Self::INPUT.into(), ())])
-    }
-
-    fn time_dependent_input_spec(&self) -> HashMap<NodeInput, EdgeSpec> {
+    fn time_dependent_input_spec(
+        &self,
+        _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
+    ) -> HashMap<NodeInput, EdgeSpec> {
         HashMap::from([(Self::INPUT.into(), EdgeSpec::PoseFrame)])
     }
 
-    fn time_dependent_output_spec(&self) -> HashMap<NodeOutput, EdgeSpec> {
+    fn time_dependent_output_spec(
+        &self,
+        _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
+    ) -> HashMap<NodeOutput, EdgeSpec> {
         HashMap::from([(Self::OUTPUT.into(), EdgeSpec::PoseFrame)])
+    }
+
+    fn display_name(&self) -> String {
+        "🗘 Loop".into()
     }
 }

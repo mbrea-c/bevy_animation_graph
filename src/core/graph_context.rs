@@ -10,6 +10,8 @@ pub struct GraphContext {
     /// Caches are double buffered
     caches: [HashMap<String, AnimationCaches>; 2],
     current_cache: usize,
+    #[reflect(ignore)]
+    subgraph_contexts: HashMap<String, GraphContext>,
 }
 
 impl Default for GraphContext {
@@ -17,6 +19,7 @@ impl Default for GraphContext {
         Self {
             caches: [HashMap::default(), HashMap::default()],
             current_cache: 0,
+            subgraph_contexts: HashMap::default(),
         }
     }
 }
@@ -116,5 +119,14 @@ impl GraphContext {
         }
 
         caches.get_mut(node).unwrap()
+    }
+
+    pub fn context_for_subgraph_or_insert_default(&mut self, node: &str) -> &mut GraphContext {
+        if !self.subgraph_contexts.contains_key(node) {
+            self.subgraph_contexts
+                .insert(node.to_string(), GraphContext::default());
+        }
+
+        self.subgraph_contexts.get_mut(node).unwrap()
     }
 }

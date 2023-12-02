@@ -12,8 +12,8 @@ use bevy::utils::HashMap;
 
 #[derive(Reflect, Clone, Debug)]
 pub struct ClipNode {
-    clip: Handle<GraphClip>,
-    override_duration: Option<f32>,
+    pub(crate) clip: Handle<GraphClip>,
+    pub(crate) override_duration: Option<f32>,
 }
 
 impl ClipNode {
@@ -62,8 +62,8 @@ impl NodeLike for ClipNode {
         _path: &EdgePath,
         _context: &mut GraphContext,
         context_tmp: &mut GraphContextTmp,
-    ) -> Option<f32> {
-        Some(self.clip_duration(context_tmp))
+    ) -> HashMap<NodeOutput, Option<f32>> {
+        HashMap::from([(Self::OUTPUT.into(), Some(self.clip_duration(context_tmp)))])
     }
 
     fn time_pass(
@@ -197,23 +197,39 @@ impl NodeLike for ClipNode {
         HashMap::from([(Self::OUTPUT.into(), EdgeValue::PoseFrame(animation_frame))])
     }
 
-    fn parameter_input_spec(&self) -> HashMap<NodeInput, EdgeSpec> {
+    fn parameter_input_spec(
+        &self,
+        _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
+    ) -> HashMap<NodeInput, EdgeSpec> {
         HashMap::new()
     }
 
-    fn parameter_output_spec(&self) -> HashMap<NodeOutput, EdgeSpec> {
+    fn parameter_output_spec(
+        &self,
+        _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
+    ) -> HashMap<NodeOutput, EdgeSpec> {
         HashMap::new()
     }
 
-    fn duration_input_spec(&self) -> HashMap<NodeInput, ()> {
+    fn time_dependent_input_spec(
+        &self,
+        _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
+    ) -> HashMap<NodeInput, EdgeSpec> {
         HashMap::new()
     }
 
-    fn time_dependent_input_spec(&self) -> HashMap<NodeInput, EdgeSpec> {
-        HashMap::new()
-    }
-
-    fn time_dependent_output_spec(&self) -> HashMap<NodeOutput, EdgeSpec> {
+    fn time_dependent_output_spec(
+        &self,
+        _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
+    ) -> HashMap<NodeOutput, EdgeSpec> {
         return HashMap::from([(Self::OUTPUT.into(), EdgeSpec::PoseFrame)]);
+    }
+
+    fn display_name(&self) -> String {
+        "⏵ Animation Clip".into()
     }
 }

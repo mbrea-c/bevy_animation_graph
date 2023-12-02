@@ -41,7 +41,7 @@ impl NodeLike for SpeedNode {
         _path: &EdgePath,
         context: &mut GraphContext,
         _context_tmp: &mut GraphContextTmp,
-    ) -> Option<f32> {
+    ) -> HashMap<NodeOutput, Option<f32>> {
         let parameters = context.get_parameters(name).unwrap();
         let speed = parameters
             .upstream
@@ -50,7 +50,7 @@ impl NodeLike for SpeedNode {
             .clone()
             .unwrap_f32();
 
-        if speed == 0. {
+        let out_duration = if speed == 0. {
             None
         } else {
             let duration = inputs.get(Self::INPUT).unwrap();
@@ -59,7 +59,9 @@ impl NodeLike for SpeedNode {
             } else {
                 None
             }
-        }
+        };
+
+        HashMap::from([(Self::OUTPUT.into(), out_duration)])
     }
 
     fn time_pass(
@@ -108,23 +110,39 @@ impl NodeLike for SpeedNode {
         HashMap::from([(Self::OUTPUT.into(), EdgeValue::PoseFrame(in_pose_frame))])
     }
 
-    fn parameter_input_spec(&self) -> HashMap<NodeInput, EdgeSpec> {
+    fn parameter_input_spec(
+        &self,
+        _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
+    ) -> HashMap<NodeInput, EdgeSpec> {
         HashMap::from([(Self::SPEED.into(), EdgeSpec::F32)])
     }
 
-    fn parameter_output_spec(&self) -> HashMap<NodeOutput, EdgeSpec> {
+    fn parameter_output_spec(
+        &self,
+        _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
+    ) -> HashMap<NodeOutput, EdgeSpec> {
         HashMap::new()
     }
 
-    fn duration_input_spec(&self) -> HashMap<NodeInput, ()> {
-        HashMap::from([(Self::INPUT.into(), ())])
-    }
-
-    fn time_dependent_input_spec(&self) -> HashMap<NodeInput, EdgeSpec> {
+    fn time_dependent_input_spec(
+        &self,
+        _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
+    ) -> HashMap<NodeInput, EdgeSpec> {
         HashMap::from([(Self::INPUT.into(), EdgeSpec::PoseFrame)])
     }
 
-    fn time_dependent_output_spec(&self) -> HashMap<NodeOutput, EdgeSpec> {
+    fn time_dependent_output_spec(
+        &self,
+        _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
+    ) -> HashMap<NodeOutput, EdgeSpec> {
         HashMap::from([(Self::OUTPUT.into(), EdgeSpec::PoseFrame)])
+    }
+
+    fn display_name(&self) -> String {
+        "󰓅 Speed".into()
     }
 }

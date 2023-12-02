@@ -14,8 +14,11 @@ impl DummyNode {
         Self {}
     }
 
-    pub fn wrapped(self, name: String) -> AnimationNode {
-        AnimationNode::new_from_nodetype(name, AnimationNodeType::Custom(CustomNode::new(self)))
+    pub fn wrapped(self, name: impl Into<String>) -> AnimationNode {
+        AnimationNode::new_from_nodetype(
+            name.into(),
+            AnimationNodeType::Custom(CustomNode::new(self)),
+        )
     }
 }
 
@@ -38,8 +41,8 @@ impl NodeLike for DummyNode {
         _path: &EdgePath,
         _context: &mut GraphContext,
         _context_tmp: &mut GraphContextTmp,
-    ) -> Option<f32> {
-        None
+    ) -> HashMap<NodeOutput, Option<f32>> {
+        HashMap::new()
     }
 
     fn time_pass(
@@ -64,23 +67,39 @@ impl NodeLike for DummyNode {
         HashMap::new()
     }
 
-    fn parameter_input_spec(&self) -> HashMap<NodeInput, EdgeSpec> {
+    fn parameter_input_spec(
+        &self,
+        _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
+    ) -> HashMap<NodeInput, EdgeSpec> {
         HashMap::new()
     }
 
-    fn parameter_output_spec(&self) -> HashMap<NodeOutput, EdgeSpec> {
+    fn parameter_output_spec(
+        &self,
+        _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
+    ) -> HashMap<NodeOutput, EdgeSpec> {
         HashMap::new()
     }
 
-    fn duration_input_spec(&self) -> HashMap<NodeInput, ()> {
+    fn time_dependent_input_spec(
+        &self,
+        _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
+    ) -> HashMap<NodeInput, EdgeSpec> {
         HashMap::new()
     }
 
-    fn time_dependent_input_spec(&self) -> HashMap<NodeInput, EdgeSpec> {
+    fn time_dependent_output_spec(
+        &self,
+        _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
+    ) -> HashMap<NodeOutput, EdgeSpec> {
         HashMap::new()
     }
 
-    fn time_dependent_output_spec(&self) -> HashMap<NodeOutput, EdgeSpec> {
-        HashMap::new()
+    fn display_name(&self) -> String {
+        "Dummy".into()
     }
 }

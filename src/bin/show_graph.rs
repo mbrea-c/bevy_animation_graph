@@ -1,5 +1,9 @@
 use bevy::{app::AppExit, prelude::*};
-use bevy_animation_graph::core::animation_graph::{AnimationGraph, ToDot};
+use bevy_animation_graph::core::{
+    animation_clip::GraphClip,
+    animation_graph::{AnimationGraph, ToDot},
+    graph_context::GraphContextTmp,
+};
 use std::env;
 
 fn main() {
@@ -11,11 +15,18 @@ fn main() {
 
     App::new()
         .add_plugins((
-            AssetPlugin::default(),
+            // TODO: Figure out the minimal set of plugins needed
+            // to make this work
+            DefaultPlugins,
+            // LogPlugin::default(),
+            // TimePlugin::default(),
+            // TaskPoolPlugin::default(),
+            // AssetPlugin::default(),
+            // GltfPlugin::default(),
             bevy_animation_graph::animation::AnimationPlugin,
         ))
         .insert_resource(TargetGraph {
-            name: args[0].clone(),
+            name: args[1].clone(),
             handle: None,
         })
         .add_systems(Startup, load_graph)
@@ -37,6 +48,7 @@ fn load_graph(mut target_graph: ResMut<TargetGraph>, asset_server: Res<AssetServ
 fn show_graph(
     target_graph: Res<TargetGraph>,
     animation_graph_assets: Res<Assets<AnimationGraph>>,
+    graph_clip_assets: Res<Assets<GraphClip>>,
     asset_server: Res<AssetServer>,
     mut exit: EventWriter<AppExit>,
 ) {
@@ -44,12 +56,24 @@ fn show_graph(
         bevy::asset::RecursiveDependencyLoadState::NotLoaded => {}
         bevy::asset::RecursiveDependencyLoadState::Loading => {}
         bevy::asset::RecursiveDependencyLoadState::Loaded => {
+            info!("Graph {} loaded", target_graph.name);
             let graph = animation_graph_assets
                 .get(target_graph.handle.as_ref().unwrap())
                 .unwrap();
-            graph.dot_to_tmp_file_and_open(None).unwrap();
+
+            let mut context_tmp = GraphContextTmp {
+                graph_clip_assets: &graph_clip_assets,
+                animation_graph_assets: &animation_graph_assets,
+            };
+
+            graph
+                .dot_to_tmp_file_and_open(None, &mut context_tmp)
+                .unwrap();
+
             exit.send(AppExit);
         }
-        bevy::asset::RecursiveDependencyLoadState::Failed => panic!("Failed to load graph"),
+        bevy::asset::RecursiveDependencyLoadState::Failed => {
+            panic!("Failed to load graph {}", target_graph.name)
+        }
     };
 }

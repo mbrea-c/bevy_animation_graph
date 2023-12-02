@@ -44,16 +44,18 @@ impl NodeLike for BlendNode {
         _path: &EdgePath,
         _context: &mut GraphContext,
         _context_tmp: &mut GraphContextTmp,
-    ) -> Option<f32> {
+    ) -> HashMap<NodeOutput, Option<f32>> {
         let duration_1 = *inputs.get(Self::INPUT_1.into()).unwrap();
         let duration_2 = *inputs.get(Self::INPUT_2.into()).unwrap();
 
-        match (duration_1, duration_2) {
+        let out_duration = match (duration_1, duration_2) {
             (Some(duration_1), Some(duration_2)) => Some(duration_1.max(duration_2)),
             (Some(duration_1), None) => Some(duration_1),
             (None, Some(duration_2)) => Some(duration_2),
             (None, None) => None,
-        }
+        };
+
+        HashMap::from([(Self::OUTPUT.into(), out_duration)])
     }
 
     fn time_pass(
@@ -103,26 +105,42 @@ impl NodeLike for BlendNode {
         )])
     }
 
-    fn parameter_input_spec(&self) -> HashMap<NodeInput, EdgeSpec> {
+    fn parameter_input_spec(
+        &self,
+        _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
+    ) -> HashMap<NodeInput, EdgeSpec> {
         HashMap::from([(Self::FACTOR.into(), EdgeSpec::F32)])
     }
 
-    fn parameter_output_spec(&self) -> HashMap<NodeOutput, EdgeSpec> {
+    fn parameter_output_spec(
+        &self,
+        _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
+    ) -> HashMap<NodeOutput, EdgeSpec> {
         HashMap::new()
     }
 
-    fn duration_input_spec(&self) -> HashMap<NodeInput, ()> {
-        HashMap::from([(Self::INPUT_1.into(), ()), (Self::INPUT_2.into(), ())])
-    }
-
-    fn time_dependent_input_spec(&self) -> HashMap<NodeInput, EdgeSpec> {
+    fn time_dependent_input_spec(
+        &self,
+        _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
+    ) -> HashMap<NodeInput, EdgeSpec> {
         HashMap::from([
             (Self::INPUT_1.into(), EdgeSpec::PoseFrame),
             (Self::INPUT_2.into(), EdgeSpec::PoseFrame),
         ])
     }
 
-    fn time_dependent_output_spec(&self) -> HashMap<NodeOutput, EdgeSpec> {
+    fn time_dependent_output_spec(
+        &self,
+        _context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
+    ) -> HashMap<NodeOutput, EdgeSpec> {
         HashMap::from([(Self::OUTPUT.into(), EdgeSpec::PoseFrame)])
+    }
+
+    fn display_name(&self) -> String {
+        "󰳫 Blend".into()
     }
 }

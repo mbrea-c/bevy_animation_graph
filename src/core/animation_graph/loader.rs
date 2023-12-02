@@ -1,9 +1,10 @@
-use super::{AnimationGraph, EdgeValue};
+use super::{AnimationGraph, EdgeSpec, EdgeValue};
 use crate::{
     core::animation_clip::GraphClip,
     nodes::{
-        blend_node::BlendNode, chain_node::ChainNode, clip_node::ClipNode,
-        flip_lr_node::FlipLRNode, loop_node::LoopNode, speed_node::SpeedNode,
+        blend_node::BlendNode, chain_node::ChainNode, clamp_f32::ClampF32, clip_node::ClipNode,
+        flip_lr_node::FlipLRNode, loop_node::LoopNode, speed_node::SpeedNode, sub_f32::SubF32,
+        AddF32, DivF32, GraphNode, MulF32,
     },
     utils::asset_loader_error::AssetLoaderError,
 };
@@ -87,14 +88,24 @@ impl AssetLoader for GraphClipLoader {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct AnimationGraphSerial {
     nodes: Vec<AnimationNodeSerial>,
+    #[serde(default)]
+    input_parameters: HashMap<String, EdgeValue>,
+    #[serde(default)]
+    input_time_dependent_spec: HashMap<String, EdgeSpec>,
+    #[serde(default)]
+    output_parameter_spec: HashMap<String, EdgeSpec>,
+    #[serde(default)]
+    output_time_dependent_spec: HashMap<String, EdgeSpec>,
     /// (from_node, from_out_edge) -> (to_node, to_in_edge)
     /// Note that this is the opposite as [`AnimationGraph`] in order to make
     /// construction easier, and hand-editing of graph files more natural.
     edges: Vec<((String, String), (String, String))>,
-    parameters: HashMap<String, EdgeValue>,
     /// parameter_name -> (to_node, to_in_edge)
-    parameter_edges: HashMap<String, (String, String)>,
-    output: (String, String),
+    input_edges: Vec<(String, (String, String))>,
+    output_edges: Vec<((String, String), String)>,
+
+    #[serde(default)]
+    default_output: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -111,7 +122,12 @@ pub enum AnimationNodeTypeSerial {
     FlipLR,
     Loop,
     Speed,
-    // Graph(#[reflect(ignore)] AnimationGraph),
+    AddF32,
+    SubF32,
+    MulF32,
+    DivF32,
+    ClampF32,
+    Graph(String),
 }
 
 #[derive(Default)]
@@ -146,6 +162,14 @@ impl AssetLoader for AnimationGraphLoader {
                     AnimationNodeTypeSerial::FlipLR => FlipLRNode::new().wrapped(&serial_node.name),
                     AnimationNodeTypeSerial::Loop => LoopNode::new().wrapped(&serial_node.name),
                     AnimationNodeTypeSerial::Speed => SpeedNode::new().wrapped(&serial_node.name),
+                    AnimationNodeTypeSerial::AddF32 => AddF32::new().wrapped(&serial_node.name),
+                    AnimationNodeTypeSerial::SubF32 => SubF32::new().wrapped(&serial_node.name),
+                    AnimationNodeTypeSerial::MulF32 => MulF32::new().wrapped(&serial_node.name),
+                    AnimationNodeTypeSerial::DivF32 => DivF32::new().wrapped(&serial_node.name),
+                    AnimationNodeTypeSerial::ClampF32 => ClampF32::new().wrapped(&serial_node.name),
+                    AnimationNodeTypeSerial::Graph(graph_name) => {
+                        GraphNode::new(load_context.load(graph_name)).wrapped(&serial_node.name)
+                    }
                 };
                 graph.add_node(node);
             }
@@ -154,16 +178,33 @@ impl AssetLoader for AnimationGraphLoader {
                 graph.add_edge(source_node, source_edge, target_node, target_edge);
             }
 
-            for (parameter_name, parameter_value) in &serial.parameters {
-                graph.set_parameter(parameter_name, parameter_value.clone());
+            for (parameter_name, parameter_value) in &serial.input_parameters {
+                graph.set_input_parameter(parameter_name, parameter_value.clone());
             }
 
-            for (parameter_name, (target_node, target_edge)) in &serial.parameter_edges {
-                graph.add_parameter_edge(parameter_name, target_node, target_edge);
+            for (td_name, td_spec) in &serial.input_time_dependent_spec {
+                graph.register_input_td(td_name, td_spec.clone());
             }
 
-            let (output_node, output_edge) = &serial.output;
-            graph.set_out_edge(output_node, output_edge);
+            for (p_name, p_spec) in &serial.output_parameter_spec {
+                graph.register_output_parameter(p_name, p_spec.clone());
+            }
+
+            for (td_name, td_spec) in &serial.output_time_dependent_spec {
+                graph.register_output_td(td_name, td_spec.clone());
+            }
+
+            for (parameter_name, (target_node, target_edge)) in &serial.input_edges {
+                graph.add_input_edge(parameter_name, target_node, target_edge);
+            }
+
+            for ((source_node, source_edge), output_name) in &serial.output_edges {
+                graph.add_output_edge(source_node, source_edge, output_name);
+            }
+
+            if let Some(def_output) = &serial.default_output {
+                graph.set_default_output(def_output);
+            }
 
             Ok(graph)
         })

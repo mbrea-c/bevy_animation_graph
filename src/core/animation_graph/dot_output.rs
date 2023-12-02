@@ -4,8 +4,9 @@ use crate::{
     core::{
         animation_node::{AnimationNode, NodeLike},
         frame::{BoneFrame, PoseFrame, ValueFrame},
-        graph_context::GraphContext,
+        graph_context::{GraphContext, GraphContextTmp},
     },
+    nodes::{ClipNode, GraphNode},
 };
 use bevy::{
     reflect::{FromReflect, TypePath},
@@ -21,17 +22,22 @@ pub trait ToDot {
     fn to_dot(
         &self,
         f: &mut impl std::io::Write,
-        context: Option<&GraphContext>,
+        context: Option<&mut GraphContext>,
+        context_tmp: &mut GraphContextTmp,
     ) -> std::io::Result<()>;
 
-    fn preview_dot(&self, context: Option<&GraphContext>) -> std::io::Result<()> {
+    fn preview_dot(
+        &self,
+        context: Option<&mut GraphContext>,
+        context_tmp: &mut GraphContextTmp,
+    ) -> std::io::Result<()> {
         let dir = std::env::temp_dir();
         let path = dir.join("bevy_animation_graph_dot.dot");
 
         let file = File::create(&path)?;
         let mut writer = BufWriter::new(file);
 
-        self.to_dot(&mut writer, context)?;
+        self.to_dot(&mut writer, context, context_tmp)?;
         writer.get_mut().sync_all()?;
 
         let dot = Command::new("dot")
@@ -46,8 +52,12 @@ pub trait ToDot {
         Ok(())
     }
 
-    fn dot_to_tmp_file_and_open(&self, context: Option<&GraphContext>) -> std::io::Result<()> {
-        self.dot_to_tmp_file(context)?;
+    fn dot_to_tmp_file_and_open(
+        &self,
+        context: Option<&mut GraphContext>,
+        context_tmp: &mut GraphContextTmp,
+    ) -> std::io::Result<()> {
+        self.dot_to_tmp_file(context, context_tmp)?;
 
         Command::new("zathura")
             .args(["/tmp/bevy_animation_graph_dot.dot.pdf"])
@@ -56,7 +66,11 @@ pub trait ToDot {
         Ok(())
     }
 
-    fn dot_to_tmp_file(&self, context: Option<&GraphContext>) -> std::io::Result<()> {
+    fn dot_to_tmp_file(
+        &self,
+        context: Option<&mut GraphContext>,
+        context_tmp: &mut GraphContextTmp,
+    ) -> std::io::Result<()> {
         let path = "/tmp/bevy_animation_graph_dot.dot";
         let pdf_path = "/tmp/bevy_animation_graph_dot.dot.pdf";
         let pdf_path_alt = "/tmp/bevy_animation_graph_dot.dot.pdf_alt";
@@ -64,7 +78,7 @@ pub trait ToDot {
         {
             let file = File::create(&path)?;
             let mut writer = BufWriter::new(file);
-            self.to_dot(&mut writer, context)?;
+            self.to_dot(&mut writer, context, context_tmp)?;
         }
 
         {
@@ -87,7 +101,7 @@ fn write_col(f: &mut impl std::io::Write, row: HashMap<String, EdgeSpec>) -> std
         for (param_name, param_spec) in row.iter() {
             let icon = match param_spec {
                 EdgeSpec::PoseFrame => String::from("🯅"),
-                EdgeSpec::F32 => String::from("#"),
+                EdgeSpec::F32 => String::from(""),
             };
 
             write!(
@@ -279,11 +293,23 @@ impl ToDot for AnimationGraph {
     fn to_dot(
         &self,
         f: &mut impl std::io::Write,
-        context: Option<&GraphContext>,
+        mut context: Option<&mut GraphContext>,
+        context_tmp: &mut GraphContextTmp,
     ) -> std::io::Result<()> {
         writeln!(f, "digraph {{")?;
         writeln!(f, "\trankdir=LR;")?;
         writeln!(f, "\tnode [style=rounded, shape=plain];")?;
+
+        let mut default_graph_context = GraphContext::default();
+        let mut has_ctx = false;
+
+        let ctx = if let Some(context) = &mut context {
+            has_ctx = true;
+
+            context
+        } else {
+            &mut default_graph_context
+        };
 
         for (name, node) in self.nodes.iter() {
             write!(
@@ -293,38 +319,62 @@ impl ToDot for AnimationGraph {
             )?;
             write!(
                 f,
-                "<TR><TD COLSPAN=\"2\"><B>{}</B><BR/><i>{}</i></TD></TR>",
+                "<TR><TD COLSPAN=\"2\"><B>{}</B><BR/><i>{}</i>",
                 name,
-                node.node_type_str()
+                node.display_name()
             )?;
 
-            let in_param = node.parameter_input_spec();
-            let out_param = node.parameter_output_spec();
+            match &node.node {
+                crate::core::animation_node::AnimationNodeType::Clip(ClipNode { clip, .. }) => {
+                    write!(
+                        f,
+                        "<br/><sub><i>{}</i></sub><br/><br/>",
+                        clip.path().unwrap()
+                    )?;
+                }
+                crate::core::animation_node::AnimationNodeType::Graph(GraphNode {
+                    graph, ..
+                }) => {
+                    write!(
+                        f,
+                        "<br/><sub><i>{}</i></sub><br/><br/>",
+                        graph.path().unwrap()
+                    )?;
+                }
+                _ => {}
+            };
+            write!(f, "</TD></TR>",)?;
 
-            let in_td = node.time_dependent_input_spec();
-            let out_td = node.time_dependent_output_spec();
+            let in_param = node.parameter_input_spec(ctx, context_tmp);
+            let out_param = node.parameter_output_spec(ctx, context_tmp);
+
+            let in_td = node.time_dependent_input_spec(ctx, context_tmp);
+            let out_td = node.time_dependent_output_spec(ctx, context_tmp);
 
             write_rows(f, in_param, out_param)?;
             write_rows(f, in_td, out_td)?;
 
-            if let Some(context) = context {
-                write_debugdump(f, node, context)?;
+            if has_ctx {
+                write_debugdump(f, node, ctx)?;
             }
 
             writeln!(f, "</TABLE>>]")?;
         }
 
-        writeln!(f, "OUTPUT [shape=cds];")?;
-        writeln!(
-            f,
-            "\t\"{}\":\"{}\" -> OUTPUT;",
-            self.out_node, self.out_edge
-        )?;
+        // TODO: Mark default output
+        // writeln!(f, "OUTPUT [shape=cds];")?;
+        // writeln!(
+        //     f,
+        //     "\t\"{}\":\"{}\" -> OUTPUT;",
+        //     self.out_node, self.out_edge
+        // )?;
 
-        for ((end_node, end_edge), (start_node, start_edge)) in self.edges.iter() {
+        for ((end_node, end_edge), (start_node, start_edge)) in self.node_edges.iter() {
             let node = self.nodes.get(start_node).unwrap();
-            let mut spec = node.parameter_output_spec();
-            spec.fill_up(&node.time_dependent_output_spec(), &|v| v.clone());
+            let mut spec = node.parameter_output_spec(ctx, context_tmp);
+            spec.fill_up(&node.time_dependent_output_spec(ctx, context_tmp), &|v| {
+                v.clone()
+            });
             let tp = spec.get(start_edge).unwrap();
             let color = match tp {
                 EdgeSpec::PoseFrame => "chartreuse4",

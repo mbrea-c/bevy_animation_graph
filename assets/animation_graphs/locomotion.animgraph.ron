@@ -9,17 +9,23 @@
         (name: "Blend", node: Blend), 
         (name: "Loop", node: Loop), 
         (name: "Speed", node: Speed), 
+
+        (name: "Param graph", node: Graph("animation_graphs/velocity_to_params.animgraph.ron")),
     ],
-    output: ("Speed", "Pose Out"),
-    parameters: {
-        "Blend Alpha": F32(0.5),
-        "Speed factor": F32(1.0),
+    input_parameters: {
+        "Target Speed": F32(1.5),
     },
-    parameter_edges: {
-        "Blend Alpha": ("Blend", "Factor"),
-        "Speed factor": ("Speed", "Speed"),
+    output_time_dependent_spec: {
+        "Pose": PoseFrame,
     },
+    input_edges: [
+        // Alpha parameters
+        ("Target Speed", ("Param graph", "Target Speed")),
+    ],
     edges: [
+        (("Param graph", "blend_fac"),("Blend", "Factor")),
+        (("Param graph", "speed_fac"),("Speed", "Speed")),
+
         (("Walk Clip", "Pose Out"), ("Walk Flip LR", "Pose In")),
         (("Walk Clip", "Pose Out"), ("Walk Chain", "Pose In 1")),
         (("Walk Flip LR", "Pose Out"), ("Walk Chain", "Pose In 2")),
@@ -31,4 +37,8 @@
         (("Blend", "Pose Out"), ("Loop", "Pose In")),
         (("Loop", "Pose Out"), ("Speed", "Pose In")),
     ],
+    output_edges: [
+        (("Speed", "Pose Out"), "Pose"),
+    ],
+    default_output: Some("Pose"),
 )

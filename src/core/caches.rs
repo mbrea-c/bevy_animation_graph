@@ -10,7 +10,7 @@ pub struct ParameterCache {
 #[derive(Reflect, Clone, Debug)]
 pub struct DurationCache {
     pub upstream: HashMap<NodeInput, Option<f32>>,
-    pub downstream: Option<f32>,
+    pub downstream: HashMap<NodeOutput, Option<f32>>,
 }
 
 #[derive(Reflect, Clone, Debug)]

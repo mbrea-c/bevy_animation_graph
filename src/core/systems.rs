@@ -122,10 +122,9 @@ pub fn run_animation_player(
     parents: &Query<(Has<AnimationPlayer>, Option<&Parent>)>,
     children: &Query<&Children>,
 ) {
-    let paused = player.paused;
     // Continue if paused unless the `AnimationPlayer` was changed
     // This allow the animation to still be updated if the player.elapsed field was manually updated in pause
-    if paused || player.animation.is_none() {
+    if player.paused || player.animation.is_none() {
         return;
     }
 
