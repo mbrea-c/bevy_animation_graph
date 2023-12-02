@@ -25,6 +25,7 @@ This library aims to fill this gap in the Bevy ecosystem.
   - Animation graph node
 - Nesting animation graphs as nodes within other graphs.
 - Support for custom nodes written in Rust (with the caveat that custom nodes cannot be serialized/deserialized as assets)
+- Export animation graphs in graphviz `.dot` format for visualization.
 
 ## Planned Features
 
@@ -236,3 +237,21 @@ And the parameter computation graph:
 The resulting animation is this ~~_(please forgive the lack or artistic skill)_~~ :
 
 https://github.com/mbrea-c/bevy_animation_graph/assets/31567043/c1a52b6b-fbc9-4c83-ad4e-306071df3903
+
+## Contributing
+
+If you run into a bug or want to suggest a missing feature, feel free to post an issue, open a PR or reach out to me in Discord 
+(@mbreac in the Bevy discord).
+
+## FAQ
+
+### Is this ready for production?
+
+No. The library is still in a very early stage, and there is likely to be bugs, missing features, performance issues and API breakage as I iron
+out the kinks in the coming months.
+However, it has reached the point where it is useful and stable enough that I've started to integrate it into my game, and it may be useful to you
+for small-ish projects or game jams.
+
+## Acknowledgements
+
+Many thanks to [Bobby Anguelov](https://www.youtube.com/@BobbyAnguelov) for his lectures on animation programming.
