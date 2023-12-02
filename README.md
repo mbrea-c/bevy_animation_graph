@@ -208,3 +208,7 @@ The resulting locomotion graph looks like this:
 
 And the parameter computation graph:
 ![Parameter graph example](parameter_graph.png)
+
+The resulting animation is this ~~_(please forgive the lack or artistic skill)_~~ :
+
+![](character.mp4)
