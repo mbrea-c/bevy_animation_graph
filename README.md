@@ -211,4 +211,4 @@ And the parameter computation graph:
 
 The resulting animation is this ~~_(please forgive the lack or artistic skill)_~~ :
 
-![](character.mp4)
+https://github.com/mbrea-c/bevy_animation_graph/assets/31567043/c1a52b6b-fbc9-4c83-ad4e-306071df3903
