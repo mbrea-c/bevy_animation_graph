@@ -20,6 +20,8 @@ This library aims to fill this gap in the Bevy ecosystem.
   - Arithmetic nodes:
     - F32: Add, Subtract, Multiply, Divide, Clamp.
   - Speed up or slow down animation playback
+  - Animation graph node
+- Nesting animation graphs as nodes within other graphs.
 - Support for custom nodes written in Rust (with the caveat that custom nodes cannot be serialized/deserialized as assets)
 
 ## Planned Features
@@ -30,7 +32,7 @@ In order of priority:
     1. Apply transform to bone
     2. Two-bone IK
 1. Graph editor UI tool
-2. Ragdoll and physics integration (inititally `bevy_xpbd`):
+2. Ragdoll and physics integration (inititally with `bevy_xpbd`, possibly rapier later):
     1. Using a bone mask to specify which bones are kinematically driven, and which bones are simulated (i.e. *ragdolled*)
     2. Pose matching with joint motors (pending on joint motors being implemented in `bevy_xpbd`, currently WIP)
 3. FABRIK node.
