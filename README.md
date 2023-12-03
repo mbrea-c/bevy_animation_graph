@@ -32,6 +32,7 @@ This library aims to fill this gap in the Bevy ecosystem.
 
 In order of priority:
 
+1. More documentation!
 1. Finite state machines.
 1. More procedural animation nodes:
    1. Apply transform to bone
