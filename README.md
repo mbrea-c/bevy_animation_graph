@@ -45,6 +45,27 @@ In order of priority:
 
 ## Usage
 
+### Installation
+
+This library is [available in crates.io](https://crates.io/crates/bevy_animation_graph). To install the latest published version run
+
+```bash
+cargo add bevy_animation_graph
+```
+or manually add the latest version to your `Cargo.toml`.
+
+To install the latest git master, add the following to `Cargo.toml`
+
+```toml
+# ...
+[dependencies]
+# ...
+bevy_animation_graph = { git = "https://github.com/mbrea-c/bevy_animation_graph.git" }
+# ...
+```
+
+### Animation assets
+
 Animation clips are specified with asset files ending in `.anim.ron`. For
 example:
 
@@ -60,6 +81,8 @@ example:
 
 Currently, the only supported source is `GltfNamed`, where the `path` field points to
 a gltf asset, and the `animation_name` field contains the name label of the animation.
+
+### Animation graph assets
 
 Animation graphs are stored as `.animgraph.ron` files. See the explained example below and
 the code in `examples/human.rs` for how to create, play and interact with
