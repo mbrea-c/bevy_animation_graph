@@ -1,9 +1,5 @@
 use bevy::{app::AppExit, prelude::*};
-use bevy_animation_graph::core::{
-    animation_clip::GraphClip,
-    animation_graph::{AnimationGraph, ToDot},
-    graph_context::GraphContextTmp,
-};
+use bevy_animation_graph::{core::animation_graph::ToDot, prelude::*};
 use std::env;
 
 fn main() {
@@ -23,7 +19,7 @@ fn main() {
             // TaskPoolPlugin::default(),
             // AssetPlugin::default(),
             // GltfPlugin::default(),
-            bevy_animation_graph::animation::AnimationGraphPlugin,
+            AnimationGraphPlugin,
         ))
         .insert_resource(TargetGraph {
             name: args[1].clone(),
