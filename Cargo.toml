@@ -2,8 +2,11 @@
 name = "bevy_animation_graph"
 version = "0.1.0-alpha.2"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+repository = "https://github.com/mbrea-c/bevy_animation_graph"
+description = "Animation graph library for the Bevy game engine"
+keywords = ["bevy", "animation", "gamedev"]
 
 [dependencies]
 bevy = "0.12.0"
