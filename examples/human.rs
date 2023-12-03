@@ -8,7 +8,6 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugins(AnimationGraphPlugin)
-        .add_plugins(bevy_egui_editor::EguiEditorPlugin)
         .insert_resource(AmbientLight {
             color: Color::WHITE,
             brightness: 0.1,
@@ -39,13 +38,10 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // Camera
-    commands
-        .spawn(Camera3dBundle {
-            transform: Transform::from_xyz(10., 10., 10.)
-                .looking_at(Vec3::new(0.0, 2.5, 0.0), Vec3::Y),
-            ..default()
-        })
-        .insert(bevy_egui_editor::EditorCamera);
+    commands.spawn(Camera3dBundle {
+        transform: Transform::from_xyz(10., 10., 10.).looking_at(Vec3::new(0.0, 2.5, 0.0), Vec3::Y),
+        ..default()
+    });
 
     // Plane
     commands.spawn(PbrBundle {
