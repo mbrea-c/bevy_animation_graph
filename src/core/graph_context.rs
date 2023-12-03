@@ -54,6 +54,10 @@ impl GraphContext {
     pub fn push_caches(&mut self) {
         self.caches[self.other_cache()].clear();
         self.flip_caches();
+
+        for (_, sub_ctx) in self.subgraph_contexts.iter_mut() {
+            sub_ctx.push_caches();
+        }
     }
 
     pub fn get_node_cache(&self, node: &str) -> Option<&AnimationCaches> {

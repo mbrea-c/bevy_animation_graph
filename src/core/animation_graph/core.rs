@@ -140,6 +140,8 @@ type SpecExtractor<S> =
 type PrepareInput<In, Out> = fn(&Out, &str) -> In;
 type Mapper<In, Out> =
     fn(&AnimationNode, In, &EdgePath, &mut GraphContext, &mut GraphContextTmp) -> Out;
+type ShortCircuit<Out> =
+    fn(&AnimationNode, &EdgePath, &mut GraphContext, &mut GraphContextTmp) -> Option<Out>;
 type Combiner<Out> = fn(Out, Out) -> Out;
 
 struct UpFns<In, Out> {
@@ -298,6 +300,7 @@ impl AnimationGraph {
         path_to_node: EdgePath,
         input_spec_extractor: SpecExtractor<SpecType>,
         recurse_spec_extractor: SpecExtractor<SpecType>,
+        short_circuiter: ShortCircuit<OutputUp>,
         up: Option<UpFns<InputUp, OutputUp>>,
         down: Option<DownFns<InputDown, OutputDown>>,
         down_input: Option<InputDown>,
@@ -305,22 +308,23 @@ impl AnimationGraph {
         context_tmp: &mut GraphContextTmp,
         overlay: &HashMap<String, AnimationNode>,
     ) -> OutputUp {
+        let node = overlay
+            .get(node_name)
+            .or_else(|| self.nodes.get(node_name))
+            .unwrap();
+
+        if let Some(out) = short_circuiter(node, &path_to_node, context, context_tmp) {
+            return out;
+        }
+
         let in_spec =
             input_spec_extractor(self.nodes.get(node_name).unwrap(), context, context_tmp);
         let recurse_spec =
             recurse_spec_extractor(self.nodes.get(node_name).unwrap(), context, context_tmp);
 
-        let mut node_stack = vec![];
-        if let Some(node) = overlay.get(node_name) {
-            node_stack.push(node);
-        }
-        if let Some(node) = self.nodes.get(node_name) {
-            node_stack.push(node);
-        }
-
         let output_down = down.map(|down| {
             (down.mapper)(
-                node_stack[0],
+                node,
                 down_input.expect("Have down fns but missing down input"),
                 &path_to_node,
                 context,
@@ -351,6 +355,7 @@ impl AnimationGraph {
                 new_path,
                 input_spec_extractor,
                 recurse_spec_extractor,
+                short_circuiter,
                 up,
                 down,
                 new_down_input,
@@ -368,14 +373,7 @@ impl AnimationGraph {
         }
 
         if let Some(up) = up {
-            node_stack
-                .iter()
-                .map(|node| {
-                    let input_up = input_up.clone();
-                    (up.mapper)(node, input_up.unwrap(), &path_to_node, context, context_tmp)
-                })
-                .reduce(|l, r| (up.combiner)(l, r))
-                .unwrap()
+            (up.mapper)(node, input_up.unwrap(), &path_to_node, context, context_tmp)
         } else {
             OutputUp::default()
         }
@@ -387,6 +385,7 @@ impl AnimationGraph {
         path_to_node: EdgePath,
         input_spec_extractor: SpecExtractor<SpecType>,
         recurse_spec_extractor: SpecExtractor<SpecType>,
+        short_circuiter: ShortCircuit<OutputUp>,
         up: UpFns<InputUp, OutputUp>,
         context: &mut GraphContext,
         context_tmp: &mut GraphContextTmp,
@@ -397,6 +396,7 @@ impl AnimationGraph {
             path_to_node,
             input_spec_extractor,
             recurse_spec_extractor,
+            short_circuiter,
             Some(up),
             None,
             None,
@@ -412,6 +412,7 @@ impl AnimationGraph {
         path_to_node: EdgePath,
         input_spec_extractor: SpecExtractor<SpecType>,
         recurse_spec_extractor: SpecExtractor<SpecType>,
+        short_circuiter: ShortCircuit<()>,
         down: DownFns<InputDown, OutputDown>,
         down_input: InputDown,
         context: &mut GraphContext,
@@ -423,6 +424,7 @@ impl AnimationGraph {
             path_to_node,
             input_spec_extractor,
             recurse_spec_extractor,
+            short_circuiter,
             None,
             Some(down),
             Some(down_input),
@@ -493,6 +495,46 @@ impl AnimationGraph {
         outputs
     }
 
+    fn short_circuit_parameter(
+        n: &AnimationNode,
+        _path: &EdgePath,
+        context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
+    ) -> Option<HashMap<NodeOutput, EdgeValue>> {
+        context
+            .get_parameters(&n.name)
+            .map(|c| c.downstream.clone())
+    }
+
+    fn short_circuit_durations(
+        n: &AnimationNode,
+        _path: &EdgePath,
+        context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
+    ) -> Option<HashMap<NodeOutput, Option<f32>>> {
+        context.get_durations(&n.name).map(|c| c.downstream.clone())
+    }
+
+    fn short_circuit_times(
+        n: &AnimationNode,
+        path: &EdgePath,
+        context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
+    ) -> Option<()> {
+        context.get_times(&n.name, path).map(|_| ())
+    }
+
+    fn short_circuit_td(
+        n: &AnimationNode,
+        path: &EdgePath,
+        context: &mut GraphContext,
+        _context_tmp: &mut GraphContextTmp,
+    ) -> Option<HashMap<NodeOutput, EdgeValue>> {
+        context
+            .get_time_dependent(&n.name, path)
+            .map(|c| c.downstream.clone())
+    }
+
     pub fn parameter_pass(
         &self,
         node: &str,
@@ -506,6 +548,7 @@ impl AnimationGraph {
             path,
             Self::parameter_input_spec_extractor,
             Self::parameter_recurse_spec_extractor,
+            Self::short_circuit_parameter,
             UpFns {
                 prepare: Self::prepare_input_index_hashmap,
                 mapper: Self::parameter_mapper,
@@ -559,6 +602,7 @@ impl AnimationGraph {
             path,
             Self::duration_input_spec_extractor,
             Self::duration_input_spec_extractor,
+            Self::short_circuit_durations,
             UpFns {
                 prepare: Self::prepare_input_index_hashmap,
                 mapper: Self::duration_mapper,
@@ -620,6 +664,7 @@ impl AnimationGraph {
             path,
             Self::time_spec_extractor,
             Self::time_spec_extractor,
+            Self::short_circuit_times,
             DownFns {
                 prepare: Self::prepare_input_index_hashmap,
                 mapper: Self::time_mapper,
@@ -677,6 +722,7 @@ impl AnimationGraph {
             path,
             Self::time_dependent_input_spec_extractor,
             Self::time_dependent_input_spec_extractor,
+            Self::short_circuit_td,
             UpFns {
                 prepare: Self::prepare_input_index_hashmap,
                 mapper: Self::time_dependent_mapper,

@@ -3,6 +3,7 @@ use crate::core::animation_graph::{
 };
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::graph_context::{GraphContext, GraphContextTmp};
+use crate::utils::hash_map_join::HashMapOpsExt;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 
@@ -33,7 +34,11 @@ impl NodeLike for GraphNode {
         let graph = context_tmp.animation_graph_assets.get(&self.graph).unwrap();
 
         let mut overlay_input_node = graph.nodes.get(AnimationGraph::INPUT_NODE).unwrap().clone();
-        overlay_input_node.node.unwrap_input_mut().parameters = inputs;
+        overlay_input_node
+            .node
+            .unwrap_input_mut()
+            .parameters
+            .extend_replacing_owned(inputs);
 
         let sub_context = context.context_for_subgraph_or_insert_default(name);
 
@@ -66,8 +71,16 @@ impl NodeLike for GraphNode {
 
         let mut overlay_input_node = graph.nodes.get(AnimationGraph::INPUT_NODE).unwrap().clone();
 
-        overlay_input_node.node.unwrap_input_mut().parameters = params;
-        overlay_input_node.node.unwrap_input_mut().durations = inputs;
+        overlay_input_node
+            .node
+            .unwrap_input_mut()
+            .parameters
+            .extend_replacing_owned(params);
+        overlay_input_node
+            .node
+            .unwrap_input_mut()
+            .durations
+            .extend_replacing_owned(inputs);
 
         let sub_context = context.context_for_subgraph_or_insert_default(name);
 
@@ -101,8 +114,16 @@ impl NodeLike for GraphNode {
 
         let mut overlay_input_node = graph.nodes.get(AnimationGraph::INPUT_NODE).unwrap().clone();
 
-        overlay_input_node.node.unwrap_input_mut().parameters = params;
-        overlay_input_node.node.unwrap_input_mut().durations = durations;
+        overlay_input_node
+            .node
+            .unwrap_input_mut()
+            .parameters
+            .extend_replacing_owned(params);
+        overlay_input_node
+            .node
+            .unwrap_input_mut()
+            .durations
+            .extend_replacing_owned(durations);
 
         let sub_context = context.context_for_subgraph_or_insert_default(name);
 
@@ -151,9 +172,21 @@ impl NodeLike for GraphNode {
 
         let mut overlay_input_node = graph.nodes.get(AnimationGraph::INPUT_NODE).unwrap().clone();
 
-        overlay_input_node.node.unwrap_input_mut().parameters = params;
-        overlay_input_node.node.unwrap_input_mut().durations = durations;
-        overlay_input_node.node.unwrap_input_mut().time_dependent = inputs;
+        overlay_input_node
+            .node
+            .unwrap_input_mut()
+            .parameters
+            .extend_replacing_owned(params);
+        overlay_input_node
+            .node
+            .unwrap_input_mut()
+            .durations
+            .extend_replacing_owned(durations);
+        overlay_input_node
+            .node
+            .unwrap_input_mut()
+            .time_dependent
+            .extend_replacing_owned(inputs);
 
         let sub_context = context.context_for_subgraph_or_insert_default(name);
 
