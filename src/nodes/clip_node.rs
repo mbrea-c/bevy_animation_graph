@@ -226,7 +226,7 @@ impl NodeLike for ClipNode {
         _context: &mut GraphContext,
         _context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeOutput, EdgeSpec> {
-        return HashMap::from([(Self::OUTPUT.into(), EdgeSpec::PoseFrame)]);
+        HashMap::from([(Self::OUTPUT.into(), EdgeSpec::PoseFrame)])
     }
 
     fn display_name(&self) -> String {

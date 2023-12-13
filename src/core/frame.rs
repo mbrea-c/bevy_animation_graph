@@ -35,10 +35,18 @@ impl BoneFrame {
     where
         F: Fn(f32) -> f32,
     {
-        self.rotation.as_mut().map(|v| v.map_ts(&f));
-        self.translation.as_mut().map(|v| v.map_ts(&f));
-        self.scale.as_mut().map(|v| v.map_ts(&f));
-        self.weights.as_mut().map(|v| v.map_ts(&f));
+        if let Some(v) = self.rotation.as_mut() {
+            v.map_ts(&f)
+        };
+        if let Some(v) = self.translation.as_mut() {
+            v.map_ts(&f)
+        };
+        if let Some(v) = self.scale.as_mut() {
+            v.map_ts(&f)
+        };
+        if let Some(v) = self.weights.as_mut() {
+            v.map_ts(&f)
+        };
     }
 }
 

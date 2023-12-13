@@ -140,7 +140,6 @@ impl NodeLike for GraphNode {
             .get_times(AnimationGraph::INPUT_NODE, path)
             .unwrap()
             .downstream
-            .clone()
             .update;
 
         // TODO: Think whether we want nodes to receive separate time queries per time-dependent

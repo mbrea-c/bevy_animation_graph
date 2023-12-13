@@ -5,23 +5,13 @@ use super::{
 };
 use bevy::{asset::Assets, reflect::prelude::*, utils::HashMap};
 
-#[derive(Reflect, Debug)]
+#[derive(Reflect, Debug, Default)]
 pub struct GraphContext {
     /// Caches are double buffered
     caches: [HashMap<String, AnimationCaches>; 2],
     current_cache: usize,
     #[reflect(ignore)]
     subgraph_contexts: HashMap<String, GraphContext>,
-}
-
-impl Default for GraphContext {
-    fn default() -> Self {
-        Self {
-            caches: [HashMap::default(), HashMap::default()],
-            current_cache: 0,
-            subgraph_contexts: HashMap::default(),
-        }
-    }
 }
 
 /// Contains temprary data such as references to assets, gizmos, etc.
@@ -90,12 +80,12 @@ impl GraphContext {
 
     pub fn get_other_parameters(&self, node: &str) -> Option<&ParameterCache> {
         self.get_node_other_cache(node)
-            .map_or(None, |c| c.parameter_cache.as_ref())
+            .and_then(|c| c.parameter_cache.as_ref())
     }
 
     pub fn get_other_durations(&self, node: &str) -> Option<&DurationCache> {
         self.get_node_other_cache(node)
-            .map_or(None, |c| c.duration_cache.as_ref())
+            .and_then(|c| c.duration_cache.as_ref())
     }
 
     pub fn get_other_times(&self, node: &str, path: &EdgePath) -> Option<&TimeCache> {

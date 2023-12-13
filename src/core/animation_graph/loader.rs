@@ -56,11 +56,11 @@ impl AssetLoader for GraphClipLoader {
                     let gltf: &Gltf = gltf_loaded_asset.get().unwrap();
 
                     let Some(clip_handle) = gltf.named_animations.get(&animation_name) else {
-                        return Err(AssetLoaderError::GltfMissingLabel(animation_name.into()));
+                        return Err(AssetLoaderError::GltfMissingLabel(animation_name));
                     };
 
                     let Some(clip_path) = clip_handle.path() else {
-                        return Err(AssetLoaderError::GltfMissingLabel(animation_name.into()));
+                        return Err(AssetLoaderError::GltfMissingLabel(animation_name));
                     };
 
                     let clip_bevy: bevy::animation::AnimationClip = gltf_loaded_asset
@@ -183,15 +183,15 @@ impl AssetLoader for AnimationGraphLoader {
             }
 
             for (td_name, td_spec) in &serial.input_time_dependent_spec {
-                graph.register_input_td(td_name, td_spec.clone());
+                graph.register_input_td(td_name, *td_spec);
             }
 
             for (p_name, p_spec) in &serial.output_parameter_spec {
-                graph.register_output_parameter(p_name, p_spec.clone());
+                graph.register_output_parameter(p_name, *p_spec);
             }
 
             for (td_name, td_spec) in &serial.output_time_dependent_spec {
-                graph.register_output_td(td_name, td_spec.clone());
+                graph.register_output_td(td_name, *td_spec);
             }
 
             for (parameter_name, (target_node, target_edge)) in &serial.input_edges {
