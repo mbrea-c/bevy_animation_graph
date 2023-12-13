@@ -9,8 +9,7 @@ description = "Animation graph library for the Bevy game engine"
 keywords = ["bevy", "animation", "gamedev"]
 
 [dependencies]
-bevy = "0.12.0"
+bevy = "0.12"
 thiserror = "1.0.50"
 ron = "0.8.1"
 serde = { version = "1.0.193", features = ["derive"] }
-bevy_egui_editor = { path = "../bevy_egui_editor" }

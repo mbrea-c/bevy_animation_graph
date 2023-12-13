@@ -1,5 +1,5 @@
 use bevy::{pbr::CascadeShadowConfigBuilder, prelude::*};
-use bevy_animation_graph::core::animated_scene::AnimatedSceneBundle;
+use bevy_animation_graph::core::animated_scene::{AnimatedSceneBundle, AnimatedSceneInstance};
 use bevy_animation_graph::prelude::*;
 use std::f32::consts::PI;
 
@@ -7,7 +7,6 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugins(AnimationGraphPlugin)
-        .add_plugins(bevy_egui_editor::EguiEditorPlugin)
         .insert_resource(AmbientLight {
             color: Color::WHITE,
             brightness: 0.1,
@@ -17,6 +16,9 @@ fn main() {
         .run();
 }
 
+#[derive(Component)]
+struct Human;
+
 fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
@@ -24,13 +26,10 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // Camera
-    commands
-        .spawn(Camera3dBundle {
-            transform: Transform::from_xyz(10., 10., 10.)
-                .looking_at(Vec3::new(0.0, 2.5, 0.0), Vec3::Y),
-            ..default()
-        })
-        .insert(bevy_egui_editor::EditorCamera);
+    commands.spawn(Camera3dBundle {
+        transform: Transform::from_xyz(3., 3., 3.).looking_at(Vec3::new(0.0, 0.875, 0.0), Vec3::Y),
+        ..default()
+    });
 
     // Plane
     commands.spawn(PbrBundle {
@@ -47,8 +46,10 @@ fn setup(
             ..default()
         },
         cascade_shadow_config: CascadeShadowConfigBuilder {
-            first_cascade_far_bound: 200.0,
-            maximum_distance: 400.0,
+            first_cascade_far_bound: 10.0,
+            num_cascades: 3,
+            minimum_distance: 0.3,
+            maximum_distance: 100.0,
             ..default()
         }
         .into(),
@@ -56,56 +57,66 @@ fn setup(
     });
 
     // Animated character
-    commands.spawn(AnimatedSceneBundle {
-        animated_scene: asset_server.load("animated_scenes/character.animscn.ron"),
-        transform: Transform::from_xyz(0.0, 2.4, 0.0),
-        ..default()
-    });
+    commands.spawn((
+        AnimatedSceneBundle {
+            animated_scene: asset_server.load("animated_scenes/character.animscn.ron"),
+            transform: Transform::from_xyz(0., 0., 0.),
+            ..default()
+        },
+        Human,
+    ));
 }
 
 fn keyboard_animation_control(
     keyboard_input: Res<Input<KeyCode>>,
+    human_character: Query<&AnimatedSceneInstance, With<Human>>,
     mut animation_players: Query<&mut AnimationGraphPlayer>,
     mut animation_graphs: ResMut<Assets<AnimationGraph>>,
     mut velocity: Local<f32>,
     time: Res<Time>,
 ) {
-    for mut player in &mut animation_players {
-        if keyboard_input.just_pressed(KeyCode::Space) {
-            if player.is_paused() {
-                player.resume();
-            } else {
-                player.pause();
-            }
+    let Ok(AnimatedSceneInstance { player_entity }) = human_character.get_single() else {
+        return;
+    };
+
+    let Ok(mut player) = animation_players.get_mut(*player_entity) else {
+        return;
+    };
+
+    if keyboard_input.just_pressed(KeyCode::Space) {
+        if player.is_paused() {
+            player.resume();
+        } else {
+            player.pause();
         }
-        if keyboard_input.just_pressed(KeyCode::R) {
-            player.reset();
-        }
-
-        let Some(graph_handle) = player.get_animation_graph() else {
-            continue;
-        };
-
-        let Some(graph) = animation_graphs.get_mut(graph_handle) else {
-            continue;
-        };
-
-        let mut velocity_changed = false;
-        if keyboard_input.pressed(KeyCode::Up) {
-            *velocity += 0.5 * time.delta_seconds();
-            velocity_changed = true;
-        }
-        if keyboard_input.pressed(KeyCode::Down) {
-            *velocity -= 0.5 * time.delta_seconds();
-            velocity_changed = true;
-        }
-
-        *velocity = velocity.max(0.);
-
-        if velocity_changed {
-            println!("velocity: {}", *velocity);
-        }
-
-        graph.set_input_parameter("Target Speed", (*velocity).into());
     }
+    if keyboard_input.just_pressed(KeyCode::R) {
+        player.reset();
+    }
+
+    let Some(graph_handle) = player.get_animation_graph() else {
+        return;
+    };
+
+    let Some(graph) = animation_graphs.get_mut(graph_handle) else {
+        return;
+    };
+
+    let mut velocity_changed = false;
+    if keyboard_input.pressed(KeyCode::Up) {
+        *velocity += 0.5 * time.delta_seconds();
+        velocity_changed = true;
+    }
+    if keyboard_input.pressed(KeyCode::Down) {
+        *velocity -= 0.5 * time.delta_seconds();
+        velocity_changed = true;
+    }
+
+    *velocity = velocity.max(0.);
+
+    if velocity_changed {
+        println!("velocity: {}", *velocity);
+    }
+
+    graph.set_input_parameter("Target Speed", (*velocity).into());
 }

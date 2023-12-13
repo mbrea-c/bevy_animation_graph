@@ -31,7 +31,9 @@ pub struct AnimatedScene {
 }
 
 #[derive(Component)]
-pub struct AnimatedSceneInstance;
+pub struct AnimatedSceneInstance {
+    pub player_entity: Entity,
+}
 
 #[derive(Component)]
 pub struct AnimatedSceneFailed;
@@ -188,6 +190,8 @@ pub(crate) fn process_animated_scenes(
             });
         commands
             .entity(animscn_entity)
-            .insert(AnimatedSceneInstance);
+            .insert(AnimatedSceneInstance {
+                player_entity: next_entity,
+            });
     }
 }

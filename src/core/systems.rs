@@ -241,15 +241,3 @@ fn apply_pose(
         warn!("Animation player on {root:?} did not match any entity paths.");
     }
 }
-
-pub fn replace_animation_players(
-    mut commands: Commands,
-    query: Query<(Entity, &bevy::animation::AnimationPlayer)>,
-) {
-    for (entity, _player) in &query {
-        commands
-            .entity(entity)
-            .remove::<bevy::animation::AnimationPlayer>()
-            .insert(AnimationGraphPlayer::default());
-    }
-}
