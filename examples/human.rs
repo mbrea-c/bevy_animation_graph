@@ -55,7 +55,7 @@ fn setup(
         ..default()
     });
 
-    // Fox
+    // Animated character
     commands.spawn(AnimatedSceneBundle {
         animated_scene: asset_server.load("animated_scenes/character.animscn.ron"),
         transform: Transform::from_xyz(0.0, 2.4, 0.0),
