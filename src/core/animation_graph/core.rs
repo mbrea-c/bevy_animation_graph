@@ -728,17 +728,17 @@ impl AnimationGraph {
         overlay: &HashMap<String, AnimationNode>,
     ) -> Pose {
         context.push_caches();
-        self.parameter_pass(Self::OUTPUT_NODE, vec![], context, context_tmp, &overlay);
-        self.duration_pass(Self::OUTPUT_NODE, vec![], context, context_tmp, &overlay);
+        self.parameter_pass(Self::OUTPUT_NODE, vec![], context, context_tmp, overlay);
+        self.duration_pass(Self::OUTPUT_NODE, vec![], context, context_tmp, overlay);
         self.time_pass(
             Self::OUTPUT_NODE,
             vec![],
             time_update,
             context,
             context_tmp,
-            &overlay,
+            overlay,
         );
-        self.time_dependent_pass(Self::OUTPUT_NODE, vec![], context, context_tmp, &overlay);
+        self.time_dependent_pass(Self::OUTPUT_NODE, vec![], context, context_tmp, overlay);
 
         let output = context
             .get_time_dependent(Self::OUTPUT_NODE, &vec![])
