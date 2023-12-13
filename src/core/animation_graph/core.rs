@@ -740,10 +740,18 @@ impl AnimationGraph {
         context: &mut GraphContext,
         context_tmp: &mut GraphContextTmp,
     ) -> Pose {
+        self.query_with_overlay(time_update, context, context_tmp, &HashMap::new())
+    }
+
+    pub fn query_with_overlay(
+        &self,
+        time_update: TimeUpdate,
+        context: &mut GraphContext,
+        context_tmp: &mut GraphContextTmp,
+        overlay: &HashMap<String, AnimationNode>,
+    ) -> Pose {
         context.push_caches();
-        let overlay = HashMap::new();
         self.parameter_pass(Self::OUTPUT_NODE, vec![], context, context_tmp, &overlay);
-        // self.dot_to_tmp_file(Some(context)).unwrap();
         self.duration_pass(Self::OUTPUT_NODE, vec![], context, context_tmp, &overlay);
         self.time_pass(
             Self::OUTPUT_NODE,
@@ -754,7 +762,6 @@ impl AnimationGraph {
             &overlay,
         );
         self.time_dependent_pass(Self::OUTPUT_NODE, vec![], context, context_tmp, &overlay);
-        // self.dot_to_tmp_file(Some(context)).unwrap();
 
         let output = context
             .get_time_dependent(Self::OUTPUT_NODE, &vec![])

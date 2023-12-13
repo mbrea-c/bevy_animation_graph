@@ -140,13 +140,13 @@ pub fn run_animation_player(
         animation_graph_assets: &graphs,
     };
 
-    let Some(graph) = graphs.get(player.animation.as_ref().unwrap()) else {
+    let Some(out_pose) = player.query(&mut context_tmp) else {
         return;
     };
 
     // Apply the main animation
     apply_pose(
-        &graph.query(player.elapsed.update, &mut player.context, &mut context_tmp),
+        &out_pose,
         root,
         names,
         transforms,
