@@ -17,4 +17,6 @@ pub enum AssetLoaderError {
     GltfMissingLabel(String),
     #[error("Could not complete direct asset load: {0}")]
     LoadDirectError(#[from] bevy::asset::LoadDirectError),
+    #[error("Animated scene path is incorrect: {0}")]
+    AnimatedSceneMissingName(String),
 }

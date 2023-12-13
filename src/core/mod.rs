@@ -1,3 +1,4 @@
+pub mod animated_scene;
 pub mod animation_clip;
 pub mod animation_graph;
 pub mod animation_graph_player;
