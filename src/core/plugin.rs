@@ -1,4 +1,7 @@
 use super::{
+    animated_scene::{
+        process_animated_scenes, spawn_animated_scenes, AnimatedScene, AnimatedSceneLoader,
+    },
     animation_graph::loader::{AnimationGraphLoader, GraphClipLoader},
     systems::animation_player,
 };
@@ -16,12 +19,16 @@ impl Plugin for AnimationGraphPlugin {
             .register_asset_reflect::<AnimationGraph>()
             .register_type::<GraphClip>()
             .register_asset_reflect::<GraphClip>()
+            .register_type::<AnimatedScene>()
+            .register_asset_reflect::<AnimatedScene>()
             .register_type::<AnimationGraphPlayer>()
             .init_asset::<GraphClip>()
             .init_asset_loader::<GraphClipLoader>()
             .init_asset::<AnimationGraph>()
             .init_asset_loader::<AnimationGraphLoader>()
-            // .add_systems(PreUpdate, replace_animation_players)
+            .init_asset::<AnimatedScene>()
+            .init_asset_loader::<AnimatedSceneLoader>()
+            .add_systems(PreUpdate, (spawn_animated_scenes, process_animated_scenes))
             .add_systems(
                 PostUpdate,
                 animation_player.before(TransformSystem::TransformPropagate),

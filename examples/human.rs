@@ -1,6 +1,5 @@
-use bevy::utils::HashMap;
-use bevy::{gltf::Gltf, pbr::CascadeShadowConfigBuilder, prelude::*};
-use bevy_animation_graph::core::systems::replace_animation_players;
+use bevy::{pbr::CascadeShadowConfigBuilder, prelude::*};
+use bevy_animation_graph::core::animated_scene::AnimatedSceneBundle;
 use bevy_animation_graph::prelude::*;
 use std::f32::consts::PI;
 
@@ -8,28 +7,15 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugins(AnimationGraphPlugin)
+        .add_plugins(bevy_egui_editor::EguiEditorPlugin)
         .insert_resource(AmbientLight {
             color: Color::WHITE,
             brightness: 0.1,
         })
-        .insert_resource(ProcessedGraphs(vec![]))
         .add_systems(Startup, setup)
-        .add_systems(PreUpdate, replace_animation_players)
-        .add_systems(
-            Update,
-            (setup_scene_once_loaded, keyboard_animation_control),
-        )
+        .add_systems(Update, keyboard_animation_control)
         .run();
 }
-
-#[derive(Resource)]
-struct RootGltf(Handle<Gltf>);
-
-#[derive(Resource)]
-struct GraphClips(HashMap<String, Handle<GraphClip>>);
-
-#[derive(Resource)]
-struct ProcessedGraphs(Vec<Handle<AnimationGraph>>);
 
 fn setup(
     mut commands: Commands,
@@ -38,10 +24,13 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // Camera
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(10., 10., 10.).looking_at(Vec3::new(0.0, 2.5, 0.0), Vec3::Y),
-        ..default()
-    });
+    commands
+        .spawn(Camera3dBundle {
+            transform: Transform::from_xyz(10., 10., 10.)
+                .looking_at(Vec3::new(0.0, 2.5, 0.0), Vec3::Y),
+            ..default()
+        })
+        .insert(bevy_egui_editor::EditorCamera);
 
     // Plane
     commands.spawn(PbrBundle {
@@ -67,21 +56,11 @@ fn setup(
     });
 
     // Fox
-    commands.spawn(SceneBundle {
-        scene: asset_server.load("models/character_rigged.gltf#Scene0"),
+    commands.spawn(AnimatedSceneBundle {
+        animated_scene: asset_server.load("animated_scenes/character.animscn.ron"),
         transform: Transform::from_xyz(0.0, 2.4, 0.0),
         ..default()
     });
-}
-
-// Once the scene is loaded, start the animation
-fn setup_scene_once_loaded(
-    mut players: Query<&mut AnimationGraphPlayer, Added<AnimationGraphPlayer>>,
-    asset_server: Res<AssetServer>,
-) {
-    for mut player in &mut players {
-        player.start(asset_server.load("animation_graphs/locomotion.animgraph.ron"));
-    }
 }
 
 fn keyboard_animation_control(
