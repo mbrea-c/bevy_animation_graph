@@ -137,7 +137,7 @@ pub fn run_animation_player(
 
     let mut context_tmp = GraphContextTmp {
         graph_clip_assets: graph_clips,
-        animation_graph_assets: &graphs,
+        animation_graph_assets: graphs,
     };
 
     let Some(out_pose) = player.query(&mut context_tmp) else {
@@ -232,7 +232,7 @@ fn apply_pose(
         }
         if let Some(weights) = &pose.weights {
             if let Ok(morphs) = &mut morphs {
-                apply_morph_weights(morphs.weights_mut(), &weights);
+                apply_morph_weights(morphs.weights_mut(), weights);
             }
         }
     }

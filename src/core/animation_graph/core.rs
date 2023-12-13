@@ -142,12 +142,10 @@ type Mapper<In, Out> =
     fn(&AnimationNode, In, &EdgePath, &mut GraphContext, &mut GraphContextTmp) -> Out;
 type ShortCircuit<Out> =
     fn(&AnimationNode, &EdgePath, &mut GraphContext, &mut GraphContextTmp) -> Option<Out>;
-type Combiner<Out> = fn(Out, Out) -> Out;
 
 struct UpFns<In, Out> {
     pub prepare: PrepareInput<In, Out>,
     pub mapper: Mapper<HashMap<NodeInput, In>, Out>,
-    pub combiner: Combiner<Out>,
 }
 
 struct DownFns<In, Out> {
@@ -157,11 +155,7 @@ struct DownFns<In, Out> {
 
 impl<I, O> Clone for UpFns<I, O> {
     fn clone(&self) -> Self {
-        UpFns {
-            prepare: self.prepare,
-            mapper: self.mapper,
-            combiner: self.combiner,
-        }
+        *self
     }
 }
 
@@ -169,10 +163,7 @@ impl<I, O> Copy for UpFns<I, O> {}
 
 impl<I, O> Clone for DownFns<I, O> {
     fn clone(&self) -> Self {
-        DownFns {
-            prepare: self.prepare,
-            mapper: self.mapper,
-        }
+        *self
     }
 }
 
@@ -201,7 +192,7 @@ impl AnimationGraph {
 
     pub fn add_node(&mut self, node: AnimationNode) {
         let node_name = node.name.clone();
-        if &node_name == Self::INPUT_NODE || &node_name == Self::OUTPUT_NODE {
+        if node_name == Self::INPUT_NODE || node_name == Self::OUTPUT_NODE {
             error!("Node name {node_name} is reserved");
             panic!("Node name {node_name} is reserved")
         }
@@ -294,6 +285,7 @@ impl AnimationGraph {
         );
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn map<SpecType, InputUp: Clone, OutputUp: Default, InputDown, OutputDown>(
         &self,
         node_name: &str,
@@ -336,7 +328,7 @@ impl AnimationGraph {
 
         for k in recurse_spec.keys() {
             let Some((in_node_name, in_edge_name)) =
-                self.node_edges.get(&(node_name.into(), k.into())).clone()
+                self.node_edges.get(&(node_name.into(), k.into()))
             else {
                 continue;
             };
@@ -351,7 +343,7 @@ impl AnimationGraph {
             let new_down_input = down.map(|down| (down.prepare)(output_down.as_ref().unwrap(), k));
 
             let output_up = self.map(
-                &in_node_name,
+                in_node_name,
                 new_path,
                 input_spec_extractor,
                 recurse_spec_extractor,
@@ -366,7 +358,7 @@ impl AnimationGraph {
 
             if let Some(up) = up {
                 if in_spec.contains_key(k) {
-                    let val = (up.prepare)(&output_up, &in_edge_name);
+                    let val = (up.prepare)(&output_up, in_edge_name);
                     input_up.as_mut().unwrap().insert(k.clone(), val);
                 }
             }
@@ -379,6 +371,7 @@ impl AnimationGraph {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn map_up<SpecType, InputUp: Clone, OutputUp: Default>(
         &self,
         node_name: &str,
@@ -406,6 +399,7 @@ impl AnimationGraph {
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn map_down<SpecType, InputDown, OutputDown: Default>(
         &self,
         node_name: &str,
@@ -437,20 +431,8 @@ impl AnimationGraph {
     fn prepare_input_index_hashmap<T: Clone>(outputs: &HashMap<NodeOutput, T>, edge: &str) -> T {
         outputs
             .get(edge)
-            .expect(&format!("Edge output {} not found!", edge))
+            .unwrap_or_else(|| panic!("Edge output {} not found!", edge))
             .clone()
-    }
-
-    fn combiner_hashmap<T>(
-        mut master: HashMap<String, T>,
-        mut slave: HashMap<String, T>,
-    ) -> HashMap<String, T> {
-        for (k, v) in slave.drain() {
-            if !master.contains_key(&k) {
-                master.insert(k, v);
-            }
-        }
-        master
     }
 
     /// Which inputs are needed to calculate parameter output of this node
@@ -469,9 +451,7 @@ impl AnimationGraph {
         context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeInput, EdgeSpec> {
         let mut spec = n.parameter_input_spec(context, context_tmp);
-        spec.fill_up(&n.time_dependent_input_spec(context, context_tmp), &|v| {
-            v.clone()
-        });
+        spec.fill_up(&n.time_dependent_input_spec(context, context_tmp), &|v| *v);
         spec
     }
 
@@ -552,7 +532,6 @@ impl AnimationGraph {
             UpFns {
                 prepare: Self::prepare_input_index_hashmap,
                 mapper: Self::parameter_mapper,
-                combiner: Self::combiner_hashmap,
             },
             context,
             context_tmp,
@@ -606,7 +585,6 @@ impl AnimationGraph {
             UpFns {
                 prepare: Self::prepare_input_index_hashmap,
                 mapper: Self::duration_mapper,
-                combiner: Self::combiner_hashmap,
             },
             context,
             context_tmp,
@@ -726,7 +704,6 @@ impl AnimationGraph {
             UpFns {
                 prepare: Self::prepare_input_index_hashmap,
                 mapper: Self::time_dependent_mapper,
-                combiner: Self::combiner_hashmap,
             },
             context,
             context_tmp,

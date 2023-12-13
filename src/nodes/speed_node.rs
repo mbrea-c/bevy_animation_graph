@@ -5,7 +5,7 @@ use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::graph_context::{GraphContext, GraphContextTmp};
 use bevy::{reflect::Reflect, utils::HashMap};
 
-#[derive(Reflect, Clone, Debug)]
+#[derive(Reflect, Clone, Debug, Default)]
 pub struct SpeedNode;
 
 impl SpeedNode {
@@ -54,11 +54,7 @@ impl NodeLike for SpeedNode {
             None
         } else {
             let duration = inputs.get(Self::INPUT).unwrap();
-            if let Some(duration) = duration {
-                Some(duration / speed)
-            } else {
-                None
-            }
+            duration.as_ref().map(|duration| duration / speed)
         };
 
         HashMap::from([(Self::OUTPUT.into(), out_duration)])

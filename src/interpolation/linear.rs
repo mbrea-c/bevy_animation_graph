@@ -69,7 +69,7 @@ impl<T: InterpolateLinear + FromReflect + TypePath + std::fmt::Debug + Clone> In
             );
         }
 
-        let out = Self {
+        Self {
             timestamp: self.timestamp,
             prev,
             prev_timestamp: self.prev_timestamp.max(other.prev_timestamp),
@@ -81,9 +81,7 @@ impl<T: InterpolateLinear + FromReflect + TypePath + std::fmt::Debug + Clone> In
             } else {
                 other.next_is_wrapped
             },
-        };
-
-        out
+        }
     }
 }
 
@@ -95,7 +93,7 @@ impl InterpolateLinear for BoneFrame {
 
         match (&self.rotation, &other.rotation) {
             (Some(a), Some(b)) => {
-                result.rotation = Some(a.interpolate_linear(&b, f));
+                result.rotation = Some(a.interpolate_linear(b, f));
             }
             (None, None) => {}
             (None, Some(b)) => result.rotation = Some(b.clone()),
@@ -104,7 +102,7 @@ impl InterpolateLinear for BoneFrame {
 
         match (&self.translation, &other.translation) {
             (Some(a), Some(b)) => {
-                result.translation = Some(a.interpolate_linear(&b, f));
+                result.translation = Some(a.interpolate_linear(b, f));
             }
             (None, None) => {}
             (None, Some(b)) => result.translation = Some(b.clone()),
@@ -113,7 +111,7 @@ impl InterpolateLinear for BoneFrame {
 
         match (&self.scale, &other.scale) {
             (Some(a), Some(b)) => {
-                result.scale = Some(a.interpolate_linear(&b, f));
+                result.scale = Some(a.interpolate_linear(b, f));
             }
             (None, None) => {}
             (None, Some(b)) => result.scale = Some(b.clone()),
@@ -122,7 +120,7 @@ impl InterpolateLinear for BoneFrame {
 
         match (&self.weights, &other.weights) {
             (Some(a), Some(b)) => {
-                result.weights = Some(a.interpolate_linear(&b, f));
+                result.weights = Some(a.interpolate_linear(b, f));
             }
             (None, None) => {}
             (None, Some(b)) => result.weights = Some(b.clone()),

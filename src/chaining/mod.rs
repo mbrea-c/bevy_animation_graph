@@ -19,16 +19,14 @@ impl<T: TypePath + FromReflect + Clone> Chainable for ValueFrame<T> {
             out_pose
         } else if self.next_is_wrapped {
             // First pose is active, but next pose wraps around
-            let out_pose = Self {
+            Self {
                 timestamp: self.timestamp,
                 prev: self.prev.clone(),
                 prev_timestamp: self.prev_timestamp,
                 next: other.prev.clone(),
                 next_timestamp: other.prev_timestamp + duration_first,
                 next_is_wrapped: false,
-            };
-
-            out_pose
+            }
         } else {
             self.clone()
         }
@@ -51,7 +49,7 @@ impl<T: TypePath + FromReflect + Clone> Chainable for Option<ValueFrame<T>> {
                 let mut out = frame_1.clone();
 
                 if out.next_is_wrapped {
-                    out.next_timestamp = out.next_timestamp + duration_second;
+                    out.next_timestamp += duration_second;
                 }
 
                 Some(out)

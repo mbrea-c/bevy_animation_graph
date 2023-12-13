@@ -76,13 +76,13 @@ pub trait ToDot {
         let pdf_path_alt = "/tmp/bevy_animation_graph_dot.dot.pdf_alt";
 
         {
-            let file = File::create(&path)?;
+            let file = File::create(path)?;
             let mut writer = BufWriter::new(file);
             self.to_dot(&mut writer, context, context_tmp)?;
         }
 
         {
-            let pdf_file_alt = File::create(&pdf_path_alt)?;
+            let pdf_file_alt = File::create(pdf_path_alt)?;
             Command::new("dot")
                 .args([path, "-Tpdf"])
                 .stdout(pdf_file_alt)
@@ -225,7 +225,7 @@ fn write_debugdump(
     write!(f, "<TR><TD COLSPAN=\"2\"><i>DebugDump</i></TD></TR>")?;
     if let Some(param_cache) = context
         .get_node_cache(&node.name)
-        .map_or(None, |nc| nc.parameter_cache.as_ref())
+        .and_then(|nc| nc.parameter_cache.as_ref())
     {
         write!(f, "<TR><TD COLSPAN=\"2\">Parameters</TD></TR>")?;
         write!(f, "<TR>")?;
@@ -239,7 +239,7 @@ fn write_debugdump(
     }
     if let Some(duration_cache) = context
         .get_node_cache(&node.name)
-        .map_or(None, |nc| nc.duration_cache.as_ref())
+        .and_then(|nc| nc.duration_cache.as_ref())
     {
         write!(f, "<TR><TD COLSPAN=\"2\">Durations</TD></TR>")?;
         write!(f, "<TR>")?;
@@ -372,9 +372,7 @@ impl ToDot for AnimationGraph {
         for ((end_node, end_edge), (start_node, start_edge)) in self.node_edges.iter() {
             let node = self.nodes.get(start_node).unwrap();
             let mut spec = node.parameter_output_spec(ctx, context_tmp);
-            spec.fill_up(&node.time_dependent_output_spec(ctx, context_tmp), &|v| {
-                v.clone()
-            });
+            spec.fill_up(&node.time_dependent_output_spec(ctx, context_tmp), &|v| *v);
             let tp = spec.get(start_edge).unwrap();
             let color = match tp {
                 EdgeSpec::PoseFrame => "chartreuse4",
