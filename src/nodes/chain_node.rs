@@ -7,7 +7,7 @@ use crate::core::graph_context::{GraphContext, GraphContextTmp};
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 
-#[derive(Reflect, Clone, Debug)]
+#[derive(Reflect, Clone, Debug, Default)]
 pub struct ChainNode {}
 
 impl ChainNode {
@@ -44,8 +44,8 @@ impl NodeLike for ChainNode {
         _context: &mut GraphContext,
         _context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeOutput, Option<f32>> {
-        let source_duration_1 = *inputs.get(Self::INPUT_1.into()).unwrap();
-        let source_duration_2 = *inputs.get(Self::INPUT_2.into()).unwrap();
+        let source_duration_1 = *inputs.get(Self::INPUT_1).unwrap();
+        let source_duration_2 = *inputs.get(Self::INPUT_2).unwrap();
 
         let out_duration = match (source_duration_1, source_duration_2) {
             (Some(duration_1), Some(duration_2)) => Some(duration_1 + duration_2),
@@ -115,12 +115,12 @@ impl NodeLike for ChainNode {
         _context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeOutput, EdgeValue> {
         let in_pose_1 = inputs
-            .get(Self::INPUT_1.into())
+            .get(Self::INPUT_1)
             .unwrap()
             .clone()
             .unwrap_pose_frame();
         let in_pose_2 = inputs
-            .get(Self::INPUT_2.into())
+            .get(Self::INPUT_2)
             .unwrap()
             .clone()
             .unwrap_pose_frame();

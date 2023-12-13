@@ -7,7 +7,7 @@ use crate::interpolation::linear::InterpolateLinear;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 
-#[derive(Reflect, Clone, Debug)]
+#[derive(Reflect, Clone, Debug, Default)]
 pub struct BlendNode;
 
 impl BlendNode {
@@ -45,8 +45,8 @@ impl NodeLike for BlendNode {
         _context: &mut GraphContext,
         _context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeOutput, Option<f32>> {
-        let duration_1 = *inputs.get(Self::INPUT_1.into()).unwrap();
-        let duration_2 = *inputs.get(Self::INPUT_2.into()).unwrap();
+        let duration_1 = *inputs.get(Self::INPUT_1).unwrap();
+        let duration_2 = *inputs.get(Self::INPUT_2).unwrap();
 
         let out_duration = match (duration_1, duration_2) {
             (Some(duration_1), Some(duration_2)) => Some(duration_1.max(duration_2)),

@@ -10,6 +10,12 @@ use bevy::utils::HashMap;
 #[derive(Reflect, Clone, Debug)]
 pub struct FlipLRNode {}
 
+impl Default for FlipLRNode {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl FlipLRNode {
     pub const INPUT: &'static str = "Pose In";
     pub const OUTPUT: &'static str = "Pose Out";
@@ -43,10 +49,7 @@ impl NodeLike for FlipLRNode {
         _context: &mut GraphContext,
         _context_tmp: &mut GraphContextTmp,
     ) -> HashMap<NodeOutput, Option<f32>> {
-        HashMap::from([(
-            Self::OUTPUT.into(),
-            *inputs.get(Self::INPUT.into()).unwrap(),
-        )])
+        HashMap::from([(Self::OUTPUT.into(), *inputs.get(Self::INPUT).unwrap())])
     }
 
     fn time_pass(

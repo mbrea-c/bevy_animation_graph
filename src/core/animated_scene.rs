@@ -102,6 +102,7 @@ pub(crate) fn spawn_animated_scenes(
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub(crate) fn process_animated_scenes(
     mut commands: Commands,
     unloaded_scenes: Query<
