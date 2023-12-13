@@ -65,13 +65,17 @@ fn setup(
         },
         Human,
     ));
+
+    println!("Controls:");
+    println!("\tSPACE: Play/Pause animation");
+    println!("\tR: Reset animation");
+    println!("\tUp/Down: Increase/decrease movement speed");
 }
 
 fn keyboard_animation_control(
     keyboard_input: Res<Input<KeyCode>>,
     human_character: Query<&AnimatedSceneInstance, With<Human>>,
     mut animation_players: Query<&mut AnimationGraphPlayer>,
-    mut animation_graphs: ResMut<Assets<AnimationGraph>>,
     mut velocity: Local<f32>,
     time: Res<Time>,
 ) {
@@ -94,29 +98,14 @@ fn keyboard_animation_control(
         player.reset();
     }
 
-    let Some(graph_handle) = player.get_animation_graph() else {
-        return;
-    };
-
-    let Some(graph) = animation_graphs.get_mut(graph_handle) else {
-        return;
-    };
-
-    let mut velocity_changed = false;
     if keyboard_input.pressed(KeyCode::Up) {
         *velocity += 0.5 * time.delta_seconds();
-        velocity_changed = true;
     }
     if keyboard_input.pressed(KeyCode::Down) {
         *velocity -= 0.5 * time.delta_seconds();
-        velocity_changed = true;
     }
 
     *velocity = velocity.max(0.);
 
-    if velocity_changed {
-        println!("velocity: {}", *velocity);
-    }
-
-    graph.set_input_parameter("Target Speed", (*velocity).into());
+    player.set_input_parameter("Target Speed", (*velocity).into());
 }

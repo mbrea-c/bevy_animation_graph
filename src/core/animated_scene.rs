@@ -185,10 +185,7 @@ pub(crate) fn process_animated_scenes(
         commands
             .entity(next_entity)
             .remove::<AnimationPlayer>()
-            .insert(AnimationGraphPlayer {
-                animation: Some(animscn.animation_graph.clone()),
-                ..Default::default()
-            });
+            .insert(AnimationGraphPlayer::new().with_graph(animscn.animation_graph.clone()));
         commands
             .entity(animscn_entity)
             .insert(AnimatedSceneInstance {
