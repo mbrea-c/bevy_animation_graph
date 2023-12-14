@@ -404,7 +404,12 @@ impl ToDot for AnimationGraph {
                 super::TargetPin::OutputPose => (String::from("OUTPUT POSE"), String::from("POSE")),
             };
 
-            let color = "black";
+            let color = match source_pin {
+                super::SourcePin::NodeParameter(_, _) => "darkblue",
+                super::SourcePin::InputParameter(_) => "darkblue",
+                super::SourcePin::NodePose(_) => "chartreuse4",
+                super::SourcePin::InputPose(_) => "chartreuse4",
+            };
 
             writeln!(
                 f,
