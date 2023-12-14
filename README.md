@@ -1,7 +1,7 @@
 ![Crates.io](https://img.shields.io/crates/v/bevy_animation_graph) ![Crates.io](https://img.shields.io/crates/d/bevy_animation_graph)
 [![CI](https://github.com/mbrea-c/bevy_animation_graph/actions/workflows/ci.yaml/badge.svg)](https://github.com/mbrea-c/bevy_animation_graph/actions/workflows/ci.yaml)
 
-# bevy_animation_graph
+# Bevy Animation Graph
 
 ## Motivation
 
@@ -55,6 +55,7 @@ This library is [available in crates.io](https://crates.io/crates/bevy_animation
 ```bash
 cargo add bevy_animation_graph
 ```
+
 or manually add the latest version to your `Cargo.toml`.
 
 To install the latest git master, add the following to `Cargo.toml`

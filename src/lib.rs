@@ -57,6 +57,26 @@
 //!   If the animated scene spawning fails, (e.g. because the given `path_to_player` is incorrect),
 //!   an error will be printed and the `AnimatedSceneFailed` component will be added instead.
 //!
+//! ## Nodes
+//!
+//! The currently implemented graph nodes are:
+//! - [`ClipNode`]: Plays back an animation clip.
+//! - [`ChainNode`]: Chains (plays one after the other) two animation inputs.
+//! - [`BlendNode`]: Blends two animation inputs linearly based on an input factor.
+//! - [`FlipLRNode`]: Mirrors an animation on the X axis, based on the bones having `L` and `R`
+//!   suffixes to specify which side they are on.
+//! - [`LoopNode`]: Loops an animation input indefinitely.
+//! - [`SpeedNode`]: Adjust the playback speed of an animation input.
+//! - [`GraphNode`]: Nested animation graph. The node inputs and outputs match the nested graph's
+//!   inputs and outputs.
+//! - Parameter arithmetic:
+//!   - Floating point numbers (`f32`)
+//!     - [`AddF32`]
+//!     - [`SubF32`]
+//!     - [`MulF32`]
+//!     - [`DivF32`]
+//!     - [`ClampF32`]
+//!
 //! ## How does it work?
 //!
 //! Each node [`AnimationNode`] in an animation graph has an arbitrary number of parameter inputs
@@ -95,7 +115,20 @@
 //!
 //! [`ParamValue`]: crate::core::animation_graph::ParamValue
 //! [`AnimationNode`]: prelude::AnimationNode
-//! [`SpeedNode`]: prelude::SpeedNode
+//!
+//! [`SpeedNode`]: crate::nodes::SpeedNode
+//! [`ClipNode`]: crate::nodes::ClipNode
+//! [`ChainNode`]: crate::nodes::ChainNode
+//! [`BlendNode`]: crate::nodes::BlendNode
+//! [`FlipLRNode`]: crate::nodes::FlipLRNode
+//! [`LoopNode`]: crate::nodes::LoopNode
+//! [`GraphNode`]: crate::nodes::GraphNode
+//! [`AddF32`]: crate::nodes::AddF32
+//! [`SubF32`]: crate::nodes::SubF32
+//! [`MulF32`]: crate::nodes::MulF32
+//! [`DivF32`]: crate::nodes::DivF32
+//! [`ClampF32`]: crate::nodes::ClampF32
+//!
 //! [`NodeLike`]: crate::core::animation_node::NodeLike
 //! [`GraphClip`]: crate::core::animation_clip::GraphClip
 //! [`AnimationClip`]: bevy::animation::AnimationClip
