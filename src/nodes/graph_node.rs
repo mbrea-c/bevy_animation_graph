@@ -1,11 +1,11 @@
 use crate::core::animation_graph::{
-    AnimationGraph, EdgePath, EdgeSpec, EdgeValue, NodeInput, NodeOutput, TimeState, TimeUpdate,
+    AnimationGraph, InputOverlay, OptParamSpec, ParamSpec, ParamValue, PinId, TimeState, TimeUpdate,
 };
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
-use crate::core::graph_context::{GraphContext, GraphContextTmp};
-use crate::utils::hash_map_join::HashMapOpsExt;
+use crate::core::frame::PoseFrame;
+use crate::prelude::{DurationData, PassContext, SpecContext};
 use bevy::prelude::*;
-use bevy::utils::HashMap;
+use bevy::utils::{HashMap, HashSet};
 
 #[derive(Reflect, Clone, Debug, Default)]
 pub struct GraphNode {
@@ -25,249 +25,129 @@ impl GraphNode {
 impl NodeLike for GraphNode {
     fn parameter_pass(
         &self,
-        inputs: HashMap<NodeInput, EdgeValue>,
-        name: &str,
-        path: &EdgePath,
-        context: &mut GraphContext,
-        context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeValue> {
-        let graph = context_tmp.animation_graph_assets.get(&self.graph).unwrap();
+        inputs: HashMap<PinId, ParamValue>,
+        ctx: PassContext,
+    ) -> HashMap<PinId, ParamValue> {
+        let graph = ctx
+            .context_tmp
+            .animation_graph_assets
+            .get(&self.graph)
+            .unwrap();
 
-        let mut overlay_input_node = graph.nodes.get(AnimationGraph::INPUT_NODE).unwrap().clone();
-        overlay_input_node
-            .node
-            .unwrap_input_mut()
-            .parameters
-            .extend_replacing_owned(inputs);
+        let input_overlay = InputOverlay {
+            parameters: inputs,
+            ..default()
+        };
 
-        let sub_context = context.context_for_subgraph_or_insert_default(name);
+        let sub_context = ctx
+            .context
+            .context_for_subgraph_or_insert_default(ctx.node_id);
 
-        graph.parameter_pass(
-            AnimationGraph::OUTPUT_NODE,
-            path.clone(),
-            sub_context,
-            context_tmp,
-            &HashMap::from([(AnimationGraph::INPUT_NODE.into(), overlay_input_node)]),
-        );
-
-        sub_context
-            .get_parameters(AnimationGraph::OUTPUT_NODE)
-            .unwrap()
-            .upstream
-            .clone()
+        graph.parameter_pass(sub_context, ctx.context_tmp, &input_overlay)
     }
 
     fn duration_pass(
         &self,
-        inputs: HashMap<NodeInput, Option<f32>>,
-        name: &str,
-        path: &EdgePath,
-        context: &mut GraphContext,
-        context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, Option<f32>> {
-        let graph = context_tmp.animation_graph_assets.get(&self.graph).unwrap();
+        inputs: HashMap<PinId, DurationData>,
+        ctx: PassContext,
+    ) -> Option<DurationData> {
+        let graph = ctx
+            .context_tmp
+            .animation_graph_assets
+            .get(&self.graph)
+            .unwrap();
 
-        let params = context.get_parameters(name).unwrap().upstream.clone();
+        let input_overlay = InputOverlay {
+            durations: inputs,
+            // We do not add the parameters because they should already have been cached!
+            // in the subgraph context
+            ..default()
+        };
 
-        let mut overlay_input_node = graph.nodes.get(AnimationGraph::INPUT_NODE).unwrap().clone();
+        let sub_context = ctx
+            .context
+            .context_for_subgraph_or_insert_default(ctx.node_id);
 
-        overlay_input_node
-            .node
-            .unwrap_input_mut()
-            .parameters
-            .extend_replacing_owned(params);
-        overlay_input_node
-            .node
-            .unwrap_input_mut()
-            .durations
-            .extend_replacing_owned(inputs);
-
-        let sub_context = context.context_for_subgraph_or_insert_default(name);
-
-        graph.duration_pass(
-            AnimationGraph::OUTPUT_NODE,
-            path.clone(),
-            sub_context,
-            context_tmp,
-            &HashMap::from([(AnimationGraph::INPUT_NODE.into(), overlay_input_node)]),
-        );
-
-        sub_context
-            .get_durations(AnimationGraph::OUTPUT_NODE)
-            .unwrap()
-            .upstream
-            .clone()
+        graph.duration_pass(sub_context, ctx.context_tmp, &input_overlay)
     }
 
-    fn time_pass(
-        &self,
-        input: TimeState,
-        name: &str,
-        path: &EdgePath,
-        context: &mut GraphContext,
-        context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeInput, TimeUpdate> {
-        let graph = context_tmp.animation_graph_assets.get(&self.graph).unwrap();
+    fn time_pass(&self, input: TimeState, ctx: PassContext) -> HashMap<PinId, TimeUpdate> {
+        let graph = ctx
+            .context_tmp
+            .animation_graph_assets
+            .get(&self.graph)
+            .unwrap();
 
-        let params = context.get_parameters(name).unwrap().upstream.clone();
-        let durations = context.get_durations(name).unwrap().upstream.clone();
+        // We do not add the parameters and durations because they should already have
+        // been cached in the subgraph context
+        let input_overlay = InputOverlay::default();
 
-        let mut overlay_input_node = graph.nodes.get(AnimationGraph::INPUT_NODE).unwrap().clone();
+        let sub_context = ctx
+            .context
+            .context_for_subgraph_or_insert_default(ctx.node_id);
 
-        overlay_input_node
-            .node
-            .unwrap_input_mut()
-            .parameters
-            .extend_replacing_owned(params);
-        overlay_input_node
-            .node
-            .unwrap_input_mut()
-            .durations
-            .extend_replacing_owned(durations);
-
-        let sub_context = context.context_for_subgraph_or_insert_default(name);
-
-        graph.time_pass(
-            AnimationGraph::OUTPUT_NODE,
-            path.clone(),
-            input.update,
-            sub_context,
-            context_tmp,
-            &HashMap::from([(AnimationGraph::INPUT_NODE.into(), overlay_input_node)]),
-        );
-
-        let update = sub_context
-            .get_times(AnimationGraph::INPUT_NODE, path)
-            .unwrap()
-            .downstream
-            .update;
-
-        // TODO: Think whether we want nodes to receive separate time queries per time-dependent
-        // output
-        graph
-            .nodes
-            .get(AnimationGraph::INPUT_NODE)
-            .unwrap()
-            .node
-            .unwrap_input()
-            .time_dependent_spec
-            .iter()
-            .map(|(k, _)| (k.clone(), update))
-            .collect()
+        graph.time_pass(input.update, sub_context, ctx.context_tmp, &input_overlay)
     }
 
     fn time_dependent_pass(
         &self,
-        inputs: HashMap<NodeInput, EdgeValue>,
-        name: &str,
-        path: &EdgePath,
-        context: &mut GraphContext,
-        context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeValue> {
-        let graph = context_tmp.animation_graph_assets.get(&self.graph).unwrap();
+        inputs: HashMap<PinId, PoseFrame>,
+        ctx: PassContext,
+    ) -> Option<PoseFrame> {
+        let graph = ctx
+            .context_tmp
+            .animation_graph_assets
+            .get(&self.graph)
+            .unwrap();
 
-        let params = context.get_parameters(name).unwrap().upstream.clone();
-        let durations = context.get_durations(name).unwrap().upstream.clone();
+        let input_overlay = InputOverlay {
+            time_dependent: inputs,
+            // We do not add the parameters and durations because they should already have
+            // been cached in the subgraph context
+            ..default()
+        };
 
-        let mut overlay_input_node = graph.nodes.get(AnimationGraph::INPUT_NODE).unwrap().clone();
+        let sub_context = ctx
+            .context
+            .context_for_subgraph_or_insert_default(ctx.node_id);
 
-        overlay_input_node
-            .node
-            .unwrap_input_mut()
-            .parameters
-            .extend_replacing_owned(params);
-        overlay_input_node
-            .node
-            .unwrap_input_mut()
-            .durations
-            .extend_replacing_owned(durations);
-        overlay_input_node
-            .node
-            .unwrap_input_mut()
-            .time_dependent
-            .extend_replacing_owned(inputs);
-
-        let sub_context = context.context_for_subgraph_or_insert_default(name);
-
-        graph.time_dependent_pass(
-            AnimationGraph::OUTPUT_NODE,
-            path.clone(),
-            sub_context,
-            context_tmp,
-            &HashMap::from([(AnimationGraph::INPUT_NODE.into(), overlay_input_node)]),
-        );
-
-        sub_context
-            .get_time_dependent(AnimationGraph::OUTPUT_NODE, path)
-            .unwrap()
-            .upstream
-            .clone()
+        graph.time_dependent_pass(sub_context, ctx.context_tmp, &input_overlay)
     }
 
-    fn parameter_input_spec(
-        &self,
-        _context: &mut GraphContext,
-        context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeInput, EdgeSpec> {
-        let graph = context_tmp.animation_graph_assets.get(&self.graph).unwrap();
-        graph
-            .nodes
-            .get(AnimationGraph::INPUT_NODE)
-            .unwrap()
-            .node
-            .unwrap_input()
-            .parameters
-            .iter()
-            .map(|(k, v)| (k.clone(), EdgeSpec::from(v)))
-            .collect()
+    fn parameter_input_spec(&self, ctx: SpecContext) -> HashMap<PinId, OptParamSpec> {
+        let graph = ctx
+            .context_tmp
+            .animation_graph_assets
+            .get(&self.graph)
+            .unwrap();
+        graph.input_parameters.clone()
     }
 
-    fn parameter_output_spec(
-        &self,
-        _context: &mut GraphContext,
-        context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeSpec> {
-        let graph = context_tmp.animation_graph_assets.get(&self.graph).unwrap();
-        graph
-            .nodes
-            .get(AnimationGraph::OUTPUT_NODE)
-            .unwrap()
-            .node
-            .unwrap_output()
-            .parameters
-            .clone()
+    fn parameter_output_spec(&self, ctx: SpecContext) -> HashMap<PinId, ParamSpec> {
+        let graph = ctx
+            .context_tmp
+            .animation_graph_assets
+            .get(&self.graph)
+            .unwrap();
+        graph.output_parameters.clone()
     }
 
-    fn time_dependent_input_spec(
-        &self,
-        _context: &mut GraphContext,
-        context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeInput, EdgeSpec> {
-        let graph = context_tmp.animation_graph_assets.get(&self.graph).unwrap();
-        graph
-            .nodes
-            .get(AnimationGraph::INPUT_NODE)
-            .unwrap()
-            .node
-            .unwrap_input()
-            .time_dependent_spec
-            .clone()
+    fn pose_input_spec(&self, ctx: SpecContext) -> HashSet<PinId> {
+        let graph = ctx
+            .context_tmp
+            .animation_graph_assets
+            .get(&self.graph)
+            .unwrap();
+        graph.input_poses.clone()
     }
 
-    fn time_dependent_output_spec(
-        &self,
-        _context: &mut GraphContext,
-        context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeSpec> {
-        let graph = context_tmp.animation_graph_assets.get(&self.graph).unwrap();
-        graph
-            .nodes
-            .get(AnimationGraph::OUTPUT_NODE)
-            .unwrap()
-            .node
-            .unwrap_output()
-            .time_dependent
-            .clone()
+    fn pose_output_spec(&self, ctx: SpecContext) -> bool {
+        let graph = ctx
+            .context_tmp
+            .animation_graph_assets
+            .get(&self.graph)
+            .unwrap();
+        graph.output_pose
     }
 
     fn display_name(&self) -> String {
