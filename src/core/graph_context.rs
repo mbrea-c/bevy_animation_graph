@@ -51,16 +51,15 @@ impl<'a> PassContext<'a> {
         self.context
             .get_cached_duration(source_pin)
             .unwrap_or_else(|| panic!("Duration not cached at {source_pin:?}"))
-            .clone()
     }
 
     pub fn time_fwd(&self) -> TimeState {
         let source_pin = SourcePin::NodePose(self.node_id.clone());
 
-        self.context
+        *self
+            .context
             .get_cached_time(&source_pin)
             .unwrap_or_else(|| panic!("Time not cached at {source_pin:?}"))
-            .clone()
     }
 
     pub fn prev_time_fwd_opt(&self) -> Option<TimeState> {

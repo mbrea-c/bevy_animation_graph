@@ -476,7 +476,7 @@ impl AnimationGraph {
     ) {
         let source_pin = self.node_edges.get(&target_pin).unwrap();
 
-        let source_value = match source_pin {
+        match source_pin {
             SourcePin::NodeParameter(_, _) => {
                 panic!("Try using parameter_map instead: {source_pin:?} --> {target_pin:?}")
             }
@@ -510,8 +510,6 @@ impl AnimationGraph {
             }
             SourcePin::InputPose(_) => {}
         };
-
-        source_value
     }
 
     fn duration_map(
@@ -527,7 +525,7 @@ impl AnimationGraph {
             .unwrap_or_else(|| panic!("Target pin {target_pin:?} is disconnected"));
 
         if let Some(val) = context.get_cached_duration(source_pin) {
-            return val.clone();
+            return val;
         }
 
         let source_value = match source_pin {
@@ -560,17 +558,14 @@ impl AnimationGraph {
                 );
 
                 if let Some(value) = output {
-                    context.insert_cached_duration(
-                        SourcePin::NodePose(node_id.clone()),
-                        value.clone(),
-                    );
+                    context.insert_cached_duration(SourcePin::NodePose(node_id.clone()), value);
                 }
 
-                output.unwrap().clone()
+                output.unwrap()
             }
             SourcePin::InputPose(pin_id) => {
                 if let Some(v) = overlay.durations.get(pin_id) {
-                    v.clone()
+                    *v
                 } else {
                     panic!("Value of parameter {source_pin:?} not available")
                 }
@@ -586,11 +581,11 @@ impl AnimationGraph {
         time_update: TimeUpdate,
         context: &mut GraphContext,
         context_tmp: GraphContextTmp,
-        overlay: &InputOverlay,
+        _overlay: &InputOverlay,
     ) {
         let source_pin = self.node_edges.get(&target_pin).unwrap();
 
-        if let Some(_) = context.get_cached_time(source_pin) {
+        if context.get_cached_time(source_pin).is_some() {
             return;
         }
 
@@ -624,7 +619,7 @@ impl AnimationGraph {
                         time_update,
                         context,
                         context_tmp,
-                        overlay,
+                        _overlay,
                     );
                 }
             }

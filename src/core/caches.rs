@@ -25,21 +25,10 @@ pub struct TimeDependentCache {
     pub downstream: Option<ParamValue>,
 }
 
-#[derive(Reflect, Clone, Debug)]
+#[derive(Reflect, Clone, Debug, Default)]
 pub struct AnimationCaches {
     pub parameter_cache: Option<ParameterCache>,
     pub duration_cache: Option<DurationCache>,
     pub time_caches: Option<TimeCache>,
     pub time_dependent_caches: Option<TimeDependentCache>,
-}
-
-impl Default for AnimationCaches {
-    fn default() -> Self {
-        Self {
-            parameter_cache: None,
-            duration_cache: None,
-            time_caches: None,
-            time_dependent_caches: None,
-        }
-    }
 }

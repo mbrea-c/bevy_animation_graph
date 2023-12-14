@@ -193,7 +193,7 @@ impl AssetLoader for AnimationGraphLoader {
                 graph.add_input_pose(td_name);
             }
             for (p_name, p_spec) in &serial.output_parameter_spec {
-                graph.add_output_parameter(p_name, (*p_spec).into());
+                graph.add_output_parameter(p_name, *p_spec);
             }
 
             if serial.output_pose_spec {

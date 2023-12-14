@@ -292,7 +292,7 @@ impl ToDot for AnimationGraph {
 
             write_rows(
                 f,
-                in_param.into_iter().map(|(k, v)| (k, v.into())).collect(),
+                in_param.into_iter().map(|(k, v)| (k, v)).collect(),
                 out_param.into_iter().map(|(k, v)| (k, v.into())).collect(),
             )?;
 
@@ -369,7 +369,7 @@ impl ToDot for AnimationGraph {
         )?;
         write!(f, "<TR><TD COLSPAN=\"2\"><B>{}</B>", name)?;
         write!(f, "</TD></TR>",)?;
-        let out_param = self.output_pose.clone();
+        let out_param = self.output_pose;
 
         let mut out = HashMap::new();
         if out_param {
