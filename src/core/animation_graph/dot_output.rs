@@ -66,6 +66,34 @@ pub trait ToDot {
         Ok(())
     }
 
+    fn dot_to_file(
+        &self,
+        path: &str,
+        context: Option<&mut GraphContext>,
+        context_tmp: GraphContextTmp,
+    ) -> std::io::Result<()> {
+        {
+            let file = File::create(path)?;
+            let mut writer = BufWriter::new(file);
+            self.to_dot(&mut writer, context, context_tmp)?;
+        }
+
+        Ok(())
+    }
+
+    fn dot_to_stdout(
+        &self,
+        context: Option<&mut GraphContext>,
+        context_tmp: GraphContextTmp,
+    ) -> std::io::Result<()> {
+        {
+            let mut stdout = std::io::stdout();
+            self.to_dot(&mut stdout, context, context_tmp)?;
+        }
+
+        Ok(())
+    }
+
     fn dot_to_tmp_file(
         &self,
         context: Option<&mut GraphContext>,
