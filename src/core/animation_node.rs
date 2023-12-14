@@ -21,29 +21,41 @@ use std::{
 
 pub type DurationData = Option<f32>;
 
+/// This trait specifies the interface a graph node should implement.
+///
+/// Custom nodes should implement this trait.
 pub trait NodeLike: Send + Sync {
+    /// Processes parameter inputs and returs appropriate parameter outputs.
     fn parameter_pass(
         &self,
         inputs: HashMap<PinId, ParamValue>,
         ctx: PassContext,
     ) -> HashMap<PinId, ParamValue>;
+    /// Computes the duration of the animation from the pose output pin, if enabled for this node.
     fn duration_pass(
         &self,
         inputs: HashMap<PinId, Option<f32>>,
         ctx: PassContext,
     ) -> Option<DurationData>;
+    /// Computes the time updates that input nodes should be queried with.
     fn time_pass(&self, input: TimeState, ctx: PassContext) -> HashMap<PinId, TimeUpdate>;
+    /// Computes the final pose output based on pose inputs.
     fn time_dependent_pass(
         &self,
         inputs: HashMap<PinId, PoseFrame>,
         ctx: PassContext,
     ) -> Option<PoseFrame>;
 
+    /// Specifies which parameters this node should receive as input, and which ones are optional.
     fn parameter_input_spec(&self, ctx: SpecContext) -> HashMap<PinId, OptParamSpec>;
+    /// Specifies which parameters are output by this node.
     fn parameter_output_spec(&self, ctx: SpecContext) -> HashMap<PinId, ParamSpec>;
+    /// Specifies which pose inputs are received by this node.
     fn pose_input_spec(&self, ctx: SpecContext) -> HashSet<PinId>;
+    /// Specifies whether this node outputs a pose.
     fn pose_output_spec(&self, ctx: SpecContext) -> bool;
 
+    /// The name of this node.
     fn display_name(&self) -> String;
 }
 

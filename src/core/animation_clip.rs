@@ -3,6 +3,8 @@ use bevy::{
 };
 
 /// List of keyframes for one of the attribute of a [`Transform`].
+///
+/// [`Transform`]: bevy::transform::prelude::Transform
 #[derive(Reflect, Clone, Debug)]
 pub enum Keyframes {
     /// Keyframes for rotation.
@@ -22,9 +24,11 @@ pub enum Keyframes {
     Weights(Vec<f32>),
 }
 
-/// Describes how an attribute of a [`Transform`] or [`MorphWeights`] should be animated.
+/// Describes how an attribute of a [`Transform`] or morph weights should be animated.
 ///
 /// `keyframe_timestamps` and `keyframes` should have the same length.
+///
+/// [`Transform`]: bevy::transform::prelude::Transform
 #[derive(Reflect, Clone, Debug)]
 pub struct VariableCurve {
     /// Timestamp for each of the keyframes.

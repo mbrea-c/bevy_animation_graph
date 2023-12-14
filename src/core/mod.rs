@@ -12,6 +12,7 @@ pub mod systems;
 
 pub mod prelude {
     use super::*;
+    pub use animated_scene::AnimatedScene;
     pub use animation_clip::GraphClip;
     pub use animation_graph::AnimationGraph;
     pub use animation_graph_player::*;

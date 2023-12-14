@@ -6,6 +6,11 @@ use super::{
 use crate::prelude::DurationData;
 use bevy::{asset::Assets, reflect::prelude::*, utils::HashMap};
 
+/// This struct contains contextual information about the graph.
+/// It can be used from within a node to access things such as:
+/// - Animation graph and animation clip assets.
+/// - The time queries, paramters durations and poses from the previous frame.
+/// - The inputs and outputs from previous passes in this frame.
 pub struct PassContext<'a> {
     pub node_id: &'a NodeId,
     pub context: &'a mut GraphContext,
