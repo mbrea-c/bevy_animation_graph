@@ -43,7 +43,7 @@
 //!   ```
 //!   We can now simply instantiate an `AnimatedSceneBundle` with the given `AnimatedScene` handle,
 //!   just like we would do with a regular scene:
-//!   ```rust
+//!   ```ignore
 //!       //...
 //!       commands.spawn(AnimatedSceneBundle {
 //!           animated_scene: asset_server.load("animated_scenes/character.animscn.ron"),
