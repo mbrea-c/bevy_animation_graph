@@ -27,6 +27,7 @@
 //!   The preferred way of programmatically setting graph paramters is thus using the
 //!   [`AnimationGraphPlayer`]'s API, as doing it this way will not actally mutate the graph.
 //!   This enables the same graph to be used by multiple animation players at once.
+//!   See [the examples section](#examples) for a developed example.
 //! - [`AnimatedScene`], defined in `*.animscn.ron` files. These assets solve the ergonomics problem
 //!   of spawning in a scene that is animated via an animation graph. Without [`AnimatedScene`],
 //!   you would have to spawn the scene, manually find and remove remove Bevy's
@@ -77,7 +78,168 @@
 //!     - [`DivF32`]
 //!     - [`ClampF32`]
 //!
-//! ## How does it work?
+//! ## Examples
+//!
+//! ### Building a locomotion animation graph
+//!
+//! Consider the following scenario:
+//!
+//! - Inputs:
+//!   - We have a _partial_ running animation composed of two keyframes: one for the
+//!     reaching pose and one for the passing pose. The animation only covers half of
+//!     a running cycle.
+//!   - We have a _partial_ walk animation similarly composed of two keyframes.
+//!   - We have a target movement speed for the character.
+//!   - We know the movement speeds corresponding to the unmodified walk and run
+//!     animations, which we call `walk_base_speed` and `run_base_speed`.
+//!   - We decide on a range of target speeds where the blend between walk and run
+//!     should happen. We call this `blend_start` and `blend_end`.
+//! - Desired output:
+//!   - A complete movement animation that covers the full walk/run cycle and
+//!     performs a synchronized blend between the walk and run animations based on
+//!     the target speed.
+//!
+//! A solution to this problem is as follows:
+//!
+//! 1. The blend factor between the two animations can be computed as
+//!
+//!    ```
+//!    blend_fac = clamp((target_speed - blend_start) / (blend_end - blend_start), 0, 1)
+//!    ```
+//!
+//!    The playback speed factor applied to both animations is then
+//!
+//!    ```
+//!    speed_fac = target_speed / (walk_base_speed * (1 - blend_fac) + run_base_speed * blend_fac)
+//!    ```
+//!
+//! 2. We mirror the run animation along the X axis, and chain the result to the
+//!    original run animation to get a complete run cycle. Do the same with the walk
+//!    animation.
+//! 3. Blend the two animations together using `blend_fac`. Loop the result and
+//!    apply the speed factor `speed_fac`.
+//!
+//! The resulting graph is defined like so:
+//!
+//! ```ron
+//! // In file assets/animation_graphs/locomotion.animgraph.ron
+//! (
+//!     nodes: [
+//!         (name: "Walk Clip", node: Clip("animations/walk.anim.ron", Some(1.))),
+//!         (name: "Walk Clip 2", node: Clip("animations/walk.anim.ron", Some(1.))),
+//!         (name: "Run Clip",  node: Clip("animations/run.anim.ron", Some(1.))),
+//!         (name: "Run Clip 2",  node: Clip("animations/run.anim.ron", Some(1.))),
+//!         (name: "Walk Flip LR", node: FlipLR),
+//!         (name: "Run Flip LR", node: FlipLR),
+//!         (name: "Walk Chain", node: Chain),
+//!         (name: "Run Chain", node: Chain),
+//!         (name: "Blend", node: Blend),
+//!         (name: "Loop", node: Loop),
+//!         (name: "Speed", node: Speed),
+//!
+//!         (name: "Param graph", node: Graph("animation_graphs/velocity_to_params.animgraph.ron")),
+//!     ],
+//!     input_parameters: {
+//!         "Target Speed": F32(1.5),
+//!     },
+//!     output_pose_spec: true,
+//!     input_parameter_edges: [
+//!         ("Target Speed", ("Param graph", "Target Speed")),
+//!     ],
+//!     output_pose_edge: Some("Speed"),
+//!     parameter_edges: [
+//!         (("Param graph", "blend_fac"),("Blend", "Factor")),
+//!         (("Param graph", "speed_fac"),("Speed", "Speed")),
+//!     ],
+//!     pose_edges: [
+//!         ("Walk Clip", ("Walk Chain", "Pose In 1")),
+//!         ("Walk Clip 2", ("Walk Flip LR", "Pose In")),
+//!         ("Walk Flip LR", ("Walk Chain", "Pose In 2")),
+//!         ("Run Clip", ("Run Chain", "Pose In 1")),
+//!         ("Run Clip 2", ("Run Flip LR", "Pose In")),
+//!         ("Run Flip LR", ("Run Chain", "Pose In 2")),
+//!         ("Walk Chain", ("Blend", "Pose In 1")),
+//!         ("Run Chain", ("Blend", "Pose In 2")),
+//!         ("Blend", ("Loop", "Pose In")),
+//!         ("Loop", ("Speed", "Pose In")),
+//!     ],
+//! )
+//! ```
+//!
+//! We have extracted the computation of `blend_fac` and `speed_fac` into a separate
+//! graph that we reference as a node above:
+//!
+//! ```ron
+//! // In file: assets/animation_graphs/locomotion.ron
+//! (
+//!     nodes: [
+//!         (name: "Alpha Tmp 1", node: SubF32),
+//!         (name: "Alpha Tmp 2", node: SubF32),
+//!         (name: "Alpha Tmp 3", node: DivF32),
+//!         (name: "Alpha", node: ClampF32),
+//!
+//!         (name: "1-Alpha", node: SubF32),
+//!         (name: "Factored walk speed", node: MulF32),
+//!         (name: "Factored run speed", node: MulF32),
+//!         (name: "Blended base speed", node: AddF32),
+//!         (name: "Speed factor", node: DivF32),
+//!     ],
+//!     input_parameters: {
+//!         "Walk Base Speed": F32(0.3),
+//!         "Run Base Speed": F32(0.8),
+//!         "Target Speed": F32(1.5),
+//!         "Blend Start": F32(1.0),
+//!         "Blend End": F32(3.0),
+//!
+//!         // Constant values
+//!         "ZERO": F32(0.),
+//!         "ONE": F32(1.),
+//!     },
+//!     output_parameter_spec: {
+//!         "speed_fac": F32,
+//!         "blend_fac": F32,
+//!     },
+//!     input_parameter_edges: [
+//!         // Alpha clamp range
+//!         ("ZERO", ("Alpha", "Min")),
+//!         ("ONE", ("Alpha", "Max")),
+//!
+//!         // Alpha parameters
+//!         ("Target Speed", ("Alpha Tmp 1", "F32 In 1")),
+//!         ("Blend Start", ("Alpha Tmp 1", "F32 In 2")),
+//!         ("Blend End",   ("Alpha Tmp 2", "F32 In 1")),
+//!         ("Blend Start", ("Alpha Tmp 2", "F32 In 2")),
+//!
+//!         // Speed factor parameters
+//!         ("ONE", ("1-Alpha", "F32 In 1")),
+//!         ("Walk Base Speed", ("Factored walk speed", "F32 In 1")),
+//!         ("Run Base Speed", ("Factored run speed", "F32 In 1")),
+//!         ("Target Speed", ("Speed factor", "F32 In 1")),
+//!     ],
+//!     parameter_edges: [
+//!         // Blend alpha computation
+//!         // ((target_speed - blend_start) / (blend_end - blend_start)).clamp(0., 1.);
+//!         (("Alpha Tmp 1", "F32 Out"), ("Alpha Tmp 3", "F32 In 1")),
+//!         (("Alpha Tmp 2", "F32 Out"), ("Alpha Tmp 3", "F32 In 2")),
+//!         (("Alpha Tmp 3", "F32 Out"), ("Alpha", "F32 In")),
+//!
+//!         // Speed factor computation
+//!         // target_speed / (walk_base_speed * (1. - alpha) + run_base_seed * alpha)
+//!         (("Alpha", "F32 Out"),("1-Alpha", "F32 In 2")),
+//!         (("1-Alpha", "F32 Out"),("Factored walk speed", "F32 In 2")),
+//!         (("Alpha", "F32 Out"),("Factored run speed", "F32 In 2")),
+//!         (("Factored walk speed", "F32 Out"), ("Blended base speed", "F32 In 1")),
+//!         (("Factored run speed", "F32 Out"), ("Blended base speed", "F32 In 2")),
+//!         (("Blended base speed", "F32 Out"),("Speed factor", "F32 In 2")),
+//!     ],
+//!     output_parameter_edges: [
+//!         (("Alpha", "F32 Out"), "blend_fac"),
+//!         (("Speed factor", "F32 Out"), "speed_fac"),
+//!     ],
+//! )
+//! ```
+//!
+//! ## How does this library work?
 //!
 //! Each node [`AnimationNode`] in an animation graph has an arbitrary number of parameter inputs
 //! and outputs, each with a particular type (defined in [`ParamValue`]). Each edge
