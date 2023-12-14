@@ -1,75 +1,48 @@
 use super::{
-    animation_graph::{
-        EdgePath, EdgeSpec, EdgeValue, NodeInput, NodeOutput, TimeState, TimeUpdate,
+    animation_graph::{OptParamSpec, ParamSpec, ParamValue, PinId, TimeState, TimeUpdate},
+    frame::PoseFrame,
+};
+use crate::{
+    nodes::{
+        add_f32::AddF32, blend_node::BlendNode, chain_node::ChainNode, clamp_f32::ClampF32,
+        clip_node::ClipNode, dummy_node::DummyNode, flip_lr_node::FlipLRNode, loop_node::LoopNode,
+        speed_node::SpeedNode, sub_f32::SubF32, DivF32, GraphNode, MulF32,
     },
-    graph_context::{GraphContext, GraphContextTmp},
+    prelude::{PassContext, SpecContext},
 };
-use crate::nodes::{
-    add_f32::AddF32, blend_node::BlendNode, chain_node::ChainNode, clamp_f32::ClampF32,
-    clip_node::ClipNode, dummy_node::DummyNode, flip_lr_node::FlipLRNode, loop_node::LoopNode,
-    speed_node::SpeedNode, sub_f32::SubF32, DivF32, GraphNode, MulF32,
+use bevy::{
+    reflect::prelude::*,
+    utils::{HashMap, HashSet},
 };
-use bevy::{reflect::prelude::*, utils::HashMap};
 use std::{
     ops::{Deref, DerefMut},
     sync::{Arc, Mutex},
 };
 
+pub type DurationData = Option<f32>;
+
 pub trait NodeLike: Send + Sync {
     fn parameter_pass(
         &self,
-        inputs: HashMap<NodeInput, EdgeValue>,
-        name: &str,
-        path: &EdgePath,
-        context: &mut GraphContext,
-        context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeValue>;
+        inputs: HashMap<PinId, ParamValue>,
+        ctx: PassContext,
+    ) -> HashMap<PinId, ParamValue>;
     fn duration_pass(
         &self,
-        inputs: HashMap<NodeInput, Option<f32>>,
-        name: &str,
-        path: &EdgePath,
-        context: &mut GraphContext,
-        context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, Option<f32>>;
-    fn time_pass(
-        &self,
-        input: TimeState,
-        name: &str,
-        path: &EdgePath,
-        context: &mut GraphContext,
-        context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeInput, TimeUpdate>;
+        inputs: HashMap<PinId, Option<f32>>,
+        ctx: PassContext,
+    ) -> Option<DurationData>;
+    fn time_pass(&self, input: TimeState, ctx: PassContext) -> HashMap<PinId, TimeUpdate>;
     fn time_dependent_pass(
         &self,
-        inputs: HashMap<NodeInput, EdgeValue>,
-        name: &str,
-        path: &EdgePath,
-        context: &mut GraphContext,
-        context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeValue>;
+        inputs: HashMap<PinId, PoseFrame>,
+        ctx: PassContext,
+    ) -> Option<PoseFrame>;
 
-    fn parameter_input_spec(
-        &self,
-        context: &mut GraphContext,
-        context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeInput, EdgeSpec>;
-    fn parameter_output_spec(
-        &self,
-        context: &mut GraphContext,
-        context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeSpec>;
-
-    fn time_dependent_input_spec(
-        &self,
-        context: &mut GraphContext,
-        context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeInput, EdgeSpec>;
-    fn time_dependent_output_spec(
-        &self,
-        context: &mut GraphContext,
-        context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeSpec>;
+    fn parameter_input_spec(&self, ctx: SpecContext) -> HashMap<PinId, OptParamSpec>;
+    fn parameter_output_spec(&self, ctx: SpecContext) -> HashMap<PinId, ParamSpec>;
+    fn pose_input_spec(&self, ctx: SpecContext) -> HashSet<PinId>;
+    fn pose_output_spec(&self, ctx: SpecContext) -> bool;
 
     fn display_name(&self) -> String;
 }
@@ -116,86 +89,46 @@ impl AnimationNode {
 impl NodeLike for AnimationNode {
     fn parameter_pass(
         &self,
-        inputs: HashMap<NodeInput, EdgeValue>,
-        name: &str,
-        path: &EdgePath,
-        context: &mut GraphContext,
-        context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeValue> {
-        self.node
-            .map(|n| n.parameter_pass(inputs, name, path, context, context_tmp))
+        inputs: HashMap<PinId, ParamValue>,
+        ctx: PassContext,
+    ) -> HashMap<PinId, ParamValue> {
+        self.node.map(|n| n.parameter_pass(inputs, ctx))
     }
 
     fn duration_pass(
         &self,
-        inputs: HashMap<NodeInput, Option<f32>>,
-        name: &str,
-        path: &EdgePath,
-        context: &mut GraphContext,
-        context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, Option<f32>> {
-        self.node
-            .map(|n| n.duration_pass(inputs, name, path, context, context_tmp))
+        inputs: HashMap<PinId, Option<f32>>,
+        ctx: PassContext,
+    ) -> Option<Option<f32>> {
+        self.node.map(|n| n.duration_pass(inputs, ctx))
     }
 
-    fn time_pass(
-        &self,
-        input: TimeState,
-        name: &str,
-        path: &EdgePath,
-        context: &mut GraphContext,
-        context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeInput, TimeUpdate> {
-        self.node
-            .map(|n| n.time_pass(input, name, path, context, context_tmp))
+    fn time_pass(&self, input: TimeState, ctx: PassContext) -> HashMap<PinId, TimeUpdate> {
+        self.node.map(|n| n.time_pass(input, ctx))
     }
 
     fn time_dependent_pass(
         &self,
-        inputs: HashMap<NodeInput, EdgeValue>,
-        name: &str,
-        path: &EdgePath,
-        context: &mut GraphContext,
-        context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeValue> {
-        self.node
-            .map(|n| n.time_dependent_pass(inputs, name, path, context, context_tmp))
+        inputs: HashMap<PinId, PoseFrame>,
+        ctx: PassContext,
+    ) -> Option<PoseFrame> {
+        self.node.map(|n| n.time_dependent_pass(inputs, ctx))
     }
 
-    fn parameter_input_spec(
-        &self,
-        context: &mut GraphContext,
-        context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeInput, EdgeSpec> {
-        self.node
-            .map(|n| n.parameter_input_spec(context, context_tmp))
+    fn parameter_input_spec(&self, ctx: SpecContext) -> HashMap<PinId, OptParamSpec> {
+        self.node.map(|n| n.parameter_input_spec(ctx))
     }
 
-    fn parameter_output_spec(
-        &self,
-        context: &mut GraphContext,
-        context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeSpec> {
-        self.node
-            .map(|n| n.parameter_output_spec(context, context_tmp))
+    fn parameter_output_spec(&self, ctx: SpecContext) -> HashMap<PinId, ParamSpec> {
+        self.node.map(|n| n.parameter_output_spec(ctx))
     }
 
-    fn time_dependent_input_spec(
-        &self,
-        context: &mut GraphContext,
-        context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeInput, EdgeSpec> {
-        self.node
-            .map(|n| n.time_dependent_input_spec(context, context_tmp))
+    fn pose_input_spec(&self, ctx: SpecContext) -> HashSet<PinId> {
+        self.node.map(|n| n.pose_input_spec(ctx))
     }
 
-    fn time_dependent_output_spec(
-        &self,
-        context: &mut GraphContext,
-        context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeSpec> {
-        self.node
-            .map(|n| n.time_dependent_output_spec(context, context_tmp))
+    fn pose_output_spec(&self, ctx: SpecContext) -> bool {
+        self.node.map(|n| n.pose_output_spec(ctx))
     }
 
     fn display_name(&self) -> String {
@@ -205,9 +138,6 @@ impl NodeLike for AnimationNode {
 
 #[derive(Reflect, Clone, Debug)]
 pub enum AnimationNodeType {
-    GraphInput(GraphInputNode),
-    GraphOutput(GraphOutputNode),
-
     Clip(ClipNode),
     Blend(BlendNode),
     Chain(ChainNode),
@@ -232,8 +162,6 @@ impl AnimationNodeType {
         F: FnOnce(&dyn NodeLike) -> O,
     {
         match self {
-            AnimationNodeType::GraphInput(n) => f(n),
-            AnimationNodeType::GraphOutput(n) => f(n),
             AnimationNodeType::Clip(n) => f(n),
             AnimationNodeType::Blend(n) => f(n),
             AnimationNodeType::Chain(n) => f(n),
@@ -255,8 +183,6 @@ impl AnimationNodeType {
         F: FnMut(&mut dyn NodeLike) -> O,
     {
         match self {
-            AnimationNodeType::GraphInput(n) => f(n),
-            AnimationNodeType::GraphOutput(n) => f(n),
             AnimationNodeType::Clip(n) => f(n),
             AnimationNodeType::Blend(n) => f(n),
             AnimationNodeType::Chain(n) => f(n),
@@ -274,229 +200,5 @@ impl AnimationNodeType {
                 f(nod.deref_mut())
             }
         }
-    }
-
-    pub fn unwrap_input(&self) -> &GraphInputNode {
-        match self {
-            AnimationNodeType::GraphInput(n) => n,
-            _ => panic!("Node is not a parameter node"),
-        }
-    }
-
-    pub fn unwrap_input_mut(&mut self) -> &mut GraphInputNode {
-        match self {
-            AnimationNodeType::GraphInput(n) => n,
-            _ => panic!("Node is not a parameter node"),
-        }
-    }
-
-    pub fn unwrap_output(&self) -> &GraphOutputNode {
-        match self {
-            AnimationNodeType::GraphOutput(n) => n,
-            _ => panic!("Node is not a parameter node"),
-        }
-    }
-
-    pub fn unwrap_output_mut(&mut self) -> &mut GraphOutputNode {
-        match self {
-            AnimationNodeType::GraphOutput(n) => n,
-            _ => panic!("Node is not a parameter node"),
-        }
-    }
-}
-
-#[derive(Reflect, Default, Clone, Debug)]
-pub struct GraphInputNode {
-    pub parameters: HashMap<String, EdgeValue>,
-    pub time_dependent_spec: HashMap<String, EdgeSpec>,
-    pub time_dependent: HashMap<String, EdgeValue>,
-    pub durations: HashMap<String, Option<f32>>,
-}
-
-#[derive(Reflect, Default, Clone, Debug)]
-pub struct GraphOutputNode {
-    pub parameters: HashMap<String, EdgeSpec>,
-    pub time_dependent: HashMap<String, EdgeSpec>,
-}
-
-impl GraphInputNode {
-    pub fn wrapped(self, name: impl Into<String>) -> AnimationNode {
-        AnimationNode::new_from_nodetype(name.into(), AnimationNodeType::GraphInput(self))
-    }
-}
-
-impl GraphOutputNode {
-    pub fn wrapped(self, name: impl Into<String>) -> AnimationNode {
-        AnimationNode::new_from_nodetype(name.into(), AnimationNodeType::GraphOutput(self))
-    }
-}
-
-impl NodeLike for GraphInputNode {
-    fn parameter_pass(
-        &self,
-        _inputs: HashMap<NodeInput, EdgeValue>,
-        _name: &str,
-        _path: &EdgePath,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeValue> {
-        self.parameters.clone()
-    }
-
-    fn duration_pass(
-        &self,
-        _inputs: HashMap<NodeInput, Option<f32>>,
-        _name: &str,
-        _path: &EdgePath,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, Option<f32>> {
-        self.durations.clone()
-    }
-
-    fn time_pass(
-        &self,
-        _input: TimeState,
-        _name: &str,
-        _path: &EdgePath,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeInput, TimeUpdate> {
-        HashMap::new()
-    }
-
-    fn time_dependent_pass(
-        &self,
-        _inputs: HashMap<NodeInput, EdgeValue>,
-        _name: &str,
-        _path: &EdgePath,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeValue> {
-        HashMap::new()
-    }
-
-    fn parameter_input_spec(
-        &self,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeInput, EdgeSpec> {
-        HashMap::new()
-    }
-
-    fn parameter_output_spec(
-        &self,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeSpec> {
-        self.parameters
-            .iter()
-            .map(|(k, v)| (k.clone(), EdgeSpec::from(v)))
-            .collect()
-    }
-
-    fn time_dependent_input_spec(
-        &self,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeInput, EdgeSpec> {
-        HashMap::new()
-    }
-
-    fn time_dependent_output_spec(
-        &self,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeSpec> {
-        self.time_dependent_spec.clone()
-    }
-
-    fn display_name(&self) -> String {
-        "󰿄 Input".into()
-    }
-}
-
-impl NodeLike for GraphOutputNode {
-    fn parameter_pass(
-        &self,
-        inputs: HashMap<NodeInput, EdgeValue>,
-        _name: &str,
-        _path: &EdgePath,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeValue> {
-        inputs.clone()
-    }
-
-    fn duration_pass(
-        &self,
-        inputs: HashMap<NodeInput, Option<f32>>,
-        _name: &str,
-        _path: &EdgePath,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, Option<f32>> {
-        inputs.clone()
-    }
-
-    fn time_pass(
-        &self,
-        input: TimeState,
-        _name: &str,
-        _path: &EdgePath,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeInput, TimeUpdate> {
-        self.time_dependent
-            .iter()
-            .map(|(k, _)| (k.clone(), input.update))
-            .collect()
-    }
-
-    fn time_dependent_pass(
-        &self,
-        inputs: HashMap<NodeInput, EdgeValue>,
-        _name: &str,
-        _path: &EdgePath,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeValue> {
-        inputs.clone()
-    }
-
-    fn parameter_input_spec(
-        &self,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeInput, EdgeSpec> {
-        self.parameters.clone()
-    }
-
-    fn parameter_output_spec(
-        &self,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeSpec> {
-        self.parameters.clone()
-    }
-
-    fn time_dependent_input_spec(
-        &self,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeInput, EdgeSpec> {
-        self.time_dependent.clone()
-    }
-
-    fn time_dependent_output_spec(
-        &self,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeSpec> {
-        self.time_dependent.clone()
-    }
-
-    fn display_name(&self) -> String {
-        "󰿅 Output".into()
     }
 }

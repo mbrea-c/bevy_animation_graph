@@ -1,12 +1,12 @@
-use super::{AnimationGraph, EdgeSpec, EdgeValue, TimeState, TimeUpdate};
+use super::{AnimationGraph, OptParamSpec, ParamSpec, ParamValue, TimeState, TimeUpdate};
 use crate::{
     core::{
-        animation_node::{AnimationNode, NodeLike},
+        animation_node::NodeLike,
         frame::{BoneFrame, PoseFrame, ValueFrame},
         graph_context::{GraphContext, GraphContextTmp},
     },
     nodes::{ClipNode, GraphNode},
-    utils::hash_map_join::HashMapJoinExt,
+    prelude::SpecContext,
 };
 use bevy::{
     reflect::{FromReflect, TypePath},
@@ -23,13 +23,13 @@ pub trait ToDot {
         &self,
         f: &mut impl std::io::Write,
         context: Option<&mut GraphContext>,
-        context_tmp: &mut GraphContextTmp,
+        context_tmp: GraphContextTmp,
     ) -> std::io::Result<()>;
 
     fn preview_dot(
         &self,
         context: Option<&mut GraphContext>,
-        context_tmp: &mut GraphContextTmp,
+        context_tmp: GraphContextTmp,
     ) -> std::io::Result<()> {
         let dir = std::env::temp_dir();
         let path = dir.join("bevy_animation_graph_dot.dot");
@@ -55,7 +55,7 @@ pub trait ToDot {
     fn dot_to_tmp_file_and_open(
         &self,
         context: Option<&mut GraphContext>,
-        context_tmp: &mut GraphContextTmp,
+        context_tmp: GraphContextTmp,
     ) -> std::io::Result<()> {
         self.dot_to_tmp_file(context, context_tmp)?;
 
@@ -69,7 +69,7 @@ pub trait ToDot {
     fn dot_to_tmp_file(
         &self,
         context: Option<&mut GraphContext>,
-        context_tmp: &mut GraphContextTmp,
+        context_tmp: GraphContextTmp,
     ) -> std::io::Result<()> {
         let path = "/tmp/bevy_animation_graph_dot.dot";
         let pdf_path = "/tmp/bevy_animation_graph_dot.dot.pdf";
@@ -95,13 +95,15 @@ pub trait ToDot {
     }
 }
 
-fn write_col(f: &mut impl std::io::Write, row: HashMap<String, EdgeSpec>) -> std::io::Result<()> {
+fn write_col(
+    f: &mut impl std::io::Write,
+    row: HashMap<String, OptParamSpec>,
+) -> std::io::Result<()> {
     if !row.is_empty() {
         write!(f, "<TABLE BORDER=\"0\">")?;
         for (param_name, param_spec) in row.iter() {
-            let icon = match param_spec {
-                EdgeSpec::PoseFrame => String::from("🯅"),
-                EdgeSpec::F32 => String::from(""),
+            let icon = match param_spec.spec {
+                ParamSpec::F32 => String::from(""),
             };
 
             write!(
@@ -115,10 +117,26 @@ fn write_col(f: &mut impl std::io::Write, row: HashMap<String, EdgeSpec>) -> std
     Ok(())
 }
 
+fn write_col_pose(f: &mut impl std::io::Write, row: HashMap<String, ()>) -> std::io::Result<()> {
+    if !row.is_empty() {
+        write!(f, "<TABLE BORDER=\"0\">")?;
+        for (param_name, _) in row.iter() {
+            let icon = String::from("🯅");
+            write!(
+                f,
+                "<TR><TD PORT=\"{}\">{} {}</TD></TR>",
+                param_name, icon, param_name
+            )?;
+        }
+        write!(f, "</TABLE>")?;
+    }
+    Ok(())
+}
+
 fn write_rows(
     f: &mut impl std::io::Write,
-    left: HashMap<String, EdgeSpec>,
-    right: HashMap<String, EdgeSpec>,
+    left: HashMap<String, OptParamSpec>,
+    right: HashMap<String, OptParamSpec>,
 ) -> std::io::Result<()> {
     write!(f, "<TR>")?;
     write!(f, "<TD>")?;
@@ -131,22 +149,19 @@ fn write_rows(
     Ok(())
 }
 
-fn write_values<T: AsDotLabel>(
+fn write_rows_pose(
     f: &mut impl std::io::Write,
-    row: &HashMap<String, T>,
+    left: HashMap<String, ()>,
+    right: HashMap<String, ()>,
 ) -> std::io::Result<()> {
-    if !row.is_empty() {
-        write!(f, "<TABLE BORDER=\"0\">")?;
-        for (param_name, param_val) in row.iter() {
-            write!(
-                f,
-                "<TR><TD>{}</TD><TD>{}</TD></TR>",
-                param_name,
-                param_val.as_dot_label()
-            )?;
-        }
-        write!(f, "</TABLE>")?;
-    }
+    write!(f, "<TR>")?;
+    write!(f, "<TD>")?;
+    write_col_pose(f, left)?;
+    write!(f, "</TD>")?;
+    write!(f, "<TD>")?;
+    write_col_pose(f, right)?;
+    write!(f, "</TD>")?;
+    write!(f, "</TR>")?;
     Ok(())
 }
 
@@ -154,11 +169,10 @@ pub trait AsDotLabel {
     fn as_dot_label(&self) -> String;
 }
 
-impl AsDotLabel for EdgeValue {
+impl AsDotLabel for ParamValue {
     fn as_dot_label(&self) -> String {
         match self {
-            EdgeValue::PoseFrame(p) => p.as_dot_label(),
-            EdgeValue::F32(f) => format!("{:.3}", f),
+            ParamValue::F32(f) => format!("{:.3}", f),
         }
     }
 }
@@ -217,95 +231,20 @@ impl AsDotLabel for TimeState {
     }
 }
 
-fn write_debugdump(
-    f: &mut impl std::io::Write,
-    node: &AnimationNode,
-    context: &GraphContext,
-) -> std::io::Result<()> {
-    write!(f, "<TR><TD COLSPAN=\"2\"><i>DebugDump</i></TD></TR>")?;
-    if let Some(param_cache) = context
-        .get_node_cache(&node.name)
-        .and_then(|nc| nc.parameter_cache.as_ref())
-    {
-        write!(f, "<TR><TD COLSPAN=\"2\">Parameters</TD></TR>")?;
-        write!(f, "<TR>")?;
-        write!(f, "<TD>")?;
-        write_values(f, &param_cache.upstream)?;
-        write!(f, "</TD>")?;
-        write!(f, "<TD>")?;
-        write_values(f, &param_cache.downstream)?;
-        write!(f, "</TD>")?;
-        write!(f, "</TR>")?;
-    }
-    if let Some(duration_cache) = context
-        .get_node_cache(&node.name)
-        .and_then(|nc| nc.duration_cache.as_ref())
-    {
-        write!(f, "<TR><TD COLSPAN=\"2\">Durations</TD></TR>")?;
-        write!(f, "<TR>")?;
-        write!(f, "<TD>")?;
-        write_values(f, &duration_cache.upstream)?;
-        write!(f, "</TD>")?;
-        write!(f, "<TD>")?;
-        write!(f, "{:?}", duration_cache.downstream)?;
-        write!(f, "</TD>")?;
-        write!(f, "</TR>")?;
-    }
-
-    let tc = context.get_node_cache(&node.name).map(|nc| &nc.time_caches);
-    if let Some(time_caches) = tc {
-        if !time_caches.is_empty() {
-            write!(f, "<TR><TD COLSPAN=\"2\">Time queries</TD></TR>")?;
-            for (_, time_cache) in time_caches.iter() {
-                write!(f, "<TR>")?;
-                write!(f, "<TD>")?;
-                write_values(f, &time_cache.upstream)?;
-                write!(f, "</TD>")?;
-                write!(f, "<TD>")?;
-                write!(f, "{}", time_cache.downstream.as_dot_label())?;
-                write!(f, "</TD>")?;
-                write!(f, "</TR>")?;
-            }
-        }
-    }
-    let tdc = context
-        .get_node_cache(&node.name)
-        .map(|nc| &nc.time_dependent_caches);
-    if let Some(time_dependent_caches) = tdc {
-        if !time_dependent_caches.is_empty() {
-            write!(f, "<TR><TD COLSPAN=\"2\">Time-dependent queries</TD></TR>")?;
-            for (_, time_dependent_cache) in time_dependent_caches.iter() {
-                write!(f, "<TR>")?;
-                write!(f, "<TD>")?;
-                write_values(f, &time_dependent_cache.upstream)?;
-                write!(f, "</TD>")?;
-                write!(f, "<TD>")?;
-                write_values(f, &time_dependent_cache.downstream)?;
-                write!(f, "</TD>")?;
-                write!(f, "</TR>")?;
-            }
-        }
-    }
-    Ok(())
-}
-
 impl ToDot for AnimationGraph {
     fn to_dot(
         &self,
         f: &mut impl std::io::Write,
         mut context: Option<&mut GraphContext>,
-        context_tmp: &mut GraphContextTmp,
+        context_tmp: GraphContextTmp,
     ) -> std::io::Result<()> {
         writeln!(f, "digraph {{")?;
         writeln!(f, "\trankdir=LR;")?;
         writeln!(f, "\tnode [style=rounded, shape=plain];")?;
 
         let mut default_graph_context = GraphContext::default();
-        let mut has_ctx = false;
 
         let ctx = if let Some(context) = &mut context {
-            has_ctx = true;
-
             context
         } else {
             &mut default_graph_context
@@ -345,38 +284,131 @@ impl ToDot for AnimationGraph {
             };
             write!(f, "</TD></TR>",)?;
 
-            let in_param = node.parameter_input_spec(ctx, context_tmp);
-            let out_param = node.parameter_output_spec(ctx, context_tmp);
+            let in_param = node.parameter_input_spec(SpecContext::new(ctx, context_tmp));
+            let out_param = node.parameter_output_spec(SpecContext::new(ctx, context_tmp));
 
-            let in_td = node.time_dependent_input_spec(ctx, context_tmp);
-            let out_td = node.time_dependent_output_spec(ctx, context_tmp);
+            let in_td = node.pose_input_spec(SpecContext::new(ctx, context_tmp));
+            let out_td = node.pose_output_spec(SpecContext::new(ctx, context_tmp));
 
-            write_rows(f, in_param, out_param)?;
-            write_rows(f, in_td, out_td)?;
+            write_rows(
+                f,
+                in_param.into_iter().map(|(k, v)| (k, v)).collect(),
+                out_param.into_iter().map(|(k, v)| (k, v.into())).collect(),
+            )?;
 
-            if has_ctx {
-                write_debugdump(f, node, ctx)?;
+            let mut right = HashMap::new();
+            if out_td {
+                right.insert("POSE".into(), ());
             }
+
+            write_rows_pose(f, in_td.into_iter().map(|k| (k, ())).collect(), right)?;
 
             writeln!(f, "</TABLE>>]")?;
         }
 
-        // TODO: Mark default output
-        // writeln!(f, "OUTPUT [shape=cds];")?;
-        // writeln!(
-        //     f,
-        //     "\t\"{}\":\"{}\" -> OUTPUT;",
-        //     self.out_node, self.out_edge
-        // )?;
+        // --- Input parameters node
+        // --------------------------------------------------------
+        let name = "INPUT PARAMETERS";
+        write!(
+            f,
+            "\t\"{}\" [label=<<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">",
+            name
+        )?;
+        write!(f, "<TR><TD COLSPAN=\"2\"><B>{}</B>", name)?;
+        write!(f, "</TD></TR>",)?;
+        let out_param = self.input_parameters.clone();
+        write_rows(f, HashMap::new(), out_param)?;
+        writeln!(f, "</TABLE>>]")?;
+        // --------------------------------------------------------
 
-        for ((end_node, end_edge), (start_node, start_edge)) in self.node_edges.iter() {
-            let node = self.nodes.get(start_node).unwrap();
-            let mut spec = node.parameter_output_spec(ctx, context_tmp);
-            spec.fill_up(&node.time_dependent_output_spec(ctx, context_tmp), &|v| *v);
-            let tp = spec.get(start_edge).unwrap();
-            let color = match tp {
-                EdgeSpec::PoseFrame => "chartreuse4",
-                EdgeSpec::F32 => "deeppink3",
+        // --- Input poses node
+        // --------------------------------------------------------
+        let name = "INPUT POSES";
+        write!(
+            f,
+            "\t\"{}\" [label=<<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">",
+            name
+        )?;
+        write!(f, "<TR><TD COLSPAN=\"2\"><B>{}</B>", name)?;
+        write!(f, "</TD></TR>",)?;
+        let out_param = self.input_poses.clone();
+        write_rows_pose(
+            f,
+            HashMap::new(),
+            out_param.into_iter().map(|k| (k, ())).collect(),
+        )?;
+        writeln!(f, "</TABLE>>]")?;
+        // --------------------------------------------------------
+
+        // --- Output parameters node
+        // --------------------------------------------------------
+        let name = "OUTPUT PARAMETERS";
+        write!(
+            f,
+            "\t\"{}\" [label=<<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">",
+            name
+        )?;
+        write!(f, "<TR><TD COLSPAN=\"2\"><B>{}</B>", name)?;
+        write!(f, "</TD></TR>",)?;
+        let out_param = self.output_parameters.clone();
+        write_rows(
+            f,
+            out_param.into_iter().map(|(k, v)| (k, v.into())).collect(),
+            HashMap::new(),
+        )?;
+        writeln!(f, "</TABLE>>]")?;
+        // --------------------------------------------------------
+
+        // --- Output pose node
+        // --------------------------------------------------------
+        let name = "OUTPUT POSE";
+        write!(
+            f,
+            "\t\"{}\" [label=<<TABLE BORDER=\"0\" CELLBORDER=\"1\" CELLSPACING=\"0\">",
+            name
+        )?;
+        write!(f, "<TR><TD COLSPAN=\"2\"><B>{}</B>", name)?;
+        write!(f, "</TD></TR>",)?;
+        let out_param = self.output_pose;
+
+        let mut out = HashMap::new();
+        if out_param {
+            out.insert("POSE".into(), ());
+        }
+        write_rows_pose(f, out, HashMap::new())?;
+        writeln!(f, "</TABLE>>]")?;
+        // --------------------------------------------------------
+
+        for (target_pin, source_pin) in self.node_edges.iter() {
+            let (start_node, start_edge) = match source_pin {
+                super::SourcePin::NodeParameter(node_id, pin_id) => {
+                    (node_id.clone(), pin_id.clone())
+                }
+                super::SourcePin::InputParameter(pin_id) => {
+                    (String::from("INPUT PARAMETERS"), pin_id.clone())
+                }
+                super::SourcePin::NodePose(node_id) => (node_id.clone(), String::from("POSE")),
+                super::SourcePin::InputPose(pin_id) => {
+                    (String::from("INPUT POSES"), pin_id.clone())
+                }
+            };
+
+            let (end_node, end_edge) = match target_pin {
+                super::TargetPin::NodeParameter(node_id, pin_id) => {
+                    (node_id.clone(), pin_id.clone())
+                }
+                super::TargetPin::OutputParameter(pin_id) => {
+                    (String::from("OUTPUT PARAMETERS"), pin_id.clone())
+                }
+                super::TargetPin::NodePose(node_id, pin_id) => (node_id.clone(), pin_id.clone()),
+                super::TargetPin::OutputPose => (String::from("OUTPUT POSE"), String::from("POSE")),
+            };
+
+            let color = match source_pin {
+                super::SourcePin::NodeParameter(_, _) => "darkblue",
+                super::SourcePin::InputParameter(_) => "darkblue",
+                super::SourcePin::NodePose(_) => "chartreuse4",
+                super::SourcePin::InputPose(_) => "chartreuse4",
             };
 
             writeln!(

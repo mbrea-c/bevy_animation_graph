@@ -1,10 +1,11 @@
 use crate::core::animation_graph::{
-    EdgePath, EdgeSpec, EdgeValue, NodeInput, NodeOutput, TimeState, TimeUpdate,
+    OptParamSpec, ParamSpec, ParamValue, PinId, TimeState, TimeUpdate,
 };
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
-use crate::core::graph_context::{GraphContext, GraphContextTmp};
+use crate::core::frame::PoseFrame;
+use crate::prelude::{PassContext, SpecContext};
 use bevy::prelude::*;
-use bevy::utils::HashMap;
+use bevy::utils::{HashMap, HashSet};
 
 #[derive(Reflect, Clone, Debug, Default)]
 pub struct ClampF32 {}
@@ -27,86 +28,54 @@ impl ClampF32 {
 impl NodeLike for ClampF32 {
     fn parameter_pass(
         &self,
-        inputs: HashMap<NodeInput, EdgeValue>,
-        _name: &str,
-        _path: &EdgePath,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeValue> {
+        inputs: HashMap<PinId, ParamValue>,
+        _: PassContext,
+    ) -> HashMap<PinId, ParamValue> {
         let input = inputs.get(Self::INPUT).unwrap().clone().unwrap_f32();
         let min = inputs.get(Self::CLAMP_MIN).unwrap().clone().unwrap_f32();
         let max = inputs.get(Self::CLAMP_MAX).unwrap().clone().unwrap_f32();
 
-        HashMap::from([(Self::OUTPUT.into(), EdgeValue::F32(input.clamp(min, max)))])
+        HashMap::from([(Self::OUTPUT.into(), ParamValue::F32(input.clamp(min, max)))])
     }
 
     fn duration_pass(
         &self,
-        _inputs: HashMap<NodeInput, Option<f32>>,
-        _name: &str,
-        _path: &EdgePath,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, Option<f32>> {
-        HashMap::new()
+        _inputs: HashMap<PinId, Option<f32>>,
+        _: PassContext,
+    ) -> Option<Option<f32>> {
+        None
     }
 
-    fn time_pass(
-        &self,
-        _input: TimeState,
-        _name: &str,
-        _path: &EdgePath,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeInput, TimeUpdate> {
+    fn time_pass(&self, _input: TimeState, _: PassContext) -> HashMap<PinId, TimeUpdate> {
         HashMap::new()
     }
 
     fn time_dependent_pass(
         &self,
-        _inputs: HashMap<NodeInput, EdgeValue>,
-        _name: &str,
-        _path: &EdgePath,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeValue> {
-        HashMap::new()
+        _inputs: HashMap<PinId, PoseFrame>,
+        _: PassContext,
+    ) -> Option<PoseFrame> {
+        None
     }
 
-    fn parameter_input_spec(
-        &self,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeInput, EdgeSpec> {
+    fn parameter_input_spec(&self, _: SpecContext) -> HashMap<PinId, OptParamSpec> {
         HashMap::from([
-            (Self::INPUT.into(), EdgeSpec::F32),
-            (Self::CLAMP_MIN.into(), EdgeSpec::F32),
-            (Self::CLAMP_MAX.into(), EdgeSpec::F32),
+            (Self::INPUT.into(), ParamSpec::F32.into()),
+            (Self::CLAMP_MIN.into(), ParamSpec::F32.into()),
+            (Self::CLAMP_MAX.into(), ParamSpec::F32.into()),
         ])
     }
 
-    fn parameter_output_spec(
-        &self,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeSpec> {
-        HashMap::from([(Self::OUTPUT.into(), EdgeSpec::F32)])
+    fn parameter_output_spec(&self, _: SpecContext) -> HashMap<PinId, ParamSpec> {
+        HashMap::from([(Self::OUTPUT.into(), ParamSpec::F32)])
     }
 
-    fn time_dependent_input_spec(
-        &self,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeInput, EdgeSpec> {
-        HashMap::new()
+    fn pose_input_spec(&self, _: SpecContext) -> HashSet<PinId> {
+        HashSet::new()
     }
 
-    fn time_dependent_output_spec(
-        &self,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeSpec> {
-        HashMap::new()
+    fn pose_output_spec(&self, _: SpecContext) -> bool {
+        false
     }
 
     fn display_name(&self) -> String {

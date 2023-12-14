@@ -1,11 +1,11 @@
-use crate::{prelude::GraphContextTmp, utils::hash_map_join::HashMapOpsExt};
+use crate::prelude::GraphContextTmp;
 
 use super::{
-    animation_graph::{AnimationGraph, EdgeValue, TimeState, TimeUpdate},
+    animation_graph::{AnimationGraph, InputOverlay, ParamValue, TimeState, TimeUpdate},
     graph_context::GraphContext,
     pose::Pose,
 };
-use bevy::{asset::prelude::*, ecs::prelude::*, reflect::prelude::*, utils::HashMap};
+use bevy::{asset::prelude::*, ecs::prelude::*, reflect::prelude::*};
 
 /// Animation controls
 #[derive(Component, Default, Reflect)]
@@ -17,7 +17,7 @@ pub struct AnimationGraphPlayer {
     pub(crate) pending_update: Option<TimeUpdate>,
     pub(crate) context: GraphContext,
 
-    input_parameters: HashMap<String, EdgeValue>,
+    input_overlay: InputOverlay,
 }
 
 impl AnimationGraphPlayer {
@@ -30,7 +30,7 @@ impl AnimationGraphPlayer {
             pending_update: None,
             context: GraphContext::default(),
 
-            input_parameters: HashMap::new(),
+            input_overlay: InputOverlay::default(),
         }
     }
 
@@ -41,18 +41,20 @@ impl AnimationGraphPlayer {
     }
 
     /// Clear all input parameters for the animation graph
-    pub fn clear_input_parameter(&mut self) {
-        self.input_parameters.clear();
+    pub fn clear_input_parameters(&mut self) {
+        self.input_overlay.clear();
     }
 
     /// Configure an input parameter for the animation graph
-    pub fn set_input_parameter(&mut self, parameter_name: impl Into<String>, value: EdgeValue) {
-        self.input_parameters.insert(parameter_name.into(), value);
+    pub fn set_input_parameter(&mut self, parameter_name: impl Into<String>, value: ParamValue) {
+        self.input_overlay
+            .parameters
+            .insert(parameter_name.into(), value);
     }
 
     /// Return an input parameter for the animation graph
-    pub fn get_input_parameter(&self, parameter_name: &str) -> Option<EdgeValue> {
-        self.input_parameters.get(parameter_name).cloned()
+    pub fn get_input_parameter(&self, parameter_name: &str) -> Option<ParamValue> {
+        self.input_overlay.parameters.get(parameter_name).cloned()
     }
 
     /// Start playing an animation, resetting state of the player.
@@ -65,7 +67,7 @@ impl AnimationGraphPlayer {
     }
 
     /// Query the animation graph with the latest time update and inputs
-    pub(crate) fn query(&mut self, context_tmp: &mut GraphContextTmp) -> Option<Pose> {
+    pub(crate) fn query(&mut self, context_tmp: GraphContextTmp) -> Option<Pose> {
         let Some(graph_handle) = &self.animation else {
             return None;
         };
@@ -74,18 +76,11 @@ impl AnimationGraphPlayer {
             return None;
         };
 
-        let mut overlay_input_node = graph.nodes.get(AnimationGraph::INPUT_NODE).unwrap().clone();
-        overlay_input_node
-            .node
-            .unwrap_input_mut()
-            .parameters
-            .extend_replacing_owned(self.input_parameters.clone());
-
         Some(graph.query_with_overlay(
             self.elapsed.update,
             &mut self.context,
             context_tmp,
-            &HashMap::from([(AnimationGraph::INPUT_NODE.into(), overlay_input_node)]),
+            &self.input_overlay,
         ))
     }
 

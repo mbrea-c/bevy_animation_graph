@@ -1,14 +1,14 @@
 use crate::core::animation_clip::{GraphClip, Keyframes};
 use crate::core::animation_graph::{
-    EdgePath, EdgeSpec, EdgeValue, NodeInput, NodeOutput, TimeState, TimeUpdate,
+    OptParamSpec, ParamSpec, ParamValue, PinId, TimeState, TimeUpdate,
 };
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::frame::{BoneFrame, PoseFrame, ValueFrame};
-use crate::core::graph_context::{GraphContext, GraphContextTmp};
 use crate::core::systems::get_keyframe;
+use crate::prelude::{DurationData, PassContext, SpecContext};
 use bevy::asset::Handle;
 use bevy::reflect::prelude::*;
-use bevy::utils::HashMap;
+use bevy::utils::{HashMap, HashSet};
 
 #[derive(Reflect, Clone, Debug)]
 pub struct ClipNode {
@@ -30,11 +30,11 @@ impl ClipNode {
     }
 
     #[inline]
-    pub fn clip_duration(&self, context_tmp: &GraphContextTmp) -> f32 {
+    pub fn clip_duration(&self, ctx: &PassContext) -> f32 {
         if let Some(duration) = self.override_duration {
             duration
         } else {
-            context_tmp
+            ctx.context_tmp
                 .graph_clip_assets
                 .get(&self.clip)
                 .unwrap()
@@ -46,51 +46,35 @@ impl ClipNode {
 impl NodeLike for ClipNode {
     fn parameter_pass(
         &self,
-        _inputs: HashMap<NodeInput, EdgeValue>,
-        _name: &str,
-        _path: &EdgePath,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeValue> {
+        _inputs: HashMap<PinId, ParamValue>,
+        _: PassContext,
+    ) -> HashMap<PinId, ParamValue> {
         HashMap::new()
     }
 
     fn duration_pass(
         &self,
-        _inputs: HashMap<NodeInput, Option<f32>>,
-        _name: &str,
-        _path: &EdgePath,
-        _context: &mut GraphContext,
-        context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, Option<f32>> {
-        HashMap::from([(Self::OUTPUT.into(), Some(self.clip_duration(context_tmp)))])
+        _inputs: HashMap<PinId, Option<f32>>,
+        ctx: PassContext,
+    ) -> Option<DurationData> {
+        Some(Some(self.clip_duration(&ctx)))
     }
 
-    fn time_pass(
-        &self,
-        _input: TimeState,
-        _name: &str,
-        _path: &EdgePath,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeInput, TimeUpdate> {
+    fn time_pass(&self, _input: TimeState, _: PassContext) -> HashMap<PinId, TimeUpdate> {
         HashMap::new()
     }
 
     fn time_dependent_pass(
         &self,
-        _inputs: HashMap<NodeInput, EdgeValue>,
-        name: &str,
-        path: &EdgePath,
-        context: &mut GraphContext,
-        context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeValue> {
-        let clip_duration = self.clip_duration(context_tmp);
-        let clip = context_tmp.graph_clip_assets.get(&self.clip).unwrap();
+        _inputs: HashMap<PinId, PoseFrame>,
+        ctx: PassContext,
+    ) -> Option<PoseFrame> {
+        let clip_duration = self.clip_duration(&ctx);
+        let clip = ctx.context_tmp.graph_clip_assets.get(&self.clip).unwrap();
 
-        let time = context.get_times(name, path).unwrap();
-        let timestamp = time.downstream.time;
+        let timestamp = ctx.time_fwd().time;
         let time = timestamp.clamp(0., clip_duration);
+
         let mut animation_frame = PoseFrame::default();
         for (path, bone_id) in &clip.paths {
             let curves = clip.get_curves(*bone_id).unwrap();
@@ -194,39 +178,23 @@ impl NodeLike for ClipNode {
             animation_frame.add_bone(frame, path.clone());
         }
 
-        HashMap::from([(Self::OUTPUT.into(), EdgeValue::PoseFrame(animation_frame))])
+        Some(animation_frame)
     }
 
-    fn parameter_input_spec(
-        &self,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeInput, EdgeSpec> {
+    fn parameter_input_spec(&self, _: SpecContext) -> HashMap<PinId, OptParamSpec> {
         HashMap::new()
     }
 
-    fn parameter_output_spec(
-        &self,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeSpec> {
+    fn parameter_output_spec(&self, _: SpecContext) -> HashMap<PinId, ParamSpec> {
         HashMap::new()
     }
 
-    fn time_dependent_input_spec(
-        &self,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeInput, EdgeSpec> {
-        HashMap::new()
+    fn pose_input_spec(&self, _: SpecContext) -> HashSet<PinId> {
+        HashSet::new()
     }
 
-    fn time_dependent_output_spec(
-        &self,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeSpec> {
-        HashMap::from([(Self::OUTPUT.into(), EdgeSpec::PoseFrame)])
+    fn pose_output_spec(&self, _: SpecContext) -> bool {
+        true
     }
 
     fn display_name(&self) -> String {

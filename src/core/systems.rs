@@ -135,12 +135,12 @@ pub fn run_animation_player(
 
     player.pending_update = None;
 
-    let mut context_tmp = GraphContextTmp {
+    let context_tmp = GraphContextTmp {
         graph_clip_assets: graph_clips,
         animation_graph_assets: graphs,
     };
 
-    let Some(out_pose) = player.query(&mut context_tmp) else {
+    let Some(out_pose) = player.query(context_tmp) else {
         return;
     };
 
