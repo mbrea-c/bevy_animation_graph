@@ -103,13 +103,13 @@
 //!
 //! 1. The blend factor between the two animations can be computed as
 //!
-//!    ```
+//!    ```text
 //!    blend_fac = clamp((target_speed - blend_start) / (blend_end - blend_start), 0, 1)
 //!    ```
 //!
 //!    The playback speed factor applied to both animations is then
 //!
-//!    ```
+//!    ```text
 //!    speed_fac = target_speed / (walk_base_speed * (1 - blend_fac) + run_base_speed * blend_fac)
 //!    ```
 //!
