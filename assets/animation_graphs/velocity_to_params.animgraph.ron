@@ -19,7 +19,6 @@
         "Blend End": F32(3.0),
 
         // Constant values
-        // TODO: Maybe there should be a better way to handle constant/defaults?
         "ZERO": F32(0.),
         "ONE": F32(1.),
     },
@@ -27,7 +26,7 @@
         "speed_fac": F32,
         "blend_fac": F32,
     },
-    input_edges: [
+    input_parameter_edges: [
         // Alpha clamp range
         ("ZERO", ("Alpha", "Min")),
         ("ONE", ("Alpha", "Max")),
@@ -44,7 +43,7 @@
         ("Run Base Speed", ("Factored run speed", "F32 In 1")),
         ("Target Speed", ("Speed factor", "F32 In 1")),
     ],
-    edges: [
+    parameter_edges: [
         // Blend alpha computation
         // ((target_speed - blend_start) / (blend_end - blend_start)).clamp(0., 1.);
         (("Alpha Tmp 1", "F32 Out"), ("Alpha Tmp 3", "F32 In 1")),
@@ -60,7 +59,7 @@
         (("Factored run speed", "F32 Out"), ("Blended base speed", "F32 In 2")),
         (("Blended base speed", "F32 Out"),("Speed factor", "F32 In 2")),
     ],
-    output_edges: [
+    output_parameter_edges: [
         (("Alpha", "F32 Out"), "blend_fac"),
         (("Speed factor", "F32 Out"), "speed_fac"),
     ],

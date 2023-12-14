@@ -1,4 +1,4 @@
-use super::{AnimationGraph, EdgeSpec, EdgeValue};
+use super::{AnimationGraph, ParamSpec, ParamValue};
 use crate::{
     core::animation_clip::GraphClip,
     nodes::{
@@ -56,11 +56,11 @@ impl AssetLoader for GraphClipLoader {
                     let gltf: &Gltf = gltf_loaded_asset.get().unwrap();
 
                     let Some(clip_handle) = gltf.named_animations.get(&animation_name) else {
-                        return Err(AssetLoaderError::GltfMissingLabel(animation_name.into()));
+                        return Err(AssetLoaderError::GltfMissingLabel(animation_name));
                     };
 
                     let Some(clip_path) = clip_handle.path() else {
-                        return Err(AssetLoaderError::GltfMissingLabel(animation_name.into()));
+                        return Err(AssetLoaderError::GltfMissingLabel(animation_name));
                     };
 
                     let clip_bevy: bevy::animation::AnimationClip = gltf_loaded_asset
@@ -89,23 +89,30 @@ impl AssetLoader for GraphClipLoader {
 pub struct AnimationGraphSerial {
     nodes: Vec<AnimationNodeSerial>,
     #[serde(default)]
-    input_parameters: HashMap<String, EdgeValue>,
+    input_parameters: HashMap<String, ParamValue>,
     #[serde(default)]
-    input_time_dependent_spec: HashMap<String, EdgeSpec>,
+    input_pose_spec: Vec<String>,
     #[serde(default)]
-    output_parameter_spec: HashMap<String, EdgeSpec>,
+    output_parameter_spec: HashMap<String, ParamSpec>,
     #[serde(default)]
-    output_time_dependent_spec: HashMap<String, EdgeSpec>,
+    output_pose_spec: bool,
     /// (from_node, from_out_edge) -> (to_node, to_in_edge)
     /// Note that this is the opposite as [`AnimationGraph`] in order to make
     /// construction easier, and hand-editing of graph files more natural.
-    edges: Vec<((String, String), (String, String))>,
-    /// parameter_name -> (to_node, to_in_edge)
-    input_edges: Vec<(String, (String, String))>,
-    output_edges: Vec<((String, String), String)>,
-
     #[serde(default)]
-    default_output: Option<String>,
+    parameter_edges: Vec<((String, String), (String, String))>,
+    #[serde(default)]
+    pose_edges: Vec<(String, (String, String))>,
+
+    /// parameter_name -> (to_node, to_in_edge)
+    #[serde(default)]
+    input_parameter_edges: Vec<(String, (String, String))>,
+    #[serde(default)]
+    output_parameter_edges: Vec<((String, String), String)>,
+    #[serde(default)]
+    input_pose_edges: Vec<(String, (String, String))>,
+    #[serde(default)]
+    output_pose_edge: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -151,6 +158,8 @@ impl AssetLoader for AnimationGraphLoader {
 
             let mut graph = AnimationGraph::new();
 
+            // --- Add nodes
+            // ------------------------------------------------------------------------------------
             for serial_node in &serial.nodes {
                 let node = match &serial_node.node {
                     AnimationNodeTypeSerial::Clip(clip_name, override_duration) => {
@@ -173,38 +182,54 @@ impl AssetLoader for AnimationGraphLoader {
                 };
                 graph.add_node(node);
             }
+            // ------------------------------------------------------------------------------------
 
-            for ((source_node, source_edge), (target_node, target_edge)) in &serial.edges {
-                graph.add_edge(source_node, source_edge, target_node, target_edge);
-            }
-
+            // --- Set up inputs and outputs
+            // ------------------------------------------------------------------------------------
             for (parameter_name, parameter_value) in &serial.input_parameters {
-                graph.set_input_parameter(parameter_name, parameter_value.clone());
+                graph.set_default_parameter(parameter_name, parameter_value.clone());
             }
-
-            for (td_name, td_spec) in &serial.input_time_dependent_spec {
-                graph.register_input_td(td_name, td_spec.clone());
+            for td_name in &serial.input_pose_spec {
+                graph.add_input_pose(td_name);
             }
-
             for (p_name, p_spec) in &serial.output_parameter_spec {
-                graph.register_output_parameter(p_name, p_spec.clone());
+                graph.add_output_parameter(p_name, *p_spec);
             }
 
-            for (td_name, td_spec) in &serial.output_time_dependent_spec {
-                graph.register_output_td(td_name, td_spec.clone());
+            if serial.output_pose_spec {
+                graph.add_output_pose();
+            }
+            // ------------------------------------------------------------------------------------
+
+            // --- Set up edges
+            // ------------------------------------------------------------------------------------
+            for ((source_node, source_edge), (target_node, target_edge)) in &serial.parameter_edges
+            {
+                graph.add_node_parameter_edge(source_node, source_edge, target_node, target_edge);
             }
 
-            for (parameter_name, (target_node, target_edge)) in &serial.input_edges {
-                graph.add_input_edge(parameter_name, target_node, target_edge);
+            for (source_node, (target_node, target_pin)) in &serial.pose_edges {
+                graph.add_node_pose_edge(source_node, target_node, target_pin);
             }
 
-            for ((source_node, source_edge), output_name) in &serial.output_edges {
-                graph.add_output_edge(source_node, source_edge, output_name);
+            for (parameter_name, (target_node, target_edge)) in &serial.input_parameter_edges {
+                graph.add_input_parameter_edge(parameter_name, target_node, target_edge);
             }
 
-            if let Some(def_output) = &serial.default_output {
-                graph.set_default_output(def_output);
+            for ((source_node, source_edge), output_name) in &serial.output_parameter_edges {
+                graph.add_output_parameter_edge(source_node, source_edge, output_name);
             }
+
+            for (parameter_name, (target_node, target_edge)) in &serial.input_pose_edges {
+                graph.add_input_pose_edge(parameter_name, target_node, target_edge);
+            }
+
+            if let Some(node_name) = &serial.output_pose_edge {
+                graph.add_output_pose_edge(node_name);
+            }
+            // ------------------------------------------------------------------------------------
+
+            graph.validate()?;
 
             Ok(graph)
         })

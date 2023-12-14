@@ -57,14 +57,12 @@ fn show_graph(
                 .get(target_graph.handle.as_ref().unwrap())
                 .unwrap();
 
-            let mut context_tmp = GraphContextTmp {
+            let context_tmp = GraphContextTmp {
                 graph_clip_assets: &graph_clip_assets,
                 animation_graph_assets: &animation_graph_assets,
             };
 
-            graph
-                .dot_to_tmp_file_and_open(None, &mut context_tmp)
-                .unwrap();
+            graph.dot_to_tmp_file_and_open(None, context_tmp).unwrap();
 
             exit.send(AppExit);
         }

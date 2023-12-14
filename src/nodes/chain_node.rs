@@ -1,13 +1,14 @@
 use crate::chaining::Chainable;
 use crate::core::animation_graph::{
-    EdgePath, EdgeSpec, EdgeValue, NodeInput, NodeOutput, TimeState, TimeUpdate,
+    OptParamSpec, ParamSpec, ParamValue, PinId, TimeState, TimeUpdate,
 };
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
-use crate::core::graph_context::{GraphContext, GraphContextTmp};
+use crate::core::frame::PoseFrame;
+use crate::prelude::{DurationData, PassContext, SpecContext};
 use bevy::prelude::*;
-use bevy::utils::HashMap;
+use bevy::utils::{HashMap, HashSet};
 
-#[derive(Reflect, Clone, Debug)]
+#[derive(Reflect, Clone, Debug, Default)]
 pub struct ChainNode {}
 
 impl ChainNode {
@@ -27,25 +28,19 @@ impl ChainNode {
 impl NodeLike for ChainNode {
     fn parameter_pass(
         &self,
-        _inputs: HashMap<NodeInput, EdgeValue>,
-        _name: &str,
-        _path: &EdgePath,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeValue> {
+        _inputs: HashMap<PinId, ParamValue>,
+        _: PassContext,
+    ) -> HashMap<PinId, ParamValue> {
         HashMap::new()
     }
 
     fn duration_pass(
         &self,
-        inputs: HashMap<NodeInput, Option<f32>>,
-        _name: &str,
-        _path: &EdgePath,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, Option<f32>> {
-        let source_duration_1 = *inputs.get(Self::INPUT_1.into()).unwrap();
-        let source_duration_2 = *inputs.get(Self::INPUT_2.into()).unwrap();
+        inputs: HashMap<PinId, Option<f32>>,
+        _: PassContext,
+    ) -> Option<DurationData> {
+        let source_duration_1 = *inputs.get(Self::INPUT_1).unwrap();
+        let source_duration_2 = *inputs.get(Self::INPUT_2).unwrap();
 
         let out_duration = match (source_duration_1, source_duration_2) {
             (Some(duration_1), Some(duration_2)) => Some(duration_1 + duration_2),
@@ -54,19 +49,11 @@ impl NodeLike for ChainNode {
             (None, None) => None,
         };
 
-        HashMap::from([(Self::OUTPUT.into(), out_duration)])
+        Some(out_duration)
     }
 
-    fn time_pass(
-        &self,
-        input: TimeState,
-        name: &str,
-        path: &EdgePath,
-        context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeInput, TimeUpdate> {
-        let durations = context.get_durations(name).unwrap();
-        let duration_1 = durations.upstream.get(Self::INPUT_1).unwrap();
+    fn time_pass(&self, input: TimeState, ctx: PassContext) -> HashMap<PinId, TimeUpdate> {
+        let duration_1 = ctx.duration_back(Self::INPUT_1);
         let Some(duration_1) = duration_1 else {
             // First input is infinite, forward time update without change
             return HashMap::from([
@@ -75,12 +62,10 @@ impl NodeLike for ChainNode {
             ]);
         };
 
-        let prev_time = context
-            .get_other_times(name, path)
-            .map(|c| c.downstream.time)
-            .unwrap_or(input.time);
+        let prev_time_state = ctx.prev_time_fwd_opt().unwrap_or(input);
+        let prev_time = prev_time_state.time;
 
-        if input.time < *duration_1 {
+        if input.time < duration_1 {
             // Current frame ends in first clip
             HashMap::from([
                 (Self::INPUT_1.into(), input.update),
@@ -92,13 +77,13 @@ impl NodeLike for ChainNode {
             // In such cases, the given update delta will encompass the period spent in the first
             // frame, which will desync the clip.
             // subtracting the extraneous dt will counter that.
-            let extraneous_dt = (*duration_1 - prev_time).max(0.);
+            let extraneous_dt = (duration_1 - prev_time).max(0.);
             HashMap::from([
                 (Self::INPUT_1.into(), TimeUpdate::Absolute(0.)),
                 (
                     Self::INPUT_2.into(),
                     match input.update {
-                        TimeUpdate::Absolute(t) => TimeUpdate::Absolute(t - *duration_1),
+                        TimeUpdate::Absolute(t) => TimeUpdate::Absolute(t - duration_1),
                         TimeUpdate::Delta(dt) => TimeUpdate::Delta(dt - extraneous_dt),
                     },
                 ),
@@ -108,29 +93,15 @@ impl NodeLike for ChainNode {
 
     fn time_dependent_pass(
         &self,
-        inputs: HashMap<NodeInput, EdgeValue>,
-        name: &str,
-        path: &EdgePath,
-        context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeValue> {
-        let in_pose_1 = inputs
-            .get(Self::INPUT_1.into())
-            .unwrap()
-            .clone()
-            .unwrap_pose_frame();
-        let in_pose_2 = inputs
-            .get(Self::INPUT_2.into())
-            .unwrap()
-            .clone()
-            .unwrap_pose_frame();
-        let time = context.get_times(name, path).unwrap();
-        let durations = context.get_durations(name).unwrap();
+        mut inputs: HashMap<PinId, PoseFrame>,
+        ctx: PassContext,
+    ) -> Option<PoseFrame> {
+        let in_pose_1 = inputs.remove(Self::INPUT_1).unwrap();
+        let in_pose_2 = inputs.remove(Self::INPUT_2).unwrap();
+        let time = ctx.time_fwd().time;
 
-        let time = time.downstream.time;
-
-        let duration_1 = *durations.upstream.get(Self::INPUT_1).unwrap();
-        let duration_2 = *durations.upstream.get(Self::INPUT_2).unwrap();
+        let duration_1 = ctx.duration_back(Self::INPUT_1);
+        let duration_2 = ctx.duration_back(Self::INPUT_2);
 
         let out_pose;
 
@@ -141,42 +112,23 @@ impl NodeLike for ChainNode {
             out_pose = in_pose_1;
         }
 
-        HashMap::from([(Self::OUTPUT.into(), EdgeValue::PoseFrame(out_pose))])
+        Some(out_pose)
     }
 
-    fn parameter_input_spec(
-        &self,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeInput, EdgeSpec> {
+    fn parameter_input_spec(&self, _: SpecContext) -> HashMap<PinId, OptParamSpec> {
         HashMap::new()
     }
 
-    fn parameter_output_spec(
-        &self,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeSpec> {
+    fn parameter_output_spec(&self, _: SpecContext) -> HashMap<PinId, ParamSpec> {
         HashMap::new()
     }
 
-    fn time_dependent_input_spec(
-        &self,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeInput, EdgeSpec> {
-        HashMap::from([
-            (Self::INPUT_1.into(), EdgeSpec::PoseFrame),
-            (Self::INPUT_2.into(), EdgeSpec::PoseFrame),
-        ])
+    fn pose_input_spec(&self, _: SpecContext) -> HashSet<PinId> {
+        HashSet::from([Self::INPUT_1.into(), Self::INPUT_2.into()])
     }
 
-    fn time_dependent_output_spec(
-        &self,
-        _context: &mut GraphContext,
-        _context_tmp: &mut GraphContextTmp,
-    ) -> HashMap<NodeOutput, EdgeSpec> {
-        HashMap::from([(Self::OUTPUT.into(), EdgeSpec::PoseFrame)])
+    fn pose_output_spec(&self, _: SpecContext) -> bool {
+        true
     }
 
     fn display_name(&self) -> String {

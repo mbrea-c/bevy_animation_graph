@@ -1,7 +1,9 @@
 (
     nodes: [
         (name: "Walk Clip", node: Clip("animations/walk.anim.ron", Some(1.))), 
+        (name: "Walk Clip 2", node: Clip("animations/walk.anim.ron", Some(1.))), 
         (name: "Run Clip",  node: Clip("animations/run.anim.ron", Some(1.))), 
+        (name: "Run Clip 2",  node: Clip("animations/run.anim.ron", Some(1.))), 
         (name: "Walk Flip LR", node: FlipLR), 
         (name: "Run Flip LR", node: FlipLR), 
         (name: "Walk Chain", node: Chain), 
@@ -15,30 +17,25 @@
     input_parameters: {
         "Target Speed": F32(1.5),
     },
-    output_time_dependent_spec: {
-        "Pose": PoseFrame,
-    },
-    input_edges: [
-        // Alpha parameters
+    output_pose_spec: true,
+    input_parameter_edges: [
         ("Target Speed", ("Param graph", "Target Speed")),
     ],
-    edges: [
+    output_pose_edge: Some("Speed"),
+    parameter_edges: [
         (("Param graph", "blend_fac"),("Blend", "Factor")),
         (("Param graph", "speed_fac"),("Speed", "Speed")),
-
-        (("Walk Clip", "Pose Out"), ("Walk Flip LR", "Pose In")),
-        (("Walk Clip", "Pose Out"), ("Walk Chain", "Pose In 1")),
-        (("Walk Flip LR", "Pose Out"), ("Walk Chain", "Pose In 2")),
-        (("Run Clip", "Pose Out"), ("Run Chain", "Pose In 1")),
-        (("Run Clip", "Pose Out"), ("Run Flip LR", "Pose In")),
-        (("Run Flip LR", "Pose Out"), ("Run Chain", "Pose In 2")),
-        (("Walk Chain", "Pose Out"), ("Blend", "Pose In 1")),
-        (("Run Chain", "Pose Out"), ("Blend", "Pose In 2")),
-        (("Blend", "Pose Out"), ("Loop", "Pose In")),
-        (("Loop", "Pose Out"), ("Speed", "Pose In")),
     ],
-    output_edges: [
-        (("Speed", "Pose Out"), "Pose"),
+    pose_edges: [
+        ("Walk Clip", ("Walk Chain", "Pose In 1")),
+        ("Walk Clip 2", ("Walk Flip LR", "Pose In")),
+        ("Walk Flip LR", ("Walk Chain", "Pose In 2")),
+        ("Run Clip", ("Run Chain", "Pose In 1")),
+        ("Run Clip 2", ("Run Flip LR", "Pose In")),
+        ("Run Flip LR", ("Run Chain", "Pose In 2")),
+        ("Walk Chain", ("Blend", "Pose In 1")),
+        ("Run Chain", ("Blend", "Pose In 2")),
+        ("Blend", ("Loop", "Pose In")),
+        ("Loop", ("Speed", "Pose In")),
     ],
-    default_output: Some("Pose"),
 )

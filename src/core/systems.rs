@@ -135,18 +135,18 @@ pub fn run_animation_player(
 
     player.pending_update = None;
 
-    let mut context_tmp = GraphContextTmp {
+    let context_tmp = GraphContextTmp {
         graph_clip_assets: graph_clips,
-        animation_graph_assets: &graphs,
+        animation_graph_assets: graphs,
     };
 
-    let Some(graph) = graphs.get(player.animation.as_ref().unwrap()) else {
+    let Some(out_pose) = player.query(context_tmp) else {
         return;
     };
 
     // Apply the main animation
     apply_pose(
-        &graph.query(player.elapsed.update, &mut player.context, &mut context_tmp),
+        &out_pose,
         root,
         names,
         transforms,
@@ -232,24 +232,12 @@ fn apply_pose(
         }
         if let Some(weights) = &pose.weights {
             if let Ok(morphs) = &mut morphs {
-                apply_morph_weights(morphs.weights_mut(), &weights);
+                apply_morph_weights(morphs.weights_mut(), weights);
             }
         }
     }
 
     if !any_path_found {
         warn!("Animation player on {root:?} did not match any entity paths.");
-    }
-}
-
-pub fn replace_animation_players(
-    mut commands: Commands,
-    query: Query<(Entity, &bevy::animation::AnimationPlayer)>,
-) {
-    for (entity, _player) in &query {
-        commands
-            .entity(entity)
-            .remove::<bevy::animation::AnimationPlayer>()
-            .insert(AnimationGraphPlayer::default());
     }
 }
