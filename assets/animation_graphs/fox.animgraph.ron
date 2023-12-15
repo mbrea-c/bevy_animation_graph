@@ -1,0 +1,35 @@
+(
+    nodes: [
+        (name: "Walk Clip", node: Clip("animations/fox_walk.anim.ron", None)), 
+        (name: "Run Clip",  node: Clip("animations/fox_run.anim.ron", None)), 
+        (name: "Blend", node: Blend), 
+        (name: "Loop Walk", node: Loop), 
+        (name: "Loop Run", node: Loop), 
+        (name: "Speed", node: Speed), 
+
+        (name: "Param graph", node: Graph("animation_graphs/velocity_to_params.animgraph.ron")),
+    ],
+    input_parameters: {
+        "Target Speed": F32(1.5),
+        "Blend Start": F32(0.5),
+        "Blend End": F32(1.5),
+    },
+    output_pose_spec: true,
+    input_parameter_edges: [
+        ("Target Speed", ("Param graph", "Target Speed")),
+        ("Blend Start", ("Param graph", "Blend Start")),
+        ("Blend End", ("Param graph", "Blend End")),
+    ],
+    output_pose_edge: Some("Speed"),
+    parameter_edges: [
+        (("Param graph", "blend_fac"),("Blend", "Factor")),
+        (("Param graph", "speed_fac"),("Speed", "Speed")),
+    ],
+    pose_edges: [
+        ("Walk Clip", ("Loop Walk", "Pose In")),
+        ("Run Clip", ("Loop Run", "Pose In")),
+        ("Loop Walk", ("Blend", "Pose In 1")),
+        ("Loop Run", ("Blend", "Pose In 2")),
+        ("Blend", ("Speed", "Pose In")),
+    ],
+)
