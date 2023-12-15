@@ -59,8 +59,8 @@ fn setup(
     // Animated character
     commands.spawn((
         AnimatedSceneBundle {
-            animated_scene: asset_server.load("animated_scenes/human.animscn.ron"),
-            transform: Transform::from_xyz(0., 0., 0.),
+            animated_scene: asset_server.load("animated_scenes/fox.animscn.ron"),
+            transform: Transform::from_scale(Vec3::splat(0.01)),
             ..default()
         },
         Human,

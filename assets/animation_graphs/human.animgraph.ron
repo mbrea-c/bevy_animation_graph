@@ -1,9 +1,9 @@
 (
     nodes: [
-        (name: "Walk Clip", node: Clip("animations/walk.anim.ron", Some(1.))), 
-        (name: "Walk Clip 2", node: Clip("animations/walk.anim.ron", Some(1.))), 
-        (name: "Run Clip",  node: Clip("animations/run.anim.ron", Some(1.))), 
-        (name: "Run Clip 2",  node: Clip("animations/run.anim.ron", Some(1.))), 
+        (name: "Walk Clip", node: Clip("animations/human_walk.anim.ron", Some(1.))), 
+        (name: "Walk Clip 2", node: Clip("animations/human_walk.anim.ron", Some(1.))), 
+        (name: "Run Clip",  node: Clip("animations/human_run.anim.ron", Some(1.))), 
+        (name: "Run Clip 2",  node: Clip("animations/human_run.anim.ron", Some(1.))), 
         (name: "Walk Flip LR", node: FlipLR), 
         (name: "Run Flip LR", node: FlipLR), 
         (name: "Walk Chain", node: Chain), 
