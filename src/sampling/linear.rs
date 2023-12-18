@@ -31,12 +31,6 @@ impl<T: InterpolateLinear + FromReflect + TypePath> SampleLinearAt for ValueFram
     }
 }
 
-impl<T: InterpolateLinear + FromReflect + TypePath> SampleLinear for ValueFrame<T> {
-    fn sample_linear(&self) -> Self::Output {
-        self.sample_linear_at(self.timestamp)
-    }
-}
-
 impl SampleLinearAt for BoneFrame {
     type Output = BonePose;
 
@@ -46,17 +40,6 @@ impl SampleLinearAt for BoneFrame {
             translation: self.translation.as_ref().map(|v| v.sample_linear_at(time)),
             scale: self.scale.as_ref().map(|v| v.sample_linear_at(time)),
             weights: self.weights.as_ref().map(|v| v.sample_linear_at(time)),
-        }
-    }
-}
-
-impl SampleLinear for BoneFrame {
-    fn sample_linear(&self) -> Self::Output {
-        BonePose {
-            rotation: self.rotation.as_ref().map(|v| v.sample_linear()),
-            translation: self.translation.as_ref().map(|v| v.sample_linear()),
-            scale: self.scale.as_ref().map(|v| v.sample_linear()),
-            weights: self.weights.as_ref().map(|v| v.sample_linear()),
         }
     }
 }
@@ -78,9 +61,6 @@ impl SampleLinearAt for PoseFrame {
 
 impl SampleLinear for PoseFrame {
     fn sample_linear(&self) -> Self::Output {
-        Pose {
-            paths: self.paths.clone(),
-            bones: self.bones.iter().map(|b| b.sample_linear()).collect(),
-        }
+        self.sample_linear_at(self.timestamp)
     }
 }

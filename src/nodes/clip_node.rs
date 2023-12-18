@@ -1,14 +1,12 @@
 use crate::core::animation_clip::{GraphClip, Keyframes};
-use crate::core::animation_graph::{
-    OptParamSpec, ParamSpec, ParamValue, PinId, TimeState, TimeUpdate,
-};
+use crate::core::animation_graph::TimeUpdate;
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
+use crate::core::duration_data::DurationData;
 use crate::core::frame::{BoneFrame, PoseFrame, ValueFrame};
 use crate::core::systems::get_keyframe;
-use crate::prelude::{DurationData, PassContext, SpecContext};
+use crate::prelude::{PassContext, SpecContext};
 use bevy::asset::Handle;
 use bevy::reflect::prelude::*;
-use bevy::utils::{HashMap, HashSet};
 
 #[derive(Reflect, Clone, Debug)]
 pub struct ClipNode {
@@ -44,36 +42,16 @@ impl ClipNode {
 }
 
 impl NodeLike for ClipNode {
-    fn parameter_pass(
-        &self,
-        _inputs: HashMap<PinId, ParamValue>,
-        _: PassContext,
-    ) -> HashMap<PinId, ParamValue> {
-        HashMap::new()
-    }
-
-    fn duration_pass(
-        &self,
-        _inputs: HashMap<PinId, Option<f32>>,
-        ctx: PassContext,
-    ) -> Option<DurationData> {
+    fn duration_pass(&self, ctx: PassContext) -> Option<DurationData> {
         Some(Some(self.clip_duration(&ctx)))
     }
 
-    fn time_pass(&self, _input: TimeState, _: PassContext) -> HashMap<PinId, TimeUpdate> {
-        HashMap::new()
-    }
-
-    fn time_dependent_pass(
-        &self,
-        _inputs: HashMap<PinId, PoseFrame>,
-        ctx: PassContext,
-    ) -> Option<PoseFrame> {
+    fn pose_pass(&self, time_update: TimeUpdate, ctx: PassContext) -> Option<PoseFrame> {
         let clip_duration = self.clip_duration(&ctx);
         let clip = ctx.context_tmp.graph_clip_assets.get(&self.clip).unwrap();
 
-        let timestamp = ctx.time_fwd().time;
-        let time = timestamp.clamp(0., clip_duration);
+        let prev_time = ctx.prev_time_fwd();
+        let time = time_update.apply(prev_time);
 
         let mut animation_frame = PoseFrame::default();
         for (path, bone_id) in &clip.paths {
@@ -85,29 +63,28 @@ impl NodeLike for ClipNode {
 
                 // Find the current keyframe
                 // PERF: finding the current keyframe can be optimised
-                let (step_start, step_end) = match curve
+                let (step_start, step_end, prev_is_wrapped, next_is_wrapped) = match curve
                     .keyframe_timestamps
                     .binary_search_by(|probe| probe.partial_cmp(&time).unwrap())
                 {
                     // this curve is finished
-                    Ok(n) if n >= curve.keyframe_timestamps.len() - 1 => (n, 0),
-                    Ok(i) => (i, i + 1),
+                    Ok(n) if n >= curve.keyframe_timestamps.len() - 1 => (n, 0, false, true),
+                    Ok(i) => (i, i + 1, false, false),
                     // this curve isn't started yet
-                    Err(0) => (0, 0),
+                    Err(0) => (curve.keyframe_timestamps.len() - 1, 0, true, false),
                     // this curve is finished
-                    Err(n) if n > curve.keyframe_timestamps.len() - 1 => (n - 1, 0),
-                    Err(i) => (i - 1, i),
+                    Err(n) if n > curve.keyframe_timestamps.len() - 1 => (n - 1, 0, false, true),
+                    Err(i) => (i - 1, i, false, false),
                 };
 
-                let prev_timestamp = curve.keyframe_timestamps[step_start];
+                let mut prev_timestamp = curve.keyframe_timestamps[step_start];
                 let mut next_timestamp = curve.keyframe_timestamps[step_end];
 
-                let next_is_wrapped = if next_timestamp < prev_timestamp {
+                if prev_is_wrapped {
+                    prev_timestamp -= clip_duration;
+                } else if next_is_wrapped {
                     next_timestamp += clip_duration;
-                    true
-                } else {
-                    false
-                };
+                }
 
                 // Apply the keyframe
                 match &curve.keyframes {
@@ -120,11 +97,11 @@ impl NodeLike for ClipNode {
                         }
 
                         frame.rotation = Some(ValueFrame {
-                            timestamp,
                             prev,
                             prev_timestamp,
                             next,
                             next_timestamp,
+                            prev_is_wrapped,
                             next_is_wrapped,
                         });
                     }
@@ -133,11 +110,11 @@ impl NodeLike for ClipNode {
                         let next = keyframes[step_end];
 
                         frame.translation = Some(ValueFrame {
-                            timestamp,
                             prev,
                             prev_timestamp,
                             next,
                             next_timestamp,
+                            prev_is_wrapped,
                             next_is_wrapped,
                         });
                     }
@@ -146,30 +123,25 @@ impl NodeLike for ClipNode {
                         let prev = keyframes[step_start];
                         let next = keyframes[step_end];
                         frame.scale = Some(ValueFrame {
-                            timestamp,
                             prev,
                             prev_timestamp,
                             next,
                             next_timestamp,
+                            prev_is_wrapped,
                             next_is_wrapped,
                         });
                     }
 
                     Keyframes::Weights(keyframes) => {
-                        println!(
-                            "Morph weight count: {:?} vs keyframe count: {:?}",
-                            keyframes.len(),
-                            keyframe_count
-                        );
                         let target_count = keyframes.len() / keyframe_count;
                         let morph_start = get_keyframe(target_count, keyframes, step_start);
                         let morph_end = get_keyframe(target_count, keyframes, step_end);
                         frame.weights = Some(ValueFrame {
-                            timestamp,
                             prev: morph_start.into(),
                             prev_timestamp,
                             next: morph_end.into(),
                             next_timestamp,
+                            prev_is_wrapped,
                             next_is_wrapped,
                         });
                     }
@@ -178,19 +150,13 @@ impl NodeLike for ClipNode {
             animation_frame.add_bone(frame, path.clone());
         }
 
+        animation_frame.timestamp = time;
+
+        if animation_frame.verify_timestamps_in_order() {
+            panic!("AAAAaaAAAAAAaaA Hilfe bitte in clip node");
+        }
+
         Some(animation_frame)
-    }
-
-    fn parameter_input_spec(&self, _: SpecContext) -> HashMap<PinId, OptParamSpec> {
-        HashMap::new()
-    }
-
-    fn parameter_output_spec(&self, _: SpecContext) -> HashMap<PinId, ParamSpec> {
-        HashMap::new()
-    }
-
-    fn pose_input_spec(&self, _: SpecContext) -> HashSet<PinId> {
-        HashSet::new()
     }
 
     fn pose_output_spec(&self, _: SpecContext) -> bool {

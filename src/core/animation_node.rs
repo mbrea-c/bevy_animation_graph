@@ -1,5 +1,6 @@
 use super::{
-    animation_graph::{OptParamSpec, ParamSpec, ParamValue, PinId, TimeState, TimeUpdate},
+    animation_graph::{OptParamSpec, ParamSpec, ParamValue, PinId, TimeUpdate},
+    duration_data::DurationData,
     frame::PoseFrame,
 };
 use crate::{
@@ -19,30 +20,30 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-pub type DurationData = Option<f32>;
-
 pub trait NodeLike: Send + Sync {
-    fn parameter_pass(
-        &self,
-        inputs: HashMap<PinId, ParamValue>,
-        ctx: PassContext,
-    ) -> HashMap<PinId, ParamValue>;
-    fn duration_pass(
-        &self,
-        inputs: HashMap<PinId, Option<f32>>,
-        ctx: PassContext,
-    ) -> Option<DurationData>;
-    fn time_pass(&self, input: TimeState, ctx: PassContext) -> HashMap<PinId, TimeUpdate>;
-    fn time_dependent_pass(
-        &self,
-        inputs: HashMap<PinId, PoseFrame>,
-        ctx: PassContext,
-    ) -> Option<PoseFrame>;
+    fn parameter_pass(&self, _ctx: PassContext) -> HashMap<PinId, ParamValue> {
+        HashMap::new()
+    }
+    fn duration_pass(&self, _ctx: PassContext) -> Option<DurationData> {
+        None
+    }
+    fn pose_pass(&self, _time_update: TimeUpdate, _ctx: PassContext) -> Option<PoseFrame> {
+        None
+    }
 
-    fn parameter_input_spec(&self, ctx: SpecContext) -> HashMap<PinId, OptParamSpec>;
-    fn parameter_output_spec(&self, ctx: SpecContext) -> HashMap<PinId, ParamSpec>;
-    fn pose_input_spec(&self, ctx: SpecContext) -> HashSet<PinId>;
-    fn pose_output_spec(&self, ctx: SpecContext) -> bool;
+    fn parameter_input_spec(&self, _ctx: SpecContext) -> HashMap<PinId, OptParamSpec> {
+        HashMap::new()
+    }
+    fn parameter_output_spec(&self, _ctx: SpecContext) -> HashMap<PinId, ParamSpec> {
+        HashMap::new()
+    }
+    fn pose_input_spec(&self, _ctx: SpecContext) -> HashSet<PinId> {
+        HashSet::new()
+    }
+    /// Specify whether or not a node outputs a pose
+    fn pose_output_spec(&self, _ctx: SpecContext) -> bool {
+        false
+    }
 
     fn display_name(&self) -> String;
 }
@@ -87,32 +88,16 @@ impl AnimationNode {
 }
 
 impl NodeLike for AnimationNode {
-    fn parameter_pass(
-        &self,
-        inputs: HashMap<PinId, ParamValue>,
-        ctx: PassContext,
-    ) -> HashMap<PinId, ParamValue> {
-        self.node.map(|n| n.parameter_pass(inputs, ctx))
+    fn parameter_pass(&self, ctx: PassContext) -> HashMap<PinId, ParamValue> {
+        self.node.map(|n| n.parameter_pass(ctx))
     }
 
-    fn duration_pass(
-        &self,
-        inputs: HashMap<PinId, Option<f32>>,
-        ctx: PassContext,
-    ) -> Option<Option<f32>> {
-        self.node.map(|n| n.duration_pass(inputs, ctx))
+    fn duration_pass(&self, ctx: PassContext) -> Option<DurationData> {
+        self.node.map(|n| n.duration_pass(ctx))
     }
 
-    fn time_pass(&self, input: TimeState, ctx: PassContext) -> HashMap<PinId, TimeUpdate> {
-        self.node.map(|n| n.time_pass(input, ctx))
-    }
-
-    fn time_dependent_pass(
-        &self,
-        inputs: HashMap<PinId, PoseFrame>,
-        ctx: PassContext,
-    ) -> Option<PoseFrame> {
-        self.node.map(|n| n.time_dependent_pass(inputs, ctx))
+    fn pose_pass(&self, input: TimeUpdate, ctx: PassContext) -> Option<PoseFrame> {
+        self.node.map(|n| n.pose_pass(input, ctx))
     }
 
     fn parameter_input_spec(&self, ctx: SpecContext) -> HashMap<PinId, OptParamSpec> {

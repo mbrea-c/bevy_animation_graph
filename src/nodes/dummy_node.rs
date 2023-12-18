@@ -1,9 +1,8 @@
-use crate::core::animation_graph::{
-    OptParamSpec, ParamSpec, ParamValue, PinId, TimeState, TimeUpdate,
-};
+use crate::core::animation_graph::{OptParamSpec, ParamSpec, ParamValue, PinId, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, CustomNode, NodeLike};
+use crate::core::duration_data::DurationData;
 use crate::core::frame::PoseFrame;
-use crate::prelude::{DurationData, PassContext, SpecContext};
+use crate::prelude::{PassContext, SpecContext};
 use bevy::prelude::*;
 use bevy::utils::{HashMap, HashSet};
 
@@ -24,31 +23,15 @@ impl DummyNode {
 }
 
 impl NodeLike for DummyNode {
-    fn parameter_pass(
-        &self,
-        _inputs: HashMap<PinId, ParamValue>,
-        _: PassContext,
-    ) -> HashMap<PinId, ParamValue> {
+    fn parameter_pass(&self, _: PassContext) -> HashMap<PinId, ParamValue> {
         HashMap::new()
     }
 
-    fn duration_pass(
-        &self,
-        _inputs: HashMap<PinId, Option<f32>>,
-        _: PassContext,
-    ) -> Option<DurationData> {
+    fn duration_pass(&self, _: PassContext) -> Option<DurationData> {
         None
     }
 
-    fn time_pass(&self, _input: TimeState, _: PassContext) -> HashMap<PinId, TimeUpdate> {
-        HashMap::new()
-    }
-
-    fn time_dependent_pass(
-        &self,
-        _inputs: HashMap<PinId, PoseFrame>,
-        _: PassContext,
-    ) -> Option<PoseFrame> {
+    fn pose_pass(&self, _: TimeUpdate, _: PassContext) -> Option<PoseFrame> {
         None
     }
 

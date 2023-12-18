@@ -1,9 +1,10 @@
 use crate::core::animation_graph::{
-    AnimationGraph, InputOverlay, OptParamSpec, ParamSpec, ParamValue, PinId, TimeState, TimeUpdate,
+    AnimationGraph, InputOverlay, OptParamSpec, ParamSpec, ParamValue, PinId, TargetPin, TimeUpdate,
 };
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
+use crate::core::duration_data::DurationData;
 use crate::core::frame::PoseFrame;
-use crate::prelude::{DurationData, PassContext, SpecContext};
+use crate::prelude::{PassContext, SpecContext};
 use bevy::prelude::*;
 use bevy::utils::{HashMap, HashSet};
 
@@ -23,95 +24,59 @@ impl GraphNode {
 }
 
 impl NodeLike for GraphNode {
-    fn parameter_pass(
-        &self,
-        inputs: HashMap<PinId, ParamValue>,
-        ctx: PassContext,
-    ) -> HashMap<PinId, ParamValue> {
+    fn parameter_pass(&self, ctx: PassContext) -> HashMap<PinId, ParamValue> {
         let graph = ctx
             .context_tmp
             .animation_graph_assets
             .get(&self.graph)
             .unwrap();
 
-        let input_overlay = InputOverlay {
-            parameters: inputs,
-            ..default()
-        };
+        let input_overlay = InputOverlay::default();
+        let mut output = HashMap::new();
 
-        let sub_context = ctx
-            .context
-            .context_for_subgraph_or_insert_default(ctx.node_id);
+        for id in graph.output_parameters.keys() {
+            let target_pin = TargetPin::OutputParameter(id.clone());
+            let value = graph
+                .get_parameter(target_pin, ctx.child(&input_overlay))
+                .unwrap();
+            output.insert(id.clone(), value);
+        }
 
-        graph.parameter_pass(sub_context, ctx.context_tmp, &input_overlay)
+        output
     }
 
-    fn duration_pass(
-        &self,
-        inputs: HashMap<PinId, DurationData>,
-        ctx: PassContext,
-    ) -> Option<DurationData> {
+    fn duration_pass(&self, ctx: PassContext) -> Option<DurationData> {
         let graph = ctx
             .context_tmp
             .animation_graph_assets
             .get(&self.graph)
             .unwrap();
 
-        let input_overlay = InputOverlay {
-            durations: inputs,
-            // We do not add the parameters because they should already have been cached!
-            // in the subgraph context
-            ..default()
-        };
-
-        let sub_context = ctx
-            .context
-            .context_for_subgraph_or_insert_default(ctx.node_id);
-
-        graph.duration_pass(sub_context, ctx.context_tmp, &input_overlay)
-    }
-
-    fn time_pass(&self, input: TimeState, ctx: PassContext) -> HashMap<PinId, TimeUpdate> {
-        let graph = ctx
-            .context_tmp
-            .animation_graph_assets
-            .get(&self.graph)
-            .unwrap();
-
-        // We do not add the parameters and durations because they should already have
-        // been cached in the subgraph context
         let input_overlay = InputOverlay::default();
 
-        let sub_context = ctx
-            .context
-            .context_for_subgraph_or_insert_default(ctx.node_id);
-
-        graph.time_pass(input.update, sub_context, ctx.context_tmp, &input_overlay)
+        if graph.output_pose {
+            let target_pin = TargetPin::OutputPose;
+            Some(graph.get_duration(target_pin, ctx.child(&input_overlay)))
+        } else {
+            None
+        }
     }
 
-    fn time_dependent_pass(
-        &self,
-        inputs: HashMap<PinId, PoseFrame>,
-        ctx: PassContext,
-    ) -> Option<PoseFrame> {
+    fn pose_pass(&self, input: TimeUpdate, ctx: PassContext) -> Option<PoseFrame> {
         let graph = ctx
             .context_tmp
             .animation_graph_assets
             .get(&self.graph)
             .unwrap();
 
-        let input_overlay = InputOverlay {
-            time_dependent: inputs,
-            // We do not add the parameters and durations because they should already have
-            // been cached in the subgraph context
-            ..default()
-        };
+        let input_overlay = InputOverlay::default();
 
-        let sub_context = ctx
-            .context
-            .context_for_subgraph_or_insert_default(ctx.node_id);
-
-        graph.time_dependent_pass(sub_context, ctx.context_tmp, &input_overlay)
+        if graph.output_pose {
+            let target_pin = TargetPin::OutputPose;
+            Some(graph.get_pose(input, target_pin, ctx.child(&input_overlay)))
+        } else {
+            None
+        }
     }
 
     fn parameter_input_spec(&self, ctx: SpecContext) -> HashMap<PinId, OptParamSpec> {

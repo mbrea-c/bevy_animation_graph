@@ -1,4 +1,6 @@
-use super::{AnimationGraph, OptParamSpec, ParamSpec, ParamValue, TimeState, TimeUpdate};
+use super::{
+    AnimationGraph, OptParamSpec, ParamSpec, ParamValue, SourcePin, TimeState, TimeUpdate,
+};
 use crate::{
     core::{
         animation_node::NodeLike,
@@ -193,6 +195,20 @@ fn write_rows_pose(
     Ok(())
 }
 
+fn write_debug_info(f: &mut impl std::io::Write, pose: PoseFrame) -> std::io::Result<()> {
+    write!(f, "<TR>")?;
+    write!(f, "<TD COLSPAN=\"2\">")?;
+    if pose.verify_timestamps_in_order() {
+        write!(f, " Timestamps not in order<BR/>")?;
+    }
+    if pose.verify_timestamp_in_range() {
+        write!(f, " Timestamp not in range<BR/>")?;
+    }
+    write!(f, "</TD>")?;
+    write!(f, "</TR>")?;
+    Ok(())
+}
+
 pub trait AsDotLabel {
     fn as_dot_label(&self) -> String;
 }
@@ -225,10 +241,7 @@ impl AsDotLabel for BoneFrame {
 
 impl<T: FromReflect + TypePath> AsDotLabel for ValueFrame<T> {
     fn as_dot_label(&self) -> String {
-        format!(
-            "{:.3}-({:.3})-{:.3}",
-            self.prev_timestamp, self.timestamp, self.next_timestamp
-        )
+        format!("{:.3}<->{:.3}", self.prev_timestamp, self.next_timestamp)
     }
 }
 
@@ -331,6 +344,10 @@ impl ToDot for AnimationGraph {
 
             write_rows_pose(f, in_td.into_iter().map(|k| (k, ())).collect(), right)?;
 
+            if let Some(frame) = ctx.get_pose(&SourcePin::NodePose(name.clone())) {
+                write_debug_info(f, frame.clone())?;
+            }
+
             writeln!(f, "</TABLE>>]")?;
         }
 
@@ -407,7 +424,7 @@ impl ToDot for AnimationGraph {
         writeln!(f, "</TABLE>>]")?;
         // --------------------------------------------------------
 
-        for (target_pin, source_pin) in self.node_edges.iter() {
+        for (target_pin, source_pin) in self.edges.iter() {
             let (start_node, start_edge) = match source_pin {
                 super::SourcePin::NodeParameter(node_id, pin_id) => {
                     (node_id.clone(), pin_id.clone())
@@ -441,9 +458,17 @@ impl ToDot for AnimationGraph {
 
             writeln!(
                 f,
-                "\t\"{}\":\"{}\" -> \"{}\":\"{}\" [color={}];",
+                "\t\"{}\":\"{}\" -> \"{}\":\"{}\" [color={}",
                 start_node, start_edge, end_node, end_edge, color
             )?;
+
+            if let Some(context) = context.as_ref() {
+                let time = context.get_prev_time(source_pin);
+
+                writeln!(f, "label=\"{}\"", time)?;
+            }
+
+            writeln!(f, "];")?;
         }
 
         writeln!(f, "}}")?;

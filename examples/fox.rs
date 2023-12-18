@@ -105,6 +105,8 @@ fn keyboard_animation_control(
         *velocity -= 0.5 * time.delta_seconds();
     }
 
+    println!("Velocity: {:?}", velocity);
+
     *velocity = velocity.max(0.);
 
     player.set_input_parameter("Target Speed", (*velocity).into());

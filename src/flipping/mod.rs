@@ -75,6 +75,7 @@ impl FlipXBySuffix for PoseFrame {
 
             out.add_bone(channel, new_path);
         }
+        out.timestamp = self.timestamp;
 
         out
     }
