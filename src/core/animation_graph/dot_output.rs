@@ -1,6 +1,4 @@
-use super::{
-    AnimationGraph, OptParamSpec, ParamSpec, ParamValue, SourcePin, TimeState, TimeUpdate,
-};
+use super::{AnimationGraph, SourcePin, TimeState, TimeUpdate};
 use crate::{
     core::{
         animation_node::NodeLike,
@@ -8,7 +6,7 @@ use crate::{
         graph_context::{GraphContext, GraphContextTmp},
     },
     nodes::{ClipNode, GraphNode},
-    prelude::SpecContext,
+    prelude::{OptParamSpec, ParamSpec, ParamValue, SpecContext},
 };
 use bevy::{
     reflect::{FromReflect, TypePath},
@@ -134,6 +132,8 @@ fn write_col(
         for (param_name, param_spec) in row.iter() {
             let icon = match param_spec.spec {
                 ParamSpec::F32 => String::from(""),
+                ParamSpec::BoneMask => String::from("󰚌"),
+                ParamSpec::Quat => String::from("󰑵"),
             };
 
             write!(
@@ -217,6 +217,8 @@ impl AsDotLabel for ParamValue {
     fn as_dot_label(&self) -> String {
         match self {
             ParamValue::F32(f) => format!("{:.3}", f),
+            ParamValue::Quat(q) => format!("{}", q),
+            ParamValue::BoneMask(_) => format!("Bone Mask"),
         }
     }
 }

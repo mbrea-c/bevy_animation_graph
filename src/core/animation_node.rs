@@ -1,7 +1,9 @@
 use super::{
-    animation_graph::{OptParamSpec, ParamSpec, ParamValue, PinId, TimeUpdate},
+    animation_graph::{PinId, TimeUpdate},
     duration_data::DurationData,
     frame::PoseFrame,
+    parameters::{OptParamSpec, ParamSpec, ParamValue},
+    spec_context::SpecContext,
 };
 use crate::{
     nodes::{
@@ -9,7 +11,7 @@ use crate::{
         clip_node::ClipNode, dummy_node::DummyNode, flip_lr_node::FlipLRNode, loop_node::LoopNode,
         speed_node::SpeedNode, sub_f32::SubF32, DivF32, GraphNode, MulF32,
     },
-    prelude::{PassContext, SpecContext},
+    prelude::{AbsF32, PassContext, RotationNode},
 };
 use bevy::{
     reflect::prelude::*,
@@ -129,11 +131,13 @@ pub enum AnimationNodeType {
     FlipLR(FlipLRNode),
     Loop(LoopNode),
     Speed(SpeedNode),
+    Rotation(RotationNode),
     AddF32(AddF32),
     MulF32(MulF32),
     DivF32(DivF32),
     SubF32(SubF32),
     ClampF32(ClampF32),
+    AbsF32(AbsF32),
     // HACK: needs to be ignored for now due to:
     // https://github.com/bevyengine/bevy/issues/8965
     // Recursive reference causes reflection to fail
@@ -153,11 +157,13 @@ impl AnimationNodeType {
             AnimationNodeType::FlipLR(n) => f(n),
             AnimationNodeType::Loop(n) => f(n),
             AnimationNodeType::Speed(n) => f(n),
+            AnimationNodeType::Rotation(n) => f(n),
             AnimationNodeType::AddF32(n) => f(n),
             AnimationNodeType::MulF32(n) => f(n),
             AnimationNodeType::DivF32(n) => f(n),
             AnimationNodeType::SubF32(n) => f(n),
             AnimationNodeType::ClampF32(n) => f(n),
+            AnimationNodeType::AbsF32(n) => f(n),
             AnimationNodeType::Graph(n) => f(n),
             AnimationNodeType::Custom(n) => f(n.node.lock().unwrap().deref()),
         }
@@ -174,11 +180,13 @@ impl AnimationNodeType {
             AnimationNodeType::FlipLR(n) => f(n),
             AnimationNodeType::Loop(n) => f(n),
             AnimationNodeType::Speed(n) => f(n),
+            AnimationNodeType::Rotation(n) => f(n),
             AnimationNodeType::AddF32(n) => f(n),
             AnimationNodeType::MulF32(n) => f(n),
             AnimationNodeType::DivF32(n) => f(n),
             AnimationNodeType::SubF32(n) => f(n),
             AnimationNodeType::ClampF32(n) => f(n),
+            AnimationNodeType::AbsF32(n) => f(n),
             AnimationNodeType::Graph(n) => f(n),
             AnimationNodeType::Custom(n) => {
                 let mut nod = n.node.lock().unwrap();

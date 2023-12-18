@@ -1,10 +1,10 @@
-use crate::prelude::GraphContextTmp;
-
 use super::{
-    animation_graph::{AnimationGraph, InputOverlay, ParamValue, TimeState, TimeUpdate},
+    animation_graph::{AnimationGraph, InputOverlay, TimeState, TimeUpdate},
     graph_context::GraphContext,
+    parameters::ParamValue,
     pose::Pose,
 };
+use crate::prelude::GraphContextTmp;
 use bevy::{asset::prelude::*, ecs::prelude::*, reflect::prelude::*};
 
 /// Animation controls

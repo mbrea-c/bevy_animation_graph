@@ -7,7 +7,7 @@ use crate::{
         graph_context::{GraphContext, GraphContextTmp},
         pose::Pose,
     },
-    prelude::PassContext,
+    prelude::{OptParamSpec, ParamSpec, ParamValue, PassContext},
     sampling::linear::SampleLinear,
 };
 use bevy::{
@@ -15,35 +15,7 @@ use bevy::{
     reflect::TypeUuid,
     utils::{HashMap, HashSet},
 };
-use serde::{Deserialize, Serialize};
 use std::error::Error;
-
-#[derive(Reflect, Clone, Copy, Debug, Serialize, Deserialize)]
-pub struct OptParamSpec {
-    pub spec: ParamSpec,
-    pub optional: bool,
-}
-
-impl OptParamSpec {
-    pub fn with_optional(mut self, optional: bool) -> Self {
-        self.optional = optional;
-        self
-    }
-}
-
-impl From<ParamSpec> for OptParamSpec {
-    fn from(value: ParamSpec) -> Self {
-        Self {
-            spec: value,
-            optional: false,
-        }
-    }
-}
-
-#[derive(Reflect, Clone, Copy, Debug, Serialize, Deserialize)]
-pub enum ParamSpec {
-    F32,
-}
 
 pub type NodeId = String;
 pub type PinId = String;
@@ -68,36 +40,6 @@ pub enum SourcePin {
 pub struct Edge {
     pub source: SourcePin,
     pub target: TargetPin,
-}
-
-#[derive(Reflect, Clone, Debug, Serialize, Deserialize)]
-pub enum ParamValue {
-    F32(f32),
-}
-
-impl ParamValue {
-    pub fn unwrap_f32(self) -> f32 {
-        match self {
-            Self::F32(f) => f,
-        }
-    }
-}
-
-impl From<f32> for ParamValue {
-    fn from(value: f32) -> Self {
-        Self::F32(value)
-    }
-}
-
-impl From<&ParamValue> for OptParamSpec {
-    fn from(value: &ParamValue) -> Self {
-        match value {
-            ParamValue::F32(_) => Self {
-                spec: ParamSpec::F32,
-                optional: false,
-            },
-        }
-    }
 }
 
 #[derive(Reflect, Clone, Debug, Copy)]
@@ -397,14 +339,14 @@ impl AnimationGraph {
 
     // --- Computations
     // ----------------------------------------------------------------------------------------
-    pub fn get_parameter(&self, target_pin: TargetPin, ctx: PassContext) -> Option<ParamValue> {
+    pub fn get_parameter(&self, target_pin: TargetPin, mut ctx: PassContext) -> Option<ParamValue> {
         let source_pin = self.edges.get(&target_pin);
 
         let Some(source_pin) = source_pin else {
             return None;
         };
 
-        if let Some(val) = ctx.context.as_mut().get_parameter(source_pin) {
+        if let Some(val) = ctx.context().get_parameter(source_pin) {
             return Some(val.clone());
         }
 
@@ -413,7 +355,7 @@ impl AnimationGraph {
                 let outputs = self.nodes[node_id].parameter_pass(ctx.with_node(node_id, &self));
 
                 for (pin_id, value) in outputs.iter() {
-                    ctx.context.as_mut().set_parameter(
+                    ctx.context().set_parameter(
                         SourcePin::NodeParameter(node_id.clone(), pin_id.clone()),
                         value.clone(),
                     );
@@ -442,13 +384,13 @@ impl AnimationGraph {
         Some(source_value)
     }
 
-    pub fn get_duration(&self, target_pin: TargetPin, ctx: PassContext) -> DurationData {
+    pub fn get_duration(&self, target_pin: TargetPin, mut ctx: PassContext) -> DurationData {
         let source_pin = self
             .edges
             .get(&target_pin)
             .unwrap_or_else(|| panic!("Target pin {target_pin:?} is disconnected"));
 
-        if let Some(val) = ctx.context.as_mut().get_duration(source_pin) {
+        if let Some(val) = ctx.context().get_duration(source_pin) {
             return val;
         }
 
@@ -463,8 +405,7 @@ impl AnimationGraph {
                 let output = self.nodes[node_id].duration_pass(ctx.with_node(node_id, &self));
 
                 if let Some(value) = output {
-                    ctx.context
-                        .as_mut()
+                    ctx.context()
                         .set_duration(SourcePin::NodePose(node_id.clone()), value);
                 }
 
@@ -486,11 +427,11 @@ impl AnimationGraph {
         &self,
         time_update: TimeUpdate,
         target_pin: TargetPin,
-        ctx: PassContext,
+        mut ctx: PassContext,
     ) -> PoseFrame {
         let source_pin = self.edges.get(&target_pin).unwrap();
 
-        if let Some(val) = ctx.context.as_mut().get_pose(source_pin) {
+        if let Some(val) = ctx.context().get_pose(source_pin) {
             return val.clone();
         }
 
@@ -506,12 +447,8 @@ impl AnimationGraph {
                     .pose_pass(time_update, ctx.with_node(node_id, &self))
                     .unwrap();
 
-                ctx.context
-                    .as_mut()
-                    .set_pose(source_pin.clone(), output.clone());
-                ctx.context
-                    .as_mut()
-                    .set_time(source_pin.clone(), output.timestamp);
+                ctx.context().set_pose(source_pin.clone(), output.clone());
+                ctx.context().set_time(source_pin.clone(), output.timestamp);
 
                 output
             }
@@ -547,7 +484,7 @@ impl AnimationGraph {
         let out = self.get_pose(
             time_update,
             TargetPin::OutputPose,
-            PassContext::new(context.into(), context_tmp, overlay),
+            PassContext::new(context, context_tmp, overlay),
         );
 
         self.dot_to_file("test_dot.dot", Some(context), context_tmp)

@@ -1,10 +1,8 @@
-use crate::core::animation_graph::{
-    AnimationGraph, InputOverlay, OptParamSpec, ParamSpec, ParamValue, PinId, TargetPin, TimeUpdate,
-};
+use crate::core::animation_graph::{AnimationGraph, InputOverlay, PinId, TargetPin, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
 use crate::core::frame::PoseFrame;
-use crate::prelude::{PassContext, SpecContext};
+use crate::prelude::{OptParamSpec, ParamSpec, ParamValue, PassContext, SpecContext};
 use bevy::prelude::*;
 use bevy::utils::{HashMap, HashSet};
 

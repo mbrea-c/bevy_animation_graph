@@ -1,8 +1,8 @@
-use crate::core::animation_graph::{OptParamSpec, ParamSpec, PinId, TimeUpdate};
+use crate::core::animation_graph::{PinId, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
 use crate::core::frame::PoseFrame;
-use crate::prelude::{PassContext, SpecContext};
+use crate::prelude::{OptParamSpec, ParamSpec, PassContext, SpecContext};
 use bevy::utils::HashSet;
 use bevy::{reflect::Reflect, utils::HashMap};
 
@@ -46,7 +46,7 @@ impl NodeLike for SpeedNode {
         let mut in_pose_frame = ctx.pose_back(Self::INPUT, fw_upd);
 
         if speed != 0. {
-            in_pose_frame.map_ts(|t| t / speed);
+            in_pose_frame.map_ts(|t| t / speed.abs());
         }
 
         Some(in_pose_frame)
