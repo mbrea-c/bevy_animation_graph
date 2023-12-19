@@ -11,7 +11,7 @@ use crate::{
         clip_node::ClipNode, dummy_node::DummyNode, flip_lr_node::FlipLRNode, loop_node::LoopNode,
         speed_node::SpeedNode, sub_f32::SubF32, DivF32, GraphNode, MulF32,
     },
-    prelude::{AbsF32, PassContext, RotationNode},
+    prelude::{AbsF32, PassContext, RotationArcNode, RotationNode},
 };
 use bevy::{
     reflect::prelude::*,
@@ -125,6 +125,8 @@ impl NodeLike for AnimationNode {
 
 #[derive(Reflect, Clone, Debug)]
 pub enum AnimationNodeType {
+    // --- Pose Nodes
+    // ------------------------------------------------
     Clip(ClipNode),
     Blend(BlendNode),
     Chain(ChainNode),
@@ -132,12 +134,22 @@ pub enum AnimationNodeType {
     Loop(LoopNode),
     Speed(SpeedNode),
     Rotation(RotationNode),
+    // ------------------------------------------------
+
+    // --- F32 arithmetic nodes
+    // ------------------------------------------------
     AddF32(AddF32),
     MulF32(MulF32),
     DivF32(DivF32),
     SubF32(SubF32),
     ClampF32(ClampF32),
     AbsF32(AbsF32),
+    // ------------------------------------------------
+
+    // --- Vec3 arithmetic nodes
+    // ------------------------------------------------
+    RotationArc(RotationArcNode),
+    // ------------------------------------------------
     // HACK: needs to be ignored for now due to:
     // https://github.com/bevyengine/bevy/issues/8965
     // Recursive reference causes reflection to fail
@@ -164,6 +176,7 @@ impl AnimationNodeType {
             AnimationNodeType::SubF32(n) => f(n),
             AnimationNodeType::ClampF32(n) => f(n),
             AnimationNodeType::AbsF32(n) => f(n),
+            AnimationNodeType::RotationArc(n) => f(n),
             AnimationNodeType::Graph(n) => f(n),
             AnimationNodeType::Custom(n) => f(n.node.lock().unwrap().deref()),
         }
@@ -187,6 +200,7 @@ impl AnimationNodeType {
             AnimationNodeType::SubF32(n) => f(n),
             AnimationNodeType::ClampF32(n) => f(n),
             AnimationNodeType::AbsF32(n) => f(n),
+            AnimationNodeType::RotationArc(n) => f(n),
             AnimationNodeType::Graph(n) => f(n),
             AnimationNodeType::Custom(n) => {
                 let mut nod = n.node.lock().unwrap();

@@ -134,6 +134,7 @@ fn write_col(
                 ParamSpec::F32 => String::from(""),
                 ParamSpec::BoneMask => String::from("󰚌"),
                 ParamSpec::Quat => String::from("󰑵"),
+                ParamSpec::Vec3 => String::from("󰵉"),
             };
 
             write!(
@@ -219,6 +220,7 @@ impl AsDotLabel for ParamValue {
             ParamValue::F32(f) => format!("{:.3}", f),
             ParamValue::Quat(q) => format!("{}", q),
             ParamValue::BoneMask(_) => format!("Bone Mask"),
+            ParamValue::Vec3(v) => format!("{}", v),
         }
     }
 }
