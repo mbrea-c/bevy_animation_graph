@@ -1,10 +1,13 @@
-use super::{
-    animation_graph::{InputOverlay, NodeId, PinId, SourcePin, TargetPin, TimeUpdate},
-    duration_data::DurationData,
-    frame::PoseFrame,
-    parameters::ParamValue,
+use crate::{
+    core::{
+        animation_graph::{InputOverlay, NodeId, PinId, SourcePin, TargetPin, TimeUpdate},
+        duration_data::DurationData,
+        frame::PoseFrame,
+    },
+    prelude::{AnimationGraph, ParamValue},
 };
-use crate::prelude::{AnimationGraph, GraphContext, GraphContextTmp};
+
+use super::{graph_context::SystemResources, GraphContext};
 
 #[derive(Clone, Copy)]
 pub struct NodeContext<'a> {
@@ -15,7 +18,7 @@ pub struct NodeContext<'a> {
 #[derive(Clone)]
 pub struct PassContext<'a> {
     context: GraphContextRef,
-    pub context_tmp: GraphContextTmp<'a>,
+    pub resources: SystemResources<'a>,
     pub overlay: &'a InputOverlay,
     pub node_context: Option<NodeContext<'a>>,
     parent: Option<PassContextRef<'a>>,
@@ -24,12 +27,12 @@ pub struct PassContext<'a> {
 impl<'a> PassContext<'a> {
     pub fn new(
         context: &mut GraphContext,
-        context_tmp: GraphContextTmp<'a>,
+        resources: SystemResources<'a>,
         overlay: &'a InputOverlay,
     ) -> Self {
         Self {
             context: context.into(),
-            context_tmp,
+            resources,
             overlay,
             node_context: None,
             parent: None,
@@ -39,7 +42,7 @@ impl<'a> PassContext<'a> {
     pub fn with_node(&self, node_id: &'a NodeId, graph: &'a AnimationGraph) -> Self {
         Self {
             context: self.context.clone(),
-            context_tmp: self.context_tmp,
+            resources: self.resources,
             overlay: self.overlay,
             node_context: Some(NodeContext { node_id, graph }),
             parent: self.parent.clone(),
@@ -49,7 +52,7 @@ impl<'a> PassContext<'a> {
     pub fn without_node(&self) -> Self {
         Self {
             context: self.context.clone(),
-            context_tmp: self.context_tmp,
+            resources: self.resources,
             overlay: self.overlay,
             node_context: None,
             parent: self.parent.clone(),
@@ -61,8 +64,8 @@ impl<'a> PassContext<'a> {
             context: self
                 .context
                 .as_mut()
-                .context_for_subgraph_or_insert_default(&self.node_context.unwrap().node_id),
-            context_tmp: self.context_tmp,
+                .context_for_subgraph_or_insert_default(self.node_context.unwrap().node_id),
+            resources: self.resources,
             overlay,
             node_context: self.node_context,
             parent: Some(self.into()),

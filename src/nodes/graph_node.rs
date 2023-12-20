@@ -24,7 +24,7 @@ impl GraphNode {
 impl NodeLike for GraphNode {
     fn parameter_pass(&self, ctx: PassContext) -> HashMap<PinId, ParamValue> {
         let graph = ctx
-            .context_tmp
+            .resources
             .animation_graph_assets
             .get(&self.graph)
             .unwrap();
@@ -45,7 +45,7 @@ impl NodeLike for GraphNode {
 
     fn duration_pass(&self, ctx: PassContext) -> Option<DurationData> {
         let graph = ctx
-            .context_tmp
+            .resources
             .animation_graph_assets
             .get(&self.graph)
             .unwrap();
@@ -62,7 +62,7 @@ impl NodeLike for GraphNode {
 
     fn pose_pass(&self, input: TimeUpdate, ctx: PassContext) -> Option<PoseFrame> {
         let graph = ctx
-            .context_tmp
+            .resources
             .animation_graph_assets
             .get(&self.graph)
             .unwrap();

@@ -3,7 +3,6 @@ use super::{
     duration_data::DurationData,
     frame::PoseFrame,
     parameters::{OptParamSpec, ParamSpec, ParamValue},
-    spec_context::SpecContext,
 };
 use crate::{
     nodes::{
@@ -11,7 +10,7 @@ use crate::{
         clip_node::ClipNode, dummy_node::DummyNode, flip_lr_node::FlipLRNode, loop_node::LoopNode,
         speed_node::SpeedNode, sub_f32::SubF32, DivF32, GraphNode, MulF32,
     },
-    prelude::{AbsF32, PassContext, RotationArcNode, RotationNode},
+    prelude::{AbsF32, PassContext, RotationArcNode, RotationNode, SpecContext},
 };
 use bevy::{
     reflect::prelude::*,

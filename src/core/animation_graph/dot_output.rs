@@ -3,10 +3,9 @@ use crate::{
     core::{
         animation_node::NodeLike,
         frame::{BoneFrame, PoseFrame, ValueFrame},
-        graph_context::{GraphContext, GraphContextTmp},
     },
     nodes::{ClipNode, GraphNode},
-    prelude::{OptParamSpec, ParamSpec, ParamValue, SpecContext},
+    prelude::{GraphContext, OptParamSpec, ParamSpec, ParamValue, SpecContext, SystemResources},
 };
 use bevy::{
     reflect::{FromReflect, TypePath},
@@ -23,13 +22,13 @@ pub trait ToDot {
         &self,
         f: &mut impl std::io::Write,
         context: Option<&mut GraphContext>,
-        context_tmp: GraphContextTmp,
+        context_tmp: SystemResources,
     ) -> std::io::Result<()>;
 
     fn preview_dot(
         &self,
         context: Option<&mut GraphContext>,
-        context_tmp: GraphContextTmp,
+        context_tmp: SystemResources,
     ) -> std::io::Result<()> {
         let dir = std::env::temp_dir();
         let path = dir.join("bevy_animation_graph_dot.dot");
@@ -55,7 +54,7 @@ pub trait ToDot {
     fn dot_to_tmp_file_and_open(
         &self,
         context: Option<&mut GraphContext>,
-        context_tmp: GraphContextTmp,
+        context_tmp: SystemResources,
     ) -> std::io::Result<()> {
         self.dot_to_tmp_file(context, context_tmp)?;
 
@@ -70,7 +69,7 @@ pub trait ToDot {
         &self,
         path: &str,
         context: Option<&mut GraphContext>,
-        context_tmp: GraphContextTmp,
+        context_tmp: SystemResources,
     ) -> std::io::Result<()> {
         {
             let file = File::create(path)?;
@@ -84,7 +83,7 @@ pub trait ToDot {
     fn dot_to_stdout(
         &self,
         context: Option<&mut GraphContext>,
-        context_tmp: GraphContextTmp,
+        context_tmp: SystemResources,
     ) -> std::io::Result<()> {
         {
             let mut stdout = std::io::stdout();
@@ -97,7 +96,7 @@ pub trait ToDot {
     fn dot_to_tmp_file(
         &self,
         context: Option<&mut GraphContext>,
-        context_tmp: GraphContextTmp,
+        context_tmp: SystemResources,
     ) -> std::io::Result<()> {
         let path = "/tmp/bevy_animation_graph_dot.dot";
         let pdf_path = "/tmp/bevy_animation_graph_dot.dot.pdf";
@@ -219,7 +218,7 @@ impl AsDotLabel for ParamValue {
         match self {
             ParamValue::F32(f) => format!("{:.3}", f),
             ParamValue::Quat(q) => format!("{}", q),
-            ParamValue::BoneMask(_) => format!("Bone Mask"),
+            ParamValue::BoneMask(_) => "Bone Mask".to_string(),
             ParamValue::Vec3(v) => format!("{}", v),
         }
     }
@@ -281,7 +280,7 @@ impl ToDot for AnimationGraph {
         &self,
         f: &mut impl std::io::Write,
         mut context: Option<&mut GraphContext>,
-        context_tmp: GraphContextTmp,
+        context_tmp: SystemResources,
     ) -> std::io::Result<()> {
         writeln!(f, "digraph {{")?;
         writeln!(f, "\trankdir=LR;")?;

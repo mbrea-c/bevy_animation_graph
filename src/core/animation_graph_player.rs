@@ -1,10 +1,9 @@
 use super::{
     animation_graph::{AnimationGraph, InputOverlay, TimeState, TimeUpdate},
-    graph_context::GraphContext,
     parameters::ParamValue,
     pose::Pose,
 };
-use crate::prelude::GraphContextTmp;
+use crate::prelude::{GraphContext, SystemResources};
 use bevy::{asset::prelude::*, ecs::prelude::*, reflect::prelude::*};
 
 /// Animation controls
@@ -67,7 +66,7 @@ impl AnimationGraphPlayer {
     }
 
     /// Query the animation graph with the latest time update and inputs
-    pub(crate) fn query(&mut self, context_tmp: GraphContextTmp) -> Option<Pose> {
+    pub(crate) fn query(&mut self, context_tmp: SystemResources) -> Option<Pose> {
         let Some(graph_handle) = &self.animation else {
             return None;
         };

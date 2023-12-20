@@ -29,7 +29,7 @@ fn deserialize_bone_map(map: HashMap<Vec<String>, f32>) -> HashMap<BoneId, f32> 
     map.into_iter()
         .map(|(k, v)| {
             let k = EntityPath {
-                parts: k.into_iter().map(|s| Name::new(s)).collect(),
+                parts: k.into_iter().map(Name::new).collect(),
             };
 
             (k, v)

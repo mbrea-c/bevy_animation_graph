@@ -1,13 +1,11 @@
 use crate::{
     core::{
-        animation_graph::ToDot,
         animation_node::{AnimationNode, NodeLike},
         duration_data::DurationData,
         frame::PoseFrame,
-        graph_context::{GraphContext, GraphContextTmp},
         pose::Pose,
     },
-    prelude::{OptParamSpec, ParamSpec, ParamValue, PassContext},
+    prelude::{GraphContext, OptParamSpec, ParamSpec, ParamValue, PassContext, SystemResources},
     sampling::linear::SampleLinear,
 };
 use bevy::{
@@ -352,7 +350,7 @@ impl AnimationGraph {
 
         let source_value = match source_pin {
             SourcePin::NodeParameter(node_id, pin_id) => {
-                let outputs = self.nodes[node_id].parameter_pass(ctx.with_node(node_id, &self));
+                let outputs = self.nodes[node_id].parameter_pass(ctx.with_node(node_id, self));
 
                 for (pin_id, value) in outputs.iter() {
                     ctx.context().set_parameter(
@@ -402,7 +400,7 @@ impl AnimationGraph {
                 panic!("Incompatible pins connected: {source_pin:?} --> {target_pin:?}")
             }
             SourcePin::NodePose(node_id) => {
-                let output = self.nodes[node_id].duration_pass(ctx.with_node(node_id, &self));
+                let output = self.nodes[node_id].duration_pass(ctx.with_node(node_id, self));
 
                 if let Some(value) = output {
                     ctx.context()
@@ -444,7 +442,7 @@ impl AnimationGraph {
             }
             SourcePin::NodePose(node_id) => {
                 let output = self.nodes[node_id]
-                    .pose_pass(time_update, ctx.with_node(node_id, &self))
+                    .pose_pass(time_update, ctx.with_node(node_id, self))
                     .unwrap();
 
                 ctx.context().set_pose(source_pin.clone(), output.clone());
@@ -468,27 +466,24 @@ impl AnimationGraph {
         &self,
         time_update: TimeUpdate,
         context: &mut GraphContext,
-        context_tmp: GraphContextTmp,
+        resources: SystemResources,
     ) -> Pose {
-        self.query_with_overlay(time_update, context, context_tmp, &InputOverlay::default())
+        self.query_with_overlay(time_update, context, resources, &InputOverlay::default())
     }
 
     pub fn query_with_overlay(
         &self,
         time_update: TimeUpdate,
         context: &mut GraphContext,
-        context_tmp: GraphContextTmp,
+        resources: SystemResources,
         overlay: &InputOverlay,
     ) -> Pose {
         context.push_caches();
         let out = self.get_pose(
             time_update,
             TargetPin::OutputPose,
-            PassContext::new(context, context_tmp, overlay),
+            PassContext::new(context, resources, overlay),
         );
-
-        self.dot_to_file("test_dot.dot", Some(context), context_tmp)
-            .unwrap();
 
         out.sample_linear()
     }

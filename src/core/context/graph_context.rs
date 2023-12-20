@@ -1,11 +1,13 @@
-use super::{
-    animation_clip::GraphClip,
-    animation_graph::{AnimationGraph, SourcePin, TimeUpdate},
-    duration_data::DurationData,
-    frame::PoseFrame,
-    parameters::ParamValue,
-    pass_context::GraphContextRef,
+use crate::{
+    core::{
+        animation_graph::{SourcePin, TimeUpdate},
+        duration_data::DurationData,
+        frame::PoseFrame,
+    },
+    prelude::{AnimationGraph, GraphClip, ParamValue},
 };
+
+use super::pass_context::GraphContextRef;
 use bevy::{asset::Assets, reflect::prelude::*, utils::HashMap};
 
 #[derive(Reflect, Debug, Default)]
@@ -164,7 +166,7 @@ pub struct GraphContext {
 
 /// Contains temprary data such as references to assets, gizmos, etc.
 #[derive(Clone, Copy)]
-pub struct GraphContextTmp<'a> {
+pub struct SystemResources<'a> {
     pub graph_clip_assets: &'a Assets<GraphClip>,
     pub animation_graph_assets: &'a Assets<AnimationGraph>,
 }

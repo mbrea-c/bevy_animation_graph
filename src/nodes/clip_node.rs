@@ -32,7 +32,7 @@ impl ClipNode {
         if let Some(duration) = self.override_duration {
             duration
         } else {
-            ctx.context_tmp
+            ctx.resources
                 .graph_clip_assets
                 .get(&self.clip)
                 .unwrap()
@@ -48,7 +48,7 @@ impl NodeLike for ClipNode {
 
     fn pose_pass(&self, time_update: TimeUpdate, ctx: PassContext) -> Option<PoseFrame> {
         let clip_duration = self.clip_duration(&ctx);
-        let clip = ctx.context_tmp.graph_clip_assets.get(&self.clip).unwrap();
+        let clip = ctx.resources.graph_clip_assets.get(&self.clip).unwrap();
 
         let prev_time = ctx.prev_time_fwd();
         let time = time_update.apply(prev_time);

@@ -54,7 +54,7 @@ fn show_graph(
                 .get(target_graph.handle.as_ref().unwrap())
                 .unwrap();
 
-            let context_tmp = GraphContextTmp {
+            let context_tmp = SystemResources {
                 graph_clip_assets: &graph_clip_assets,
                 animation_graph_assets: &animation_graph_assets,
             };
