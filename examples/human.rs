@@ -77,6 +77,7 @@ fn keyboard_animation_control(
     human_character: Query<&AnimatedSceneInstance, With<Human>>,
     mut animation_players: Query<&mut AnimationGraphPlayer>,
     mut velocity: Local<f32>,
+    mut direction: Local<Vec3>,
     time: Res<Time>,
 ) {
     let Ok(AnimatedSceneInstance { player_entity }) = human_character.get_single() else {
@@ -105,7 +106,17 @@ fn keyboard_animation_control(
         *velocity -= 0.5 * time.delta_seconds();
     }
 
-    *velocity = velocity.max(0.);
+    if *direction == Vec3::ZERO {
+        *direction = Vec3::Z;
+    }
+
+    if keyboard_input.pressed(KeyCode::Right) {
+        *direction = (Quat::from_rotation_y(1. * time.delta_seconds()) * *direction).normalize();
+    }
+    if keyboard_input.pressed(KeyCode::Left) {
+        *direction = (Quat::from_rotation_y(-1. * time.delta_seconds()) * *direction).normalize();
+    }
 
     player.set_input_parameter("Target Speed", (*velocity).into());
+    player.set_input_parameter("Target Direction", (*direction).into());
 }

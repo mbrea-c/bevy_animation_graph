@@ -1,9 +1,8 @@
-use crate::core::animation_graph::{
-    OptParamSpec, ParamSpec, ParamValue, PinId, TimeState, TimeUpdate,
-};
+use crate::core::animation_graph::{PinId, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
+use crate::core::duration_data::DurationData;
 use crate::core::frame::PoseFrame;
-use crate::prelude::{DurationData, PassContext, SpecContext};
+use crate::prelude::{OptParamSpec, ParamSpec, PassContext, SpecContext};
 use bevy::utils::HashSet;
 use bevy::{reflect::Reflect, utils::HashMap};
 
@@ -25,50 +24,29 @@ impl SpeedNode {
 }
 
 impl NodeLike for SpeedNode {
-    fn parameter_pass(
-        &self,
-        _: HashMap<PinId, ParamValue>,
-        _: PassContext,
-    ) -> HashMap<PinId, ParamValue> {
-        HashMap::new()
-    }
-
-    fn duration_pass(
-        &self,
-        inputs: HashMap<PinId, Option<f32>>,
-        ctx: PassContext,
-    ) -> Option<DurationData> {
+    fn duration_pass(&self, mut ctx: PassContext) -> Option<DurationData> {
         let speed = ctx.parameter_back(Self::SPEED).unwrap_f32();
 
         let out_duration = if speed == 0. {
             None
         } else {
-            let duration = inputs.get(Self::INPUT).unwrap();
+            let duration = ctx.duration_back(Self::INPUT);
             duration.as_ref().map(|duration| duration / speed)
         };
 
         Some(out_duration)
     }
 
-    fn time_pass(&self, input: TimeState, ctx: PassContext) -> HashMap<PinId, TimeUpdate> {
+    fn pose_pass(&self, input: TimeUpdate, mut ctx: PassContext) -> Option<PoseFrame> {
         let speed = ctx.parameter_back(Self::SPEED).unwrap_f32();
-        let fw_upd = match input.update {
+        let fw_upd = match input {
             TimeUpdate::Delta(dt) => TimeUpdate::Delta(dt * speed),
             TimeUpdate::Absolute(t) => TimeUpdate::Absolute(t * speed),
         };
-        HashMap::from([(Self::INPUT.into(), fw_upd)])
-    }
-
-    fn time_dependent_pass(
-        &self,
-        mut inputs: HashMap<PinId, PoseFrame>,
-        ctx: PassContext,
-    ) -> Option<PoseFrame> {
-        let mut in_pose_frame = inputs.remove(Self::INPUT).unwrap();
-        let speed = ctx.parameter_back(Self::SPEED).unwrap_f32();
+        let mut in_pose_frame = ctx.pose_back(Self::INPUT, fw_upd);
 
         if speed != 0. {
-            in_pose_frame.map_ts(|t| t / speed);
+            in_pose_frame.map_ts(|t| t / speed.abs());
         }
 
         Some(in_pose_frame)
@@ -76,10 +54,6 @@ impl NodeLike for SpeedNode {
 
     fn parameter_input_spec(&self, _: SpecContext) -> HashMap<PinId, OptParamSpec> {
         HashMap::from([(Self::SPEED.into(), ParamSpec::F32.into())])
-    }
-
-    fn parameter_output_spec(&self, _: SpecContext) -> HashMap<PinId, ParamSpec> {
-        HashMap::new()
     }
 
     fn pose_input_spec(&self, _: SpecContext) -> HashSet<PinId> {

@@ -2,6 +2,9 @@ use bevy::{asset::prelude::*, math::prelude::*, reflect::prelude::*, utils::Hash
 
 use super::animation_clip::EntityPath;
 
+// PERF: Bone ids should become integers eventually
+pub type BoneId = EntityPath;
+
 /// Vertical slice of a [`Keyframes`] that represents an instant in an animation [`Transform`].
 #[derive(Asset, Reflect, Clone, Debug, Default)]
 pub struct BonePose {
@@ -15,11 +18,11 @@ pub struct BonePose {
 #[derive(Asset, Reflect, Clone, Debug, Default)]
 pub struct Pose {
     pub(crate) bones: Vec<BonePose>,
-    pub(crate) paths: HashMap<EntityPath, usize>,
+    pub(crate) paths: HashMap<BoneId, usize>,
 }
 
 impl Pose {
-    pub fn add_bone(&mut self, pose: BonePose, path: EntityPath) {
+    pub fn add_bone(&mut self, pose: BonePose, path: BoneId) {
         let id = self.bones.len();
         self.bones.insert(id, pose);
         self.paths.insert(path, id);

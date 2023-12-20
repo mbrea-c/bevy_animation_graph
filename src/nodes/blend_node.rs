@@ -1,10 +1,9 @@
-use crate::core::animation_graph::{
-    OptParamSpec, ParamSpec, ParamValue, PinId, TimeState, TimeUpdate,
-};
+use crate::core::animation_graph::{PinId, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
+use crate::core::duration_data::DurationData;
 use crate::core::frame::PoseFrame;
 use crate::interpolation::linear::InterpolateLinear;
-use crate::prelude::{DurationData, PassContext, SpecContext};
+use crate::prelude::{OptParamSpec, ParamSpec, PassContext, SpecContext};
 use bevy::prelude::*;
 use bevy::utils::{HashMap, HashSet};
 
@@ -27,21 +26,9 @@ impl BlendNode {
 }
 
 impl NodeLike for BlendNode {
-    fn parameter_pass(
-        &self,
-        _inputs: HashMap<PinId, ParamValue>,
-        _: PassContext,
-    ) -> HashMap<PinId, ParamValue> {
-        HashMap::new()
-    }
-
-    fn duration_pass(
-        &self,
-        inputs: HashMap<PinId, Option<f32>>,
-        _: PassContext,
-    ) -> Option<DurationData> {
-        let duration_1 = *inputs.get(Self::INPUT_1).unwrap();
-        let duration_2 = *inputs.get(Self::INPUT_2).unwrap();
+    fn duration_pass(&self, mut ctx: PassContext) -> Option<DurationData> {
+        let duration_1 = ctx.duration_back(Self::INPUT_1);
+        let duration_2 = ctx.duration_back(Self::INPUT_2);
 
         let out_duration = match (duration_1, duration_2) {
             (Some(duration_1), Some(duration_2)) => Some(duration_1.max(duration_2)),
@@ -53,31 +40,17 @@ impl NodeLike for BlendNode {
         Some(out_duration)
     }
 
-    fn time_pass(&self, input: TimeState, _: PassContext) -> HashMap<PinId, TimeUpdate> {
-        HashMap::from([
-            (Self::INPUT_1.into(), input.update),
-            (Self::INPUT_2.into(), input.update),
-        ])
-    }
-
-    fn time_dependent_pass(
-        &self,
-        mut inputs: HashMap<PinId, PoseFrame>,
-        ctx: PassContext,
-    ) -> Option<PoseFrame> {
-        let in_frame_1 = inputs.remove(Self::INPUT_1).unwrap();
-        let in_frame_2 = inputs.remove(Self::INPUT_2).unwrap();
+    fn pose_pass(&self, input: TimeUpdate, mut ctx: PassContext) -> Option<PoseFrame> {
+        let in_frame_1 = ctx.pose_back(Self::INPUT_1, input);
+        let in_frame_2 = ctx.pose_back(Self::INPUT_2, input);
         let alpha = ctx.parameter_back(Self::FACTOR).unwrap_f32();
+        let out = in_frame_1.interpolate_linear(&in_frame_2, alpha);
 
-        Some(in_frame_1.interpolate_linear(&in_frame_2, alpha))
+        Some(out)
     }
 
     fn parameter_input_spec(&self, _: SpecContext) -> HashMap<PinId, OptParamSpec> {
         HashMap::from([(Self::FACTOR.into(), ParamSpec::F32.into())])
-    }
-
-    fn parameter_output_spec(&self, _: SpecContext) -> HashMap<PinId, ParamSpec> {
-        HashMap::new()
     }
 
     fn pose_input_spec(&self, _: SpecContext) -> HashSet<PinId> {

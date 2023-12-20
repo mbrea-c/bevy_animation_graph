@@ -1,13 +1,11 @@
-use std::error::Error;
-
 use crate::{
     core::{
         animation_node::{AnimationNode, NodeLike},
+        duration_data::DurationData,
         frame::PoseFrame,
-        graph_context::{GraphContext, GraphContextTmp},
         pose::Pose,
     },
-    prelude::{DurationData, PassContext, SpecContext},
+    prelude::{GraphContext, OptParamSpec, ParamSpec, ParamValue, PassContext, SystemResources},
     sampling::linear::SampleLinear,
 };
 use bevy::{
@@ -15,34 +13,7 @@ use bevy::{
     reflect::TypeUuid,
     utils::{HashMap, HashSet},
 };
-use serde::{Deserialize, Serialize};
-
-#[derive(Reflect, Clone, Copy, Debug, Serialize, Deserialize)]
-pub struct OptParamSpec {
-    pub spec: ParamSpec,
-    pub optional: bool,
-}
-
-impl OptParamSpec {
-    pub fn with_optional(mut self, optional: bool) -> Self {
-        self.optional = optional;
-        self
-    }
-}
-
-impl From<ParamSpec> for OptParamSpec {
-    fn from(value: ParamSpec) -> Self {
-        Self {
-            spec: value,
-            optional: false,
-        }
-    }
-}
-
-#[derive(Reflect, Clone, Copy, Debug, Serialize, Deserialize)]
-pub enum ParamSpec {
-    F32,
-}
+use std::error::Error;
 
 pub type NodeId = String;
 pub type PinId = String;
@@ -69,36 +40,6 @@ pub struct Edge {
     pub target: TargetPin,
 }
 
-#[derive(Reflect, Clone, Debug, Serialize, Deserialize)]
-pub enum ParamValue {
-    F32(f32),
-}
-
-impl ParamValue {
-    pub fn unwrap_f32(self) -> f32 {
-        match self {
-            Self::F32(f) => f,
-        }
-    }
-}
-
-impl From<f32> for ParamValue {
-    fn from(value: f32) -> Self {
-        Self::F32(value)
-    }
-}
-
-impl From<&ParamValue> for OptParamSpec {
-    fn from(value: &ParamValue) -> Self {
-        match value {
-            ParamValue::F32(_) => Self {
-                spec: ParamSpec::F32,
-                optional: false,
-            },
-        }
-    }
-}
-
 #[derive(Reflect, Clone, Debug, Copy)]
 pub enum TimeUpdate {
     Delta(f32),
@@ -108,6 +49,15 @@ pub enum TimeUpdate {
 impl Default for TimeUpdate {
     fn default() -> Self {
         Self::Absolute(0.)
+    }
+}
+
+impl TimeUpdate {
+    pub fn apply(&self, time: f32) -> f32 {
+        match self {
+            Self::Delta(dt) => time + dt,
+            Self::Absolute(t) => *t,
+        }
     }
 }
 
@@ -162,14 +112,14 @@ impl UpdateTime<Option<TimeUpdate>> for TimeState {
 pub struct InputOverlay {
     pub parameters: HashMap<PinId, ParamValue>,
     pub durations: HashMap<PinId, DurationData>,
-    pub time_dependent: HashMap<PinId, PoseFrame>,
+    pub poses: HashMap<PinId, PoseFrame>,
 }
 
 impl InputOverlay {
     pub fn clear(&mut self) {
         self.parameters.clear();
         self.durations.clear();
-        self.time_dependent.clear();
+        self.poses.clear();
     }
 }
 
@@ -189,7 +139,7 @@ impl Error for GraphError {}
 pub struct AnimationGraph {
     pub nodes: HashMap<String, AnimationNode>,
     /// Inverted, indexed by output node name.
-    pub node_edges: HashMap<TargetPin, SourcePin>,
+    pub edges: HashMap<TargetPin, SourcePin>,
     pub default_output: Option<String>,
 
     pub default_parameters: HashMap<PinId, ParamValue>,
@@ -209,7 +159,7 @@ impl AnimationGraph {
     pub fn new() -> Self {
         Self {
             nodes: HashMap::new(),
-            node_edges: HashMap::new(),
+            edges: HashMap::new(),
 
             default_output: None,
             default_parameters: HashMap::new(),
@@ -229,7 +179,7 @@ impl AnimationGraph {
 
     /// Add a new edge to the graph
     pub fn add_edge(&mut self, source_pin: SourcePin, target_pin: TargetPin) {
-        self.node_edges.insert(target_pin, source_pin);
+        self.edges.insert(target_pin, source_pin);
     }
     // ----------------------------------------------------------------------------------------
 
@@ -349,7 +299,7 @@ impl AnimationGraph {
 
         let mut counters = HashMap::<SourcePin, SourceType>::new();
 
-        for (_, source_pin) in self.node_edges.iter() {
+        for (_, source_pin) in self.edges.iter() {
             let source_type = match source_pin {
                 SourcePin::NodeParameter(_, _) => SourceType::Parameter,
                 SourcePin::InputParameter(_) => SourceType::Parameter,
@@ -387,59 +337,23 @@ impl AnimationGraph {
 
     // --- Computations
     // ----------------------------------------------------------------------------------------
-    fn parameter_map(
-        &self,
-        target_pin: TargetPin,
-        spec: OptParamSpec,
-        context: &mut GraphContext,
-        context_tmp: GraphContextTmp,
-        overlay: &InputOverlay,
-    ) -> Option<ParamValue> {
-        let source_pin = self.node_edges.get(&target_pin);
-        if spec.optional && source_pin.is_none() {
-            return None;
-        }
-        let source_pin = source_pin.unwrap();
+    pub fn get_parameter(&self, target_pin: TargetPin, mut ctx: PassContext) -> Option<ParamValue> {
+        let source_pin = self.edges.get(&target_pin);
 
-        if let Some(val) = context.get_cached_parameter(source_pin) {
+        let Some(source_pin) = source_pin else {
+            return None;
+        };
+
+        if let Some(val) = ctx.context().get_parameter(source_pin) {
             return Some(val.clone());
         }
 
         let source_value = match source_pin {
             SourcePin::NodeParameter(node_id, pin_id) => {
-                self.nodes[node_id]
-                    .pose_input_spec(SpecContext::new(context, context_tmp))
-                    .iter()
-                    .for_each(|pin_id| {
-                        self.parameter_propagate(
-                            TargetPin::NodePose(node_id.clone(), pin_id.clone()),
-                            context,
-                            context_tmp,
-                            overlay,
-                        );
-                    });
-                let inputs = self.nodes[node_id]
-                    .parameter_input_spec(SpecContext::new(context, context_tmp))
-                    .iter()
-                    .filter_map(|(pin_id, spec)| {
-                        self.parameter_map(
-                            TargetPin::NodeParameter(node_id.clone(), pin_id.clone()),
-                            *spec,
-                            context,
-                            context_tmp,
-                            overlay,
-                        )
-                        .map(|v| (pin_id.clone(), v))
-                    })
-                    .collect();
-
-                let outputs = self.nodes[node_id].parameter_pass(
-                    inputs,
-                    PassContext::new(node_id, context, context_tmp, &self.node_edges),
-                );
+                let outputs = self.nodes[node_id].parameter_pass(ctx.with_node(node_id, self));
 
                 for (pin_id, value) in outputs.iter() {
-                    context.insert_cached_parameter(
+                    ctx.context().set_parameter(
                         SourcePin::NodeParameter(node_id.clone(), pin_id.clone()),
                         value.clone(),
                     );
@@ -448,13 +362,14 @@ impl AnimationGraph {
                 outputs[pin_id].clone()
             }
             SourcePin::InputParameter(pin_id) => {
-                if let Some(v) = overlay.parameters.get(pin_id) {
-                    v.clone()
-                } else if let Some(v) = self.default_parameters.get(pin_id) {
-                    v.clone()
+                let out = if ctx.has_parent() {
+                    ctx.parent().parameter_back_opt(pin_id)
                 } else {
-                    panic!("Value of parameter {source_pin:?} not available")
+                    None
                 }
+                .or_else(|| ctx.overlay.parameters.get(pin_id).cloned())
+                .or_else(|| self.default_parameters.get(pin_id).cloned());
+                out.unwrap()
             }
             SourcePin::NodePose(_) => {
                 panic!("Incompatible pins connected: {source_pin:?} --> {target_pin:?}")
@@ -467,64 +382,13 @@ impl AnimationGraph {
         Some(source_value)
     }
 
-    fn parameter_propagate(
-        &self,
-        target_pin: TargetPin,
-        context: &mut GraphContext,
-        context_tmp: GraphContextTmp,
-        overlay: &InputOverlay,
-    ) {
-        let source_pin = self.node_edges.get(&target_pin).unwrap();
-
-        match source_pin {
-            SourcePin::NodeParameter(_, _) => {
-                panic!("Try using parameter_map instead: {source_pin:?} --> {target_pin:?}")
-            }
-            SourcePin::InputParameter(_) => {
-                panic!("Try using parameter_map instead: {source_pin:?} --> {target_pin:?}")
-            }
-            SourcePin::NodePose(node_id) => {
-                self.nodes[node_id]
-                    .pose_input_spec(SpecContext::new(context, context_tmp))
-                    .iter()
-                    .for_each(|pin_id| {
-                        self.parameter_propagate(
-                            TargetPin::NodePose(node_id.clone(), pin_id.clone()),
-                            context,
-                            context_tmp,
-                            overlay,
-                        );
-                    });
-                self.nodes[node_id]
-                    .parameter_input_spec(SpecContext::new(context, context_tmp))
-                    .iter()
-                    .for_each(|(pin_id, spec)| {
-                        self.parameter_map(
-                            TargetPin::NodeParameter(node_id.clone(), pin_id.clone()),
-                            *spec,
-                            context,
-                            context_tmp,
-                            overlay,
-                        );
-                    });
-            }
-            SourcePin::InputPose(_) => {}
-        };
-    }
-
-    fn duration_map(
-        &self,
-        target_pin: TargetPin,
-        context: &mut GraphContext,
-        context_tmp: GraphContextTmp,
-        overlay: &InputOverlay,
-    ) -> Option<f32> {
+    pub fn get_duration(&self, target_pin: TargetPin, mut ctx: PassContext) -> DurationData {
         let source_pin = self
-            .node_edges
+            .edges
             .get(&target_pin)
             .unwrap_or_else(|| panic!("Target pin {target_pin:?} is disconnected"));
 
-        if let Some(val) = context.get_cached_duration(source_pin) {
+        if let Some(val) = ctx.context().get_duration(source_pin) {
             return val;
         }
 
@@ -536,38 +400,20 @@ impl AnimationGraph {
                 panic!("Incompatible pins connected: {source_pin:?} --> {target_pin:?}")
             }
             SourcePin::NodePose(node_id) => {
-                let inputs = self.nodes[node_id]
-                    .pose_input_spec(SpecContext::new(context, context_tmp))
-                    .iter()
-                    .map(|pin_id| {
-                        (
-                            pin_id.clone(),
-                            self.duration_map(
-                                TargetPin::NodePose(node_id.clone(), pin_id.clone()),
-                                context,
-                                context_tmp,
-                                overlay,
-                            ),
-                        )
-                    })
-                    .collect();
-
-                let output = self.nodes[node_id].duration_pass(
-                    inputs,
-                    PassContext::new(node_id, context, context_tmp, &self.node_edges),
-                );
+                let output = self.nodes[node_id].duration_pass(ctx.with_node(node_id, self));
 
                 if let Some(value) = output {
-                    context.insert_cached_duration(SourcePin::NodePose(node_id.clone()), value);
+                    ctx.context()
+                        .set_duration(SourcePin::NodePose(node_id.clone()), value);
                 }
 
                 output.unwrap()
             }
             SourcePin::InputPose(pin_id) => {
-                if let Some(v) = overlay.durations.get(pin_id) {
+                if let Some(v) = ctx.overlay.durations.get(pin_id) {
                     *v
                 } else {
-                    panic!("Value of parameter {source_pin:?} not available")
+                    ctx.parent().duration_back(pin_id)
                 }
             }
         };
@@ -575,70 +421,15 @@ impl AnimationGraph {
         source_value
     }
 
-    fn time_map(
+    pub fn get_pose(
         &self,
-        target_pin: TargetPin,
         time_update: TimeUpdate,
-        context: &mut GraphContext,
-        context_tmp: GraphContextTmp,
-        _overlay: &InputOverlay,
-    ) {
-        let source_pin = self.node_edges.get(&target_pin).unwrap();
-
-        if context.get_cached_time(source_pin).is_some() {
-            return;
-        }
-
-        let old_time_state = context
-            .old_cached_time(source_pin)
-            .cloned()
-            .unwrap_or_default();
-        let time_state = old_time_state.update(time_update);
-
-        // Cache the new value
-        context.insert_cached_time(source_pin.clone(), time_state);
-
-        match source_pin {
-            SourcePin::NodeParameter(_, _) => {
-                panic!("Incompatible pins connected: {source_pin:?} --> {target_pin:?}")
-            }
-            SourcePin::InputParameter(_) => {
-                panic!("Incompatible pins connected: {source_pin:?} --> {target_pin:?}")
-            }
-            SourcePin::NodePose(node_id) => {
-                // Compute time pass
-                let back_target_pins = self.nodes[node_id].time_pass(
-                    time_state,
-                    PassContext::new(node_id, context, context_tmp, &self.node_edges),
-                );
-
-                // Propagate the time update to the back edges
-                for (pin_id, time_update) in back_target_pins {
-                    self.time_map(
-                        TargetPin::NodePose(node_id.clone(), pin_id),
-                        time_update,
-                        context,
-                        context_tmp,
-                        _overlay,
-                    );
-                }
-            }
-            SourcePin::InputPose(_) => {
-                // Do nothing, the value has already been cached
-            }
-        };
-    }
-
-    fn pose_map(
-        &self,
         target_pin: TargetPin,
-        context: &mut GraphContext,
-        context_tmp: GraphContextTmp,
-        overlay: &InputOverlay,
+        mut ctx: PassContext,
     ) -> PoseFrame {
-        let source_pin = self.node_edges.get(&target_pin).unwrap();
+        let source_pin = self.edges.get(&target_pin).unwrap();
 
-        if let Some(val) = context.get_cached_pose(source_pin) {
+        if let Some(val) = ctx.context().get_pose(source_pin) {
             return val.clone();
         }
 
@@ -650,38 +441,20 @@ impl AnimationGraph {
                 panic!("Incompatible pins connected: {source_pin:?} --> {target_pin:?}")
             }
             SourcePin::NodePose(node_id) => {
-                let inputs = self.nodes[node_id]
-                    .pose_input_spec(SpecContext::new(context, context_tmp))
-                    .iter()
-                    .map(|pin_id| {
-                        (
-                            pin_id.clone(),
-                            self.pose_map(
-                                TargetPin::NodePose(node_id.clone(), pin_id.clone()),
-                                context,
-                                context_tmp,
-                                overlay,
-                            ),
-                        )
-                    })
-                    .collect();
+                let output = self.nodes[node_id]
+                    .pose_pass(time_update, ctx.with_node(node_id, self))
+                    .unwrap();
 
-                let output = self.nodes[node_id].time_dependent_pass(
-                    inputs,
-                    PassContext::new(node_id, context, context_tmp, &self.node_edges),
-                );
+                ctx.context().set_pose(source_pin.clone(), output.clone());
+                ctx.context().set_time(source_pin.clone(), output.timestamp);
 
-                if let Some(value) = &output {
-                    context.insert_cached_pose(SourcePin::NodePose(node_id.clone()), value.clone());
-                }
-
-                output.unwrap().clone()
+                output
             }
             SourcePin::InputPose(pin_id) => {
-                if let Some(v) = overlay.time_dependent.get(pin_id) {
+                if let Some(v) = ctx.overlay.poses.get(pin_id) {
                     v.clone()
                 } else {
-                    panic!("Value of parameter {source_pin:?} not available")
+                    ctx.parent().pose_back(pin_id, time_update)
                 }
             }
         };
@@ -689,96 +462,30 @@ impl AnimationGraph {
         source_value
     }
 
-    pub fn parameter_pass(
-        &self,
-        context: &mut GraphContext,
-        context_tmp: GraphContextTmp,
-        overlay: &InputOverlay,
-    ) -> HashMap<PinId, ParamValue> {
-        if self.output_pose {
-            self.parameter_propagate(TargetPin::OutputPose, context, context_tmp, overlay);
-        }
-
-        self.output_parameters
-            .iter()
-            .map(|(pin_id, spec)| {
-                let target_pin = TargetPin::OutputParameter(pin_id.clone());
-                let value = self
-                    .parameter_map(target_pin, (*spec).into(), context, context_tmp, overlay)
-                    .unwrap();
-
-                (pin_id.clone(), value)
-            })
-            .collect()
-    }
-
-    pub fn duration_pass(
-        &self,
-        context: &mut GraphContext,
-        context_tmp: GraphContextTmp,
-        overlay: &InputOverlay,
-    ) -> Option<DurationData> {
-        let target_pin = TargetPin::OutputPose;
-
-        Some(self.duration_map(target_pin, context, context_tmp, overlay))
-    }
-
-    pub fn time_pass(
-        &self,
-        time_update: TimeUpdate,
-        context: &mut GraphContext,
-        context_tmp: GraphContextTmp,
-        overlay: &InputOverlay,
-    ) -> HashMap<PinId, TimeUpdate> {
-        let target_pin = TargetPin::OutputPose;
-
-        self.time_map(target_pin, time_update, context, context_tmp, overlay);
-
-        self.input_poses
-            .iter()
-            .map(|pin_id| {
-                let source_pin = SourcePin::InputPose(pin_id.clone());
-                let state = context.get_cached_time(&source_pin).unwrap();
-
-                (pin_id.clone(), state.update)
-            })
-            .collect()
-    }
-
-    pub fn time_dependent_pass(
-        &self,
-        context: &mut GraphContext,
-        context_tmp: GraphContextTmp,
-        overlay: &InputOverlay,
-    ) -> Option<PoseFrame> {
-        let target_pin = TargetPin::OutputPose;
-
-        Some(self.pose_map(target_pin, context, context_tmp, overlay))
-    }
-
     pub fn query(
         &self,
         time_update: TimeUpdate,
         context: &mut GraphContext,
-        context_tmp: GraphContextTmp,
+        resources: SystemResources,
     ) -> Pose {
-        self.query_with_overlay(time_update, context, context_tmp, &InputOverlay::default())
+        self.query_with_overlay(time_update, context, resources, &InputOverlay::default())
     }
 
     pub fn query_with_overlay(
         &self,
         time_update: TimeUpdate,
         context: &mut GraphContext,
-        context_tmp: GraphContextTmp,
+        resources: SystemResources,
         overlay: &InputOverlay,
     ) -> Pose {
         context.push_caches();
-        self.parameter_pass(context, context_tmp, overlay);
-        self.duration_pass(context, context_tmp, overlay);
-        self.time_pass(time_update, context, context_tmp, overlay);
-        let final_output = self.time_dependent_pass(context, context_tmp, overlay);
+        let out = self.get_pose(
+            time_update,
+            TargetPin::OutputPose,
+            PassContext::new(context, resources, overlay),
+        );
 
-        final_output.unwrap().sample_linear()
+        out.sample_linear()
     }
     // ----------------------------------------------------------------------------------------
 }

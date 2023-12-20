@@ -17,7 +17,7 @@ use bevy::{
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct AnimatedSceneSerial {
+struct AnimatedSceneSerial {
     source: String,
     path_to_player: Vec<String>,
     animation_graph: String,
