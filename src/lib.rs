@@ -14,9 +14,9 @@
 //!   (
 //!       source: GltfNamed(
 //!           // Asset path of the (root) gltf asset
-//!           path: "models/character_rigged.gltf",
+//!           path: "models/Fox.glb",
 //!           // Name of the animation within that asset
-//!           animation_name: "WalkBaked2",
+//!           animation_name: "Walk",
 //!       ),
 //!   )
 //!   ```
@@ -37,9 +37,9 @@
 //!   animation graph to play. For example:
 //!   ```ron
 //!   (
-//!       source: "models/character_rigged.gltf#Scene0",
-//!       path_to_player: ["Main Controller"],
-//!       animation_graph: "animation_graphs/locomotion.animgraph.ron",
+//!       source: "models/Fox.glb#Scene0",
+//!       path_to_player: ["root"],
+//!       animation_graph: "animation_graphs/fox.animgraph.ron",
 //!   )
 //!   ```
 //!   We can now simply instantiate an `AnimatedSceneBundle` with the given `AnimatedScene` handle,
@@ -64,11 +64,12 @@
 //! - [`ClipNode`]: Plays back an animation clip.
 //! - [`ChainNode`]: Chains (plays one after the other) two animation inputs.
 //! - [`BlendNode`]: Blends two animation inputs linearly based on an input factor.
-//! - [`FlipLRNode`]: Mirrors an animation on the X axis, based on the bones having `L` and `R`
+//! - [`FlipLRNode`]: Mirrors an animation on the X axis, based on the bone names having `L` and `R`
 //!   suffixes to specify which side they are on.
 //! - [`LoopNode`]: Loops an animation input indefinitely.
 //! - [`SpeedNode`]: Adjust the playback speed of an animation input.
 //! - [`GraphNode`]: Nested animation graph. The node inputs and outputs match the nested graph's
+//! - [`RotationNode`]: Applies a (quaternion) rotation to a set of bones from the input pose defined using a bone mask.
 //!   inputs and outputs.
 //! - Parameter arithmetic:
 //!   - Floating point numbers (`f32`)
@@ -77,27 +78,27 @@
 //!     - [`MulF32`]
 //!     - [`DivF32`]
 //!     - [`ClampF32`]
+//!   - Vector (`vec3`)
+//!     - [`RotationArcNode`]: Given two vectors, output quaternion rotation needed to rotate the first
+//!       into the second.
 //!
 //! ## Examples
 //!
-//! ### Building a locomotion animation graph
+//! ### Blend running and walking animation based on movement speed
 //!
-//! Consider the following scenario:
+//! Consider the following simple scenario:
 //!
 //! - Inputs:
-//!   - We have a _partial_ running animation composed of two keyframes: one for the
-//!     reaching pose and one for the passing pose. The animation only covers half of
-//!     a running cycle.
-//!   - We have a _partial_ walk animation similarly composed of two keyframes.
+//!   - We have running and walking animations.
 //!   - We have a target movement speed for the character.
 //!   - We know the movement speeds corresponding to the unmodified walk and run
 //!     animations, which we call `walk_base_speed` and `run_base_speed`.
 //!   - We decide on a range of target speeds where the blend between walk and run
 //!     should happen. We call this `blend_start` and `blend_end`.
 //! - Desired output:
-//!   - A complete movement animation that covers the full walk/run cycle and
-//!     performs a synchronized blend between the walk and run animations based on
-//!     the target speed.
+//!   - A animation that blends between the running and walking animation if the target speed is
+//!     between `blend_start` and `blend_end`, and scales the playback speed to match the target
+//!     speed based on `walk_base_speed` and `run_base_speed`.
 //!
 //! A solution to this problem is as follows:
 //!
@@ -113,38 +114,34 @@
 //!    speed_fac = target_speed / (walk_base_speed * (1 - blend_fac) + run_base_speed * blend_fac)
 //!    ```
 //!
-//! 2. We mirror the run animation along the X axis, and chain the result to the
-//!    original run animation to get a complete run cycle. Do the same with the walk
-//!    animation.
-//! 3. Blend the two animations together using `blend_fac`. Loop the result and
+//! 2. Blend the two animations together using `blend_fac`. Loop the result and
 //!    apply the speed factor `speed_fac`.
 //!
 //! The resulting graph is defined like so:
 //!
 //! ```ron
-//! // In file assets/animation_graphs/locomotion.animgraph.ron
+//! // In file assets/animation_graphs/fox.animgraph.ron
 //! (
 //!     nodes: [
-//!         (name: "Walk Clip", node: Clip("animations/walk.anim.ron", Some(1.))),
-//!         (name: "Walk Clip 2", node: Clip("animations/walk.anim.ron", Some(1.))),
-//!         (name: "Run Clip",  node: Clip("animations/run.anim.ron", Some(1.))),
-//!         (name: "Run Clip 2",  node: Clip("animations/run.anim.ron", Some(1.))),
-//!         (name: "Walk Flip LR", node: FlipLR),
-//!         (name: "Run Flip LR", node: FlipLR),
-//!         (name: "Walk Chain", node: Chain),
-//!         (name: "Run Chain", node: Chain),
+//!         (name: "Walk Clip", node: Clip("animations/fox_walk.anim.ron", None)),
+//!         (name: "Run Clip",  node: Clip("animations/fox_run.anim.ron", None)),
 //!         (name: "Blend", node: Blend),
-//!         (name: "Loop", node: Loop),
+//!         (name: "Loop Walk", node: Loop),
+//!         (name: "Loop Run", node: Loop),
 //!         (name: "Speed", node: Speed),
 //!
 //!         (name: "Param graph", node: Graph("animation_graphs/velocity_to_params.animgraph.ron")),
 //!     ],
 //!     input_parameters: {
 //!         "Target Speed": F32(1.5),
+//!         "Blend Start": F32(0.5),
+//!         "Blend End": F32(1.5),
 //!     },
 //!     output_pose_spec: true,
 //!     input_parameter_edges: [
 //!         ("Target Speed", ("Param graph", "Target Speed")),
+//!         ("Blend Start", ("Param graph", "Blend Start")),
+//!         ("Blend End", ("Param graph", "Blend End")),
 //!     ],
 //!     output_pose_edge: Some("Speed"),
 //!     parameter_edges: [
@@ -152,16 +149,11 @@
 //!         (("Param graph", "speed_fac"),("Speed", "Speed")),
 //!     ],
 //!     pose_edges: [
-//!         ("Walk Clip", ("Walk Chain", "Pose In 1")),
-//!         ("Walk Clip 2", ("Walk Flip LR", "Pose In")),
-//!         ("Walk Flip LR", ("Walk Chain", "Pose In 2")),
-//!         ("Run Clip", ("Run Chain", "Pose In 1")),
-//!         ("Run Clip 2", ("Run Flip LR", "Pose In")),
-//!         ("Run Flip LR", ("Run Chain", "Pose In 2")),
-//!         ("Walk Chain", ("Blend", "Pose In 1")),
-//!         ("Run Chain", ("Blend", "Pose In 2")),
-//!         ("Blend", ("Loop", "Pose In")),
-//!         ("Loop", ("Speed", "Pose In")),
+//!         ("Walk Clip", ("Loop Walk", "Pose In")),
+//!         ("Run Clip", ("Loop Run", "Pose In")),
+//!         ("Loop Walk", ("Blend", "Pose In 1")),
+//!         ("Loop Run", ("Blend", "Pose In 2")),
+//!         ("Blend", ("Speed", "Pose In")),
 //!     ],
 //! )
 //! ```
@@ -170,12 +162,13 @@
 //! graph that we reference as a node above:
 //!
 //! ```ron
-//! // In file: assets/animation_graphs/locomotion.ron
+//! // In file: assets/animation_graphs/velocity_to_params.animgraph.ron
 //! (
 //!     nodes: [
 //!         (name: "Alpha Tmp 1", node: SubF32),
 //!         (name: "Alpha Tmp 2", node: SubF32),
 //!         (name: "Alpha Tmp 3", node: DivF32),
+//!         (name: "Target Speed Abs", node: AbsF32),
 //!         (name: "Alpha", node: ClampF32),
 //!
 //!         (name: "1-Alpha", node: SubF32),
@@ -187,9 +180,10 @@
 //!     input_parameters: {
 //!         "Walk Base Speed": F32(0.3),
 //!         "Run Base Speed": F32(0.8),
-//!         "Target Speed": F32(1.5),
 //!         "Blend Start": F32(1.0),
 //!         "Blend End": F32(3.0),
+//!
+//!         "Target Speed": F32(1.5),
 //!
 //!         // Constant values
 //!         "ZERO": F32(0.),
@@ -205,7 +199,7 @@
 //!         ("ONE", ("Alpha", "Max")),
 //!
 //!         // Alpha parameters
-//!         ("Target Speed", ("Alpha Tmp 1", "F32 In 1")),
+//!         ("Target Speed", ("Target Speed Abs", "F32 In")),
 //!         ("Blend Start", ("Alpha Tmp 1", "F32 In 2")),
 //!         ("Blend End",   ("Alpha Tmp 2", "F32 In 1")),
 //!         ("Blend Start", ("Alpha Tmp 2", "F32 In 2")),
@@ -218,7 +212,8 @@
 //!     ],
 //!     parameter_edges: [
 //!         // Blend alpha computation
-//!         // ((target_speed - blend_start) / (blend_end - blend_start)).clamp(0., 1.);
+//!         // ((abs(target_speed) - blend_start) / (blend_end - blend_start)).clamp(0., 1.);
+//!         (("Target Speed Abs", "F32 Out"), ("Alpha Tmp 1", "F32 In 1")),
 //!         (("Alpha Tmp 1", "F32 Out"), ("Alpha Tmp 3", "F32 In 1")),
 //!         (("Alpha Tmp 2", "F32 Out"), ("Alpha Tmp 3", "F32 In 2")),
 //!         (("Alpha Tmp 3", "F32 Out"), ("Alpha", "F32 In")),
@@ -241,47 +236,37 @@
 //!
 //! ## How does this library work?
 //!
+//! There are two types of values processed by the graph: parameters and poses.
+//!
 //! Each node [`AnimationNode`] in an animation graph has an arbitrary number of parameter inputs
 //! and outputs, each with a particular type (defined in [`ParamValue`]). Each edge
-//! connects one output form one node to an input from another node, that is, the mapping of
+//! connects one output from one node to an input from another node, that is, the mapping of
 //! parameter inputs to parameter outputs is 1-many. Parameters are used for things like
 //! the speed factor of an animation or the weight of a blend.
 //!
 //! Additionally, each node can have any number of pose inputs and a single pose output.
 //! Pose edges connect each pose output to a single pose input, that is, the mapping of pose
-//! outputs to pose inputs is 1-1.
+//! outputs to pose inputs is 1-1. Nodes also must output the duration of the animation if they
+//! have a pose output.
 //!
-//! Conceptually, pose outputs are *sampled* at a specific time. Given
-//! a specific time query for a pose output, the node computes appropriate time queries
-//! for its pose inputs. These new queries are then propagated backwards in the graph.
-//! The results are propagated back upwards and produce the final pose output.
-//! These computations have access to previously used parameter inputs and outputs, declared node durations
-//! and of course the queried times. Examples are the pose inputs and outputs from most nodes.
+//! Conceptually, pose outputs are *sampled* at a specific time, so when querying an input pose
+//! nodes must provide a time update. This time update can be a time increment (delta) or an absolute time.
 //!
-//! In practice, the computation is performed in four passes rather than two:
-//! 1. **Parameter pass**: Propagates parameter inputs and outputs as described above.
-//! 2. **Duration pass**: Propagates node durations for pose inputs and outputs. Each node
-//! is given the durations of its pose inputs and outputs the durations of its
-//! pose outputs. Durations can be affected by parameters (e.g. speed node has shorter
-//! duration the higher the speed factor is), so it needs to happen after the parameter pass.
-//! 3. **Time pass**: Propagates the time queries for pose inputs and outputs, as
-//!    described above. Durations can affect time query propagation (e.g. the duration of the
-//!    inputs determines the time-query of a loop node), so it needs to happen after the duration
-//!    pass.
-//! 4. **Pose pass**: Finally performs the pose computations as described
-//!    above.
-//!
-//! Each pass has access to the inputs and outputs of previous passes. In particular, the API is
-//! described by the [`NodeLike`] trait, which every graph node type must implement.
+//! Nodes query their inputs lazily using a provided graph context (rather than all inputs being
+//! provided eagerly by the caller). The context will cache node outputs every frame to prevent repeated
+//! computations. The API is described by the [`NodeLike`] trait, which every graph node type must implement.
+//! The [`PassContext`] contains the API that a node has access to when called.
 //!
 //!
-//! [`ParamValue`]: crate::core::animation_graph::ParamValue
+//! [`ParamValue`]: crate::core::parameters::ParamValue
+//! [`PassContext`]: crate::core::context::PassContext
 //! [`AnimationNode`]: prelude::AnimationNode
 //!
 //! [`SpeedNode`]: crate::nodes::SpeedNode
 //! [`ClipNode`]: crate::nodes::ClipNode
 //! [`ChainNode`]: crate::nodes::ChainNode
 //! [`BlendNode`]: crate::nodes::BlendNode
+//! [`RotationNode`]: crate::nodes::RotationNode
 //! [`FlipLRNode`]: crate::nodes::FlipLRNode
 //! [`LoopNode`]: crate::nodes::LoopNode
 //! [`GraphNode`]: crate::nodes::GraphNode
@@ -290,6 +275,7 @@
 //! [`MulF32`]: crate::nodes::MulF32
 //! [`DivF32`]: crate::nodes::DivF32
 //! [`ClampF32`]: crate::nodes::ClampF32
+//! [`RotationArcNode`]: crate::nodes::RotationArcNode
 //!
 //! [`NodeLike`]: crate::core::animation_node::NodeLike
 //! [`GraphClip`]: crate::core::animation_clip::GraphClip
