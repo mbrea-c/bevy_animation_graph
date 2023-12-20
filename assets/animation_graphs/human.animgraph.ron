@@ -25,7 +25,7 @@
         "Rotation Mask": BoneMask(
             Positive(
                 bones: {
-                    ["Main Controller", "Main Controller", "Hip"]: 1.
+                    ["Main Controller", "Main Controller"]: 1.
                 }
             )
         ),

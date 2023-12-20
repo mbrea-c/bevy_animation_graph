@@ -36,7 +36,7 @@ impl NodeLike for FlipLRNode {
 
     fn pose_pass(&self, input: TimeUpdate, mut ctx: PassContext) -> Option<PoseFrame> {
         let in_pose_frame = ctx.pose_back(Self::INPUT, input);
-        let flipped_pose_frame = in_pose_frame.flipped_by_suffix(" R".into(), " L".into());
+        let flipped_pose_frame = in_pose_frame.flipped_by_suffix("R".into(), "L".into());
         Some(flipped_pose_frame)
     }
 

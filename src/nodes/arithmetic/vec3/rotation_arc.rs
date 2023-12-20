@@ -45,6 +45,6 @@ impl NodeLike for RotationArcNode {
     }
 
     fn display_name(&self) -> String {
-        "+ Add".into()
+        "Rotation Arc".into()
     }
 }

@@ -51,8 +51,9 @@ impl NodeLike for RotationNode {
             let bone = pose.bones.get_mut(*idx).unwrap();
             if let Some(rot) = bone.rotation.as_mut() {
                 // TODO: rotation needs to be scaled by `percent`
-                rot.prev *= rotation;
-                rot.next *= rotation;
+                let rotation = (rotation * percent).normalize();
+                rot.prev = rotation * rot.prev;
+                rot.next = rotation * rot.next;
             }
         }
 

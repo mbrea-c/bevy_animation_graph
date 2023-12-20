@@ -7,7 +7,6 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugins(AnimationGraphPlugin)
-        .add_plugins(bevy_egui_editor::EguiEditorPlugin)
         .insert_resource(AmbientLight {
             color: Color::WHITE,
             brightness: 0.1,
@@ -27,13 +26,10 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // Camera
-    commands
-        .spawn(Camera3dBundle {
-            transform: Transform::from_xyz(3., 3., 3.)
-                .looking_at(Vec3::new(0.0, 0.875, 0.0), Vec3::Y),
-            ..default()
-        })
-        .insert(bevy_egui_editor::EditorCamera);
+    commands.spawn(Camera3dBundle {
+        transform: Transform::from_xyz(3., 3., 3.).looking_at(Vec3::new(0.0, 0.875, 0.0), Vec3::Y),
+        ..default()
+    });
 
     // Plane
     commands.spawn(PbrBundle {
@@ -115,10 +111,10 @@ fn keyboard_animation_control(
     }
 
     if keyboard_input.pressed(KeyCode::Right) {
-        *direction = Quat::from_rotation_y(1. * time.delta_seconds()) * *direction;
+        *direction = (Quat::from_rotation_y(1. * time.delta_seconds()) * *direction).normalize();
     }
     if keyboard_input.pressed(KeyCode::Left) {
-        *direction = Quat::from_rotation_y(-1. * time.delta_seconds()) * *direction;
+        *direction = (Quat::from_rotation_y(-1. * time.delta_seconds()) * *direction).normalize();
     }
 
     player.set_input_parameter("Target Speed", (*velocity).into());
