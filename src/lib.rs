@@ -82,6 +82,33 @@
 //!     - [`RotationArcNode`]: Given two vectors, output quaternion rotation needed to rotate the first
 //!       into the second.
 //!
+//! ## Graphviz `.dot` export
+//!
+//! This crate provides a binary utility `show_graph` which outputs any animation graph asset as a `.dot`
+//! file:
+//!
+//! ```text
+//!     show_graph <GRAPH ASSET PATH> <OUTPUT FILE PATH>
+//! ```
+//!
+//! If `<OUTPUT FILE PATH>` is `-`, then `show_graph` will output to STDOUT. The output can be
+//! processed into a pdf with:
+//!
+//! ```text
+//!     show_graph <GRAPH ASSET PATH> - | dot -Tpdf > graph.pdf
+//! ```
+//!
+//! assuming that the command `dot` is installed. If you have the zathura pdf reader installed
+//! you don't need to save the pdf into a file either, you can just open the file from STDIN:
+//!
+//! ```text
+//!     show_graph <GRAPH ASSET PATH> - | dot -Tpdf | zathura -
+//! ```
+//!
+//! If you would prefer not to install the `show_graph` command but do have `bevy_animation_graph`
+//! in your current cargo workspace (or you are in the bevy_animation_graph directory), you can
+//! replace `show_graph` with `cargo run -p bevy_animation_graph --bin show_graph` in the above commands.
+//!
 //! ## Examples
 //!
 //! ### Blend running and walking animation based on movement speed
