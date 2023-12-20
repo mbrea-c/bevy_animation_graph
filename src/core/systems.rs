@@ -78,7 +78,7 @@ fn verify_no_ancestor_player(
     }
 }
 
-/// System that will play all animations, using any entity with a [`AnimationPlayer`]
+/// System that will play all animations, using any entity with a [`AnimationGraphPlayer`]
 /// and a [`Handle<AnimationClip>`] as an animation root
 #[allow(clippy::too_many_arguments)]
 pub fn animation_player(

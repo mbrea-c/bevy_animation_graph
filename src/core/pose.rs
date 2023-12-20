@@ -6,6 +6,9 @@ use super::animation_clip::EntityPath;
 pub type BoneId = EntityPath;
 
 /// Vertical slice of a [`Keyframes`] that represents an instant in an animation [`Transform`].
+///
+/// [`Keyframes`]: crate::core::animation_clip::Keyframes
+/// [`Transform`]: bevy::transform::prelude::Transform
 #[derive(Asset, Reflect, Clone, Debug, Default)]
 pub struct BonePose {
     pub(crate) rotation: Option<Quat>,
@@ -14,7 +17,9 @@ pub struct BonePose {
     pub(crate) weights: Option<Vec<f32>>,
 }
 
-/// Vertical slice of an [`AnimationClip`]
+/// Vertical slice of an [`GraphClip`]
+///
+/// [`GraphClip`]: crate::prelude::GraphClip
 #[derive(Asset, Reflect, Clone, Debug, Default)]
 pub struct Pose {
     pub(crate) bones: Vec<BonePose>,

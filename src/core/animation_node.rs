@@ -6,11 +6,11 @@ use super::{
 };
 use crate::{
     nodes::{
-        add_f32::AddF32, blend_node::BlendNode, chain_node::ChainNode, clamp_f32::ClampF32,
-        clip_node::ClipNode, dummy_node::DummyNode, flip_lr_node::FlipLRNode, loop_node::LoopNode,
-        speed_node::SpeedNode, sub_f32::SubF32, DivF32, GraphNode, MulF32,
+        blend_node::BlendNode, chain_node::ChainNode, clip_node::ClipNode, dummy_node::DummyNode,
+        flip_lr_node::FlipLRNode, loop_node::LoopNode, speed_node::SpeedNode, AbsF32, AddF32,
+        ClampF32, DivF32, GraphNode, MulF32, SubF32,
     },
-    prelude::{AbsF32, PassContext, RotationArcNode, RotationNode, SpecContext},
+    prelude::{PassContext, RotationArcNode, RotationNode, SpecContext},
 };
 use bevy::{
     reflect::prelude::*,
@@ -46,6 +46,7 @@ pub trait NodeLike: Send + Sync {
         false
     }
 
+    /// The name of this node.
     fn display_name(&self) -> String;
 }
 
