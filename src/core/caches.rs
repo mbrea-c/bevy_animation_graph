@@ -1,4 +1,7 @@
-use super::animation_graph::{ParamValue, PinId, TimeState, TimeUpdate};
+use super::{
+    animation_graph::{PinId, TimeState, TimeUpdate},
+    parameters::ParamValue,
+};
 use bevy::{reflect::prelude::*, utils::HashMap};
 
 #[derive(Reflect, Clone, Debug, Default)]

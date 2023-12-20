@@ -1,11 +1,12 @@
-use super::{AnimationGraph, ParamSpec, ParamValue};
+use super::AnimationGraph;
 use crate::{
-    core::animation_clip::GraphClip,
+    core::{animation_clip::GraphClip, parameters::ParamValueSerial},
     nodes::{
         blend_node::BlendNode, chain_node::ChainNode, clamp_f32::ClampF32, clip_node::ClipNode,
         flip_lr_node::FlipLRNode, loop_node::LoopNode, speed_node::SpeedNode, sub_f32::SubF32,
         AddF32, DivF32, GraphNode, MulF32,
     },
+    prelude::{AbsF32, ParamSpec, RotationArcNode, RotationNode},
     utils::asset_loader_error::AssetLoaderError,
 };
 use bevy::{
@@ -89,7 +90,7 @@ impl AssetLoader for GraphClipLoader {
 pub struct AnimationGraphSerial {
     nodes: Vec<AnimationNodeSerial>,
     #[serde(default)]
-    input_parameters: HashMap<String, ParamValue>,
+    input_parameters: HashMap<String, ParamValueSerial>,
     #[serde(default)]
     input_pose_spec: Vec<String>,
     #[serde(default)]
@@ -129,11 +130,14 @@ pub enum AnimationNodeTypeSerial {
     FlipLR,
     Loop,
     Speed,
+    Rotation,
     AddF32,
     SubF32,
     MulF32,
     DivF32,
     ClampF32,
+    AbsF32,
+    RotationArc,
     Graph(String),
 }
 
@@ -171,11 +175,18 @@ impl AssetLoader for AnimationGraphLoader {
                     AnimationNodeTypeSerial::FlipLR => FlipLRNode::new().wrapped(&serial_node.name),
                     AnimationNodeTypeSerial::Loop => LoopNode::new().wrapped(&serial_node.name),
                     AnimationNodeTypeSerial::Speed => SpeedNode::new().wrapped(&serial_node.name),
+                    AnimationNodeTypeSerial::Rotation => {
+                        RotationNode::new().wrapped(&serial_node.name)
+                    }
                     AnimationNodeTypeSerial::AddF32 => AddF32::new().wrapped(&serial_node.name),
                     AnimationNodeTypeSerial::SubF32 => SubF32::new().wrapped(&serial_node.name),
                     AnimationNodeTypeSerial::MulF32 => MulF32::new().wrapped(&serial_node.name),
                     AnimationNodeTypeSerial::DivF32 => DivF32::new().wrapped(&serial_node.name),
                     AnimationNodeTypeSerial::ClampF32 => ClampF32::new().wrapped(&serial_node.name),
+                    AnimationNodeTypeSerial::AbsF32 => AbsF32::new().wrapped(&serial_node.name),
+                    AnimationNodeTypeSerial::RotationArc => {
+                        RotationArcNode::new().wrapped(&serial_node.name)
+                    }
                     AnimationNodeTypeSerial::Graph(graph_name) => {
                         GraphNode::new(load_context.load(graph_name)).wrapped(&serial_node.name)
                     }
@@ -187,7 +198,7 @@ impl AssetLoader for AnimationGraphLoader {
             // --- Set up inputs and outputs
             // ------------------------------------------------------------------------------------
             for (parameter_name, parameter_value) in &serial.input_parameters {
-                graph.set_default_parameter(parameter_name, parameter_value.clone());
+                graph.set_default_parameter(parameter_name, parameter_value.clone().into());
             }
             for td_name in &serial.input_pose_spec {
                 graph.add_input_pose(td_name);

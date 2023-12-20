@@ -37,14 +37,6 @@ impl<T: InterpolateLinear + FromReflect + TypePath + std::fmt::Debug + Clone> In
         // We discard the "edges"
         // |prev_1 xxxx|prev_2 <----keep---->|next_1 xxxx|next_2
 
-        if self.timestamp > self.next_timestamp {
-            println!(
-                "Yo we skippin? {} --[ {} ]-- {}",
-                self.prev_timestamp, self.timestamp, self.next_timestamp
-            );
-            return other.clone();
-        }
-
         // Then consider overlapping frames
         let prev = if self.prev_timestamp < other.prev_timestamp {
             let inter = self.sample_linear_at(other.prev_timestamp);
@@ -62,15 +54,7 @@ impl<T: InterpolateLinear + FromReflect + TypePath + std::fmt::Debug + Clone> In
             inter.interpolate_linear(&other.next, f)
         };
 
-        if (self.timestamp - other.timestamp).abs() > 0.00001 {
-            panic!(
-                "Timestamps of interpolated frames don't match! {:?} vs {:?}",
-                self.timestamp, other.timestamp
-            );
-        }
-
         Self {
-            timestamp: self.timestamp,
             prev,
             prev_timestamp: self.prev_timestamp.max(other.prev_timestamp),
             next,
@@ -80,6 +64,11 @@ impl<T: InterpolateLinear + FromReflect + TypePath + std::fmt::Debug + Clone> In
                 self.next_is_wrapped
             } else {
                 other.next_is_wrapped
+            },
+            prev_is_wrapped: if self.prev_timestamp > other.prev_timestamp {
+                self.prev_is_wrapped
+            } else {
+                other.prev_is_wrapped
             },
         }
     }
@@ -153,6 +142,8 @@ impl InterpolateLinear for PoseFrame {
             result.add_bone(other.bones[*bone_id].clone(), path.clone());
         }
 
+        result.timestamp = self.timestamp;
+
         result
     }
 }
@@ -164,20 +155,20 @@ mod tests {
     #[test]
     fn test_interpolate_value_frame_nest_1() {
         let frame_1 = ValueFrame {
-            timestamp: 0.5,
             prev: Vec3::new(0., 0., 0.),
             prev_timestamp: 0.,
             next: Vec3::new(1., 1., 1.),
             next_timestamp: 1.,
             next_is_wrapped: false,
+            prev_is_wrapped: false,
         };
         let frame_2 = ValueFrame {
-            timestamp: 0.5,
             prev: Vec3::new(0., 0., 0.),
             prev_timestamp: 0.2,
             next: Vec3::new(1., 1., 1.),
             next_timestamp: 0.8,
             next_is_wrapped: false,
+            prev_is_wrapped: false,
         };
 
         let interpolated_0 = frame_1.interpolate_linear(&frame_2, 0.);
@@ -185,30 +176,30 @@ mod tests {
         let interpolated_1 = frame_1.interpolate_linear(&frame_2, 1.);
 
         let expected_0 = ValueFrame {
-            timestamp: 0.5,
             prev: Vec3::new(0.2, 0.2, 0.2),
             prev_timestamp: 0.2,
             next: Vec3::new(0.8, 0.8, 0.8),
             next_timestamp: 0.8,
             next_is_wrapped: false,
+            prev_is_wrapped: false,
         };
 
         let expected_half = ValueFrame {
-            timestamp: 0.5,
             prev: Vec3::new(0.1, 0.1, 0.1),
             prev_timestamp: 0.2,
             next: Vec3::new(0.9, 0.9, 0.9),
             next_timestamp: 0.8,
             next_is_wrapped: false,
+            prev_is_wrapped: false,
         };
 
         let expected_1 = ValueFrame {
-            timestamp: 0.5,
             prev: Vec3::new(0.0, 0.0, 0.0),
             prev_timestamp: 0.2,
             next: Vec3::new(1.0, 1.0, 1.0),
             next_timestamp: 0.8,
             next_is_wrapped: false,
+            prev_is_wrapped: false,
         };
 
         assert_eq!(expected_0, interpolated_0);
@@ -219,20 +210,20 @@ mod tests {
     #[test]
     fn test_interpolate_value_frame_nest_2() {
         let frame_2 = ValueFrame {
-            timestamp: 0.5,
             prev: Vec3::new(0., 0., 0.),
             prev_timestamp: 0.,
             next: Vec3::new(1., 1., 1.),
             next_timestamp: 1.,
             next_is_wrapped: false,
+            prev_is_wrapped: false,
         };
         let frame_1 = ValueFrame {
-            timestamp: 0.5,
             prev: Vec3::new(0., 0., 0.),
             prev_timestamp: 0.2,
             next: Vec3::new(1., 1., 1.),
             next_timestamp: 0.8,
             next_is_wrapped: false,
+            prev_is_wrapped: false,
         };
 
         let interpolated_1 = frame_1.interpolate_linear(&frame_2, 0.);
@@ -240,30 +231,30 @@ mod tests {
         let interpolated_0 = frame_1.interpolate_linear(&frame_2, 1.);
 
         let expected_0 = ValueFrame {
-            timestamp: 0.5,
             prev: Vec3::new(0.2, 0.2, 0.2),
             prev_timestamp: 0.2,
             next: Vec3::new(0.8, 0.8, 0.8),
             next_timestamp: 0.8,
             next_is_wrapped: false,
+            prev_is_wrapped: false,
         };
 
         let expected_half = ValueFrame {
-            timestamp: 0.5,
             prev: Vec3::new(0.1, 0.1, 0.1),
             prev_timestamp: 0.2,
             next: Vec3::new(0.9, 0.9, 0.9),
             next_timestamp: 0.8,
             next_is_wrapped: false,
+            prev_is_wrapped: false,
         };
 
         let expected_1 = ValueFrame {
-            timestamp: 0.5,
             prev: Vec3::new(0.0, 0.0, 0.0),
             prev_timestamp: 0.2,
             next: Vec3::new(1.0, 1.0, 1.0),
             next_timestamp: 0.8,
             next_is_wrapped: false,
+            prev_is_wrapped: false,
         };
 
         assert_eq!(expected_0, interpolated_0);

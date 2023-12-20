@@ -59,8 +59,8 @@ fn setup(
     // Animated character
     commands.spawn((
         AnimatedSceneBundle {
-            animated_scene: asset_server.load("animated_scenes/human.animscn.ron"),
-            transform: Transform::from_xyz(0., 0., 0.),
+            animated_scene: asset_server.load("animated_scenes/fox.animscn.ron"),
+            transform: Transform::from_scale(Vec3::splat(0.01)),
             ..default()
         },
         Human,
@@ -77,7 +77,6 @@ fn keyboard_animation_control(
     human_character: Query<&AnimatedSceneInstance, With<Human>>,
     mut animation_players: Query<&mut AnimationGraphPlayer>,
     mut velocity: Local<f32>,
-    mut direction: Local<Vec3>,
     time: Res<Time>,
 ) {
     let Ok(AnimatedSceneInstance { player_entity }) = human_character.get_single() else {
@@ -106,17 +105,9 @@ fn keyboard_animation_control(
         *velocity -= 0.5 * time.delta_seconds();
     }
 
-    if *direction == Vec3::ZERO {
-        *direction = Vec3::Z;
-    }
+    println!("Velocity: {:?}", velocity);
 
-    if keyboard_input.pressed(KeyCode::Right) {
-        *direction = (Quat::from_rotation_y(1. * time.delta_seconds()) * *direction).normalize();
-    }
-    if keyboard_input.pressed(KeyCode::Left) {
-        *direction = (Quat::from_rotation_y(-1. * time.delta_seconds()) * *direction).normalize();
-    }
+    *velocity = velocity.max(0.);
 
     player.set_input_parameter("Target Speed", (*velocity).into());
-    player.set_input_parameter("Target Direction", (*direction).into());
 }

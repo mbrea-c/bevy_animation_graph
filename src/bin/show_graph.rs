@@ -5,8 +5,8 @@ use std::env;
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    if args.len() != 2 {
-        panic!("Usage: show_graph <PATH_TO_TARGET_GRAPH>");
+    if args.len() != 3 {
+        panic!("Usage: show_graph <ASSET_PATH_TO_TARGET_GRAPH> <PATH_TO_DOT_OUTPUT>");
     }
 
     App::new()
@@ -14,15 +14,11 @@ fn main() {
             // TODO: Figure out the minimal set of plugins needed
             // to make this work
             DefaultPlugins,
-            // LogPlugin::default(),
-            // TimePlugin::default(),
-            // TaskPoolPlugin::default(),
-            // AssetPlugin::default(),
-            // GltfPlugin::default(),
             AnimationGraphPlugin,
         ))
         .insert_resource(TargetGraph {
             name: args[1].clone(),
+            output_path: args[2].clone(),
             handle: None,
         })
         .add_systems(Startup, load_graph)
@@ -33,6 +29,7 @@ fn main() {
 #[derive(Resource)]
 struct TargetGraph {
     name: String,
+    output_path: String,
     handle: Option<Handle<AnimationGraph>>,
 }
 
@@ -57,12 +54,18 @@ fn show_graph(
                 .get(target_graph.handle.as_ref().unwrap())
                 .unwrap();
 
-            let context_tmp = GraphContextTmp {
+            let context_tmp = SystemResources {
                 graph_clip_assets: &graph_clip_assets,
                 animation_graph_assets: &animation_graph_assets,
             };
 
-            graph.dot_to_tmp_file_and_open(None, context_tmp).unwrap();
+            if target_graph.output_path == "-" {
+                graph.dot_to_stdout(None, context_tmp).unwrap();
+            } else {
+                graph
+                    .dot_to_file(&target_graph.output_path, None, context_tmp)
+                    .unwrap();
+            }
 
             exit.send(AppExit);
         }

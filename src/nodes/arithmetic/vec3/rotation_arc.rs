@@ -1,32 +1,36 @@
 use crate::core::animation_graph::PinId;
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::prelude::{OptParamSpec, ParamSpec, ParamValue, PassContext, SpecContext};
+use crate::utils::unwrap::Unwrap;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 
 #[derive(Reflect, Clone, Debug, Default)]
-pub struct SubF32 {}
+pub struct RotationArcNode {}
 
-impl SubF32 {
-    pub const INPUT_1: &'static str = "F32 In 1";
-    pub const INPUT_2: &'static str = "F32 In 2";
-    pub const OUTPUT: &'static str = "F32 Out";
+impl RotationArcNode {
+    pub const INPUT_1: &'static str = "Vec3 In 1";
+    pub const INPUT_2: &'static str = "Vec3 In 2";
+    pub const OUTPUT: &'static str = "Quat Out";
 
     pub fn new() -> Self {
         Self {}
     }
 
     pub fn wrapped(self, name: impl Into<String>) -> AnimationNode {
-        AnimationNode::new_from_nodetype(name.into(), AnimationNodeType::SubF32(self))
+        AnimationNode::new_from_nodetype(name.into(), AnimationNodeType::RotationArc(self))
     }
 }
 
-impl NodeLike for SubF32 {
+impl NodeLike for RotationArcNode {
     fn parameter_pass(&self, mut ctx: PassContext) -> HashMap<PinId, ParamValue> {
-        let input_1 = ctx.parameter_back(Self::INPUT_1).unwrap_f32();
-        let input_2 = ctx.parameter_back(Self::INPUT_2).unwrap_f32();
+        let input_1: Vec3 = ctx.parameter_back(Self::INPUT_1).unwrap();
+        let input_2: Vec3 = ctx.parameter_back(Self::INPUT_2).unwrap();
 
-        HashMap::from([(Self::OUTPUT.into(), ParamValue::F32(input_1 - input_2))])
+        HashMap::from([(
+            Self::OUTPUT.into(),
+            ParamValue::Quat(Quat::from_rotation_arc(input_1, input_2)),
+        )])
     }
 
     fn parameter_input_spec(&self, _: SpecContext) -> HashMap<PinId, OptParamSpec> {
@@ -41,6 +45,6 @@ impl NodeLike for SubF32 {
     }
 
     fn display_name(&self) -> String {
-        "- Subtract".into()
+        "Rotation Arc".into()
     }
 }

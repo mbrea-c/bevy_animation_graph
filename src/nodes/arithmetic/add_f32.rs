@@ -1,11 +1,8 @@
-use crate::core::animation_graph::{
-    OptParamSpec, ParamSpec, ParamValue, PinId, TimeState, TimeUpdate,
-};
+use crate::core::animation_graph::PinId;
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
-use crate::core::frame::PoseFrame;
-use crate::prelude::{DurationData, PassContext, SpecContext};
+use crate::prelude::{OptParamSpec, ParamSpec, ParamValue, PassContext, SpecContext};
 use bevy::prelude::*;
-use bevy::utils::{HashMap, HashSet};
+use bevy::utils::HashMap;
 
 #[derive(Reflect, Clone, Debug, Default)]
 pub struct AddF32 {}
@@ -25,35 +22,11 @@ impl AddF32 {
 }
 
 impl NodeLike for AddF32 {
-    fn parameter_pass(
-        &self,
-        inputs: HashMap<PinId, ParamValue>,
-        _: PassContext,
-    ) -> HashMap<PinId, ParamValue> {
-        let input_1 = inputs.get(Self::INPUT_1).unwrap().clone().unwrap_f32();
-        let input_2 = inputs.get(Self::INPUT_2).unwrap().clone().unwrap_f32();
+    fn parameter_pass(&self, mut ctx: PassContext) -> HashMap<PinId, ParamValue> {
+        let input_1 = ctx.parameter_back(Self::INPUT_1).unwrap_f32();
+        let input_2 = ctx.parameter_back(Self::INPUT_2).unwrap_f32();
 
         HashMap::from([(Self::OUTPUT.into(), ParamValue::F32(input_1 + input_2))])
-    }
-
-    fn duration_pass(
-        &self,
-        _inputs: HashMap<PinId, Option<f32>>,
-        _: PassContext,
-    ) -> Option<DurationData> {
-        None
-    }
-
-    fn time_pass(&self, _input: TimeState, _: PassContext) -> HashMap<PinId, TimeUpdate> {
-        HashMap::new()
-    }
-
-    fn time_dependent_pass(
-        &self,
-        _inputs: HashMap<PinId, PoseFrame>,
-        _: PassContext,
-    ) -> Option<PoseFrame> {
-        None
     }
 
     fn parameter_input_spec(&self, _: SpecContext) -> HashMap<PinId, OptParamSpec> {
@@ -65,14 +38,6 @@ impl NodeLike for AddF32 {
 
     fn parameter_output_spec(&self, _: SpecContext) -> HashMap<PinId, ParamSpec> {
         HashMap::from([(Self::OUTPUT.into(), ParamSpec::F32)])
-    }
-
-    fn pose_input_spec(&self, _: SpecContext) -> HashSet<PinId> {
-        HashSet::new()
-    }
-
-    fn pose_output_spec(&self, _: SpecContext) -> bool {
-        false
     }
 
     fn display_name(&self) -> String {

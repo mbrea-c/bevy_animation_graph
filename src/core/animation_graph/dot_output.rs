@@ -1,12 +1,11 @@
-use super::{AnimationGraph, OptParamSpec, ParamSpec, ParamValue, TimeState, TimeUpdate};
+use super::{AnimationGraph, SourcePin, TimeState, TimeUpdate};
 use crate::{
     core::{
         animation_node::NodeLike,
         frame::{BoneFrame, PoseFrame, ValueFrame},
-        graph_context::{GraphContext, GraphContextTmp},
     },
     nodes::{ClipNode, GraphNode},
-    prelude::SpecContext,
+    prelude::{GraphContext, OptParamSpec, ParamSpec, ParamValue, SpecContext, SystemResources},
 };
 use bevy::{
     reflect::{FromReflect, TypePath},
@@ -23,13 +22,13 @@ pub trait ToDot {
         &self,
         f: &mut impl std::io::Write,
         context: Option<&mut GraphContext>,
-        context_tmp: GraphContextTmp,
+        context_tmp: SystemResources,
     ) -> std::io::Result<()>;
 
     fn preview_dot(
         &self,
         context: Option<&mut GraphContext>,
-        context_tmp: GraphContextTmp,
+        context_tmp: SystemResources,
     ) -> std::io::Result<()> {
         let dir = std::env::temp_dir();
         let path = dir.join("bevy_animation_graph_dot.dot");
@@ -55,7 +54,7 @@ pub trait ToDot {
     fn dot_to_tmp_file_and_open(
         &self,
         context: Option<&mut GraphContext>,
-        context_tmp: GraphContextTmp,
+        context_tmp: SystemResources,
     ) -> std::io::Result<()> {
         self.dot_to_tmp_file(context, context_tmp)?;
 
@@ -66,10 +65,38 @@ pub trait ToDot {
         Ok(())
     }
 
+    fn dot_to_file(
+        &self,
+        path: &str,
+        context: Option<&mut GraphContext>,
+        context_tmp: SystemResources,
+    ) -> std::io::Result<()> {
+        {
+            let file = File::create(path)?;
+            let mut writer = BufWriter::new(file);
+            self.to_dot(&mut writer, context, context_tmp)?;
+        }
+
+        Ok(())
+    }
+
+    fn dot_to_stdout(
+        &self,
+        context: Option<&mut GraphContext>,
+        context_tmp: SystemResources,
+    ) -> std::io::Result<()> {
+        {
+            let mut stdout = std::io::stdout();
+            self.to_dot(&mut stdout, context, context_tmp)?;
+        }
+
+        Ok(())
+    }
+
     fn dot_to_tmp_file(
         &self,
         context: Option<&mut GraphContext>,
-        context_tmp: GraphContextTmp,
+        context_tmp: SystemResources,
     ) -> std::io::Result<()> {
         let path = "/tmp/bevy_animation_graph_dot.dot";
         let pdf_path = "/tmp/bevy_animation_graph_dot.dot.pdf";
@@ -104,6 +131,9 @@ fn write_col(
         for (param_name, param_spec) in row.iter() {
             let icon = match param_spec.spec {
                 ParamSpec::F32 => String::from(""),
+                ParamSpec::BoneMask => String::from("󰚌"),
+                ParamSpec::Quat => String::from("󰑵"),
+                ParamSpec::Vec3 => String::from("󰵉"),
             };
 
             write!(
@@ -165,6 +195,20 @@ fn write_rows_pose(
     Ok(())
 }
 
+fn write_debug_info(f: &mut impl std::io::Write, pose: PoseFrame) -> std::io::Result<()> {
+    write!(f, "<TR>")?;
+    write!(f, "<TD COLSPAN=\"2\">")?;
+    if pose.verify_timestamps_in_order() {
+        write!(f, " Timestamps not in order<BR/>")?;
+    }
+    if pose.verify_timestamp_in_range() {
+        write!(f, " Timestamp not in range<BR/>")?;
+    }
+    write!(f, "</TD>")?;
+    write!(f, "</TR>")?;
+    Ok(())
+}
+
 pub trait AsDotLabel {
     fn as_dot_label(&self) -> String;
 }
@@ -173,6 +217,9 @@ impl AsDotLabel for ParamValue {
     fn as_dot_label(&self) -> String {
         match self {
             ParamValue::F32(f) => format!("{:.3}", f),
+            ParamValue::Quat(q) => format!("{}", q),
+            ParamValue::BoneMask(_) => "Bone Mask".to_string(),
+            ParamValue::Vec3(v) => format!("{}", v),
         }
     }
 }
@@ -197,10 +244,7 @@ impl AsDotLabel for BoneFrame {
 
 impl<T: FromReflect + TypePath> AsDotLabel for ValueFrame<T> {
     fn as_dot_label(&self) -> String {
-        format!(
-            "{:.3}-({:.3})-{:.3}",
-            self.prev_timestamp, self.timestamp, self.next_timestamp
-        )
+        format!("{:.3}<->{:.3}", self.prev_timestamp, self.next_timestamp)
     }
 }
 
@@ -236,7 +280,7 @@ impl ToDot for AnimationGraph {
         &self,
         f: &mut impl std::io::Write,
         mut context: Option<&mut GraphContext>,
-        context_tmp: GraphContextTmp,
+        context_tmp: SystemResources,
     ) -> std::io::Result<()> {
         writeln!(f, "digraph {{")?;
         writeln!(f, "\trankdir=LR;")?;
@@ -302,6 +346,10 @@ impl ToDot for AnimationGraph {
             }
 
             write_rows_pose(f, in_td.into_iter().map(|k| (k, ())).collect(), right)?;
+
+            if let Some(frame) = ctx.get_pose(&SourcePin::NodePose(name.clone())) {
+                write_debug_info(f, frame.clone())?;
+            }
 
             writeln!(f, "</TABLE>>]")?;
         }
@@ -379,7 +427,7 @@ impl ToDot for AnimationGraph {
         writeln!(f, "</TABLE>>]")?;
         // --------------------------------------------------------
 
-        for (target_pin, source_pin) in self.node_edges.iter() {
+        for (target_pin, source_pin) in self.edges.iter() {
             let (start_node, start_edge) = match source_pin {
                 super::SourcePin::NodeParameter(node_id, pin_id) => {
                     (node_id.clone(), pin_id.clone())
@@ -413,9 +461,17 @@ impl ToDot for AnimationGraph {
 
             writeln!(
                 f,
-                "\t\"{}\":\"{}\" -> \"{}\":\"{}\" [color={}];",
+                "\t\"{}\":\"{}\" -> \"{}\":\"{}\" [color={}",
                 start_node, start_edge, end_node, end_edge, color
             )?;
+
+            if let Some(context) = context.as_ref() {
+                let time = context.get_prev_time(source_pin);
+
+                writeln!(f, "label=\"{}\"", time)?;
+            }
+
+            writeln!(f, "];")?;
         }
 
         writeln!(f, "}}")?;

@@ -8,27 +8,62 @@ pub trait Chainable {
 
 impl<T: TypePath + FromReflect + Clone> Chainable for ValueFrame<T> {
     fn chain(&self, other: &Self, duration_first: f32, duration_second: f32, time: f32) -> Self {
-        if time > duration_first {
-            // First frame is finished, second frame is active
-            let mut out_pose = other.clone();
-            out_pose.map_ts(|t| t + duration_first);
-            if out_pose.next_is_wrapped {
-                out_pose.next = self.prev.clone();
-                out_pose.next_timestamp = self.prev_timestamp + duration_first + duration_second;
-            }
-            out_pose
-        } else if self.next_is_wrapped {
-            // First pose is active, but next pose wraps around
-            Self {
-                timestamp: self.timestamp,
-                prev: self.prev.clone(),
-                prev_timestamp: self.prev_timestamp,
-                next: other.prev.clone(),
-                next_timestamp: other.prev_timestamp + duration_first,
-                next_is_wrapped: false,
+        // Note that self and other are queried at the same (relative) time
+        // i.e. self is queried at `time`, whereas other is queried at `time - duration_first`
+        // That means that it is possible to have the time query be out of range of timestamps
+
+        if time < duration_first {
+            match (self.prev_is_wrapped, self.next_is_wrapped) {
+                (true, false) => Self {
+                    prev: other.prev.clone(),
+                    prev_timestamp: other.prev_timestamp,
+                    next: self.next.clone(),
+                    next_timestamp: self.next_timestamp,
+                    prev_is_wrapped: true,
+                    // next_is_wrapped should never be true when prev_is_wrapped is true
+                    next_is_wrapped: false,
+                },
+                (false, true) => Self {
+                    prev: self.prev.clone(),
+                    prev_timestamp: self.prev_timestamp,
+                    next: other.next.clone(),
+                    next_timestamp: other.next_timestamp + duration_first,
+                    prev_is_wrapped: false,
+                    next_is_wrapped: false,
+                },
+                (false, false) => self.clone(),
+                (true, true) => {
+                    panic!("prev_is_wrapped and next_is_wrapped should never both be true!")
+                }
             }
         } else {
-            self.clone()
+            match (other.prev_is_wrapped, other.next_is_wrapped) {
+                (true, false) => Self {
+                    prev: self.prev.clone(),
+                    prev_timestamp: self.prev_timestamp,
+                    next: other.next.clone(),
+                    next_timestamp: other.next_timestamp + duration_first,
+                    prev_is_wrapped: false,
+                    next_is_wrapped: false,
+                },
+                (false, true) => Self {
+                    prev: other.prev.clone(),
+                    prev_timestamp: other.prev_timestamp + duration_first,
+                    next: self.next.clone(),
+                    next_timestamp: self.next_timestamp + duration_second,
+                    // prev_is_wrapped should never be true when next_is_wrapped is true
+                    prev_is_wrapped: false,
+                    next_is_wrapped: true,
+                },
+                (false, false) => {
+                    let mut out = other.clone();
+                    out.map_ts(|t| t + duration_first);
+                    out
+                }
+                (true, true) => {
+                    panic!("prev_is_wrapped and next_is_wrapped should never both be true!")
+                }
+            }
         }
     }
 }
@@ -99,6 +134,8 @@ impl Chainable for PoseFrame {
                 path.clone(),
             );
         }
+
+        result.timestamp = time;
 
         result
     }

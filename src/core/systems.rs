@@ -1,10 +1,11 @@
 use std::ops::Deref;
 
+use crate::prelude::SystemResources;
+
 use super::{
     animation_clip::{EntityPath, GraphClip},
     animation_graph::{AnimationGraph, TimeUpdate, UpdateTime},
     animation_graph_player::AnimationGraphPlayer,
-    graph_context::GraphContextTmp,
     pose::Pose,
 };
 use bevy::{
@@ -135,7 +136,7 @@ pub fn run_animation_player(
 
     player.pending_update = None;
 
-    let context_tmp = GraphContextTmp {
+    let context_tmp = SystemResources {
         graph_clip_assets: graph_clips,
         animation_graph_assets: graphs,
     };

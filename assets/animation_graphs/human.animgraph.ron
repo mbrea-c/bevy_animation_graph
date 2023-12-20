@@ -1,9 +1,9 @@
 (
     nodes: [
-        (name: "Walk Clip", node: Clip("animations/walk.anim.ron", Some(1.))), 
-        (name: "Walk Clip 2", node: Clip("animations/walk.anim.ron", Some(1.))), 
-        (name: "Run Clip",  node: Clip("animations/run.anim.ron", Some(1.))), 
-        (name: "Run Clip 2",  node: Clip("animations/run.anim.ron", Some(1.))), 
+        (name: "Walk Clip", node: Clip("animations/human_walk.anim.ron", Some(1.))), 
+        (name: "Walk Clip 2", node: Clip("animations/human_walk.anim.ron", Some(1.))), 
+        (name: "Run Clip",  node: Clip("animations/human_run.anim.ron", Some(1.))), 
+        (name: "Run Clip 2",  node: Clip("animations/human_run.anim.ron", Some(1.))), 
         (name: "Walk Flip LR", node: FlipLR), 
         (name: "Run Flip LR", node: FlipLR), 
         (name: "Walk Chain", node: Chain), 
@@ -12,19 +12,39 @@
         (name: "Loop", node: Loop), 
         (name: "Speed", node: Speed), 
 
+        (name: "Make Rotation", node: RotationArc),
+        (name: "Rotate", node: Rotation),
+
         (name: "Param graph", node: Graph("animation_graphs/velocity_to_params.animgraph.ron")),
     ],
     input_parameters: {
         "Target Speed": F32(1.5),
+        "Target Direction": Vec3((1., 0., 0.)),
+
+        // Constant 
+        "Rotation Mask": BoneMask(
+            Positive(
+                bones: {
+                    ["Main Controller", "Main Controller"]: 1.
+                }
+            )
+        ),
+        "Z": Vec3((0., 0., 1.)),
     },
     output_pose_spec: true,
     input_parameter_edges: [
         ("Target Speed", ("Param graph", "Target Speed")),
+
+        ("Z",                ("Make Rotation", "Vec3 In 1")),
+        ("Target Direction", ("Make Rotation", "Vec3 In 2")),
+
+        ("Rotation Mask", ("Rotate", "Bone Mask")),
     ],
-    output_pose_edge: Some("Speed"),
+    output_pose_edge: Some("Rotate"),
     parameter_edges: [
         (("Param graph", "blend_fac"),("Blend", "Factor")),
         (("Param graph", "speed_fac"),("Speed", "Speed")),
+        (("Make Rotation", "Quat Out"),("Rotate", "Rotation")),
     ],
     pose_edges: [
         ("Walk Clip", ("Walk Chain", "Pose In 1")),
@@ -37,5 +57,6 @@
         ("Run Chain", ("Blend", "Pose In 2")),
         ("Blend", ("Loop", "Pose In")),
         ("Loop", ("Speed", "Pose In")),
+        ("Speed", ("Rotate", "Pose In")),
     ],
 )
