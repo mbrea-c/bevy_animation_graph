@@ -1,6 +1,6 @@
 use crate::{
     core::{
-        frame::{BoneFrame, InnerPoseFrame, ValueFrame},
+        frame::{BoneFrame, BonePoseFrame, InnerPoseFrame, ValueFrame},
         pose::{BonePose, Pose},
     },
     interpolation::linear::InterpolateLinear,
@@ -10,10 +10,6 @@ use bevy::prelude::*;
 pub trait SampleLinearAt {
     type Output;
     fn sample_linear_at(&self, time: f32) -> Self::Output;
-}
-
-pub trait SampleLinear: SampleLinearAt {
-    fn sample_linear(&self) -> Self::Output;
 }
 
 impl<T: InterpolateLinear + FromReflect + TypePath> SampleLinearAt for ValueFrame<T> {
@@ -59,8 +55,10 @@ impl SampleLinearAt for InnerPoseFrame {
     }
 }
 
-impl SampleLinear for InnerPoseFrame {
-    fn sample_linear(&self) -> Self::Output {
-        self.sample_linear_at(self.timestamp)
+impl SampleLinearAt for BonePoseFrame {
+    type Output = Pose;
+
+    fn sample_linear_at(&self, time: f32) -> Self::Output {
+        self.inner_ref().sample_linear_at(time)
     }
 }

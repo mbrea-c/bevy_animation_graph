@@ -1,7 +1,7 @@
 use crate::core::animation_graph::{PinId, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
-use crate::core::frame::InnerPoseFrame;
+use crate::core::frame::{PoseFrame, PoseFrameType};
 use crate::prelude::{OptParamSpec, ParamSpec, ParamValue, PassContext, SpecContext};
 use bevy::prelude::*;
 use bevy::utils::{HashMap, HashSet};
@@ -31,7 +31,7 @@ impl NodeLike for LoopNode {
         Some(None)
     }
 
-    fn pose_pass(&self, input: TimeUpdate, mut ctx: PassContext) -> Option<InnerPoseFrame> {
+    fn pose_pass(&self, input: TimeUpdate, mut ctx: PassContext) -> Option<PoseFrame> {
         let duration = ctx.duration_back(Self::INPUT);
 
         let Some(duration) = duration else {
@@ -73,8 +73,8 @@ impl NodeLike for LoopNode {
         HashSet::from([Self::INPUT.into()])
     }
 
-    fn pose_output_spec(&self, _: SpecContext) -> bool {
-        true
+    fn pose_output_spec(&self, _: SpecContext) -> Option<PoseFrameType> {
+        Some(PoseFrameType::BoneSpace)
     }
 
     fn display_name(&self) -> String {

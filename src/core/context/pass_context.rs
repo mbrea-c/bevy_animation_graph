@@ -2,7 +2,7 @@ use crate::{
     core::{
         animation_graph::{InputOverlay, NodeId, PinId, SourcePin, TargetPin, TimeUpdate},
         duration_data::DurationData,
-        frame::InnerPoseFrame,
+        frame::PoseFrame,
     },
     prelude::{AnimationGraph, ParamValue},
 };
@@ -126,11 +126,7 @@ impl<'a> PassContext<'a> {
     }
 
     /// Request an input pose.
-    pub fn pose_back(
-        &mut self,
-        pin_id: impl Into<PinId>,
-        time_update: TimeUpdate,
-    ) -> InnerPoseFrame {
+    pub fn pose_back(&mut self, pin_id: impl Into<PinId>, time_update: TimeUpdate) -> PoseFrame {
         let node_ctx = self.node_context.unwrap();
         let target_pin = TargetPin::NodePose(node_ctx.node_id.clone(), pin_id.into());
         node_ctx

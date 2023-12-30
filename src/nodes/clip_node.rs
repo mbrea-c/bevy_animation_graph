@@ -2,7 +2,9 @@ use crate::core::animation_clip::{GraphClip, Keyframes};
 use crate::core::animation_graph::TimeUpdate;
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
-use crate::core::frame::{BoneFrame, InnerPoseFrame, ValueFrame};
+use crate::core::frame::{
+    BoneFrame, InnerPoseFrame, PoseFrame, PoseFrameData, PoseFrameType, ValueFrame,
+};
 use crate::core::systems::get_keyframe;
 use crate::prelude::{PassContext, SpecContext};
 use bevy::asset::Handle;
@@ -46,14 +48,14 @@ impl NodeLike for ClipNode {
         Some(Some(self.clip_duration(&ctx)))
     }
 
-    fn pose_pass(&self, time_update: TimeUpdate, ctx: PassContext) -> Option<InnerPoseFrame> {
+    fn pose_pass(&self, time_update: TimeUpdate, ctx: PassContext) -> Option<PoseFrame> {
         let clip_duration = self.clip_duration(&ctx);
         let clip = ctx.resources.graph_clip_assets.get(&self.clip).unwrap();
 
         let prev_time = ctx.prev_time_fwd();
         let time = time_update.apply(prev_time);
 
-        let mut animation_frame = InnerPoseFrame::default();
+        let mut inner_frame = InnerPoseFrame::default();
         for (path, bone_id) in &clip.paths {
             let curves = clip.get_curves(*bone_id).unwrap();
             let mut frame = BoneFrame::default();
@@ -147,20 +149,19 @@ impl NodeLike for ClipNode {
                     }
                 }
             }
-            animation_frame.add_bone(frame, path.clone());
+            inner_frame.add_bone(frame, path.clone());
         }
 
-        animation_frame.timestamp = time;
+        let pose_frame = PoseFrame {
+            data: PoseFrameData::BoneSpace(inner_frame.into()),
+            timestamp: time,
+        };
 
-        if animation_frame.verify_timestamps_in_order() {
-            panic!("AAAAaaAAAAAAaaA Hilfe bitte in clip node");
-        }
-
-        Some(animation_frame)
+        Some(pose_frame)
     }
 
-    fn pose_output_spec(&self, _: SpecContext) -> bool {
-        true
+    fn pose_output_spec(&self, _: SpecContext) -> Option<PoseFrameType> {
+        Some(PoseFrameType::BoneSpace)
     }
 
     fn display_name(&self) -> String {

@@ -2,7 +2,7 @@ use crate::chaining::Chainable;
 use crate::core::animation_graph::{PinId, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
-use crate::core::frame::InnerPoseFrame;
+use crate::core::frame::{PoseFrame, PoseFrameType};
 use crate::prelude::{PassContext, SpecContext};
 use bevy::prelude::*;
 use bevy::utils::HashSet;
@@ -39,7 +39,7 @@ impl NodeLike for ChainNode {
         Some(out_duration)
     }
 
-    fn pose_pass(&self, input: TimeUpdate, mut ctx: PassContext) -> Option<InnerPoseFrame> {
+    fn pose_pass(&self, input: TimeUpdate, mut ctx: PassContext) -> Option<PoseFrame> {
         let duration_1 = ctx.duration_back(Self::INPUT_1);
         let Some(duration_1) = duration_1 else {
             // First input is infinite, forward time update without change
@@ -67,8 +67,8 @@ impl NodeLike for ChainNode {
         HashSet::from([Self::INPUT_1.into(), Self::INPUT_2.into()])
     }
 
-    fn pose_output_spec(&self, _: SpecContext) -> bool {
-        true
+    fn pose_output_spec(&self, _: SpecContext) -> Option<PoseFrameType> {
+        Some(PoseFrameType::BoneSpace)
     }
 
     fn display_name(&self) -> String {

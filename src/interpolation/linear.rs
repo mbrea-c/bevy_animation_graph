@@ -1,5 +1,5 @@
 use crate::{
-    core::frame::{BoneFrame, InnerPoseFrame, ValueFrame},
+    core::frame::{BoneFrame, InnerPoseFrame, PoseFrame, PoseFrameData, PoseFrameType, ValueFrame},
     sampling::linear::SampleLinearAt,
 };
 use bevy::prelude::*;
@@ -142,9 +142,45 @@ impl InterpolateLinear for InnerPoseFrame {
             result.add_bone(other.bones[*bone_id].clone(), path.clone());
         }
 
-        result.timestamp = self.timestamp;
-
         result
+    }
+}
+
+impl InterpolateLinear for PoseFrameData {
+    fn interpolate_linear(&self, other: &Self, f: f32) -> Self {
+        match (self, other) {
+            (PoseFrameData::BoneSpace(f1), PoseFrameData::BoneSpace(f2)) => {
+                PoseFrameData::BoneSpace(
+                    f1.inner_ref().interpolate_linear(f2.inner_ref(), f).into(),
+                )
+            }
+            (PoseFrameData::CharacterSpace(f1), PoseFrameData::CharacterSpace(f2)) => {
+                PoseFrameData::CharacterSpace(
+                    f1.inner_ref().interpolate_linear(f2.inner_ref(), f).into(),
+                )
+            }
+            (PoseFrameData::GlobalSpace(f1), PoseFrameData::GlobalSpace(f2)) => {
+                PoseFrameData::GlobalSpace(
+                    f1.inner_ref().interpolate_linear(f2.inner_ref(), f).into(),
+                )
+            }
+            _ => {
+                panic!(
+                    "Tried to chain {:?} with {:?}",
+                    PoseFrameType::from(self),
+                    PoseFrameType::from(other)
+                )
+            }
+        }
+    }
+}
+
+impl InterpolateLinear for PoseFrame {
+    fn interpolate_linear(&self, other: &Self, f: f32) -> Self {
+        Self {
+            data: self.data.interpolate_linear(&other.data, f),
+            timestamp: self.timestamp,
+        }
     }
 }
 

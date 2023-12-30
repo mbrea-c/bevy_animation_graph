@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 
-use crate::core::frame::{BoneFrame, InnerPoseFrame, ValueFrame};
+use crate::core::frame::{
+    BoneFrame, InnerPoseFrame, PoseFrame, PoseFrameData, PoseFrameType, ValueFrame,
+};
 
 pub trait Chainable {
     fn chain(&self, other: &Self, duration_first: f32, duration_second: f32, time: f32) -> Self;
@@ -135,8 +137,50 @@ impl Chainable for InnerPoseFrame {
             );
         }
 
-        result.timestamp = time;
-
         result
+    }
+}
+
+impl Chainable for PoseFrameData {
+    fn chain(&self, other: &Self, duration_first: f32, duration_second: f32, time: f32) -> Self {
+        match (&self, &other) {
+            (PoseFrameData::BoneSpace(f1), PoseFrameData::BoneSpace(f2)) => {
+                PoseFrameData::BoneSpace(
+                    f1.inner_ref()
+                        .chain(f2.inner_ref(), duration_first, duration_second, time)
+                        .into(),
+                )
+            }
+            (PoseFrameData::CharacterSpace(f1), PoseFrameData::CharacterSpace(f2)) => {
+                PoseFrameData::CharacterSpace(
+                    f1.inner_ref()
+                        .chain(f2.inner_ref(), duration_first, duration_second, time)
+                        .into(),
+                )
+            }
+            (PoseFrameData::GlobalSpace(f1), PoseFrameData::GlobalSpace(f2)) => {
+                PoseFrameData::GlobalSpace(
+                    f1.inner_ref()
+                        .chain(f2.inner_ref(), duration_first, duration_second, time)
+                        .into(),
+                )
+            }
+            _ => panic!(
+                "Tried to chain {:?} with {:?}",
+                PoseFrameType::from(self),
+                PoseFrameType::from(other)
+            ),
+        }
+    }
+}
+
+impl Chainable for PoseFrame {
+    fn chain(&self, other: &Self, duration_first: f32, duration_second: f32, time: f32) -> Self {
+        Self {
+            data: self
+                .data
+                .chain(&other.data, duration_first, duration_second, time),
+            timestamp: time,
+        }
     }
 }

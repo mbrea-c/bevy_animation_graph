@@ -1,5 +1,7 @@
 use super::animation_clip::EntityPath;
+use crate::utils::unwrap::Unwrap;
 use bevy::{asset::prelude::*, math::prelude::*, reflect::prelude::*, utils::HashMap};
+use serde::{Deserialize, Serialize};
 
 #[derive(Asset, Reflect, Clone, Default, PartialEq)]
 pub struct ValueFrame<T: FromReflect + TypePath> {
@@ -53,16 +55,99 @@ impl BoneFrame {
 pub struct InnerPoseFrame {
     pub(crate) bones: Vec<BoneFrame>,
     pub(crate) paths: HashMap<EntityPath, usize>,
-    pub(crate) timestamp: f32,
 }
 
 /// Pose frame where each transform is local with respect to the parent bone
 // TODO: Verify that transforms are wrt parent bone
-pub type BonePoseFrame = InnerPoseFrame;
+#[derive(Reflect, Clone, Default, Debug)]
+pub struct BonePoseFrame(pub(crate) InnerPoseFrame);
 /// Pose frame where each transform is relative to the root of the skeleton
-pub type CharacterPoseFrame = InnerPoseFrame;
+#[derive(Reflect, Clone, Default, Debug)]
+pub struct CharacterPoseFrame(pub(crate) InnerPoseFrame);
 /// Pose frame where each transform is in world/global space
-pub type GlobalPoseFrame = InnerPoseFrame;
+#[derive(Reflect, Clone, Default, Debug)]
+pub struct GlobalPoseFrame(pub(crate) InnerPoseFrame);
+
+impl From<InnerPoseFrame> for BonePoseFrame {
+    fn from(value: InnerPoseFrame) -> Self {
+        Self(value)
+    }
+}
+
+impl From<InnerPoseFrame> for CharacterPoseFrame {
+    fn from(value: InnerPoseFrame) -> Self {
+        Self(value)
+    }
+}
+
+impl From<InnerPoseFrame> for GlobalPoseFrame {
+    fn from(value: InnerPoseFrame) -> Self {
+        Self(value)
+    }
+}
+
+impl BonePoseFrame {
+    pub fn inner_ref(&self) -> &InnerPoseFrame {
+        &self.0
+    }
+
+    pub fn inner_mut(&mut self) -> &mut InnerPoseFrame {
+        &mut self.0
+    }
+
+    pub fn inner(self) -> InnerPoseFrame {
+        self.0
+    }
+
+    pub fn map_ts<F>(&mut self, f: F)
+    where
+        F: Fn(f32) -> f32,
+    {
+        self.inner_mut().map_ts(f)
+    }
+}
+
+impl CharacterPoseFrame {
+    pub fn inner_ref(&self) -> &InnerPoseFrame {
+        &self.0
+    }
+
+    pub fn inner_mut(&mut self) -> &mut InnerPoseFrame {
+        &mut self.0
+    }
+
+    pub fn inner(self) -> InnerPoseFrame {
+        self.0
+    }
+
+    pub fn map_ts<F>(&mut self, f: F)
+    where
+        F: Fn(f32) -> f32,
+    {
+        self.inner_mut().map_ts(f)
+    }
+}
+
+impl GlobalPoseFrame {
+    pub fn inner_ref(&self) -> &InnerPoseFrame {
+        &self.0
+    }
+
+    pub fn inner_mut(&mut self) -> &mut InnerPoseFrame {
+        &mut self.0
+    }
+
+    pub fn inner(self) -> InnerPoseFrame {
+        self.0
+    }
+
+    pub fn map_ts<F>(&mut self, f: F)
+    where
+        F: Fn(f32) -> f32,
+    {
+        self.inner_mut().map_ts(f)
+    }
+}
 
 impl InnerPoseFrame {
     pub(crate) fn add_bone(&mut self, frame: BoneFrame, path: EntityPath) {
@@ -76,30 +161,29 @@ impl InnerPoseFrame {
         F: Fn(f32) -> f32,
     {
         self.bones.iter_mut().for_each(|v| v.map_ts(&f));
-        self.timestamp = f(self.timestamp);
     }
 
-    pub(crate) fn verify_timestamp_in_range(&self) -> bool {
+    pub(crate) fn verify_timestamp_in_range(&self, timestamp: f32) -> bool {
         let mut failed = false;
 
         for bone in self.bones.iter() {
             if let Some(v) = &bone.translation {
-                if !(v.prev_timestamp <= self.timestamp && self.timestamp <= v.next_timestamp) {
+                if !(v.prev_timestamp <= timestamp && timestamp <= v.next_timestamp) {
                     failed = true;
                 }
             }
             if let Some(v) = &bone.rotation {
-                if !(v.prev_timestamp <= self.timestamp && self.timestamp <= v.next_timestamp) {
+                if !(v.prev_timestamp <= timestamp && timestamp <= v.next_timestamp) {
                     failed = true;
                 }
             }
             if let Some(v) = &bone.scale {
-                if !(v.prev_timestamp <= self.timestamp && self.timestamp <= v.next_timestamp) {
+                if !(v.prev_timestamp <= timestamp && timestamp <= v.next_timestamp) {
                     failed = true;
                 }
             }
             if let Some(v) = &bone.weights {
-                if !(v.prev_timestamp <= self.timestamp && self.timestamp <= v.next_timestamp) {
+                if !(v.prev_timestamp <= timestamp && timestamp <= v.next_timestamp) {
                     failed = true;
                 }
             }
@@ -170,7 +254,6 @@ impl std::fmt::Debug for BoneFrame {
 
 impl std::fmt::Debug for InnerPoseFrame {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Frame with t={:?}", self.timestamp)?;
         for bone in self.bones.iter() {
             write!(f, "{:?}", bone)?;
         }
@@ -178,33 +261,124 @@ impl std::fmt::Debug for InnerPoseFrame {
     }
 }
 
-#[derive(Clone, Reflect)]
-pub enum PoseFrame {
-    Bone(BonePoseFrame),
-    Character(CharacterPoseFrame),
-    Global(GlobalPoseFrame),
+#[derive(Clone, Reflect, Debug)]
+pub struct PoseFrame {
+    pub data: PoseFrameData,
+    pub timestamp: f32,
 }
 
-impl Default for PoseFrame {
+#[derive(Clone, Reflect, Debug)]
+pub enum PoseFrameData {
+    BoneSpace(BonePoseFrame),
+    CharacterSpace(CharacterPoseFrame),
+    GlobalSpace(GlobalPoseFrame),
+}
+
+impl Default for PoseFrameData {
     fn default() -> Self {
-        Self::Bone(BonePoseFrame::default())
+        Self::BoneSpace(BonePoseFrame::default())
     }
 }
 
-#[derive(Clone, Copy, Debug, Reflect, Default)]
-pub enum PoseFrameType {
-    #[default]
-    Bone,
-    Character,
-    Global,
+impl PoseFrameData {
+    pub fn map_ts<F>(&mut self, f: F)
+    where
+        F: Fn(f32) -> f32,
+    {
+        match self {
+            PoseFrameData::BoneSpace(data) => data.map_ts(f),
+            PoseFrameData::CharacterSpace(data) => data.map_ts(f),
+            PoseFrameData::GlobalSpace(data) => data.map_ts(f),
+        }
+    }
 }
 
-impl From<PoseFrame> for PoseFrameType {
-    fn from(value: PoseFrame) -> Self {
+impl PoseFrame {
+    pub fn map_ts<F>(&mut self, f: F)
+    where
+        F: Fn(f32) -> f32,
+    {
+        self.data.map_ts(&f);
+        self.timestamp = f(self.timestamp);
+    }
+
+    pub(crate) fn verify_timestamp_in_range(&self) -> bool {
+        let inner = match &self.data {
+            PoseFrameData::BoneSpace(data) => data.inner_ref(),
+            PoseFrameData::CharacterSpace(data) => data.inner_ref(),
+            PoseFrameData::GlobalSpace(data) => data.inner_ref(),
+        };
+
+        inner.verify_timestamp_in_range(self.timestamp)
+    }
+
+    pub(crate) fn verify_timestamps_in_order(&self) -> bool {
+        let inner = match &self.data {
+            PoseFrameData::BoneSpace(data) => data.inner_ref(),
+            PoseFrameData::CharacterSpace(data) => data.inner_ref(),
+            PoseFrameData::GlobalSpace(data) => data.inner_ref(),
+        };
+
+        inner.verify_timestamps_in_order()
+    }
+}
+
+#[derive(Clone, Copy, Debug, Reflect, Default, Serialize, Deserialize)]
+pub enum PoseFrameType {
+    #[default]
+    BoneSpace,
+    CharacterSpace,
+    GlobalSpace,
+}
+
+impl From<&PoseFrameData> for PoseFrameType {
+    fn from(value: &PoseFrameData) -> Self {
         match value {
-            PoseFrame::Bone(_) => PoseFrameType::Bone,
-            PoseFrame::Character(_) => PoseFrameType::Character,
-            PoseFrame::Global(_) => PoseFrameType::Global,
+            PoseFrameData::BoneSpace(_) => PoseFrameType::BoneSpace,
+            PoseFrameData::CharacterSpace(_) => PoseFrameType::CharacterSpace,
+            PoseFrameData::GlobalSpace(_) => PoseFrameType::GlobalSpace,
+        }
+    }
+}
+
+impl From<&PoseFrame> for PoseFrameType {
+    fn from(value: &PoseFrame) -> Self {
+        (&value.data).into()
+    }
+}
+
+impl Unwrap<BonePoseFrame> for PoseFrameData {
+    fn unwrap(self) -> BonePoseFrame {
+        match self {
+            PoseFrameData::BoneSpace(b) => b,
+            x => panic!(
+                "Found {:?}, expected pose in bone space",
+                PoseFrameType::from(&x)
+            ),
+        }
+    }
+}
+
+impl Unwrap<CharacterPoseFrame> for PoseFrameData {
+    fn unwrap(self) -> CharacterPoseFrame {
+        match self {
+            PoseFrameData::CharacterSpace(b) => b,
+            x => panic!(
+                "Found {:?}, expected pose in character space",
+                PoseFrameType::from(&x)
+            ),
+        }
+    }
+}
+
+impl Unwrap<GlobalPoseFrame> for PoseFrameData {
+    fn unwrap(self) -> GlobalPoseFrame {
+        match self {
+            PoseFrameData::GlobalSpace(b) => b,
+            x => panic!(
+                "Found {:?}, expected pose in character space",
+                PoseFrameType::from(&x)
+            ),
         }
     }
 }

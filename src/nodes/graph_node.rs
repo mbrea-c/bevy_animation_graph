@@ -1,7 +1,7 @@
 use crate::core::animation_graph::{AnimationGraph, InputOverlay, PinId, TargetPin, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
-use crate::core::frame::InnerPoseFrame;
+use crate::core::frame::{PoseFrame, PoseFrameType};
 use crate::prelude::{OptParamSpec, ParamSpec, ParamValue, PassContext, SpecContext};
 use bevy::prelude::*;
 use bevy::utils::{HashMap, HashSet};
@@ -52,7 +52,7 @@ impl NodeLike for GraphNode {
 
         let input_overlay = InputOverlay::default();
 
-        if graph.output_pose {
+        if graph.output_pose.is_some() {
             let target_pin = TargetPin::OutputPose;
             Some(graph.get_duration(target_pin, ctx.child(&input_overlay)))
         } else {
@@ -60,7 +60,7 @@ impl NodeLike for GraphNode {
         }
     }
 
-    fn pose_pass(&self, input: TimeUpdate, ctx: PassContext) -> Option<InnerPoseFrame> {
+    fn pose_pass(&self, input: TimeUpdate, ctx: PassContext) -> Option<PoseFrame> {
         let graph = ctx
             .resources
             .animation_graph_assets
@@ -69,7 +69,7 @@ impl NodeLike for GraphNode {
 
         let input_overlay = InputOverlay::default();
 
-        if graph.output_pose {
+        if graph.output_pose.is_some() {
             let target_pin = TargetPin::OutputPose;
             Some(graph.get_pose(input, target_pin, ctx.child(&input_overlay)))
         } else {
@@ -104,7 +104,7 @@ impl NodeLike for GraphNode {
         graph.input_poses.clone()
     }
 
-    fn pose_output_spec(&self, ctx: SpecContext) -> bool {
+    fn pose_output_spec(&self, ctx: SpecContext) -> Option<PoseFrameType> {
         let graph = ctx
             .context_tmp
             .animation_graph_assets

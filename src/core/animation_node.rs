@@ -1,7 +1,7 @@
 use super::{
     animation_graph::{PinId, TimeUpdate},
     duration_data::DurationData,
-    frame::InnerPoseFrame,
+    frame::{PoseFrame, PoseFrameType},
     parameters::{OptParamSpec, ParamSpec, ParamValue},
 };
 use crate::{
@@ -25,25 +25,30 @@ pub trait NodeLike: Send + Sync {
     fn parameter_pass(&self, _ctx: PassContext) -> HashMap<PinId, ParamValue> {
         HashMap::new()
     }
+
     fn duration_pass(&self, _ctx: PassContext) -> Option<DurationData> {
         None
     }
-    fn pose_pass(&self, _time_update: TimeUpdate, _ctx: PassContext) -> Option<InnerPoseFrame> {
+
+    fn pose_pass(&self, _time_update: TimeUpdate, _ctx: PassContext) -> Option<PoseFrame> {
         None
     }
 
     fn parameter_input_spec(&self, _ctx: SpecContext) -> HashMap<PinId, OptParamSpec> {
         HashMap::new()
     }
+
     fn parameter_output_spec(&self, _ctx: SpecContext) -> HashMap<PinId, ParamSpec> {
         HashMap::new()
     }
+
     fn pose_input_spec(&self, _ctx: SpecContext) -> HashSet<PinId> {
         HashSet::new()
     }
-    /// Specify whether or not a node outputs a pose
-    fn pose_output_spec(&self, _ctx: SpecContext) -> bool {
-        false
+
+    /// Specify whether or not a node outputs a pose, and which space the pose is in
+    fn pose_output_spec(&self, _ctx: SpecContext) -> Option<PoseFrameType> {
+        None
     }
 
     /// The name of this node.
@@ -98,7 +103,7 @@ impl NodeLike for AnimationNode {
         self.node.map(|n| n.duration_pass(ctx))
     }
 
-    fn pose_pass(&self, input: TimeUpdate, ctx: PassContext) -> Option<InnerPoseFrame> {
+    fn pose_pass(&self, input: TimeUpdate, ctx: PassContext) -> Option<PoseFrame> {
         self.node.map(|n| n.pose_pass(input, ctx))
     }
 
@@ -114,7 +119,7 @@ impl NodeLike for AnimationNode {
         self.node.map(|n| n.pose_input_spec(ctx))
     }
 
-    fn pose_output_spec(&self, ctx: SpecContext) -> bool {
+    fn pose_output_spec(&self, ctx: SpecContext) -> Option<PoseFrameType> {
         self.node.map(|n| n.pose_output_spec(ctx))
     }
 

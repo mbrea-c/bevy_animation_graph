@@ -2,11 +2,14 @@ use crate::{
     core::{
         animation_node::{AnimationNode, NodeLike},
         duration_data::DurationData,
-        frame::InnerPoseFrame,
+        frame::{BonePoseFrame, PoseFrame, PoseFrameType},
         pose::Pose,
     },
-    prelude::{GraphContext, OptParamSpec, ParamSpec, ParamValue, PassContext, SystemResources},
-    sampling::linear::SampleLinear,
+    prelude::{
+        GraphContext, OptParamSpec, ParamSpec, ParamValue, PassContext, SampleLinearAt,
+        SystemResources,
+    },
+    utils::unwrap::Unwrap,
 };
 use bevy::{
     prelude::*,
@@ -112,7 +115,7 @@ impl UpdateTime<Option<TimeUpdate>> for TimeState {
 pub struct InputOverlay {
     pub parameters: HashMap<PinId, ParamValue>,
     pub durations: HashMap<PinId, DurationData>,
-    pub poses: HashMap<PinId, InnerPoseFrame>,
+    pub poses: HashMap<PinId, PoseFrame>,
 }
 
 impl InputOverlay {
@@ -146,7 +149,7 @@ pub struct AnimationGraph {
     pub input_parameters: HashMap<PinId, OptParamSpec>,
     pub input_poses: HashSet<PinId>,
     pub output_parameters: HashMap<PinId, ParamSpec>,
-    pub output_pose: bool,
+    pub output_pose: Option<PoseFrameType>,
 }
 
 impl Default for AnimationGraph {
@@ -166,7 +169,7 @@ impl AnimationGraph {
             input_parameters: HashMap::new(),
             input_poses: HashSet::new(),
             output_parameters: HashMap::new(),
-            output_pose: false,
+            output_pose: None,
         }
     }
 
@@ -211,8 +214,8 @@ impl AnimationGraph {
     }
 
     /// Enables pose output for this graph
-    pub fn add_output_pose(&mut self) {
-        self.output_pose = true;
+    pub fn add_output_pose(&mut self, frame_type: PoseFrameType) {
+        self.output_pose = Some(frame_type);
     }
     // ----------------------------------------------------------------------------------------
 
@@ -426,7 +429,7 @@ impl AnimationGraph {
         time_update: TimeUpdate,
         target_pin: TargetPin,
         mut ctx: PassContext,
-    ) -> InnerPoseFrame {
+    ) -> PoseFrame {
         let source_pin = self.edges.get(&target_pin).unwrap();
 
         if let Some(val) = ctx.context().get_pose(source_pin) {
@@ -484,8 +487,10 @@ impl AnimationGraph {
             TargetPin::OutputPose,
             PassContext::new(context, resources, overlay),
         );
+        let time = out.timestamp;
+        let bone_frame: BonePoseFrame = out.data.unwrap();
 
-        out.sample_linear()
+        bone_frame.sample_linear_at(time)
     }
     // ----------------------------------------------------------------------------------------
 }

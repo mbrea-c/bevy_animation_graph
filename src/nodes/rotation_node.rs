@@ -1,7 +1,7 @@
 use crate::core::animation_graph::{PinId, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
-use crate::core::frame::InnerPoseFrame;
+use crate::core::frame::{BonePoseFrame, PoseFrame, PoseFrameData, PoseFrameType};
 use crate::core::parameters::BoneMask;
 use crate::prelude::{OptParamSpec, ParamSpec, PassContext, SpecContext};
 use crate::utils::unwrap::Unwrap;
@@ -37,18 +37,21 @@ impl NodeLike for RotationNode {
         Some(ctx.duration_back(Self::INPUT))
     }
 
-    fn pose_pass(&self, input: TimeUpdate, mut ctx: PassContext) -> Option<InnerPoseFrame> {
+    fn pose_pass(&self, input: TimeUpdate, mut ctx: PassContext) -> Option<PoseFrame> {
         let mask: BoneMask = ctx.parameter_back(Self::MASK).unwrap();
         let rotation: Quat = ctx.parameter_back(Self::ROTATION).unwrap();
-        let mut pose = ctx.pose_back(Self::INPUT, input);
+        let pose = ctx.pose_back(Self::INPUT, input);
+        let time = pose.timestamp;
+        let mut pose: BonePoseFrame = pose.data.unwrap();
+        let inner_pose = pose.inner_mut();
 
-        for (bone_id, idx) in pose.paths.iter() {
+        for (bone_id, idx) in inner_pose.paths.iter() {
             let percent = mask.bone_weight(bone_id);
             if percent == 0. {
                 continue;
             }
 
-            let bone = pose.bones.get_mut(*idx).unwrap();
+            let bone = inner_pose.bones.get_mut(*idx).unwrap();
             if let Some(rot) = bone.rotation.as_mut() {
                 let rotation = (rotation * percent).normalize();
                 rot.prev = rotation * rot.prev;
@@ -56,7 +59,10 @@ impl NodeLike for RotationNode {
             }
         }
 
-        Some(pose)
+        Some(PoseFrame {
+            data: PoseFrameData::BoneSpace(pose),
+            timestamp: time,
+        })
     }
 
     fn parameter_input_spec(&self, _ctx: SpecContext) -> HashMap<PinId, OptParamSpec> {
@@ -70,8 +76,8 @@ impl NodeLike for RotationNode {
         HashSet::from([Self::INPUT.into()])
     }
 
-    fn pose_output_spec(&self, _: SpecContext) -> bool {
-        true
+    fn pose_output_spec(&self, _: SpecContext) -> Option<PoseFrameType> {
+        Some(PoseFrameType::BoneSpace)
     }
 
     fn display_name(&self) -> String {

@@ -2,7 +2,7 @@ use super::{AnimationGraph, SourcePin, TimeState, TimeUpdate};
 use crate::{
     core::{
         animation_node::NodeLike,
-        frame::{BoneFrame, InnerPoseFrame, ValueFrame},
+        frame::{BoneFrame, InnerPoseFrame, PoseFrame, ValueFrame},
     },
     nodes::{ClipNode, GraphNode},
     prelude::{GraphContext, OptParamSpec, ParamSpec, ParamValue, SpecContext, SystemResources},
@@ -195,7 +195,7 @@ fn write_rows_pose(
     Ok(())
 }
 
-fn write_debug_info(f: &mut impl std::io::Write, pose: InnerPoseFrame) -> std::io::Result<()> {
+fn write_debug_info(f: &mut impl std::io::Write, pose: PoseFrame) -> std::io::Result<()> {
     write!(f, "<TR>")?;
     write!(f, "<TD COLSPAN=\"2\">")?;
     if pose.verify_timestamps_in_order() {
@@ -341,7 +341,7 @@ impl ToDot for AnimationGraph {
             )?;
 
             let mut right = HashMap::new();
-            if out_td {
+            if out_td.is_some() {
                 right.insert("POSE".into(), ());
             }
 
@@ -420,7 +420,7 @@ impl ToDot for AnimationGraph {
         let out_param = self.output_pose;
 
         let mut out = HashMap::new();
-        if out_param {
+        if out_param.is_some() {
             out.insert("POSE".into(), ());
         }
         write_rows_pose(f, out, HashMap::new())?;

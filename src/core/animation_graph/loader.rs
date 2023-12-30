@@ -1,6 +1,6 @@
 use super::AnimationGraph;
 use crate::{
-    core::{animation_clip::GraphClip, parameters::ParamValueSerial},
+    core::{animation_clip::GraphClip, frame::PoseFrameType, parameters::ParamValueSerial},
     nodes::{
         blend_node::BlendNode, chain_node::ChainNode, clip_node::ClipNode,
         flip_lr_node::FlipLRNode, loop_node::LoopNode, speed_node::SpeedNode, AbsF32, AddF32,
@@ -96,7 +96,7 @@ pub struct AnimationGraphSerial {
     #[serde(default)]
     output_parameter_spec: HashMap<String, ParamSpec>,
     #[serde(default)]
-    output_pose_spec: bool,
+    output_pose_spec: Option<PoseFrameType>,
     /// (from_node, from_out_edge) -> (to_node, to_in_edge)
     /// Note that this is the opposite as [`AnimationGraph`] in order to make
     /// construction easier, and hand-editing of graph files more natural.
@@ -207,8 +207,8 @@ impl AssetLoader for AnimationGraphLoader {
                 graph.add_output_parameter(p_name, *p_spec);
             }
 
-            if serial.output_pose_spec {
-                graph.add_output_pose();
+            if let Some(output_pose_spec) = serial.output_pose_spec {
+                graph.add_output_pose(output_pose_spec);
             }
             // ------------------------------------------------------------------------------------
 

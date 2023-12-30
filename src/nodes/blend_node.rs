@@ -1,7 +1,7 @@
 use crate::core::animation_graph::{PinId, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
-use crate::core::frame::InnerPoseFrame;
+use crate::core::frame::{PoseFrame, PoseFrameType};
 use crate::interpolation::linear::InterpolateLinear;
 use crate::prelude::{OptParamSpec, ParamSpec, PassContext, SpecContext};
 use bevy::prelude::*;
@@ -40,9 +40,10 @@ impl NodeLike for BlendNode {
         Some(out_duration)
     }
 
-    fn pose_pass(&self, input: TimeUpdate, mut ctx: PassContext) -> Option<InnerPoseFrame> {
+    fn pose_pass(&self, input: TimeUpdate, mut ctx: PassContext) -> Option<PoseFrame> {
         let in_frame_1 = ctx.pose_back(Self::INPUT_1, input);
         let in_frame_2 = ctx.pose_back(Self::INPUT_2, input);
+
         let alpha = ctx.parameter_back(Self::FACTOR).unwrap_f32();
         let out = in_frame_1.interpolate_linear(&in_frame_2, alpha);
 
@@ -57,8 +58,8 @@ impl NodeLike for BlendNode {
         HashSet::from([Self::INPUT_1.into(), Self::INPUT_2.into()])
     }
 
-    fn pose_output_spec(&self, _: SpecContext) -> bool {
-        true
+    fn pose_output_spec(&self, _: SpecContext) -> Option<PoseFrameType> {
+        Some(PoseFrameType::BoneSpace)
     }
 
     fn display_name(&self) -> String {

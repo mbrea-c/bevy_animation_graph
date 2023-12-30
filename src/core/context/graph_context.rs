@@ -2,7 +2,7 @@ use crate::{
     core::{
         animation_graph::{SourcePin, TimeUpdate},
         duration_data::DurationData,
-        frame::InnerPoseFrame,
+        frame::PoseFrame,
     },
     prelude::{AnimationGraph, GraphClip, ParamValue},
 };
@@ -15,7 +15,7 @@ pub struct OutputCache {
     pub parameters: HashMap<SourcePin, ParamValue>,
     pub durations: HashMap<SourcePin, DurationData>,
     pub time_updates: HashMap<SourcePin, TimeUpdate>,
-    pub poses: HashMap<SourcePin, InnerPoseFrame>,
+    pub poses: HashMap<SourcePin, PoseFrame>,
 }
 
 #[derive(Reflect, Debug, Default)]
@@ -147,15 +147,11 @@ impl OutputCaches {
         self.get_cache_mut().time_updates.insert(source_pin, value)
     }
 
-    pub fn get_pose(&self, source_pin: &SourcePin) -> Option<&InnerPoseFrame> {
+    pub fn get_pose(&self, source_pin: &SourcePin) -> Option<&PoseFrame> {
         self.get_cache().poses.get(source_pin)
     }
 
-    pub fn set_pose(
-        &mut self,
-        source_pin: SourcePin,
-        value: InnerPoseFrame,
-    ) -> Option<InnerPoseFrame> {
+    pub fn set_pose(&mut self, source_pin: SourcePin, value: PoseFrame) -> Option<PoseFrame> {
         self.get_cache_mut().poses.insert(source_pin, value)
     }
 }
@@ -229,15 +225,11 @@ impl GraphContext {
         self.times.set_curr(source_pin, value);
     }
 
-    pub fn get_pose(&self, source_pin: &SourcePin) -> Option<&InnerPoseFrame> {
+    pub fn get_pose(&self, source_pin: &SourcePin) -> Option<&PoseFrame> {
         self.outputs.get_pose(source_pin)
     }
 
-    pub fn set_pose(
-        &mut self,
-        source_pin: SourcePin,
-        value: InnerPoseFrame,
-    ) -> Option<InnerPoseFrame> {
+    pub fn set_pose(&mut self, source_pin: SourcePin, value: PoseFrame) -> Option<PoseFrame> {
         self.outputs.set_pose(source_pin, value)
     }
 

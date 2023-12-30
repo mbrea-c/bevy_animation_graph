@@ -1,6 +1,6 @@
 use crate::core::{
     animation_clip::EntityPath,
-    frame::{BoneFrame, InnerPoseFrame, ValueFrame},
+    frame::{BoneFrame, BonePoseFrame, InnerPoseFrame, ValueFrame},
 };
 use bevy::math::prelude::*;
 
@@ -75,8 +75,12 @@ impl FlipXBySuffix for InnerPoseFrame {
 
             out.add_bone(channel, new_path);
         }
-        out.timestamp = self.timestamp;
-
         out
+    }
+}
+
+impl FlipXBySuffix for BonePoseFrame {
+    fn flipped_by_suffix(&self, suffix_1: String, suffix_2: String) -> Self {
+        BonePoseFrame(self.0.flipped_by_suffix(suffix_1, suffix_2))
     }
 }
