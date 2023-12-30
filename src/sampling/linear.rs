@@ -1,6 +1,6 @@
 use crate::{
     core::{
-        frame::{BoneFrame, PoseFrame, ValueFrame},
+        frame::{BoneFrame, InnerPoseFrame, ValueFrame},
         pose::{BonePose, Pose},
     },
     interpolation::linear::InterpolateLinear,
@@ -44,7 +44,7 @@ impl SampleLinearAt for BoneFrame {
     }
 }
 
-impl SampleLinearAt for PoseFrame {
+impl SampleLinearAt for InnerPoseFrame {
     type Output = Pose;
 
     fn sample_linear_at(&self, time: f32) -> Self::Output {
@@ -59,7 +59,7 @@ impl SampleLinearAt for PoseFrame {
     }
 }
 
-impl SampleLinear for PoseFrame {
+impl SampleLinear for InnerPoseFrame {
     fn sample_linear(&self) -> Self::Output {
         self.sample_linear_at(self.timestamp)
     }

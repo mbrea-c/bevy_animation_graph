@@ -2,7 +2,7 @@ use crate::core::animation_clip::{GraphClip, Keyframes};
 use crate::core::animation_graph::TimeUpdate;
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
-use crate::core::frame::{BoneFrame, PoseFrame, ValueFrame};
+use crate::core::frame::{BoneFrame, InnerPoseFrame, ValueFrame};
 use crate::core::systems::get_keyframe;
 use crate::prelude::{PassContext, SpecContext};
 use bevy::asset::Handle;
@@ -46,14 +46,14 @@ impl NodeLike for ClipNode {
         Some(Some(self.clip_duration(&ctx)))
     }
 
-    fn pose_pass(&self, time_update: TimeUpdate, ctx: PassContext) -> Option<PoseFrame> {
+    fn pose_pass(&self, time_update: TimeUpdate, ctx: PassContext) -> Option<InnerPoseFrame> {
         let clip_duration = self.clip_duration(&ctx);
         let clip = ctx.resources.graph_clip_assets.get(&self.clip).unwrap();
 
         let prev_time = ctx.prev_time_fwd();
         let time = time_update.apply(prev_time);
 
-        let mut animation_frame = PoseFrame::default();
+        let mut animation_frame = InnerPoseFrame::default();
         for (path, bone_id) in &clip.paths {
             let curves = clip.get_curves(*bone_id).unwrap();
             let mut frame = BoneFrame::default();

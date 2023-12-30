@@ -1,7 +1,7 @@
 use super::{
     animation_graph::{PinId, TimeUpdate},
     duration_data::DurationData,
-    frame::PoseFrame,
+    frame::InnerPoseFrame,
     parameters::{OptParamSpec, ParamSpec, ParamValue},
 };
 use crate::{
@@ -28,7 +28,7 @@ pub trait NodeLike: Send + Sync {
     fn duration_pass(&self, _ctx: PassContext) -> Option<DurationData> {
         None
     }
-    fn pose_pass(&self, _time_update: TimeUpdate, _ctx: PassContext) -> Option<PoseFrame> {
+    fn pose_pass(&self, _time_update: TimeUpdate, _ctx: PassContext) -> Option<InnerPoseFrame> {
         None
     }
 
@@ -98,7 +98,7 @@ impl NodeLike for AnimationNode {
         self.node.map(|n| n.duration_pass(ctx))
     }
 
-    fn pose_pass(&self, input: TimeUpdate, ctx: PassContext) -> Option<PoseFrame> {
+    fn pose_pass(&self, input: TimeUpdate, ctx: PassContext) -> Option<InnerPoseFrame> {
         self.node.map(|n| n.pose_pass(input, ctx))
     }
 

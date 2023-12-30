@@ -1,7 +1,7 @@
 use crate::core::animation_graph::{PinId, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
-use crate::core::frame::PoseFrame;
+use crate::core::frame::InnerPoseFrame;
 use crate::core::parameters::BoneMask;
 use crate::prelude::{OptParamSpec, ParamSpec, PassContext, SpecContext};
 use crate::utils::unwrap::Unwrap;
@@ -37,7 +37,7 @@ impl NodeLike for RotationNode {
         Some(ctx.duration_back(Self::INPUT))
     }
 
-    fn pose_pass(&self, input: TimeUpdate, mut ctx: PassContext) -> Option<PoseFrame> {
+    fn pose_pass(&self, input: TimeUpdate, mut ctx: PassContext) -> Option<InnerPoseFrame> {
         let mask: BoneMask = ctx.parameter_back(Self::MASK).unwrap();
         let rotation: Quat = ctx.parameter_back(Self::ROTATION).unwrap();
         let mut pose = ctx.pose_back(Self::INPUT, input);

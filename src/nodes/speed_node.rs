@@ -1,7 +1,7 @@
 use crate::core::animation_graph::{PinId, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
-use crate::core::frame::PoseFrame;
+use crate::core::frame::InnerPoseFrame;
 use crate::prelude::{OptParamSpec, ParamSpec, PassContext, SpecContext};
 use bevy::utils::HashSet;
 use bevy::{reflect::Reflect, utils::HashMap};
@@ -37,7 +37,7 @@ impl NodeLike for SpeedNode {
         Some(out_duration)
     }
 
-    fn pose_pass(&self, input: TimeUpdate, mut ctx: PassContext) -> Option<PoseFrame> {
+    fn pose_pass(&self, input: TimeUpdate, mut ctx: PassContext) -> Option<InnerPoseFrame> {
         let speed = ctx.parameter_back(Self::SPEED).unwrap_f32();
         let fw_upd = match input {
             TimeUpdate::Delta(dt) => TimeUpdate::Delta(dt * speed),

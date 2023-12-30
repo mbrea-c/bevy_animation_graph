@@ -2,7 +2,7 @@ use super::{AnimationGraph, SourcePin, TimeState, TimeUpdate};
 use crate::{
     core::{
         animation_node::NodeLike,
-        frame::{BoneFrame, PoseFrame, ValueFrame},
+        frame::{BoneFrame, InnerPoseFrame, ValueFrame},
     },
     nodes::{ClipNode, GraphNode},
     prelude::{GraphContext, OptParamSpec, ParamSpec, ParamValue, SpecContext, SystemResources},
@@ -195,7 +195,7 @@ fn write_rows_pose(
     Ok(())
 }
 
-fn write_debug_info(f: &mut impl std::io::Write, pose: PoseFrame) -> std::io::Result<()> {
+fn write_debug_info(f: &mut impl std::io::Write, pose: InnerPoseFrame) -> std::io::Result<()> {
     write!(f, "<TR>")?;
     write!(f, "<TD COLSPAN=\"2\">")?;
     if pose.verify_timestamps_in_order() {
@@ -224,7 +224,7 @@ impl AsDotLabel for ParamValue {
     }
 }
 
-impl AsDotLabel for PoseFrame {
+impl AsDotLabel for InnerPoseFrame {
     fn as_dot_label(&self) -> String {
         self.bones
             .iter()

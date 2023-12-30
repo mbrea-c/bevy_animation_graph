@@ -1,7 +1,7 @@
 use crate::core::animation_graph::{AnimationGraph, InputOverlay, PinId, TargetPin, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
-use crate::core::frame::PoseFrame;
+use crate::core::frame::InnerPoseFrame;
 use crate::prelude::{OptParamSpec, ParamSpec, ParamValue, PassContext, SpecContext};
 use bevy::prelude::*;
 use bevy::utils::{HashMap, HashSet};
@@ -60,7 +60,7 @@ impl NodeLike for GraphNode {
         }
     }
 
-    fn pose_pass(&self, input: TimeUpdate, ctx: PassContext) -> Option<PoseFrame> {
+    fn pose_pass(&self, input: TimeUpdate, ctx: PassContext) -> Option<InnerPoseFrame> {
         let graph = ctx
             .resources
             .animation_graph_assets

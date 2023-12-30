@@ -2,7 +2,7 @@ use crate::{
     core::{
         animation_node::{AnimationNode, NodeLike},
         duration_data::DurationData,
-        frame::PoseFrame,
+        frame::InnerPoseFrame,
         pose::Pose,
     },
     prelude::{GraphContext, OptParamSpec, ParamSpec, ParamValue, PassContext, SystemResources},
@@ -112,7 +112,7 @@ impl UpdateTime<Option<TimeUpdate>> for TimeState {
 pub struct InputOverlay {
     pub parameters: HashMap<PinId, ParamValue>,
     pub durations: HashMap<PinId, DurationData>,
-    pub poses: HashMap<PinId, PoseFrame>,
+    pub poses: HashMap<PinId, InnerPoseFrame>,
 }
 
 impl InputOverlay {
@@ -426,7 +426,7 @@ impl AnimationGraph {
         time_update: TimeUpdate,
         target_pin: TargetPin,
         mut ctx: PassContext,
-    ) -> PoseFrame {
+    ) -> InnerPoseFrame {
         let source_pin = self.edges.get(&target_pin).unwrap();
 
         if let Some(val) = ctx.context().get_pose(source_pin) {

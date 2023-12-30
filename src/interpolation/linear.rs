@@ -1,5 +1,5 @@
 use crate::{
-    core::frame::{BoneFrame, PoseFrame, ValueFrame},
+    core::frame::{BoneFrame, InnerPoseFrame, ValueFrame},
     sampling::linear::SampleLinearAt,
 };
 use bevy::prelude::*;
@@ -120,9 +120,9 @@ impl InterpolateLinear for BoneFrame {
     }
 }
 
-impl InterpolateLinear for PoseFrame {
+impl InterpolateLinear for InnerPoseFrame {
     fn interpolate_linear(&self, other: &Self, f: f32) -> Self {
-        let mut result = PoseFrame::default();
+        let mut result = InnerPoseFrame::default();
 
         for (path, bone_id) in self.paths.iter() {
             if let Some(other_bone_id) = other.paths.get(path) {

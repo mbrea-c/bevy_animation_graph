@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::core::frame::{BoneFrame, PoseFrame, ValueFrame};
+use crate::core::frame::{BoneFrame, InnerPoseFrame, ValueFrame};
 
 pub trait Chainable {
     fn chain(&self, other: &Self, duration_first: f32, duration_second: f32, time: f32) -> Self;
@@ -115,9 +115,9 @@ impl Chainable for BoneFrame {
     }
 }
 
-impl Chainable for PoseFrame {
+impl Chainable for InnerPoseFrame {
     fn chain(&self, other: &Self, duration_first: f32, duration_second: f32, time: f32) -> Self {
-        let mut result = PoseFrame::default();
+        let mut result = InnerPoseFrame::default();
 
         for (path, bone_id) in self.paths.iter() {
             let Some(other_bone_id) = other.paths.get(path) else {

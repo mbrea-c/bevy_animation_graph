@@ -50,13 +50,21 @@ impl BoneFrame {
 }
 
 #[derive(Asset, Reflect, Clone, Default)]
-pub struct PoseFrame {
+pub struct InnerPoseFrame {
     pub(crate) bones: Vec<BoneFrame>,
     pub(crate) paths: HashMap<EntityPath, usize>,
     pub(crate) timestamp: f32,
 }
 
-impl PoseFrame {
+/// Pose frame where each transform is local with respect to the parent bone
+// TODO: Verify that transforms are wrt parent bone
+pub type BonePoseFrame = InnerPoseFrame;
+/// Pose frame where each transform is relative to the root of the skeleton
+pub type CharacterPoseFrame = InnerPoseFrame;
+/// Pose frame where each transform is in world/global space
+pub type GlobalPoseFrame = InnerPoseFrame;
+
+impl InnerPoseFrame {
     pub(crate) fn add_bone(&mut self, frame: BoneFrame, path: EntityPath) {
         let id = self.bones.len();
         self.bones.insert(id, frame);
@@ -160,12 +168,43 @@ impl std::fmt::Debug for BoneFrame {
     }
 }
 
-impl std::fmt::Debug for PoseFrame {
+impl std::fmt::Debug for InnerPoseFrame {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Frame with t={:?}", self.timestamp)?;
         for bone in self.bones.iter() {
             write!(f, "{:?}", bone)?;
         }
         Ok(())
+    }
+}
+
+#[derive(Clone, Reflect)]
+pub enum PoseFrame {
+    Bone(BonePoseFrame),
+    Character(CharacterPoseFrame),
+    Global(GlobalPoseFrame),
+}
+
+impl Default for PoseFrame {
+    fn default() -> Self {
+        Self::Bone(BonePoseFrame::default())
+    }
+}
+
+#[derive(Clone, Copy, Debug, Reflect, Default)]
+pub enum PoseFrameType {
+    #[default]
+    Bone,
+    Character,
+    Global,
+}
+
+impl From<PoseFrame> for PoseFrameType {
+    fn from(value: PoseFrame) -> Self {
+        match value {
+            PoseFrame::Bone(_) => PoseFrameType::Bone,
+            PoseFrame::Character(_) => PoseFrameType::Character,
+            PoseFrame::Global(_) => PoseFrameType::Global,
+        }
     }
 }

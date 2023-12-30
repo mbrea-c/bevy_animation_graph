@@ -1,7 +1,7 @@
 use crate::core::animation_graph::{PinId, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
-use crate::core::frame::PoseFrame;
+use crate::core::frame::InnerPoseFrame;
 use crate::flipping::FlipXBySuffix;
 use crate::prelude::{PassContext, SpecContext};
 use bevy::prelude::*;
@@ -34,7 +34,7 @@ impl NodeLike for FlipLRNode {
         Some(ctx.duration_back(Self::INPUT))
     }
 
-    fn pose_pass(&self, input: TimeUpdate, mut ctx: PassContext) -> Option<PoseFrame> {
+    fn pose_pass(&self, input: TimeUpdate, mut ctx: PassContext) -> Option<InnerPoseFrame> {
         let in_pose_frame = ctx.pose_back(Self::INPUT, input);
         let flipped_pose_frame = in_pose_frame.flipped_by_suffix("R".into(), "L".into());
         Some(flipped_pose_frame)
