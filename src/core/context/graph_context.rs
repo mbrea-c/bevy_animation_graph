@@ -8,7 +8,9 @@ use crate::{
 };
 
 use super::pass_context::GraphContextRef;
-use bevy::{asset::Assets, reflect::prelude::*, utils::HashMap};
+use bevy::{
+    asset::Assets, ecs::system::Query, reflect::prelude::*, transform::prelude::*, utils::HashMap,
+};
 
 #[derive(Reflect, Debug, Default)]
 pub struct OutputCache {
@@ -166,9 +168,9 @@ pub struct GraphContext {
 
 /// Contains temprary data such as references to assets, gizmos, etc.
 #[derive(Clone, Copy)]
-pub struct SystemResources<'a> {
-    pub graph_clip_assets: &'a Assets<GraphClip>,
-    pub animation_graph_assets: &'a Assets<AnimationGraph>,
+pub struct SystemResources<'s> {
+    pub graph_clip_assets: &'s Assets<GraphClip>,
+    pub animation_graph_assets: &'s Assets<AnimationGraph>,
 }
 
 impl GraphContext {

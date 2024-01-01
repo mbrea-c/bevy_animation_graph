@@ -1,12 +1,12 @@
 use crate::core::animation_graph::{PinId, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
-use crate::core::frame::{BonePoseFrame, PoseFrame, PoseFrameData, PoseFrameType};
+use crate::core::frame::{BonePoseFrame, PoseFrame, PoseFrameData, PoseSpec};
 use crate::core::parameters::BoneMask;
 use crate::prelude::{OptParamSpec, ParamSpec, PassContext, SpecContext};
 use crate::utils::unwrap::Unwrap;
 use bevy::prelude::*;
-use bevy::utils::{HashMap, HashSet};
+use bevy::utils::HashMap;
 
 #[derive(Reflect, Clone, Debug)]
 pub struct RotationNode {}
@@ -72,12 +72,12 @@ impl NodeLike for RotationNode {
         ])
     }
 
-    fn pose_input_spec(&self, _: SpecContext) -> HashSet<PinId> {
-        HashSet::from([Self::INPUT.into()])
+    fn pose_input_spec(&self, _: SpecContext) -> HashMap<PinId, PoseSpec> {
+        HashMap::from([(Self::INPUT.into(), PoseSpec::BoneSpace)])
     }
 
-    fn pose_output_spec(&self, _: SpecContext) -> Option<PoseFrameType> {
-        Some(PoseFrameType::BoneSpace)
+    fn pose_output_spec(&self, _: SpecContext) -> Option<PoseSpec> {
+        Some(PoseSpec::BoneSpace)
     }
 
     fn display_name(&self) -> String {

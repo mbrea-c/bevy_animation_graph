@@ -1,11 +1,11 @@
 use crate::core::animation_graph::{PinId, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
-use crate::core::frame::{PoseFrame, PoseFrameType};
+use crate::core::frame::{PoseFrame, PoseSpec};
 use crate::interpolation::linear::InterpolateLinear;
 use crate::prelude::{OptParamSpec, ParamSpec, PassContext, SpecContext};
 use bevy::prelude::*;
-use bevy::utils::{HashMap, HashSet};
+use bevy::utils::HashMap;
 
 #[derive(Reflect, Clone, Debug, Default)]
 pub struct BlendNode;
@@ -54,12 +54,15 @@ impl NodeLike for BlendNode {
         HashMap::from([(Self::FACTOR.into(), ParamSpec::F32.into())])
     }
 
-    fn pose_input_spec(&self, _: SpecContext) -> HashSet<PinId> {
-        HashSet::from([Self::INPUT_1.into(), Self::INPUT_2.into()])
+    fn pose_input_spec(&self, _: SpecContext) -> HashMap<PinId, PoseSpec> {
+        HashMap::from([
+            (Self::INPUT_1.into(), PoseSpec::Any),
+            (Self::INPUT_2.into(), PoseSpec::Any),
+        ])
     }
 
-    fn pose_output_spec(&self, _: SpecContext) -> Option<PoseFrameType> {
-        Some(PoseFrameType::BoneSpace)
+    fn pose_output_spec(&self, _: SpecContext) -> Option<PoseSpec> {
+        Some(PoseSpec::BoneSpace)
     }
 
     fn display_name(&self) -> String {

@@ -345,7 +345,7 @@ impl ToDot for AnimationGraph {
                 right.insert("POSE".into(), ());
             }
 
-            write_rows_pose(f, in_td.into_iter().map(|k| (k, ())).collect(), right)?;
+            write_rows_pose(f, in_td.into_iter().map(|(k, _)| (k, ())).collect(), right)?;
 
             if let Some(frame) = ctx.get_pose(&SourcePin::NodePose(name.clone())) {
                 write_debug_info(f, frame.clone())?;
@@ -383,7 +383,7 @@ impl ToDot for AnimationGraph {
         write_rows_pose(
             f,
             HashMap::new(),
-            out_param.into_iter().map(|k| (k, ())).collect(),
+            out_param.into_iter().map(|(k, _)| (k, ())).collect(),
         )?;
         writeln!(f, "</TABLE>>]")?;
         // --------------------------------------------------------

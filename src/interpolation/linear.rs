@@ -1,5 +1,5 @@
 use crate::{
-    core::frame::{BoneFrame, InnerPoseFrame, PoseFrame, PoseFrameData, PoseFrameType, ValueFrame},
+    core::frame::{BoneFrame, InnerPoseFrame, PoseFrame, PoseFrameData, PoseSpec, ValueFrame},
     sampling::linear::SampleLinearAt,
 };
 use bevy::prelude::*;
@@ -167,8 +167,8 @@ impl InterpolateLinear for PoseFrameData {
             _ => {
                 panic!(
                     "Tried to chain {:?} with {:?}",
-                    PoseFrameType::from(self),
-                    PoseFrameType::from(other)
+                    PoseSpec::from(self),
+                    PoseSpec::from(other)
                 )
             }
         }

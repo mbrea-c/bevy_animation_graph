@@ -7,6 +7,7 @@ pub mod flip_lr_node;
 pub mod graph_node;
 pub mod loop_node;
 pub mod rotation_node;
+pub mod space_conversion;
 pub mod speed_node;
 
 pub use arithmetic::*;
@@ -18,4 +19,5 @@ pub use flip_lr_node::*;
 pub use graph_node::*;
 pub use loop_node::*;
 pub use rotation_node::*;
+pub use space_conversion::*;
 pub use speed_node::*;

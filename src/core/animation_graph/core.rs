@@ -2,7 +2,7 @@ use crate::{
     core::{
         animation_node::{AnimationNode, NodeLike},
         duration_data::DurationData,
-        frame::{BonePoseFrame, PoseFrame, PoseFrameType},
+        frame::{BonePoseFrame, PoseFrame, PoseSpec},
         pose::Pose,
     },
     prelude::{
@@ -11,11 +11,7 @@ use crate::{
     },
     utils::unwrap::Unwrap,
 };
-use bevy::{
-    prelude::*,
-    reflect::TypeUuid,
-    utils::{HashMap, HashSet},
-};
+use bevy::{prelude::*, reflect::TypeUuid, utils::HashMap};
 use std::error::Error;
 
 pub type NodeId = String;
@@ -147,9 +143,9 @@ pub struct AnimationGraph {
 
     pub default_parameters: HashMap<PinId, ParamValue>,
     pub input_parameters: HashMap<PinId, OptParamSpec>,
-    pub input_poses: HashSet<PinId>,
+    pub input_poses: HashMap<PinId, PoseSpec>,
     pub output_parameters: HashMap<PinId, ParamSpec>,
-    pub output_pose: Option<PoseFrameType>,
+    pub output_pose: Option<PoseSpec>,
 }
 
 impl Default for AnimationGraph {
@@ -167,7 +163,7 @@ impl AnimationGraph {
             default_output: None,
             default_parameters: HashMap::new(),
             input_parameters: HashMap::new(),
-            input_poses: HashSet::new(),
+            input_poses: HashMap::new(),
             output_parameters: HashMap::new(),
             output_pose: None,
         }
@@ -204,8 +200,8 @@ impl AnimationGraph {
     }
 
     /// Register an input pose pin for the graph
-    pub fn add_input_pose(&mut self, pin_id: impl Into<PinId>) {
-        self.input_poses.insert(pin_id.into());
+    pub fn add_input_pose(&mut self, pin_id: impl Into<PinId>, spec: PoseSpec) {
+        self.input_poses.insert(pin_id.into(), spec);
     }
 
     /// Register an output parameter for the graph
@@ -214,7 +210,7 @@ impl AnimationGraph {
     }
 
     /// Enables pose output for this graph
-    pub fn add_output_pose(&mut self, frame_type: PoseFrameType) {
+    pub fn add_output_pose(&mut self, frame_type: PoseSpec) {
         self.output_pose = Some(frame_type);
     }
     // ----------------------------------------------------------------------------------------

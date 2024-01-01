@@ -1,7 +1,7 @@
 use super::{
     animation_graph::{PinId, TimeUpdate},
     duration_data::DurationData,
-    frame::{PoseFrame, PoseFrameType},
+    frame::{PoseFrame, PoseSpec},
     parameters::{OptParamSpec, ParamSpec, ParamValue},
 };
 use crate::{
@@ -12,10 +12,7 @@ use crate::{
     },
     prelude::{PassContext, RotationArcNode, RotationNode, SpecContext},
 };
-use bevy::{
-    reflect::prelude::*,
-    utils::{HashMap, HashSet},
-};
+use bevy::{reflect::prelude::*, utils::HashMap};
 use std::{
     ops::{Deref, DerefMut},
     sync::{Arc, Mutex},
@@ -42,12 +39,12 @@ pub trait NodeLike: Send + Sync {
         HashMap::new()
     }
 
-    fn pose_input_spec(&self, _ctx: SpecContext) -> HashSet<PinId> {
-        HashSet::new()
+    fn pose_input_spec(&self, _ctx: SpecContext) -> HashMap<PinId, PoseSpec> {
+        HashMap::new()
     }
 
     /// Specify whether or not a node outputs a pose, and which space the pose is in
-    fn pose_output_spec(&self, _ctx: SpecContext) -> Option<PoseFrameType> {
+    fn pose_output_spec(&self, _ctx: SpecContext) -> Option<PoseSpec> {
         None
     }
 
@@ -115,11 +112,11 @@ impl NodeLike for AnimationNode {
         self.node.map(|n| n.parameter_output_spec(ctx))
     }
 
-    fn pose_input_spec(&self, ctx: SpecContext) -> HashSet<PinId> {
+    fn pose_input_spec(&self, ctx: SpecContext) -> HashMap<PinId, PoseSpec> {
         self.node.map(|n| n.pose_input_spec(ctx))
     }
 
-    fn pose_output_spec(&self, ctx: SpecContext) -> Option<PoseFrameType> {
+    fn pose_output_spec(&self, ctx: SpecContext) -> Option<PoseSpec> {
         self.node.map(|n| n.pose_output_spec(ctx))
     }
 

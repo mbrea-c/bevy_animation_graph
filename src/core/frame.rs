@@ -324,24 +324,25 @@ impl PoseFrame {
 }
 
 #[derive(Clone, Copy, Debug, Reflect, Default, Serialize, Deserialize)]
-pub enum PoseFrameType {
+pub enum PoseSpec {
     #[default]
     BoneSpace,
     CharacterSpace,
     GlobalSpace,
+    Any,
 }
 
-impl From<&PoseFrameData> for PoseFrameType {
+impl From<&PoseFrameData> for PoseSpec {
     fn from(value: &PoseFrameData) -> Self {
         match value {
-            PoseFrameData::BoneSpace(_) => PoseFrameType::BoneSpace,
-            PoseFrameData::CharacterSpace(_) => PoseFrameType::CharacterSpace,
-            PoseFrameData::GlobalSpace(_) => PoseFrameType::GlobalSpace,
+            PoseFrameData::BoneSpace(_) => PoseSpec::BoneSpace,
+            PoseFrameData::CharacterSpace(_) => PoseSpec::CharacterSpace,
+            PoseFrameData::GlobalSpace(_) => PoseSpec::GlobalSpace,
         }
     }
 }
 
-impl From<&PoseFrame> for PoseFrameType {
+impl From<&PoseFrame> for PoseSpec {
     fn from(value: &PoseFrame) -> Self {
         (&value.data).into()
     }
@@ -353,7 +354,7 @@ impl Unwrap<BonePoseFrame> for PoseFrameData {
             PoseFrameData::BoneSpace(b) => b,
             x => panic!(
                 "Found {:?}, expected pose in bone space",
-                PoseFrameType::from(&x)
+                PoseSpec::from(&x)
             ),
         }
     }
@@ -365,7 +366,7 @@ impl Unwrap<CharacterPoseFrame> for PoseFrameData {
             PoseFrameData::CharacterSpace(b) => b,
             x => panic!(
                 "Found {:?}, expected pose in character space",
-                PoseFrameType::from(&x)
+                PoseSpec::from(&x)
             ),
         }
     }
@@ -377,7 +378,7 @@ impl Unwrap<GlobalPoseFrame> for PoseFrameData {
             PoseFrameData::GlobalSpace(b) => b,
             x => panic!(
                 "Found {:?}, expected pose in character space",
-                PoseFrameType::from(&x)
+                PoseSpec::from(&x)
             ),
         }
     }

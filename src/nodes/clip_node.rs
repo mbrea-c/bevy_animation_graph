@@ -3,7 +3,7 @@ use crate::core::animation_graph::TimeUpdate;
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
 use crate::core::frame::{
-    BoneFrame, InnerPoseFrame, PoseFrame, PoseFrameData, PoseFrameType, ValueFrame,
+    BoneFrame, InnerPoseFrame, PoseFrame, PoseFrameData, PoseSpec, ValueFrame,
 };
 use crate::core::systems::get_keyframe;
 use crate::prelude::{PassContext, SpecContext};
@@ -160,8 +160,8 @@ impl NodeLike for ClipNode {
         Some(pose_frame)
     }
 
-    fn pose_output_spec(&self, _: SpecContext) -> Option<PoseFrameType> {
-        Some(PoseFrameType::BoneSpace)
+    fn pose_output_spec(&self, _: SpecContext) -> Option<PoseSpec> {
+        Some(PoseSpec::BoneSpace)
     }
 
     fn display_name(&self) -> String {

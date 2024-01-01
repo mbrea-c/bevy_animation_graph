@@ -1,6 +1,6 @@
 use super::AnimationGraph;
 use crate::{
-    core::{animation_clip::GraphClip, frame::PoseFrameType, parameters::ParamValueSerial},
+    core::{animation_clip::GraphClip, frame::PoseSpec, parameters::ParamValueSerial},
     nodes::{
         blend_node::BlendNode, chain_node::ChainNode, clip_node::ClipNode,
         flip_lr_node::FlipLRNode, loop_node::LoopNode, speed_node::SpeedNode, AbsF32, AddF32,
@@ -92,11 +92,11 @@ pub struct AnimationGraphSerial {
     #[serde(default)]
     input_parameters: HashMap<String, ParamValueSerial>,
     #[serde(default)]
-    input_pose_spec: Vec<String>,
+    input_pose_spec: HashMap<String, PoseSpec>,
     #[serde(default)]
     output_parameter_spec: HashMap<String, ParamSpec>,
     #[serde(default)]
-    output_pose_spec: Option<PoseFrameType>,
+    output_pose_spec: Option<PoseSpec>,
     /// (from_node, from_out_edge) -> (to_node, to_in_edge)
     /// Note that this is the opposite as [`AnimationGraph`] in order to make
     /// construction easier, and hand-editing of graph files more natural.
@@ -197,14 +197,14 @@ impl AssetLoader for AnimationGraphLoader {
 
             // --- Set up inputs and outputs
             // ------------------------------------------------------------------------------------
-            for (parameter_name, parameter_value) in &serial.input_parameters {
-                graph.set_default_parameter(parameter_name, parameter_value.clone().into());
+            for (param_name, param_value) in &serial.input_parameters {
+                graph.set_default_parameter(param_name, param_value.clone().into());
             }
-            for td_name in &serial.input_pose_spec {
-                graph.add_input_pose(td_name);
+            for (pose_name, pose_spec) in &serial.input_pose_spec {
+                graph.add_input_pose(pose_name, *pose_spec);
             }
-            for (p_name, p_spec) in &serial.output_parameter_spec {
-                graph.add_output_parameter(p_name, *p_spec);
+            for (param_name, param_spec) in &serial.output_parameter_spec {
+                graph.add_output_parameter(param_name, *param_spec);
             }
 
             if let Some(output_pose_spec) = serial.output_pose_spec {
@@ -223,16 +223,16 @@ impl AssetLoader for AnimationGraphLoader {
                 graph.add_node_pose_edge(source_node, target_node, target_pin);
             }
 
-            for (parameter_name, (target_node, target_edge)) in &serial.input_parameter_edges {
-                graph.add_input_parameter_edge(parameter_name, target_node, target_edge);
+            for (param_name, (target_node, target_edge)) in &serial.input_parameter_edges {
+                graph.add_input_parameter_edge(param_name, target_node, target_edge);
             }
 
             for ((source_node, source_edge), output_name) in &serial.output_parameter_edges {
                 graph.add_output_parameter_edge(source_node, source_edge, output_name);
             }
 
-            for (parameter_name, (target_node, target_edge)) in &serial.input_pose_edges {
-                graph.add_input_pose_edge(parameter_name, target_node, target_edge);
+            for (param_name, (target_node, target_edge)) in &serial.input_pose_edges {
+                graph.add_input_pose_edge(param_name, target_node, target_edge);
             }
 
             if let Some(node_name) = &serial.output_pose_edge {

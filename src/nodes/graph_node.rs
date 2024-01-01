@@ -1,10 +1,10 @@
 use crate::core::animation_graph::{AnimationGraph, InputOverlay, PinId, TargetPin, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
-use crate::core::frame::{PoseFrame, PoseFrameType};
+use crate::core::frame::{PoseFrame, PoseSpec};
 use crate::prelude::{OptParamSpec, ParamSpec, ParamValue, PassContext, SpecContext};
 use bevy::prelude::*;
-use bevy::utils::{HashMap, HashSet};
+use bevy::utils::HashMap;
 
 #[derive(Reflect, Clone, Debug, Default)]
 pub struct GraphNode {
@@ -95,7 +95,7 @@ impl NodeLike for GraphNode {
         graph.output_parameters.clone()
     }
 
-    fn pose_input_spec(&self, ctx: SpecContext) -> HashSet<PinId> {
+    fn pose_input_spec(&self, ctx: SpecContext) -> HashMap<PinId, PoseSpec> {
         let graph = ctx
             .context_tmp
             .animation_graph_assets
@@ -104,7 +104,7 @@ impl NodeLike for GraphNode {
         graph.input_poses.clone()
     }
 
-    fn pose_output_spec(&self, ctx: SpecContext) -> Option<PoseFrameType> {
+    fn pose_output_spec(&self, ctx: SpecContext) -> Option<PoseSpec> {
         let graph = ctx
             .context_tmp
             .animation_graph_assets
