@@ -336,7 +336,7 @@ impl ToDot for AnimationGraph {
 
             write_rows(
                 f,
-                in_param.into_iter().map(|(k, v)| (k, v)).collect(),
+                in_param.into_iter().collect(),
                 out_param.into_iter().map(|(k, v)| (k, v.into())).collect(),
             )?;
 
