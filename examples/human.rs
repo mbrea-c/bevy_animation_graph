@@ -1,14 +1,12 @@
 use bevy::{pbr::CascadeShadowConfigBuilder, prelude::*};
 use bevy_animation_graph::core::animated_scene::{AnimatedSceneBundle, AnimatedSceneInstance};
 use bevy_animation_graph::prelude::*;
-use bevy_egui_editor::{EditorCamera, EguiEditorPlugin};
 use std::f32::consts::PI;
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugins(AnimationGraphPlugin)
-        .add_plugins(EguiEditorPlugin)
         .insert_resource(AmbientLight {
             color: Color::WHITE,
             brightness: 0.1,
@@ -28,13 +26,10 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // Camera
-    commands
-        .spawn(Camera3dBundle {
-            transform: Transform::from_xyz(3., 3., 3.)
-                .looking_at(Vec3::new(0.0, 0.875, 0.0), Vec3::Y),
-            ..default()
-        })
-        .insert(EditorCamera);
+    commands.spawn(Camera3dBundle {
+        transform: Transform::from_xyz(3., 3., 3.).looking_at(Vec3::new(0.0, 0.875, 0.0), Vec3::Y),
+        ..default()
+    });
 
     // Plane
     commands.spawn(PbrBundle {
