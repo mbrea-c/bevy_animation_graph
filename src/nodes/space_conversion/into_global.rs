@@ -51,6 +51,6 @@ impl NodeLike for IntoGlobalSpaceNode {
     }
 
     fn display_name(&self) -> String {
-        "* → Character".into()
+        "* → Global".into()
     }
 }

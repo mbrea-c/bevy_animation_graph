@@ -51,6 +51,6 @@ impl NodeLike for IntoBoneSpaceNode {
     }
 
     fn display_name(&self) -> String {
-        "* → Character".into()
+        "* → Bone".into()
     }
 }
