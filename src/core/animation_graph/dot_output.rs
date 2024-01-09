@@ -22,13 +22,13 @@ pub trait ToDot {
         &self,
         f: &mut impl std::io::Write,
         context: Option<&mut GraphContext>,
-        context_tmp: SystemResources,
+        context_tmp: &SystemResources,
     ) -> std::io::Result<()>;
 
     fn preview_dot(
         &self,
         context: Option<&mut GraphContext>,
-        context_tmp: SystemResources,
+        context_tmp: &SystemResources,
     ) -> std::io::Result<()> {
         let dir = std::env::temp_dir();
         let path = dir.join("bevy_animation_graph_dot.dot");
@@ -54,7 +54,7 @@ pub trait ToDot {
     fn dot_to_tmp_file_and_open(
         &self,
         context: Option<&mut GraphContext>,
-        context_tmp: SystemResources,
+        context_tmp: &SystemResources,
     ) -> std::io::Result<()> {
         self.dot_to_tmp_file(context, context_tmp)?;
 
@@ -69,7 +69,7 @@ pub trait ToDot {
         &self,
         path: &str,
         context: Option<&mut GraphContext>,
-        context_tmp: SystemResources,
+        context_tmp: &SystemResources,
     ) -> std::io::Result<()> {
         {
             let file = File::create(path)?;
@@ -83,7 +83,7 @@ pub trait ToDot {
     fn dot_to_stdout(
         &self,
         context: Option<&mut GraphContext>,
-        context_tmp: SystemResources,
+        context_tmp: &SystemResources,
     ) -> std::io::Result<()> {
         {
             let mut stdout = std::io::stdout();
@@ -96,7 +96,7 @@ pub trait ToDot {
     fn dot_to_tmp_file(
         &self,
         context: Option<&mut GraphContext>,
-        context_tmp: SystemResources,
+        context_tmp: &SystemResources,
     ) -> std::io::Result<()> {
         let path = "/tmp/bevy_animation_graph_dot.dot";
         let pdf_path = "/tmp/bevy_animation_graph_dot.dot.pdf";
@@ -280,7 +280,7 @@ impl ToDot for AnimationGraph {
         &self,
         f: &mut impl std::io::Write,
         mut context: Option<&mut GraphContext>,
-        context_tmp: SystemResources,
+        context_tmp: &SystemResources,
     ) -> std::io::Result<()> {
         writeln!(f, "digraph {{")?;
         writeln!(f, "\trankdir=LR;")?;

@@ -8,9 +8,10 @@ use crate::{
     nodes::{
         blend_node::BlendNode, chain_node::ChainNode, clip_node::ClipNode, dummy_node::DummyNode,
         flip_lr_node::FlipLRNode, loop_node::LoopNode, speed_node::SpeedNode, AbsF32, AddF32,
-        ClampF32, DivF32, GraphNode, MulF32, SubF32,
+        ClampF32, DivF32, GraphNode, IntoBoneSpaceNode, IntoCharacterSpaceNode, MulF32,
+        RotationArcNode, RotationNode, SubF32,
     },
-    prelude::{PassContext, RotationArcNode, RotationNode, SpecContext},
+    prelude::{IntoGlobalSpaceNode, PassContext, SpecContext},
 };
 use bevy::{reflect::prelude::*, utils::HashMap};
 use std::{
@@ -138,6 +139,13 @@ pub enum AnimationNodeType {
     Rotation(RotationNode),
     // ------------------------------------------------
 
+    // --- Pose space conversion
+    // ------------------------------------------------
+    IntoBoneSpace(IntoBoneSpaceNode),
+    IntoCharacterSpace(IntoCharacterSpaceNode),
+    IntoGlobalSpace(IntoGlobalSpaceNode),
+    // ------------------------------------------------
+
     // --- F32 arithmetic nodes
     // ------------------------------------------------
     AddF32(AddF32),
@@ -180,6 +188,9 @@ impl AnimationNodeType {
             AnimationNodeType::AbsF32(n) => f(n),
             AnimationNodeType::RotationArc(n) => f(n),
             AnimationNodeType::Graph(n) => f(n),
+            AnimationNodeType::IntoBoneSpace(n) => f(n),
+            AnimationNodeType::IntoCharacterSpace(n) => f(n),
+            AnimationNodeType::IntoGlobalSpace(n) => f(n),
             AnimationNodeType::Custom(n) => f(n.node.lock().unwrap().deref()),
         }
     }
@@ -204,6 +215,9 @@ impl AnimationNodeType {
             AnimationNodeType::AbsF32(n) => f(n),
             AnimationNodeType::RotationArc(n) => f(n),
             AnimationNodeType::Graph(n) => f(n),
+            AnimationNodeType::IntoBoneSpace(n) => f(n),
+            AnimationNodeType::IntoCharacterSpace(n) => f(n),
+            AnimationNodeType::IntoGlobalSpace(n) => f(n),
             AnimationNodeType::Custom(n) => {
                 let mut nod = n.node.lock().unwrap();
                 f(nod.deref_mut())

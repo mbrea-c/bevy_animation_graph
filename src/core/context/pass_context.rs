@@ -1,3 +1,5 @@
+use bevy::ecs::entity::Entity;
+
 use crate::{
     core::{
         animation_graph::{InputOverlay, NodeId, PinId, SourcePin, TargetPin, TimeUpdate},
@@ -7,7 +9,7 @@ use crate::{
     prelude::{AnimationGraph, ParamValue},
 };
 
-use super::{graph_context::SystemResources, GraphContext};
+use super::{GraphContext, SystemResources};
 
 #[derive(Clone, Copy)]
 pub struct NodeContext<'a> {
@@ -18,18 +20,20 @@ pub struct NodeContext<'a> {
 #[derive(Clone)]
 pub struct PassContext<'a> {
     context: GraphContextRef,
-    pub resources: SystemResources<'a>,
+    pub resources: &'a SystemResources<'a, 'a>,
     pub overlay: &'a InputOverlay,
     pub node_context: Option<NodeContext<'a>>,
     parent: Option<PassContextRef<'a>>,
+    pub root_entity: Entity,
 }
 
 impl<'a> PassContext<'a> {
     /// Creates a pass context with no parent graph nor node context data
     pub fn new(
         context: &mut GraphContext,
-        resources: SystemResources<'a>,
+        resources: &'a SystemResources,
         overlay: &'a InputOverlay,
+        root_entity: Entity,
     ) -> Self {
         Self {
             context: context.into(),
@@ -37,6 +41,7 @@ impl<'a> PassContext<'a> {
             overlay,
             node_context: None,
             parent: None,
+            root_entity,
         }
     }
 
@@ -49,6 +54,7 @@ impl<'a> PassContext<'a> {
             overlay: self.overlay,
             node_context: Some(NodeContext { node_id, graph }),
             parent: self.parent.clone(),
+            root_entity: self.root_entity,
         }
     }
 
@@ -61,6 +67,7 @@ impl<'a> PassContext<'a> {
             overlay: self.overlay,
             node_context: None,
             parent: self.parent.clone(),
+            root_entity: self.root_entity,
         }
     }
 
@@ -76,6 +83,7 @@ impl<'a> PassContext<'a> {
             overlay,
             node_context: self.node_context,
             parent: Some(self.into()),
+            root_entity: self.root_entity,
         }
     }
 

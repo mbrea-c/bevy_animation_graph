@@ -426,7 +426,10 @@ impl AnimationGraph {
         target_pin: TargetPin,
         mut ctx: PassContext,
     ) -> PoseFrame {
-        let source_pin = self.edges.get(&target_pin).unwrap();
+        let source_pin = self
+            .edges
+            .get(&target_pin)
+            .unwrap_or_else(|| panic!("Target pose pin {target_pin:?} is disconnected"));
 
         if let Some(val) = ctx.context().get_pose(source_pin) {
             return val.clone();
@@ -465,23 +468,31 @@ impl AnimationGraph {
         &self,
         time_update: TimeUpdate,
         context: &mut GraphContext,
-        resources: SystemResources,
+        resources: &SystemResources,
+        root_entity: Entity,
     ) -> Pose {
-        self.query_with_overlay(time_update, context, resources, &InputOverlay::default())
+        self.query_with_overlay(
+            time_update,
+            context,
+            resources,
+            &InputOverlay::default(),
+            root_entity,
+        )
     }
 
     pub fn query_with_overlay(
         &self,
         time_update: TimeUpdate,
         context: &mut GraphContext,
-        resources: SystemResources,
+        resources: &SystemResources,
         overlay: &InputOverlay,
+        root_entity: Entity,
     ) -> Pose {
         context.push_caches();
         let out = self.get_pose(
             time_update,
             TargetPin::OutputPose,
-            PassContext::new(context, resources, overlay),
+            PassContext::new(context, resources, overlay, root_entity),
         );
         let time = out.timestamp;
         let bone_frame: BonePoseFrame = out.data.unwrap();

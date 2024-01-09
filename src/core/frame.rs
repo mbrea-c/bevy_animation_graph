@@ -1,5 +1,8 @@
 use super::animation_clip::EntityPath;
-use crate::utils::unwrap::Unwrap;
+use crate::{
+    prelude::{InterpolateLinear, SampleLinearAt},
+    utils::unwrap::Unwrap,
+};
 use bevy::{asset::prelude::*, math::prelude::*, reflect::prelude::*, utils::HashMap};
 use serde::{Deserialize, Serialize};
 
@@ -20,6 +23,108 @@ impl<T: FromReflect + TypePath> ValueFrame<T> {
     {
         self.prev_timestamp = f(self.prev_timestamp);
         self.next_timestamp = f(self.next_timestamp);
+    }
+
+    /// Maps the `prev` and `next` values of the frame
+    /// using the given function
+    pub fn map<Q, F>(&self, f: F) -> ValueFrame<Q>
+    where
+        Q: FromReflect + TypePath,
+        F: Fn(&T) -> Q,
+    {
+        ValueFrame {
+            prev: f(&self.prev),
+            prev_timestamp: self.prev_timestamp,
+            next: f(&self.next),
+            next_timestamp: self.next_timestamp,
+            prev_is_wrapped: self.prev_is_wrapped,
+            next_is_wrapped: self.next_is_wrapped,
+        }
+    }
+
+    /// Returns a new frame where `prev_timestamp` is the maximum of `self.prev_timestamp`
+    /// and `other.prev_timestamp`, and `next_timestamp` is the minimum of `self.next_timestamp`
+    /// and `other.next_timestamp`. Both frames are sampled at the chosen timestamps for either
+    /// end using the given sampler and combined using the given combiner function.
+    pub fn merge<B, C, SLeft, SRight, F>(
+        &self,
+        other: &ValueFrame<B>,
+        sampler_left: SLeft,
+        sampler_right: SRight,
+        combiner: F,
+    ) -> ValueFrame<C>
+    where
+        B: FromReflect + TypePath,
+        C: FromReflect + TypePath,
+        SLeft: Fn(&Self, f32) -> T,
+        SRight: Fn(&ValueFrame<B>, f32) -> B,
+        F: Fn(&T, &B) -> C,
+    {
+        let (prev_timestamp, prev, prev_is_wrapped) = if self.prev_timestamp >= other.prev_timestamp
+        {
+            let ts = self.prev_timestamp;
+            let other_prev = sampler_right(other, ts);
+            (
+                ts,
+                combiner(&self.prev, &other_prev),
+                self.prev_is_wrapped && other.prev_is_wrapped,
+            )
+        } else {
+            let ts = other.prev_timestamp;
+            let self_prev = sampler_left(self, ts);
+            (
+                ts,
+                combiner(&self_prev, &other.prev),
+                self.prev_is_wrapped && other.prev_is_wrapped,
+            )
+        };
+
+        let (next_timestamp, next, next_is_wrapped) = if self.next_timestamp <= other.next_timestamp
+        {
+            let ts = self.next_timestamp;
+            let other_next = sampler_right(other, ts);
+            (
+                ts,
+                combiner(&self.next, &other_next),
+                self.next_is_wrapped && other.next_is_wrapped,
+            )
+        } else {
+            let ts = other.next_timestamp;
+            let self_next = sampler_left(self, ts);
+            (
+                ts,
+                combiner(&self_next, &other.next),
+                self.next_is_wrapped && other.next_is_wrapped,
+            )
+        };
+
+        ValueFrame {
+            prev,
+            prev_timestamp,
+            next,
+            next_timestamp,
+            prev_is_wrapped,
+            next_is_wrapped,
+        }
+    }
+
+    /// Returns a new frame where `prev_timestamp` is the maximum of `self.prev_timestamp`
+    /// and `other.prev_timestamp`, and `next_timestamp` is the minimum of `self.next_timestamp`
+    /// and `other.next_timestamp`. Both frames are sampled linearly at the chosen timestamps for either
+    /// end and combined using the given combiner function.
+    pub fn merge_linear<B, C, F>(&self, other: &ValueFrame<B>, combiner: F) -> ValueFrame<C>
+    where
+        T: InterpolateLinear,
+        B: FromReflect + TypePath + InterpolateLinear,
+        C: FromReflect + TypePath,
+        F: Fn(&T, &B) -> C,
+    {
+        self.merge(
+            other,
+            ValueFrame::<T>::sample_linear_at,
+            ValueFrame::<B>::sample_linear_at,
+            combiner,
+        )
     }
 }
 

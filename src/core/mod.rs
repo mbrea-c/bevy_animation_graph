@@ -10,6 +10,7 @@ pub mod frame;
 pub mod parameters;
 pub mod plugin;
 pub mod pose;
+pub mod space_conversion;
 pub mod systems;
 
 pub mod prelude {

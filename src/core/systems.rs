@@ -1,17 +1,15 @@
-use std::ops::Deref;
-
-use crate::prelude::SystemResources;
-
 use super::{
-    animation_clip::{EntityPath, GraphClip},
-    animation_graph::{AnimationGraph, TimeUpdate, UpdateTime},
+    animation_clip::EntityPath,
+    animation_graph::{TimeUpdate, UpdateTime},
     animation_graph_player::AnimationGraphPlayer,
     pose::Pose,
 };
+use crate::prelude::SystemResources;
 use bevy::{
-    asset::prelude::*, core::prelude::*, ecs::prelude::*, hierarchy::prelude::*, log::prelude::*,
+    core::prelude::*, ecs::prelude::*, hierarchy::prelude::*, log::prelude::*,
     render::mesh::morph::MorphWeights, time::prelude::*, transform::prelude::*,
 };
+use std::ops::Deref;
 
 fn entity_from_path(
     root: Entity,
@@ -83,28 +81,20 @@ fn verify_no_ancestor_player(
 #[allow(clippy::too_many_arguments)]
 pub fn animation_player(
     time: Res<Time>,
-    graphs: Res<Assets<AnimationGraph>>,
-    graph_clips: Res<Assets<GraphClip>>,
-    children: Query<&Children>,
-    names: Query<&Name>,
-    transforms: Query<&mut Transform>,
     morphs: Query<&mut MorphWeights>,
     parents: Query<(Has<AnimationGraphPlayer>, Option<&Parent>)>,
     mut animation_players: Query<(Entity, Option<&Parent>, &mut AnimationGraphPlayer)>,
+    sysres: SystemResources,
 ) {
     for (root, maybe_parent, player) in &mut animation_players {
         run_animation_player(
             root,
             player,
             &time,
-            &graphs,
-            &graph_clips,
-            &names,
-            &transforms,
             &morphs,
             maybe_parent,
             &parents,
-            &children,
+            &sysres,
         );
     }
 }
@@ -114,14 +104,10 @@ pub fn run_animation_player(
     root: Entity,
     mut player: Mut<AnimationGraphPlayer>,
     time: &Time,
-    graphs: &Assets<AnimationGraph>,
-    graph_clips: &Assets<GraphClip>,
-    names: &Query<&Name>,
-    transforms: &Query<&mut Transform>,
     morphs: &Query<&mut MorphWeights>,
     maybe_parent: Option<&Parent>,
     parents: &Query<(Has<AnimationGraphPlayer>, Option<&Parent>)>,
-    children: &Query<&Children>,
+    system_resources: &SystemResources,
 ) {
     // Continue if paused unless the `AnimationPlayer` was changed
     // This allow the animation to still be updated if the player.elapsed field was manually updated in pause
@@ -133,15 +119,9 @@ pub fn run_animation_player(
         .elapsed
         .update(TimeUpdate::Delta(time.delta_seconds()))
         .update(player.pending_update);
-
     player.pending_update = None;
 
-    let context_tmp = SystemResources {
-        graph_clip_assets: graph_clips,
-        animation_graph_assets: graphs,
-    };
-
-    let Some(out_pose) = player.query(context_tmp) else {
+    let Some(out_pose) = player.query(system_resources, root) else {
         return;
     };
 
@@ -149,12 +129,12 @@ pub fn run_animation_player(
     apply_pose(
         &out_pose,
         root,
-        names,
-        transforms,
+        &system_resources.names_query,
+        &system_resources.transform_query,
         morphs,
         maybe_parent,
         parents,
-        children,
+        &system_resources.children_query,
     );
 }
 
@@ -187,7 +167,7 @@ fn apply_pose(
     animation_pose: &Pose,
     root: Entity,
     names: &Query<&Name>,
-    transforms: &Query<&mut Transform>,
+    transforms: &Query<(&mut Transform, &GlobalTransform)>,
     morphs: &Query<&mut MorphWeights>,
     maybe_parent: Option<&Parent>,
     parents: &Query<(Has<AnimationGraphPlayer>, Option<&Parent>)>,
@@ -216,7 +196,7 @@ fn apply_pose(
         // This means only the AnimationPlayers closest to the root of the hierarchy will be able
         // to run their animation. Any players in the children or descendants will log a warning
         // and do nothing.
-        let Ok(mut transform) = (unsafe { transforms.get_unchecked(target) }) else {
+        let Ok((mut transform, _)) = (unsafe { transforms.get_unchecked(target) }) else {
             continue;
         };
 

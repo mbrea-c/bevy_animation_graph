@@ -1,6 +1,5 @@
-use crate::{
-    core::frame::{BoneFrame, InnerPoseFrame, PoseFrame, PoseFrameData, PoseSpec, ValueFrame},
-    sampling::linear::SampleLinearAt,
+use crate::core::frame::{
+    BoneFrame, InnerPoseFrame, PoseFrame, PoseFrameData, PoseSpec, ValueFrame,
 };
 use bevy::prelude::*;
 
@@ -30,47 +29,21 @@ impl InterpolateLinear for Quat {
     }
 }
 
+impl InterpolateLinear for Transform {
+    fn interpolate_linear(&self, other: &Self, f: f32) -> Self {
+        Transform {
+            translation: self.translation.interpolate_linear(&other.translation, f),
+            rotation: self.rotation.interpolate_linear(&other.rotation, f),
+            scale: self.scale.interpolate_linear(&other.scale, f),
+        }
+    }
+}
+
 impl<T: InterpolateLinear + FromReflect + TypePath + std::fmt::Debug + Clone> InterpolateLinear
     for ValueFrame<T>
 {
     fn interpolate_linear(&self, other: &Self, f: f32) -> Self {
-        // We discard the "edges"
-        // |prev_1 xxxx|prev_2 <----keep---->|next_1 xxxx|next_2
-
-        // Then consider overlapping frames
-        let prev = if self.prev_timestamp < other.prev_timestamp {
-            let inter = self.sample_linear_at(other.prev_timestamp);
-            inter.interpolate_linear(&other.prev, f)
-        } else {
-            let inter = other.sample_linear_at(self.prev_timestamp);
-            inter.interpolate_linear(&self.prev, 1. - f)
-        };
-
-        let next = if self.next_timestamp < other.next_timestamp {
-            let inter = other.sample_linear_at(self.next_timestamp);
-            inter.interpolate_linear(&self.next, 1. - f)
-        } else {
-            let inter = self.sample_linear_at(other.next_timestamp);
-            inter.interpolate_linear(&other.next, f)
-        };
-
-        Self {
-            prev,
-            prev_timestamp: self.prev_timestamp.max(other.prev_timestamp),
-            next,
-            next_timestamp: self.next_timestamp.min(other.next_timestamp),
-            // TODO: Determine the correct behaviour for "blending" next_is_wrapped
-            next_is_wrapped: if self.next_timestamp < other.next_timestamp {
-                self.next_is_wrapped
-            } else {
-                other.next_is_wrapped
-            },
-            prev_is_wrapped: if self.prev_timestamp > other.prev_timestamp {
-                self.prev_is_wrapped
-            } else {
-                other.prev_is_wrapped
-            },
-        }
+        self.merge_linear(other, |l, r| l.interpolate_linear(r, f))
     }
 }
 
