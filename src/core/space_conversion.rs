@@ -52,9 +52,9 @@ pub fn bone_to_character(data: &BonePoseFrame, ctx: PassContext) -> CharacterPos
 
         // Obtain a merged local transform frame
         let mut local_transform_frame = ValueFrame {
-            prev: entity_transform.clone(),
+            prev: *entity_transform,
             prev_timestamp: f32::MIN,
-            next: entity_transform.clone(),
+            next: *entity_transform,
             next_timestamp: f32::MAX,
             prev_is_wrapped: true,
             next_is_wrapped: true,
@@ -63,7 +63,7 @@ pub fn bone_to_character(data: &BonePoseFrame, ctx: PassContext) -> CharacterPos
         if let Some(translation_frame) = &bone_frame.translation {
             local_transform_frame =
                 local_transform_frame.merge_linear(translation_frame, |transform, translation| {
-                    let mut new_transform = transform.clone();
+                    let mut new_transform = *transform;
                     new_transform.translation = *translation;
                     new_transform
                 });
@@ -71,7 +71,7 @@ pub fn bone_to_character(data: &BonePoseFrame, ctx: PassContext) -> CharacterPos
         if let Some(rotation_frame) = &bone_frame.rotation {
             local_transform_frame =
                 local_transform_frame.merge_linear(rotation_frame, |transform, rotation| {
-                    let mut new_transform = transform.clone();
+                    let mut new_transform = *transform;
                     new_transform.rotation = *rotation;
                     new_transform
                 });
@@ -79,7 +79,7 @@ pub fn bone_to_character(data: &BonePoseFrame, ctx: PassContext) -> CharacterPos
         if let Some(scale_frame) = &bone_frame.scale {
             local_transform_frame =
                 local_transform_frame.merge_linear(scale_frame, |transform, scale| {
-                    let mut new_transform = transform.clone();
+                    let mut new_transform = *transform;
                     new_transform.scale = *scale;
                     new_transform
                 });
@@ -260,18 +260,19 @@ pub fn character_to_bone(data: &CharacterPoseFrame, ctx: PassContext) -> BonePos
             let bone_id = inner_data.paths.get(&entity_path).unwrap();
             inner_data.bones[*bone_id].clone()
         } else {
-            let mut default_frame = BoneFrame::default();
-            default_frame.translation = Some(parent_transform_frame.map(|t| t.translation));
-            default_frame.rotation = Some(parent_transform_frame.map(|t| t.rotation));
-            default_frame.scale = Some(parent_transform_frame.map(|t| t.scale));
-            default_frame
+            BoneFrame {
+                translation: Some(parent_transform_frame.map(|t| t.translation)),
+                rotation: Some(parent_transform_frame.map(|t| t.rotation)),
+                scale: Some(parent_transform_frame.map(|t| t.scale)),
+                ..Default::default()
+            }
         };
 
         // Obtain a merged character transform frame
         let mut character_transform_frame = ValueFrame {
-            prev: entity_transform.clone(),
+            prev: *entity_transform,
             prev_timestamp: f32::MIN,
-            next: entity_transform.clone(),
+            next: *entity_transform,
             next_timestamp: f32::MAX,
             prev_is_wrapped: true,
             next_is_wrapped: true,
@@ -282,7 +283,7 @@ pub fn character_to_bone(data: &CharacterPoseFrame, ctx: PassContext) -> BonePos
             character_transform_frame = character_transform_frame.merge_linear(
                 translation_frame,
                 |transform, translation| {
-                    let mut new_transform = transform.clone();
+                    let mut new_transform = *transform;
                     new_transform.translation = *translation;
                     new_transform
                 },
@@ -291,7 +292,7 @@ pub fn character_to_bone(data: &CharacterPoseFrame, ctx: PassContext) -> BonePos
         if let Some(rotation_frame) = &bone_frame.rotation {
             character_transform_frame =
                 character_transform_frame.merge_linear(rotation_frame, |transform, rotation| {
-                    let mut new_transform = transform.clone();
+                    let mut new_transform = *transform;
                     new_transform.rotation = *rotation;
                     new_transform
                 });
@@ -299,7 +300,7 @@ pub fn character_to_bone(data: &CharacterPoseFrame, ctx: PassContext) -> BonePos
         if let Some(scale_frame) = &bone_frame.scale {
             character_transform_frame =
                 character_transform_frame.merge_linear(scale_frame, |transform, scale| {
-                    let mut new_transform = transform.clone();
+                    let mut new_transform = *transform;
                     new_transform.scale = *scale;
                     new_transform
                 });

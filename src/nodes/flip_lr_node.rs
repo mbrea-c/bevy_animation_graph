@@ -40,7 +40,7 @@ impl NodeLike for FlipLRNode {
         let bone_frame: BonePoseFrame = in_pose_frame.data.unwrap();
         let flipped_pose_frame = bone_frame.flipped_by_suffix("R".into(), "L".into());
         Some(PoseFrame {
-            data: PoseFrameData::BoneSpace(flipped_pose_frame.into()),
+            data: PoseFrameData::BoneSpace(flipped_pose_frame),
             timestamp: in_pose_frame.timestamp,
         })
     }

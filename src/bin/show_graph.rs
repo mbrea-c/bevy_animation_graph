@@ -41,7 +41,7 @@ fn load_graph(mut target_graph: ResMut<TargetGraph>, asset_server: Res<AssetServ
 fn show_graph(
     target_graph: Res<TargetGraph>,
     animation_graph_assets: Res<Assets<AnimationGraph>>,
-    graph_clip_assets: Res<Assets<GraphClip>>,
+    _graph_clip_assets: Res<Assets<GraphClip>>,
     asset_server: Res<AssetServer>,
     mut exit: EventWriter<AppExit>,
     sysres: SystemResources,
