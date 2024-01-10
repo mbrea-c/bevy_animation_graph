@@ -4,7 +4,7 @@ use crate::{
         animation_node::{AnimationNode, AnimationNodeType, NodeLike},
         duration_data::DurationData,
         frame::{PoseFrame, PoseFrameData, PoseSpec},
-        space_conversion::{bone_to_global, character_to_global},
+        space_conversion::SpaceConversion,
     },
     prelude::{PassContext, SpecContext},
 };
@@ -35,8 +35,8 @@ impl NodeLike for IntoGlobalSpaceNode {
         Some(PoseFrame {
             timestamp: in_pose.timestamp,
             data: PoseFrameData::GlobalSpace(match &in_pose.data {
-                PoseFrameData::BoneSpace(data) => bone_to_global(data, ctx),
-                PoseFrameData::CharacterSpace(data) => character_to_global(data, ctx),
+                PoseFrameData::BoneSpace(data) => ctx.bone_to_global(data),
+                PoseFrameData::CharacterSpace(data) => ctx.character_to_global(data),
                 PoseFrameData::GlobalSpace(data) => data.clone(),
             }),
         })
