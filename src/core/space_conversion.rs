@@ -13,6 +13,8 @@ pub trait SpaceConversion {
     fn character_to_global(&self, data: &CharacterPoseFrame) -> GlobalPoseFrame;
     fn global_to_bone(&self, data: &GlobalPoseFrame) -> BonePoseFrame;
     fn global_to_character(&self, data: &GlobalPoseFrame) -> CharacterPoseFrame;
+
+    fn extend_skeleton_bone(&self, data: &BonePoseFrame) -> BonePoseFrame;
 }
 
 impl SpaceConversion for PassContext<'_> {
@@ -382,5 +384,67 @@ impl SpaceConversion for PassContext<'_> {
         // -------------------------------------------------------
 
         final_pose_frame
+    }
+
+    fn extend_skeleton_bone(&self, data: &BonePoseFrame) -> BonePoseFrame {
+        let mut new_frame = data.clone();
+        let new_frame_inner = new_frame.inner_mut();
+
+        let root_name = self.resources.names_query.get(self.root_entity).unwrap();
+        let root_path = EntityPath {
+            parts: vec![root_name.clone()],
+        };
+
+        let root_children = self.resources.children_query.get(self.root_entity).unwrap();
+
+        let mut queue: VecDeque<(Entity, EntityPath)> = VecDeque::new();
+
+        for child in root_children {
+            queue.push_back((*child, root_path.clone()));
+        }
+
+        while !queue.is_empty() {
+            let (entity, parent_path) = queue.pop_front().unwrap();
+            // --- Compute the updated transform frame
+            // -------------------------------------------------------
+            // First, build the entity path for the current entity
+            let entity_name = self.resources.names_query.get(entity).unwrap();
+            let entity_path = parent_path.child(entity_name.clone());
+
+            // Get the entity's current local transform
+            let (entity_transform, _) = self.resources.transform_query.get(entity).unwrap();
+            let inner_data = data.inner_ref();
+            // Get the corresponding bone frame
+            let mut bone_frame: BoneFrame = if inner_data.paths.contains_key(&entity_path) {
+                let bone_id = inner_data.paths.get(&entity_path).unwrap();
+                inner_data.bones[*bone_id].clone()
+            } else {
+                BoneFrame::default()
+            };
+
+            // Obtain a merged local transform frame
+            let local_transform_frame = ValueFrame {
+                prev: *entity_transform,
+                prev_timestamp: f32::MIN,
+                next: *entity_transform,
+                next_timestamp: f32::MAX,
+                prev_is_wrapped: true,
+                next_is_wrapped: true,
+            };
+
+            if bone_frame.translation.is_none() {
+                bone_frame.translation = Some(local_transform_frame.map(|t| t.translation));
+            }
+            if bone_frame.rotation.is_none() {
+                bone_frame.rotation = Some(local_transform_frame.map(|t| t.rotation));
+            }
+            if bone_frame.scale.is_none() {
+                bone_frame.scale = Some(local_transform_frame.map(|t| t.scale));
+            }
+
+            new_frame_inner.add_bone(bone_frame, entity_path);
+        }
+
+        new_frame
     }
 }

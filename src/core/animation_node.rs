@@ -8,10 +8,10 @@ use crate::{
     nodes::{
         blend_node::BlendNode, chain_node::ChainNode, clip_node::ClipNode, dummy_node::DummyNode,
         flip_lr_node::FlipLRNode, loop_node::LoopNode, speed_node::SpeedNode, AbsF32, AddF32,
-        ClampF32, DivF32, GraphNode, IntoBoneSpaceNode, IntoCharacterSpaceNode, MulF32,
+        ClampF32, DivF32, ExtendSkeleton, GraphNode, IntoCharacterSpaceNode, MulF32,
         RotationArcNode, RotationNode, SubF32,
     },
-    prelude::{IntoGlobalSpaceNode, PassContext, SpecContext},
+    prelude::{IntoBoneSpaceNode, IntoGlobalSpaceNode, PassContext, SpecContext},
 };
 use bevy::{reflect::prelude::*, utils::HashMap};
 use std::{
@@ -144,6 +144,7 @@ pub enum AnimationNodeType {
     IntoBoneSpace(IntoBoneSpaceNode),
     IntoCharacterSpace(IntoCharacterSpaceNode),
     IntoGlobalSpace(IntoGlobalSpaceNode),
+    ExtendSkeleton(ExtendSkeleton),
     // ------------------------------------------------
 
     // --- F32 arithmetic nodes
@@ -191,6 +192,7 @@ impl AnimationNodeType {
             AnimationNodeType::IntoBoneSpace(n) => f(n),
             AnimationNodeType::IntoCharacterSpace(n) => f(n),
             AnimationNodeType::IntoGlobalSpace(n) => f(n),
+            AnimationNodeType::ExtendSkeleton(n) => f(n),
             AnimationNodeType::Custom(n) => f(n.node.lock().unwrap().deref()),
         }
     }
@@ -218,6 +220,7 @@ impl AnimationNodeType {
             AnimationNodeType::IntoBoneSpace(n) => f(n),
             AnimationNodeType::IntoCharacterSpace(n) => f(n),
             AnimationNodeType::IntoGlobalSpace(n) => f(n),
+            AnimationNodeType::ExtendSkeleton(n) => f(n),
             AnimationNodeType::Custom(n) => {
                 let mut nod = n.node.lock().unwrap();
                 f(nod.deref_mut())

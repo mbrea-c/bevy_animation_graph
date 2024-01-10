@@ -13,6 +13,7 @@
         (name: "Speed", node: Speed), 
         (name: "Make Rotation", node: RotationArc),
         (name: "Rotate", node: Rotation),
+        (name: "Extend to skeleton", node: ExtendSkeleton),
         (name: "ToCharacter", node: IntoCharacterSpace),
         (name: "ToBone", node: IntoBoneSpace),
 
@@ -59,7 +60,8 @@
         ("Blend", ("Loop", "Pose In")),
         ("Loop", ("Speed", "Pose In")),
         ("Speed", ("Rotate", "Pose In")),
-        ("Rotate", ("ToCharacter", "Pose In")),
+        ("Rotate", ("Extend to skeleton", "Pose In")),
+        ("Extend to skeleton", ("ToCharacter", "Pose In")),
         ("ToCharacter", ("ToBone", "Pose In")),
     ],
 )

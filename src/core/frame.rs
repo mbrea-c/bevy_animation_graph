@@ -255,6 +255,7 @@ impl GlobalPoseFrame {
 }
 
 impl InnerPoseFrame {
+    /// Adds a new bone frame to the pose frame, possibly replacing an existing bone frame.
     pub(crate) fn add_bone(&mut self, frame: BoneFrame, path: EntityPath) {
         let id = self.bones.len();
         self.bones.insert(id, frame);
