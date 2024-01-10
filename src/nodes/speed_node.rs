@@ -1,9 +1,8 @@
 use crate::core::animation_graph::{PinId, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
-use crate::core::frame::PoseFrame;
+use crate::core::frame::{PoseFrame, PoseSpec};
 use crate::prelude::{OptParamSpec, ParamSpec, PassContext, SpecContext};
-use bevy::utils::HashSet;
 use bevy::{reflect::Reflect, utils::HashMap};
 
 #[derive(Reflect, Clone, Debug, Default)]
@@ -56,12 +55,12 @@ impl NodeLike for SpeedNode {
         HashMap::from([(Self::SPEED.into(), ParamSpec::F32.into())])
     }
 
-    fn pose_input_spec(&self, _: SpecContext) -> HashSet<PinId> {
-        HashSet::from([Self::INPUT.into()])
+    fn pose_input_spec(&self, _: SpecContext) -> HashMap<PinId, PoseSpec> {
+        HashMap::from([(Self::INPUT.into(), PoseSpec::Any)])
     }
 
-    fn pose_output_spec(&self, _: SpecContext) -> bool {
-        true
+    fn pose_output_spec(&self, _: SpecContext) -> Option<PoseSpec> {
+        Some(PoseSpec::Any)
     }
 
     fn display_name(&self) -> String {

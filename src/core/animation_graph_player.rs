@@ -66,7 +66,11 @@ impl AnimationGraphPlayer {
     }
 
     /// Query the animation graph with the latest time update and inputs
-    pub(crate) fn query(&mut self, context_tmp: SystemResources) -> Option<Pose> {
+    pub(crate) fn query(
+        &mut self,
+        context_tmp: &SystemResources,
+        root_entity: Entity,
+    ) -> Option<Pose> {
         let Some(graph_handle) = &self.animation else {
             return None;
         };
@@ -80,6 +84,7 @@ impl AnimationGraphPlayer {
             &mut self.context,
             context_tmp,
             &self.input_overlay,
+            root_entity,
         ))
     }
 

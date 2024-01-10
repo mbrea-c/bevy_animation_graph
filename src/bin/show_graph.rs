@@ -41,9 +41,10 @@ fn load_graph(mut target_graph: ResMut<TargetGraph>, asset_server: Res<AssetServ
 fn show_graph(
     target_graph: Res<TargetGraph>,
     animation_graph_assets: Res<Assets<AnimationGraph>>,
-    graph_clip_assets: Res<Assets<GraphClip>>,
+    _graph_clip_assets: Res<Assets<GraphClip>>,
     asset_server: Res<AssetServer>,
     mut exit: EventWriter<AppExit>,
+    sysres: SystemResources,
 ) {
     match asset_server.recursive_dependency_load_state(target_graph.handle.as_ref().unwrap()) {
         bevy::asset::RecursiveDependencyLoadState::NotLoaded => {}
@@ -54,16 +55,11 @@ fn show_graph(
                 .get(target_graph.handle.as_ref().unwrap())
                 .unwrap();
 
-            let context_tmp = SystemResources {
-                graph_clip_assets: &graph_clip_assets,
-                animation_graph_assets: &animation_graph_assets,
-            };
-
             if target_graph.output_path == "-" {
-                graph.dot_to_stdout(None, context_tmp).unwrap();
+                graph.dot_to_stdout(None, &sysres).unwrap();
             } else {
                 graph
-                    .dot_to_file(&target_graph.output_path, None, context_tmp)
+                    .dot_to_file(&target_graph.output_path, None, &sysres)
                     .unwrap();
             }
 

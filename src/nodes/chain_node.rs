@@ -2,10 +2,10 @@ use crate::chaining::Chainable;
 use crate::core::animation_graph::{PinId, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
-use crate::core::frame::PoseFrame;
+use crate::core::frame::{PoseFrame, PoseSpec};
 use crate::prelude::{PassContext, SpecContext};
 use bevy::prelude::*;
-use bevy::utils::HashSet;
+use bevy::utils::HashMap;
 
 #[derive(Reflect, Clone, Debug, Default)]
 pub struct ChainNode {}
@@ -63,12 +63,15 @@ impl NodeLike for ChainNode {
         Some(out_pose)
     }
 
-    fn pose_input_spec(&self, _: SpecContext) -> HashSet<PinId> {
-        HashSet::from([Self::INPUT_1.into(), Self::INPUT_2.into()])
+    fn pose_input_spec(&self, _: SpecContext) -> HashMap<PinId, PoseSpec> {
+        HashMap::from([
+            (Self::INPUT_1.into(), PoseSpec::Any),
+            (Self::INPUT_2.into(), PoseSpec::Any),
+        ])
     }
 
-    fn pose_output_spec(&self, _: SpecContext) -> bool {
-        true
+    fn pose_output_spec(&self, _: SpecContext) -> Option<PoseSpec> {
+        Some(PoseSpec::BoneSpace)
     }
 
     fn display_name(&self) -> String {

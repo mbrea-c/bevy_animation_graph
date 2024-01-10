@@ -14,7 +14,7 @@
         "Blend Start": F32(0.5),
         "Blend End": F32(1.5),
     },
-    output_pose_spec: true,
+    output_pose_spec: Some(BoneSpace),
     input_parameter_edges: [
         ("Target Speed", ("Param graph", "Target Speed")),
         ("Blend Start", ("Param graph", "Blend Start")),

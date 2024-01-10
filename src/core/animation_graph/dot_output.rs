@@ -2,7 +2,7 @@ use super::{AnimationGraph, SourcePin, TimeState, TimeUpdate};
 use crate::{
     core::{
         animation_node::NodeLike,
-        frame::{BoneFrame, PoseFrame, ValueFrame},
+        frame::{BoneFrame, InnerPoseFrame, PoseFrame, ValueFrame},
     },
     nodes::{ClipNode, GraphNode},
     prelude::{GraphContext, OptParamSpec, ParamSpec, ParamValue, SpecContext, SystemResources},
@@ -22,13 +22,13 @@ pub trait ToDot {
         &self,
         f: &mut impl std::io::Write,
         context: Option<&mut GraphContext>,
-        context_tmp: SystemResources,
+        context_tmp: &SystemResources,
     ) -> std::io::Result<()>;
 
     fn preview_dot(
         &self,
         context: Option<&mut GraphContext>,
-        context_tmp: SystemResources,
+        context_tmp: &SystemResources,
     ) -> std::io::Result<()> {
         let dir = std::env::temp_dir();
         let path = dir.join("bevy_animation_graph_dot.dot");
@@ -54,7 +54,7 @@ pub trait ToDot {
     fn dot_to_tmp_file_and_open(
         &self,
         context: Option<&mut GraphContext>,
-        context_tmp: SystemResources,
+        context_tmp: &SystemResources,
     ) -> std::io::Result<()> {
         self.dot_to_tmp_file(context, context_tmp)?;
 
@@ -69,7 +69,7 @@ pub trait ToDot {
         &self,
         path: &str,
         context: Option<&mut GraphContext>,
-        context_tmp: SystemResources,
+        context_tmp: &SystemResources,
     ) -> std::io::Result<()> {
         {
             let file = File::create(path)?;
@@ -83,7 +83,7 @@ pub trait ToDot {
     fn dot_to_stdout(
         &self,
         context: Option<&mut GraphContext>,
-        context_tmp: SystemResources,
+        context_tmp: &SystemResources,
     ) -> std::io::Result<()> {
         {
             let mut stdout = std::io::stdout();
@@ -96,7 +96,7 @@ pub trait ToDot {
     fn dot_to_tmp_file(
         &self,
         context: Option<&mut GraphContext>,
-        context_tmp: SystemResources,
+        context_tmp: &SystemResources,
     ) -> std::io::Result<()> {
         let path = "/tmp/bevy_animation_graph_dot.dot";
         let pdf_path = "/tmp/bevy_animation_graph_dot.dot.pdf";
@@ -224,7 +224,7 @@ impl AsDotLabel for ParamValue {
     }
 }
 
-impl AsDotLabel for PoseFrame {
+impl AsDotLabel for InnerPoseFrame {
     fn as_dot_label(&self) -> String {
         self.bones
             .iter()
@@ -280,7 +280,7 @@ impl ToDot for AnimationGraph {
         &self,
         f: &mut impl std::io::Write,
         mut context: Option<&mut GraphContext>,
-        context_tmp: SystemResources,
+        context_tmp: &SystemResources,
     ) -> std::io::Result<()> {
         writeln!(f, "digraph {{")?;
         writeln!(f, "\trankdir=LR;")?;
@@ -336,16 +336,16 @@ impl ToDot for AnimationGraph {
 
             write_rows(
                 f,
-                in_param.into_iter().map(|(k, v)| (k, v)).collect(),
+                in_param.into_iter().collect(),
                 out_param.into_iter().map(|(k, v)| (k, v.into())).collect(),
             )?;
 
             let mut right = HashMap::new();
-            if out_td {
+            if out_td.is_some() {
                 right.insert("POSE".into(), ());
             }
 
-            write_rows_pose(f, in_td.into_iter().map(|k| (k, ())).collect(), right)?;
+            write_rows_pose(f, in_td.into_iter().map(|(k, _)| (k, ())).collect(), right)?;
 
             if let Some(frame) = ctx.get_pose(&SourcePin::NodePose(name.clone())) {
                 write_debug_info(f, frame.clone())?;
@@ -383,7 +383,7 @@ impl ToDot for AnimationGraph {
         write_rows_pose(
             f,
             HashMap::new(),
-            out_param.into_iter().map(|k| (k, ())).collect(),
+            out_param.into_iter().map(|(k, _)| (k, ())).collect(),
         )?;
         writeln!(f, "</TABLE>>]")?;
         // --------------------------------------------------------
@@ -420,7 +420,7 @@ impl ToDot for AnimationGraph {
         let out_param = self.output_pose;
 
         let mut out = HashMap::new();
-        if out_param {
+        if out_param.is_some() {
             out.insert("POSE".into(), ());
         }
         write_rows_pose(f, out, HashMap::new())?;

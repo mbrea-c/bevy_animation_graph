@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 
-use crate::core::frame::{BoneFrame, PoseFrame, ValueFrame};
+use crate::core::frame::{
+    BoneFrame, InnerPoseFrame, PoseFrame, PoseFrameData, PoseSpec, ValueFrame,
+};
 
 pub trait Chainable {
     fn chain(&self, other: &Self, duration_first: f32, duration_second: f32, time: f32) -> Self;
@@ -115,9 +117,9 @@ impl Chainable for BoneFrame {
     }
 }
 
-impl Chainable for PoseFrame {
+impl Chainable for InnerPoseFrame {
     fn chain(&self, other: &Self, duration_first: f32, duration_second: f32, time: f32) -> Self {
-        let mut result = PoseFrame::default();
+        let mut result = InnerPoseFrame::default();
 
         for (path, bone_id) in self.paths.iter() {
             let Some(other_bone_id) = other.paths.get(path) else {
@@ -135,8 +137,50 @@ impl Chainable for PoseFrame {
             );
         }
 
-        result.timestamp = time;
-
         result
+    }
+}
+
+impl Chainable for PoseFrameData {
+    fn chain(&self, other: &Self, duration_first: f32, duration_second: f32, time: f32) -> Self {
+        match (&self, &other) {
+            (PoseFrameData::BoneSpace(f1), PoseFrameData::BoneSpace(f2)) => {
+                PoseFrameData::BoneSpace(
+                    f1.inner_ref()
+                        .chain(f2.inner_ref(), duration_first, duration_second, time)
+                        .into(),
+                )
+            }
+            (PoseFrameData::CharacterSpace(f1), PoseFrameData::CharacterSpace(f2)) => {
+                PoseFrameData::CharacterSpace(
+                    f1.inner_ref()
+                        .chain(f2.inner_ref(), duration_first, duration_second, time)
+                        .into(),
+                )
+            }
+            (PoseFrameData::GlobalSpace(f1), PoseFrameData::GlobalSpace(f2)) => {
+                PoseFrameData::GlobalSpace(
+                    f1.inner_ref()
+                        .chain(f2.inner_ref(), duration_first, duration_second, time)
+                        .into(),
+                )
+            }
+            _ => panic!(
+                "Tried to chain {:?} with {:?}",
+                PoseSpec::from(self),
+                PoseSpec::from(other)
+            ),
+        }
+    }
+}
+
+impl Chainable for PoseFrame {
+    fn chain(&self, other: &Self, duration_first: f32, duration_second: f32, time: f32) -> Self {
+        Self {
+            data: self
+                .data
+                .chain(&other.data, duration_first, duration_second, time),
+            timestamp: time,
+        }
     }
 }

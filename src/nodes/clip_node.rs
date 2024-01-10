@@ -2,7 +2,9 @@ use crate::core::animation_clip::{GraphClip, Keyframes};
 use crate::core::animation_graph::TimeUpdate;
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
-use crate::core::frame::{BoneFrame, PoseFrame, ValueFrame};
+use crate::core::frame::{
+    BoneFrame, InnerPoseFrame, PoseFrame, PoseFrameData, PoseSpec, ValueFrame,
+};
 use crate::core::systems::get_keyframe;
 use crate::prelude::{PassContext, SpecContext};
 use bevy::asset::Handle;
@@ -53,7 +55,7 @@ impl NodeLike for ClipNode {
         let prev_time = ctx.prev_time_fwd();
         let time = time_update.apply(prev_time);
 
-        let mut animation_frame = PoseFrame::default();
+        let mut inner_frame = InnerPoseFrame::default();
         for (path, bone_id) in &clip.paths {
             let curves = clip.get_curves(*bone_id).unwrap();
             let mut frame = BoneFrame::default();
@@ -147,20 +149,19 @@ impl NodeLike for ClipNode {
                     }
                 }
             }
-            animation_frame.add_bone(frame, path.clone());
+            inner_frame.add_bone(frame, path.clone());
         }
 
-        animation_frame.timestamp = time;
+        let pose_frame = PoseFrame {
+            data: PoseFrameData::BoneSpace(inner_frame.into()),
+            timestamp: time,
+        };
 
-        if animation_frame.verify_timestamps_in_order() {
-            panic!("AAAAaaAAAAAAaaA Hilfe bitte in clip node");
-        }
-
-        Some(animation_frame)
+        Some(pose_frame)
     }
 
-    fn pose_output_spec(&self, _: SpecContext) -> bool {
-        true
+    fn pose_output_spec(&self, _: SpecContext) -> Option<PoseSpec> {
+        Some(PoseSpec::BoneSpace)
     }
 
     fn display_name(&self) -> String {

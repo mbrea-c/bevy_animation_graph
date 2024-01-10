@@ -11,9 +11,11 @@
         (name: "Blend", node: Blend), 
         (name: "Loop", node: Loop), 
         (name: "Speed", node: Speed), 
-
         (name: "Make Rotation", node: RotationArc),
         (name: "Rotate", node: Rotation),
+        (name: "Extend to skeleton", node: ExtendSkeleton),
+        (name: "ToCharacter", node: IntoCharacterSpace),
+        (name: "ToBone", node: IntoBoneSpace),
 
         (name: "Param graph", node: Graph("animation_graphs/velocity_to_params.animgraph.ron")),
     ],
@@ -40,7 +42,7 @@
 
         ("Rotation Mask", ("Rotate", "Bone Mask")),
     ],
-    output_pose_edge: Some("Rotate"),
+    output_pose_edge: Some("ToBone"),
     parameter_edges: [
         (("Param graph", "blend_fac"),("Blend", "Factor")),
         (("Param graph", "speed_fac"),("Speed", "Speed")),
@@ -58,5 +60,8 @@
         ("Blend", ("Loop", "Pose In")),
         ("Loop", ("Speed", "Pose In")),
         ("Speed", ("Rotate", "Pose In")),
+        ("Rotate", ("Extend to skeleton", "Pose In")),
+        ("Extend to skeleton", ("ToCharacter", "Pose In")),
+        ("ToCharacter", ("ToBone", "Pose In")),
     ],
 )

@@ -4,11 +4,11 @@ use crate::{
         duration_data::DurationData,
         frame::PoseFrame,
     },
-    prelude::{AnimationGraph, GraphClip, ParamValue},
+    prelude::ParamValue,
 };
 
 use super::pass_context::GraphContextRef;
-use bevy::{asset::Assets, reflect::prelude::*, utils::HashMap};
+use bevy::{reflect::prelude::*, utils::HashMap};
 
 #[derive(Reflect, Debug, Default)]
 pub struct OutputCache {
@@ -162,13 +162,6 @@ pub struct GraphContext {
     times: TimeCaches,
     #[reflect(ignore)]
     subgraph_contexts: HashMap<String, GraphContext>,
-}
-
-/// Contains temprary data such as references to assets, gizmos, etc.
-#[derive(Clone, Copy)]
-pub struct SystemResources<'a> {
-    pub graph_clip_assets: &'a Assets<GraphClip>,
-    pub animation_graph_assets: &'a Assets<AnimationGraph>,
 }
 
 impl GraphContext {

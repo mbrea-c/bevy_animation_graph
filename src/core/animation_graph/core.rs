@@ -2,17 +2,16 @@ use crate::{
     core::{
         animation_node::{AnimationNode, NodeLike},
         duration_data::DurationData,
-        frame::PoseFrame,
+        frame::{BonePoseFrame, PoseFrame, PoseSpec},
         pose::Pose,
     },
-    prelude::{GraphContext, OptParamSpec, ParamSpec, ParamValue, PassContext, SystemResources},
-    sampling::linear::SampleLinear,
+    prelude::{
+        GraphContext, OptParamSpec, ParamSpec, ParamValue, PassContext, SampleLinearAt,
+        SystemResources,
+    },
+    utils::unwrap::Unwrap,
 };
-use bevy::{
-    prelude::*,
-    reflect::TypeUuid,
-    utils::{HashMap, HashSet},
-};
+use bevy::{prelude::*, reflect::TypeUuid, utils::HashMap};
 use std::error::Error;
 
 pub type NodeId = String;
@@ -144,9 +143,9 @@ pub struct AnimationGraph {
 
     pub default_parameters: HashMap<PinId, ParamValue>,
     pub input_parameters: HashMap<PinId, OptParamSpec>,
-    pub input_poses: HashSet<PinId>,
+    pub input_poses: HashMap<PinId, PoseSpec>,
     pub output_parameters: HashMap<PinId, ParamSpec>,
-    pub output_pose: bool,
+    pub output_pose: Option<PoseSpec>,
 }
 
 impl Default for AnimationGraph {
@@ -164,9 +163,9 @@ impl AnimationGraph {
             default_output: None,
             default_parameters: HashMap::new(),
             input_parameters: HashMap::new(),
-            input_poses: HashSet::new(),
+            input_poses: HashMap::new(),
             output_parameters: HashMap::new(),
-            output_pose: false,
+            output_pose: None,
         }
     }
 
@@ -201,8 +200,8 @@ impl AnimationGraph {
     }
 
     /// Register an input pose pin for the graph
-    pub fn add_input_pose(&mut self, pin_id: impl Into<PinId>) {
-        self.input_poses.insert(pin_id.into());
+    pub fn add_input_pose(&mut self, pin_id: impl Into<PinId>, spec: PoseSpec) {
+        self.input_poses.insert(pin_id.into(), spec);
     }
 
     /// Register an output parameter for the graph
@@ -211,8 +210,8 @@ impl AnimationGraph {
     }
 
     /// Enables pose output for this graph
-    pub fn add_output_pose(&mut self) {
-        self.output_pose = true;
+    pub fn add_output_pose(&mut self, frame_type: PoseSpec) {
+        self.output_pose = Some(frame_type);
     }
     // ----------------------------------------------------------------------------------------
 
@@ -427,7 +426,10 @@ impl AnimationGraph {
         target_pin: TargetPin,
         mut ctx: PassContext,
     ) -> PoseFrame {
-        let source_pin = self.edges.get(&target_pin).unwrap();
+        let source_pin = self
+            .edges
+            .get(&target_pin)
+            .unwrap_or_else(|| panic!("Target pose pin {target_pin:?} is disconnected"));
 
         if let Some(val) = ctx.context().get_pose(source_pin) {
             return val.clone();
@@ -466,26 +468,36 @@ impl AnimationGraph {
         &self,
         time_update: TimeUpdate,
         context: &mut GraphContext,
-        resources: SystemResources,
+        resources: &SystemResources,
+        root_entity: Entity,
     ) -> Pose {
-        self.query_with_overlay(time_update, context, resources, &InputOverlay::default())
+        self.query_with_overlay(
+            time_update,
+            context,
+            resources,
+            &InputOverlay::default(),
+            root_entity,
+        )
     }
 
     pub fn query_with_overlay(
         &self,
         time_update: TimeUpdate,
         context: &mut GraphContext,
-        resources: SystemResources,
+        resources: &SystemResources,
         overlay: &InputOverlay,
+        root_entity: Entity,
     ) -> Pose {
         context.push_caches();
         let out = self.get_pose(
             time_update,
             TargetPin::OutputPose,
-            PassContext::new(context, resources, overlay),
+            PassContext::new(context, resources, overlay, root_entity),
         );
+        let time = out.timestamp;
+        let bone_frame: BonePoseFrame = out.data.unwrap();
 
-        out.sample_linear()
+        bone_frame.sample_linear_at(time)
     }
     // ----------------------------------------------------------------------------------------
 }

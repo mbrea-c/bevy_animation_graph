@@ -44,6 +44,16 @@ pub struct EntityPath {
     pub parts: Vec<Name>,
 }
 
+impl EntityPath {
+    /// Produce a new `EntityPath` with the given child entity name
+    /// appended to the end
+    pub fn child(&self, child: impl Into<Name>) -> Self {
+        let mut new_path = self.clone();
+        new_path.parts.push(child.into());
+        new_path
+    }
+}
+
 /// A list of [`VariableCurve`], and the [`EntityPath`] to which they apply.
 #[derive(Asset, Reflect, Clone, Debug, Default)]
 pub struct GraphClip {

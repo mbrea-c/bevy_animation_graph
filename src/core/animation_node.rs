@@ -1,21 +1,19 @@
 use super::{
     animation_graph::{PinId, TimeUpdate},
     duration_data::DurationData,
-    frame::PoseFrame,
+    frame::{PoseFrame, PoseSpec},
     parameters::{OptParamSpec, ParamSpec, ParamValue},
 };
 use crate::{
     nodes::{
         blend_node::BlendNode, chain_node::ChainNode, clip_node::ClipNode, dummy_node::DummyNode,
         flip_lr_node::FlipLRNode, loop_node::LoopNode, speed_node::SpeedNode, AbsF32, AddF32,
-        ClampF32, DivF32, GraphNode, MulF32, SubF32,
+        ClampF32, DivF32, ExtendSkeleton, GraphNode, IntoCharacterSpaceNode, MulF32,
+        RotationArcNode, RotationNode, SubF32,
     },
-    prelude::{PassContext, RotationArcNode, RotationNode, SpecContext},
+    prelude::{IntoBoneSpaceNode, IntoGlobalSpaceNode, PassContext, SpecContext},
 };
-use bevy::{
-    reflect::prelude::*,
-    utils::{HashMap, HashSet},
-};
+use bevy::{reflect::prelude::*, utils::HashMap};
 use std::{
     ops::{Deref, DerefMut},
     sync::{Arc, Mutex},
@@ -25,9 +23,11 @@ pub trait NodeLike: Send + Sync {
     fn parameter_pass(&self, _ctx: PassContext) -> HashMap<PinId, ParamValue> {
         HashMap::new()
     }
+
     fn duration_pass(&self, _ctx: PassContext) -> Option<DurationData> {
         None
     }
+
     fn pose_pass(&self, _time_update: TimeUpdate, _ctx: PassContext) -> Option<PoseFrame> {
         None
     }
@@ -35,15 +35,18 @@ pub trait NodeLike: Send + Sync {
     fn parameter_input_spec(&self, _ctx: SpecContext) -> HashMap<PinId, OptParamSpec> {
         HashMap::new()
     }
+
     fn parameter_output_spec(&self, _ctx: SpecContext) -> HashMap<PinId, ParamSpec> {
         HashMap::new()
     }
-    fn pose_input_spec(&self, _ctx: SpecContext) -> HashSet<PinId> {
-        HashSet::new()
+
+    fn pose_input_spec(&self, _ctx: SpecContext) -> HashMap<PinId, PoseSpec> {
+        HashMap::new()
     }
-    /// Specify whether or not a node outputs a pose
-    fn pose_output_spec(&self, _ctx: SpecContext) -> bool {
-        false
+
+    /// Specify whether or not a node outputs a pose, and which space the pose is in
+    fn pose_output_spec(&self, _ctx: SpecContext) -> Option<PoseSpec> {
+        None
     }
 
     /// The name of this node.
@@ -110,11 +113,11 @@ impl NodeLike for AnimationNode {
         self.node.map(|n| n.parameter_output_spec(ctx))
     }
 
-    fn pose_input_spec(&self, ctx: SpecContext) -> HashSet<PinId> {
+    fn pose_input_spec(&self, ctx: SpecContext) -> HashMap<PinId, PoseSpec> {
         self.node.map(|n| n.pose_input_spec(ctx))
     }
 
-    fn pose_output_spec(&self, ctx: SpecContext) -> bool {
+    fn pose_output_spec(&self, ctx: SpecContext) -> Option<PoseSpec> {
         self.node.map(|n| n.pose_output_spec(ctx))
     }
 
@@ -134,6 +137,14 @@ pub enum AnimationNodeType {
     Loop(LoopNode),
     Speed(SpeedNode),
     Rotation(RotationNode),
+    // ------------------------------------------------
+
+    // --- Pose space conversion
+    // ------------------------------------------------
+    IntoBoneSpace(IntoBoneSpaceNode),
+    IntoCharacterSpace(IntoCharacterSpaceNode),
+    IntoGlobalSpace(IntoGlobalSpaceNode),
+    ExtendSkeleton(ExtendSkeleton),
     // ------------------------------------------------
 
     // --- F32 arithmetic nodes
@@ -178,6 +189,10 @@ impl AnimationNodeType {
             AnimationNodeType::AbsF32(n) => f(n),
             AnimationNodeType::RotationArc(n) => f(n),
             AnimationNodeType::Graph(n) => f(n),
+            AnimationNodeType::IntoBoneSpace(n) => f(n),
+            AnimationNodeType::IntoCharacterSpace(n) => f(n),
+            AnimationNodeType::IntoGlobalSpace(n) => f(n),
+            AnimationNodeType::ExtendSkeleton(n) => f(n),
             AnimationNodeType::Custom(n) => f(n.node.lock().unwrap().deref()),
         }
     }
@@ -202,6 +217,10 @@ impl AnimationNodeType {
             AnimationNodeType::AbsF32(n) => f(n),
             AnimationNodeType::RotationArc(n) => f(n),
             AnimationNodeType::Graph(n) => f(n),
+            AnimationNodeType::IntoBoneSpace(n) => f(n),
+            AnimationNodeType::IntoCharacterSpace(n) => f(n),
+            AnimationNodeType::IntoGlobalSpace(n) => f(n),
+            AnimationNodeType::ExtendSkeleton(n) => f(n),
             AnimationNodeType::Custom(n) => {
                 let mut nod = n.node.lock().unwrap();
                 f(nod.deref_mut())
