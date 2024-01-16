@@ -419,7 +419,7 @@ impl std::fmt::Debug for InnerPoseFrame {
     }
 }
 
-#[derive(Clone, Reflect, Debug)]
+#[derive(Clone, Reflect, Debug, Default)]
 pub struct PoseFrame {
     pub data: PoseFrameData,
     pub timestamp: f32,
