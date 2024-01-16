@@ -50,7 +50,9 @@ impl NodeLike for ClipNode {
 
     fn pose_pass(&self, time_update: TimeUpdate, ctx: PassContext) -> Option<PoseFrame> {
         let clip_duration = self.clip_duration(&ctx);
-        let clip = ctx.resources.graph_clip_assets.get(&self.clip).unwrap();
+        let Some(clip) = ctx.resources.graph_clip_assets.get(&self.clip) else {
+            return Some(PoseFrame::default());
+        };
 
         let prev_time = ctx.prev_time_fwd();
         let time = time_update.apply(prev_time);
