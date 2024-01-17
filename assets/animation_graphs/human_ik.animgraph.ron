@@ -15,6 +15,7 @@
         (name: "Rotate", node: Rotation),
         (name: "Extend to skeleton", node: ExtendSkeleton),
         (name: "ToCharacter", node: IntoCharacterSpace),
+        (name: "DoIK", node: TwoBoneIK),
         (name: "ToBone", node: IntoBoneSpace),
 
         (name: "Param graph", node: Graph("animation_graphs/velocity_to_params.animgraph.ron")),
@@ -22,6 +23,9 @@
     input_parameters: {
         "Target Speed": F32(1.5),
         "Target Direction": Vec3((1., 0., 0.)),
+
+        "Target Path": EntityPath(["Main Controller", "Main Controller", "Hip", "Waist", "Chest", "Shoulder L", "Upper Arm L", "Lower Arm L", "Wrist L"]),
+        "Target Position": Vec3((0., 1., 0.)),
 
         // Constant 
         "Rotation Mask": BoneMask(
@@ -41,6 +45,9 @@
         ("Target Direction", ("Make Rotation", "Vec3 In 2")),
 
         ("Rotation Mask", ("Rotate", "Bone Mask")),
+
+        ("Target Path", ("DoIK", "Target Path")),
+        ("Target Position", ("DoIK", "Target Position")),
     ],
     output_pose_edge: Some("ToBone"),
     parameter_edges: [
@@ -62,6 +69,7 @@
         ("Speed", ("Rotate", "Pose In")),
         ("Rotate", ("Extend to skeleton", "Pose In")),
         ("Extend to skeleton", ("ToCharacter", "Pose In")),
-        ("ToCharacter", ("ToBone", "Pose In")),
+        ("ToCharacter", ("DoIK", "Pose In")),
+        ("DoIK", ("ToBone", "Pose In"))
     ],
 )

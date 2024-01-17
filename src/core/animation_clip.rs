@@ -52,6 +52,24 @@ impl EntityPath {
         new_path.parts.push(child.into());
         new_path
     }
+
+    pub fn parent(&self) -> Option<Self> {
+        let mut parent = self.clone();
+        if parent.parts.len() > 1 {
+            parent.parts.remove(parent.parts.len() - 1);
+            Some(parent)
+        } else {
+            None
+        }
+    }
+}
+
+impl From<Vec<String>> for EntityPath {
+    fn from(value: Vec<String>) -> Self {
+        Self {
+            parts: value.into_iter().map(|part| Name::new(part)).collect(),
+        }
+    }
 }
 
 /// A list of [`VariableCurve`], and the [`EntityPath`] to which they apply.

@@ -3,7 +3,10 @@ use crate::{
     prelude::{InterpolateLinear, SampleLinearAt},
     utils::unwrap::Unwrap,
 };
-use bevy::{asset::prelude::*, math::prelude::*, reflect::prelude::*, utils::HashMap};
+use bevy::{
+    asset::prelude::*, math::prelude::*, reflect::prelude::*, transform::components::Transform,
+    utils::HashMap,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Asset, Reflect, Clone, Default, PartialEq)]
@@ -40,6 +43,16 @@ impl<T: FromReflect + TypePath> ValueFrame<T> {
             prev_is_wrapped: self.prev_is_wrapped,
             next_is_wrapped: self.next_is_wrapped,
         }
+    }
+
+    /// Mutates the `prev` and `next` values of the frame
+    /// using the given function
+    pub fn map_mut<F>(&mut self, f: F)
+    where
+        F: Fn(&T) -> T,
+    {
+        self.prev = f(&self.prev);
+        self.next = f(&self.next);
     }
 
     /// Returns a new frame where `prev_timestamp` is the maximum of `self.prev_timestamp`
@@ -153,6 +166,45 @@ impl BoneFrame {
         if let Some(v) = self.weights.as_mut() {
             v.map_ts(&f)
         };
+    }
+
+    pub fn to_transform_frame_linear(&self) -> ValueFrame<Transform> {
+        let mut transform_frame = ValueFrame {
+            prev: Transform::IDENTITY,
+            prev_timestamp: f32::MIN,
+            next: Transform::IDENTITY,
+            next_timestamp: f32::MAX,
+            prev_is_wrapped: true,
+            next_is_wrapped: true,
+        };
+
+        if let Some(translation_frame) = &self.translation {
+            transform_frame =
+                transform_frame.merge_linear(translation_frame, |transform, translation| {
+                    Transform {
+                        translation: *translation,
+                        ..transform.clone()
+                    }
+                });
+        }
+
+        if let Some(rotation_frame) = &self.rotation {
+            transform_frame =
+                transform_frame.merge_linear(rotation_frame, |transform, rotation| Transform {
+                    rotation: *rotation,
+                    ..transform.clone()
+                });
+        }
+
+        if let Some(scale_frame) = &self.scale {
+            transform_frame =
+                transform_frame.merge_linear(scale_frame, |transform, scale| Transform {
+                    scale: *scale,
+                    ..transform.clone()
+                });
+        }
+
+        transform_frame
     }
 }
 
