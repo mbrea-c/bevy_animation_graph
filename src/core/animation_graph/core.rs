@@ -3,11 +3,11 @@ use crate::{
         animation_node::{AnimationNode, NodeLike},
         duration_data::DurationData,
         frame::{BonePoseFrame, PoseFrame, PoseSpec},
-        pose::Pose,
+        pose::{BoneId, Pose},
     },
     prelude::{
-        GraphContext, OptParamSpec, ParamSpec, ParamValue, PassContext, SampleLinearAt,
-        SystemResources,
+        DeferredGizmos, GraphContext, OptParamSpec, ParamSpec, ParamValue, PassContext,
+        SampleLinearAt, SystemResources,
     },
     utils::unwrap::Unwrap,
 };
@@ -470,6 +470,8 @@ impl AnimationGraph {
         context: &mut GraphContext,
         resources: &SystemResources,
         root_entity: Entity,
+        entity_map: &HashMap<BoneId, Entity>,
+        deferred_gizmos: &mut DeferredGizmos,
     ) -> Pose {
         self.query_with_overlay(
             time_update,
@@ -477,9 +479,12 @@ impl AnimationGraph {
             resources,
             &InputOverlay::default(),
             root_entity,
+            entity_map,
+            deferred_gizmos,
         )
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn query_with_overlay(
         &self,
         time_update: TimeUpdate,
@@ -487,12 +492,21 @@ impl AnimationGraph {
         resources: &SystemResources,
         overlay: &InputOverlay,
         root_entity: Entity,
+        entity_map: &HashMap<BoneId, Entity>,
+        deferred_gizmos: &mut DeferredGizmos,
     ) -> Pose {
         context.push_caches();
         let out = self.get_pose(
             time_update,
             TargetPin::OutputPose,
-            PassContext::new(context, resources, overlay, root_entity),
+            PassContext::new(
+                context,
+                resources,
+                overlay,
+                root_entity,
+                entity_map,
+                deferred_gizmos,
+            ),
         );
         let time = out.timestamp;
         let bone_frame: BonePoseFrame = out.data.unwrap();

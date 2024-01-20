@@ -1,7 +1,10 @@
 use super::{
     animation_clip::EntityPath,
     context::PassContext,
-    frame::{BoneFrame, BonePoseFrame, CharacterPoseFrame, GlobalPoseFrame, ValueFrame},
+    frame::{
+        BoneFrame, BonePoseFrame, CharacterPoseFrame, GlobalPoseFrame, InnerPoseFrame, ValueFrame,
+    },
+    pose::BoneId,
 };
 use bevy::{ecs::entity::Entity, transform::components::Transform, utils::HashMap};
 use std::collections::VecDeque;
@@ -13,6 +16,36 @@ pub trait SpaceConversion {
     fn character_to_global(&self, data: &CharacterPoseFrame) -> GlobalPoseFrame;
     fn global_to_bone(&self, data: &GlobalPoseFrame) -> BonePoseFrame;
     fn global_to_character(&self, data: &GlobalPoseFrame) -> CharacterPoseFrame;
+
+    /// Given a transform in a space relative to a given bone, convert it into a space
+    /// relative to a descendant bone.
+    ///
+    /// NOTE: data should be in bone space
+    ///
+    /// ### Panics
+    /// Panics if `source` is not an ancestor of `target`.
+    fn change_bone_space(
+        &self,
+        transform: Transform,
+        data: &InnerPoseFrame, // Should be in bone space
+        source: BoneId,
+        target: BoneId,
+        timestamp: f32,
+    ) -> Transform;
+    /// Given a transform in a space relative to the root bone, convert it into a space
+    /// relative to a descendant bone.
+    ///
+    /// NOTE: data should be in bone space
+    ///
+    /// ### Panics
+    /// Panics if `source` is not an ancestor of `target`.
+    fn root_to_bone_space(
+        &self,
+        transform: Transform,
+        data: &InnerPoseFrame, // Should be in bone space
+        target: BoneId,
+        timestamp: f32,
+    ) -> Transform;
 
     fn extend_skeleton_bone(&self, data: &BonePoseFrame) -> BonePoseFrame;
 }
@@ -61,7 +94,7 @@ impl SpaceConversion for PassContext<'_> {
             };
 
             // Obtain a merged local transform frame
-            let mut local_transform_frame = ValueFrame {
+            let local_transform_frame = ValueFrame {
                 prev: *entity_transform,
                 prev_timestamp: f32::MIN,
                 next: *entity_transform,
@@ -69,33 +102,8 @@ impl SpaceConversion for PassContext<'_> {
                 prev_is_wrapped: true,
                 next_is_wrapped: true,
             };
-
-            if let Some(translation_frame) = &bone_frame.translation {
-                local_transform_frame = local_transform_frame.merge_linear(
-                    translation_frame,
-                    |transform, translation| {
-                        let mut new_transform = *transform;
-                        new_transform.translation = *translation;
-                        new_transform
-                    },
-                );
-            }
-            if let Some(rotation_frame) = &bone_frame.rotation {
-                local_transform_frame =
-                    local_transform_frame.merge_linear(rotation_frame, |transform, rotation| {
-                        let mut new_transform = *transform;
-                        new_transform.rotation = *rotation;
-                        new_transform
-                    });
-            }
-            if let Some(scale_frame) = &bone_frame.scale {
-                local_transform_frame =
-                    local_transform_frame.merge_linear(scale_frame, |transform, scale| {
-                        let mut new_transform = *transform;
-                        new_transform.scale = *scale;
-                        new_transform
-                    });
-            }
+            let local_transform_frame =
+                bone_frame.to_transform_frame_linear_with_base_frame(local_transform_frame);
 
             let character_transform_frame = parent_transform_frame
                 .merge_linear(&local_transform_frame, |parent, child| *child * *parent);
@@ -207,7 +215,7 @@ impl SpaceConversion for PassContext<'_> {
             };
 
             // Obtain a merged character transform frame
-            let mut character_transform_frame = ValueFrame {
+            let character_transform_frame = ValueFrame {
                 prev: *entity_transform,
                 prev_timestamp: f32::MIN,
                 next: *entity_transform,
@@ -217,34 +225,8 @@ impl SpaceConversion for PassContext<'_> {
             }
             .merge_linear(&parent_transform_frame, |child, parent| *child * *parent);
 
-            if let Some(translation_frame) = &bone_frame.translation {
-                character_transform_frame = character_transform_frame.merge_linear(
-                    translation_frame,
-                    |transform, translation| {
-                        let mut new_transform = *transform;
-                        new_transform.translation = *translation;
-                        new_transform
-                    },
-                );
-            }
-            if let Some(rotation_frame) = &bone_frame.rotation {
-                character_transform_frame = character_transform_frame.merge_linear(
-                    rotation_frame,
-                    |transform, rotation| {
-                        let mut new_transform = *transform;
-                        new_transform.rotation = *rotation;
-                        new_transform
-                    },
-                );
-            }
-            if let Some(scale_frame) = &bone_frame.scale {
-                character_transform_frame =
-                    character_transform_frame.merge_linear(scale_frame, |transform, scale| {
-                        let mut new_transform = *transform;
-                        new_transform.scale = *scale;
-                        new_transform
-                    });
-            }
+            let character_transform_frame =
+                bone_frame.to_transform_frame_linear_with_base_frame(character_transform_frame);
 
             let bone_transform_frame = parent_inverse_transform_frame
                 .merge_linear(&character_transform_frame, |parent, child| *child * *parent);
@@ -446,5 +428,50 @@ impl SpaceConversion for PassContext<'_> {
         }
 
         new_frame
+    }
+
+    fn change_bone_space(
+        &self,
+        transform: Transform,
+        data: &InnerPoseFrame, // Should be in bone space
+        source: BoneId,
+        target: BoneId,
+        timestamp: f32,
+    ) -> Transform {
+        let mut curr_path = target;
+        let mut curr_transform = Transform::IDENTITY;
+
+        while curr_path != source {
+            let bone_frame: BoneFrame = if data.paths.contains_key(&curr_path) {
+                let bone_id = data.paths.get(&curr_path).unwrap();
+                data.bones[*bone_id].clone()
+            } else {
+                BoneFrame::default()
+            };
+            let curr_entity = self.entity_map.get(&curr_path).unwrap();
+            let curr_local_transform = self.resources.transform_query.get(*curr_entity).unwrap().0;
+            let merged_local_transform =
+                bone_frame.to_transform_linear_with_base(*curr_local_transform, timestamp);
+
+            curr_transform = merged_local_transform * curr_transform;
+            curr_path = curr_path.parent().unwrap();
+        }
+
+        Transform::from_matrix(curr_transform.compute_matrix().inverse()) * transform
+    }
+
+    fn root_to_bone_space(
+        &self,
+        transform: Transform,
+        data: &InnerPoseFrame, // Should be in bone space
+        target: BoneId,
+        timestamp: f32,
+    ) -> Transform {
+        let root_name = self.resources.names_query.get(self.root_entity).unwrap();
+        let root_path = EntityPath {
+            parts: vec![root_name.clone()],
+        };
+
+        self.change_bone_space(transform, data, root_path, target, timestamp)
     }
 }

@@ -1,10 +1,11 @@
 use super::{
     animation_graph::{AnimationGraph, InputOverlay, TimeState, TimeUpdate},
+    context::DeferredGizmos,
     parameters::ParamValue,
-    pose::Pose,
+    pose::{BoneId, Pose},
 };
 use crate::prelude::{GraphContext, SystemResources};
-use bevy::{asset::prelude::*, ecs::prelude::*, reflect::prelude::*};
+use bevy::{asset::prelude::*, ecs::prelude::*, reflect::prelude::*, utils::HashMap};
 
 /// Animation controls
 #[derive(Component, Default, Reflect)]
@@ -15,6 +16,7 @@ pub struct AnimationGraphPlayer {
     pub(crate) elapsed: TimeState,
     pub(crate) pending_update: Option<TimeUpdate>,
     pub(crate) context: GraphContext,
+    pub(crate) deferred_gizmos: DeferredGizmos,
 
     input_overlay: InputOverlay,
 }
@@ -28,6 +30,7 @@ impl AnimationGraphPlayer {
             elapsed: TimeState::default(),
             pending_update: None,
             context: GraphContext::default(),
+            deferred_gizmos: DeferredGizmos::default(),
 
             input_overlay: InputOverlay::default(),
         }
@@ -70,6 +73,7 @@ impl AnimationGraphPlayer {
         &mut self,
         context_tmp: &SystemResources,
         root_entity: Entity,
+        entity_map: &HashMap<BoneId, Entity>,
     ) -> Option<Pose> {
         let Some(graph_handle) = &self.animation else {
             return None;
@@ -85,6 +89,8 @@ impl AnimationGraphPlayer {
             context_tmp,
             &self.input_overlay,
             root_entity,
+            entity_map,
+            &mut self.deferred_gizmos,
         ))
     }
 

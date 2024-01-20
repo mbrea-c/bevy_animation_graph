@@ -2,14 +2,15 @@ use super::{
     animation_clip::EntityPath,
     animation_graph::{TimeUpdate, UpdateTime},
     animation_graph_player::AnimationGraphPlayer,
-    pose::Pose,
+    pose::{BoneId, Pose},
 };
 use crate::prelude::SystemResources;
 use bevy::{
-    core::prelude::*, ecs::prelude::*, hierarchy::prelude::*, log::prelude::*,
-    render::mesh::morph::MorphWeights, time::prelude::*, transform::prelude::*,
+    core::prelude::*, ecs::prelude::*, gizmos::gizmos::Gizmos, hierarchy::prelude::*,
+    log::prelude::*, render::mesh::morph::MorphWeights, time::prelude::*, transform::prelude::*,
+    utils::HashMap,
 };
-use std::ops::Deref;
+use std::{collections::VecDeque, ops::Deref};
 
 fn entity_from_path(
     root: Entity,
@@ -76,6 +77,42 @@ fn verify_no_ancestor_player(
     }
 }
 
+fn build_entity_map(root_entity: Entity, resources: &SystemResources) -> HashMap<BoneId, Entity> {
+    let mut entity_map = HashMap::default();
+
+    let root_name = resources.names_query.get(root_entity).unwrap();
+    let root_path: BoneId = EntityPath {
+        parts: vec![root_name.clone()],
+    };
+
+    entity_map.insert(root_path.clone(), root_entity);
+
+    let root_children = resources.children_query.get(root_entity).unwrap();
+
+    let mut queue: VecDeque<(Entity, EntityPath)> = VecDeque::new();
+
+    for child in root_children {
+        queue.push_back((*child, root_path.clone()));
+    }
+
+    while !queue.is_empty() {
+        let (entity, parent_path) = queue.pop_front().unwrap();
+        let Ok(name) = resources.names_query.get(entity) else {
+            continue;
+        };
+        let path = parent_path.child(name.clone());
+        entity_map.insert(path.clone(), entity);
+
+        if let Ok(children) = resources.children_query.get(entity) {
+            for child in children {
+                queue.push_back((*child, path.clone()));
+            }
+        }
+    }
+
+    entity_map
+}
+
 /// System that will play all animations, using any entity with a [`AnimationGraphPlayer`]
 /// and a [`Handle<AnimationClip>`] as an animation root
 #[allow(clippy::too_many_arguments)]
@@ -96,6 +133,17 @@ pub fn animation_player(
             &parents,
             &sysres,
         );
+    }
+}
+
+/// System that will draw deferred gizmo commands called during graph evaluation
+#[allow(clippy::too_many_arguments)]
+pub fn animation_player_deferred_gizmos(
+    mut animation_players: Query<&mut AnimationGraphPlayer>,
+    mut gizmos: Gizmos,
+) {
+    for mut player in &mut animation_players {
+        player.deferred_gizmos.apply(&mut gizmos);
     }
 }
 
@@ -121,7 +169,9 @@ pub fn run_animation_player(
         .update(player.pending_update);
     player.pending_update = None;
 
-    let Some(out_pose) = player.query(system_resources, root) else {
+    let entity_map = build_entity_map(root, system_resources);
+
+    let Some(out_pose) = player.query(system_resources, root, &entity_map) else {
         return;
     };
 

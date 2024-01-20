@@ -8,7 +8,7 @@ use crate::{
     },
     prelude::{
         ExtendSkeleton, IntoBoneSpaceNode, IntoCharacterSpaceNode, ParamSpec, RotationArcNode,
-        RotationNode, SubF32,
+        RotationNode, SubF32, TwoBoneIKNode,
     },
     utils::asset_loader_error::AssetLoaderError,
 };
@@ -144,6 +144,7 @@ pub enum AnimationNodeTypeSerial {
     IntoBoneSpace,
     IntoCharacterSpace,
     ExtendSkeleton,
+    TwoBoneIK,
     Graph(String),
 }
 
@@ -204,6 +205,9 @@ impl AssetLoader for AnimationGraphLoader {
                     }
                     AnimationNodeTypeSerial::ExtendSkeleton => {
                         ExtendSkeleton::new().wrapped(&serial_node.name)
+                    }
+                    AnimationNodeTypeSerial::TwoBoneIK => {
+                        TwoBoneIKNode::new().wrapped(&serial_node.name)
                     }
                 };
                 graph.add_node(node);

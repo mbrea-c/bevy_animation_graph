@@ -11,7 +11,7 @@ use crate::{
         ClampF32, DivF32, ExtendSkeleton, GraphNode, IntoCharacterSpaceNode, MulF32,
         RotationArcNode, RotationNode, SubF32,
     },
-    prelude::{IntoBoneSpaceNode, IntoGlobalSpaceNode, PassContext, SpecContext},
+    prelude::{IntoBoneSpaceNode, IntoGlobalSpaceNode, PassContext, SpecContext, TwoBoneIKNode},
 };
 use bevy::{reflect::prelude::*, utils::HashMap};
 use std::{
@@ -147,6 +147,11 @@ pub enum AnimationNodeType {
     ExtendSkeleton(ExtendSkeleton),
     // ------------------------------------------------
 
+    // --- IK space conversion
+    // ------------------------------------------------
+    TwoBoneIK(TwoBoneIKNode),
+    // ------------------------------------------------
+
     // --- F32 arithmetic nodes
     // ------------------------------------------------
     AddF32(AddF32),
@@ -193,6 +198,7 @@ impl AnimationNodeType {
             AnimationNodeType::IntoCharacterSpace(n) => f(n),
             AnimationNodeType::IntoGlobalSpace(n) => f(n),
             AnimationNodeType::ExtendSkeleton(n) => f(n),
+            AnimationNodeType::TwoBoneIK(n) => f(n),
             AnimationNodeType::Custom(n) => f(n.node.lock().unwrap().deref()),
         }
     }
@@ -221,6 +227,7 @@ impl AnimationNodeType {
             AnimationNodeType::IntoCharacterSpace(n) => f(n),
             AnimationNodeType::IntoGlobalSpace(n) => f(n),
             AnimationNodeType::ExtendSkeleton(n) => f(n),
+            AnimationNodeType::TwoBoneIK(n) => f(n),
             AnimationNodeType::Custom(n) => {
                 let mut nod = n.node.lock().unwrap();
                 f(nod.deref_mut())

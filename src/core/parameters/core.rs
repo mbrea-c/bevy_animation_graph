@@ -1,12 +1,10 @@
+use super::bone_mask::{BoneMask, BoneMaskSerial};
+use crate::{core::animation_clip::EntityPath, utils::unwrap::Unwrap};
 use bevy::{
     math::{Quat, Vec3},
     reflect::Reflect,
 };
 use serde::{Deserialize, Serialize};
-
-use crate::utils::unwrap::Unwrap;
-
-use super::bone_mask::{BoneMask, BoneMaskSerial};
 
 #[derive(Reflect, Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct OptParamSpec {
@@ -34,6 +32,7 @@ impl From<ParamSpec> for OptParamSpec {
 pub enum ParamSpec {
     F32,
     Vec3,
+    EntityPath,
     Quat,
     BoneMask,
 }
@@ -42,6 +41,7 @@ pub enum ParamSpec {
 pub enum ParamValue {
     F32(f32),
     Vec3(Vec3),
+    EntityPath(EntityPath),
     Quat(Quat),
     BoneMask(BoneMask),
 }
@@ -50,6 +50,7 @@ pub enum ParamValue {
 pub enum ParamValueSerial {
     F32(f32),
     Vec3(Vec3),
+    EntityPath(Vec<String>),
     Quat(Quat),
     BoneMask(BoneMaskSerial),
 }
@@ -59,6 +60,7 @@ impl From<ParamValueSerial> for ParamValue {
         match value {
             ParamValueSerial::F32(v) => ParamValue::F32(v),
             ParamValueSerial::Vec3(v) => ParamValue::Vec3(v),
+            ParamValueSerial::EntityPath(v) => ParamValue::EntityPath(v.into()),
             ParamValueSerial::Quat(v) => ParamValue::Quat(v),
             ParamValueSerial::BoneMask(v) => ParamValue::BoneMask(v.into()),
         }
@@ -70,6 +72,15 @@ impl Unwrap<f32> for ParamValue {
         match self {
             ParamValue::F32(f) => f,
             _ => panic!("Expected F32, found {:?}", ParamSpec::from(&self)),
+        }
+    }
+}
+
+impl Unwrap<EntityPath> for ParamValue {
+    fn unwrap(self) -> EntityPath {
+        match self {
+            ParamValue::EntityPath(f) => f,
+            _ => panic!("Expected EntityPath, found {:?}", ParamSpec::from(&self)),
         }
     }
 }
@@ -127,6 +138,7 @@ impl From<&ParamValue> for ParamSpec {
         match value {
             ParamValue::F32(_) => ParamSpec::F32,
             ParamValue::Vec3(_) => ParamSpec::Vec3,
+            ParamValue::EntityPath(_) => ParamSpec::EntityPath,
             ParamValue::Quat(_) => ParamSpec::Quat,
             ParamValue::BoneMask(_) => ParamSpec::BoneMask,
         }

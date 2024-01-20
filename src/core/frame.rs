@@ -3,7 +3,10 @@ use crate::{
     prelude::{InterpolateLinear, SampleLinearAt},
     utils::unwrap::Unwrap,
 };
-use bevy::{asset::prelude::*, math::prelude::*, reflect::prelude::*, utils::HashMap};
+use bevy::{
+    asset::prelude::*, math::prelude::*, reflect::prelude::*, transform::components::Transform,
+    utils::HashMap,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Asset, Reflect, Clone, Default, PartialEq)]
@@ -40,6 +43,16 @@ impl<T: FromReflect + TypePath> ValueFrame<T> {
             prev_is_wrapped: self.prev_is_wrapped,
             next_is_wrapped: self.next_is_wrapped,
         }
+    }
+
+    /// Mutates the `prev` and `next` values of the frame
+    /// using the given function
+    pub fn map_mut<F>(&mut self, f: F)
+    where
+        F: Fn(&T) -> T,
+    {
+        self.prev = f(&self.prev);
+        self.next = f(&self.next);
     }
 
     /// Returns a new frame where `prev_timestamp` is the maximum of `self.prev_timestamp`
@@ -153,6 +166,81 @@ impl BoneFrame {
         if let Some(v) = self.weights.as_mut() {
             v.map_ts(&f)
         };
+    }
+
+    pub fn to_transform_frame_linear(&self) -> ValueFrame<Transform> {
+        let transform_frame = ValueFrame {
+            prev: Transform::IDENTITY,
+            prev_timestamp: f32::MIN,
+            next: Transform::IDENTITY,
+            next_timestamp: f32::MAX,
+            prev_is_wrapped: true,
+            next_is_wrapped: true,
+        };
+
+        self.to_transform_frame_linear_with_base_frame(transform_frame)
+    }
+
+    pub fn to_transform_frame_linear_with_base_frame(
+        &self,
+        base_frame: ValueFrame<Transform>,
+    ) -> ValueFrame<Transform> {
+        let mut transform_frame = base_frame;
+        if let Some(translation_frame) = &self.translation {
+            transform_frame =
+                transform_frame.merge_linear(translation_frame, |transform, translation| {
+                    Transform {
+                        translation: *translation,
+                        ..*transform
+                    }
+                });
+        }
+
+        if let Some(rotation_frame) = &self.rotation {
+            transform_frame =
+                transform_frame.merge_linear(rotation_frame, |transform, rotation| Transform {
+                    rotation: *rotation,
+                    ..*transform
+                });
+        }
+
+        if let Some(scale_frame) = &self.scale {
+            transform_frame =
+                transform_frame.merge_linear(scale_frame, |transform, scale| Transform {
+                    scale: *scale,
+                    ..*transform
+                });
+        }
+
+        transform_frame
+    }
+
+    pub fn to_transform_frame_linear_with_base(&self, base: Transform) -> ValueFrame<Transform> {
+        let transform_frame = ValueFrame {
+            prev: base,
+            prev_timestamp: f32::MIN,
+            next: base,
+            next_timestamp: f32::MAX,
+            prev_is_wrapped: true,
+            next_is_wrapped: true,
+        };
+
+        self.to_transform_frame_linear_with_base_frame(transform_frame)
+    }
+
+    pub fn to_transform_linear_with_base(&self, mut base: Transform, timestamp: f32) -> Transform {
+        if let Some(translation_frame) = &self.translation {
+            base.translation = translation_frame.sample_linear_at(timestamp);
+        }
+        if let Some(rotation_frame) = &self.rotation {
+            base.rotation = rotation_frame.sample_linear_at(timestamp);
+        }
+
+        if let Some(scale_frame) = &self.scale {
+            base.scale = scale_frame.sample_linear_at(timestamp);
+        }
+
+        base
     }
 }
 
