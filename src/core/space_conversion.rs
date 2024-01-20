@@ -94,7 +94,7 @@ impl SpaceConversion for PassContext<'_> {
             };
 
             // Obtain a merged local transform frame
-            let mut local_transform_frame = ValueFrame {
+            let local_transform_frame = ValueFrame {
                 prev: *entity_transform,
                 prev_timestamp: f32::MIN,
                 next: *entity_transform,
@@ -102,33 +102,8 @@ impl SpaceConversion for PassContext<'_> {
                 prev_is_wrapped: true,
                 next_is_wrapped: true,
             };
-
-            if let Some(translation_frame) = &bone_frame.translation {
-                local_transform_frame = local_transform_frame.merge_linear(
-                    translation_frame,
-                    |transform, translation| {
-                        let mut new_transform = *transform;
-                        new_transform.translation = *translation;
-                        new_transform
-                    },
-                );
-            }
-            if let Some(rotation_frame) = &bone_frame.rotation {
-                local_transform_frame =
-                    local_transform_frame.merge_linear(rotation_frame, |transform, rotation| {
-                        let mut new_transform = *transform;
-                        new_transform.rotation = *rotation;
-                        new_transform
-                    });
-            }
-            if let Some(scale_frame) = &bone_frame.scale {
-                local_transform_frame =
-                    local_transform_frame.merge_linear(scale_frame, |transform, scale| {
-                        let mut new_transform = *transform;
-                        new_transform.scale = *scale;
-                        new_transform
-                    });
-            }
+            let local_transform_frame =
+                bone_frame.to_transform_frame_linear_with_base_frame(local_transform_frame);
 
             let character_transform_frame = parent_transform_frame
                 .merge_linear(&local_transform_frame, |parent, child| *child * *parent);
@@ -240,7 +215,7 @@ impl SpaceConversion for PassContext<'_> {
             };
 
             // Obtain a merged character transform frame
-            let mut character_transform_frame = ValueFrame {
+            let character_transform_frame = ValueFrame {
                 prev: *entity_transform,
                 prev_timestamp: f32::MIN,
                 next: *entity_transform,
@@ -250,34 +225,8 @@ impl SpaceConversion for PassContext<'_> {
             }
             .merge_linear(&parent_transform_frame, |child, parent| *child * *parent);
 
-            if let Some(translation_frame) = &bone_frame.translation {
-                character_transform_frame = character_transform_frame.merge_linear(
-                    translation_frame,
-                    |transform, translation| {
-                        let mut new_transform = *transform;
-                        new_transform.translation = *translation;
-                        new_transform
-                    },
-                );
-            }
-            if let Some(rotation_frame) = &bone_frame.rotation {
-                character_transform_frame = character_transform_frame.merge_linear(
-                    rotation_frame,
-                    |transform, rotation| {
-                        let mut new_transform = *transform;
-                        new_transform.rotation = *rotation;
-                        new_transform
-                    },
-                );
-            }
-            if let Some(scale_frame) = &bone_frame.scale {
-                character_transform_frame =
-                    character_transform_frame.merge_linear(scale_frame, |transform, scale| {
-                        let mut new_transform = *transform;
-                        new_transform.scale = *scale;
-                        new_transform
-                    });
-            }
+            let character_transform_frame =
+                bone_frame.to_transform_frame_linear_with_base_frame(character_transform_frame);
 
             let bone_transform_frame = parent_inverse_transform_frame
                 .merge_linear(&character_transform_frame, |parent, child| *child * *parent);

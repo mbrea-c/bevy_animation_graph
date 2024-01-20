@@ -51,71 +51,70 @@ impl NodeLike for TwoBoneIKNode {
         for (bone_path, bone_id) in inner_pose_data.paths.iter() {
             if *bone_path == target {
                 let bone = inner_pose_data.bones[*bone_id].clone();
-                if let Some(parent_path) = bone_path.parent() {
-                    if let Some(grandparent_path) = parent_path.parent() {
-                        let target_gp = ctx.root_to_bone_space(
-                            Transform::from_translation(target_pos_char),
-                            inner_pose_data,
-                            grandparent_path.parent().unwrap().clone(),
-                            pose.timestamp,
-                        );
+                let Some(parent_path) = bone_path.parent() else {
+                    continue;
+                };
+                let Some(grandparent_path) = parent_path.parent() else {
+                    continue;
+                };
+                let target_gp = ctx.root_to_bone_space(
+                    Transform::from_translation(target_pos_char),
+                    inner_pose_data,
+                    grandparent_path.parent().unwrap().clone(),
+                    pose.timestamp,
+                );
 
-                        let target_pos_gp = target_gp.translation;
+                let target_pos_gp = target_gp.translation;
 
-                        let parent_id = inner_pose_data.paths.get(&parent_path).unwrap();
-                        let parent_frame = {
-                            let parent_bone = inner_pose_data.bones.get_mut(*parent_id).unwrap();
-                            parent_bone.to_transform_frame_linear()
-                        };
-                        let parent_transform = parent_frame.sample_linear_at(pose.timestamp);
+                let parent_id = inner_pose_data.paths.get(&parent_path).unwrap();
+                let parent_frame = {
+                    let parent_bone = inner_pose_data.bones.get_mut(*parent_id).unwrap();
+                    parent_bone.to_transform_frame_linear()
+                };
+                let parent_transform = parent_frame.sample_linear_at(pose.timestamp);
 
-                        let grandparent_id = inner_pose_data.paths.get(&grandparent_path).unwrap();
-                        let grandparent_bone =
-                            inner_pose_data.bones.get_mut(*grandparent_id).unwrap();
-                        let grandparent_frame = grandparent_bone.to_transform_frame_linear();
-                        let grandparent_transform =
-                            grandparent_frame.sample_linear_at(pose.timestamp);
+                let grandparent_id = inner_pose_data.paths.get(&grandparent_path).unwrap();
+                let grandparent_bone = inner_pose_data.bones.get_mut(*grandparent_id).unwrap();
+                let grandparent_frame = grandparent_bone.to_transform_frame_linear();
+                let grandparent_transform = grandparent_frame.sample_linear_at(pose.timestamp);
 
-                        let bone_frame = bone.to_transform_frame_linear();
-                        let bone_transform = bone_frame.sample_linear_at(pose.timestamp);
+                let bone_frame = bone.to_transform_frame_linear();
+                let bone_transform = bone_frame.sample_linear_at(pose.timestamp);
 
-                        let parent_gp_transform = grandparent_transform * parent_transform;
-                        let bone_gp_transform = parent_gp_transform * bone_transform;
+                let parent_gp_transform = grandparent_transform * parent_transform;
+                let bone_gp_transform = parent_gp_transform * bone_transform;
 
-                        let (bone_gp_transform, parent_gp_transform, grandparent_transform) =
-                            two_bone_ik(
-                                bone_gp_transform,
-                                parent_gp_transform,
-                                grandparent_transform,
-                                target_pos_gp,
-                            );
+                let (bone_gp_transform, parent_gp_transform, grandparent_transform) = two_bone_ik(
+                    bone_gp_transform,
+                    parent_gp_transform,
+                    grandparent_transform,
+                    target_pos_gp,
+                );
 
-                        let parent_transform = Transform::from_matrix(
-                            grandparent_transform.compute_matrix().inverse(),
-                        ) * parent_gp_transform;
-                        let bone_transform =
-                            Transform::from_matrix(parent_gp_transform.compute_matrix().inverse())
-                                * bone_gp_transform;
+                let parent_transform =
+                    Transform::from_matrix(grandparent_transform.compute_matrix().inverse())
+                        * parent_gp_transform;
+                let bone_transform =
+                    Transform::from_matrix(parent_gp_transform.compute_matrix().inverse())
+                        * bone_gp_transform;
 
-                        inner_pose_data.bones[*grandparent_id]
-                            .rotation
-                            .as_mut()
-                            .unwrap()
-                            .map_mut(|_| grandparent_transform.rotation);
+                inner_pose_data.bones[*grandparent_id]
+                    .rotation
+                    .as_mut()
+                    .unwrap()
+                    .map_mut(|_| grandparent_transform.rotation);
 
-                        inner_pose_data.bones[*parent_id]
-                            .rotation
-                            .as_mut()
-                            .unwrap()
-                            .map_mut(|_| parent_transform.rotation);
+                inner_pose_data.bones[*parent_id]
+                    .rotation
+                    .as_mut()
+                    .unwrap()
+                    .map_mut(|_| parent_transform.rotation);
 
-                        inner_pose_data.bones[*bone_id]
-                            .rotation
-                            .as_mut()
-                            .unwrap()
-                            .map_mut(|_| bone_transform.rotation);
-                    }
-                }
+                inner_pose_data.bones[*bone_id]
+                    .rotation
+                    .as_mut()
+                    .unwrap()
+                    .map_mut(|_| bone_transform.rotation);
             }
         }
 
