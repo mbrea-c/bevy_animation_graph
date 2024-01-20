@@ -67,7 +67,7 @@ impl EntityPath {
 impl From<Vec<String>> for EntityPath {
     fn from(value: Vec<String>) -> Self {
         Self {
-            parts: value.into_iter().map(|part| Name::new(part)).collect(),
+            parts: value.into_iter().map(Name::new).collect(),
         }
     }
 }

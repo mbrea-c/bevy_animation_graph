@@ -1,6 +1,7 @@
 use bevy::{
     math::{Quat, Vec3},
     reflect::Reflect,
+    transform::components::Transform,
     utils::HashMap,
 };
 
@@ -10,7 +11,8 @@ use crate::{
         animation_graph::{PinId, TimeUpdate},
         animation_node::{AnimationNode, AnimationNodeType, NodeLike},
         duration_data::DurationData,
-        frame::{CharacterPoseFrame, PoseFrame, PoseFrameData, PoseSpec, BonePoseFrame},
+        frame::{BonePoseFrame, PoseFrame, PoseFrameData, PoseSpec},
+        space_conversion::SpaceConversion,
     },
     prelude::{OptParamSpec, ParamSpec, PassContext, SampleLinearAt, SpecContext},
     utils::unwrap::Unwrap,
@@ -23,7 +25,6 @@ impl TwoBoneIKNode {
     pub const INPUT: &'static str = "Pose In";
     pub const TARGETBONE: &'static str = "Target Path";
     pub const TARGETPOS: &'static str = "Target Position";
-    pub const TARGETROT: &'static str = "Target rotation of the target bone";
 
     pub fn new() -> Self {
         Self {}
@@ -41,124 +42,62 @@ impl NodeLike for TwoBoneIKNode {
 
     fn pose_pass(&self, input: TimeUpdate, mut ctx: PassContext) -> Option<PoseFrame> {
         let target: EntityPath = ctx.parameter_back(Self::TARGETBONE).unwrap();
-        let targetposition: Vec3 = ctx.parameter_back(Self::TARGETPOS).unwrap();
+        let target_pos_char: Vec3 = ctx.parameter_back(Self::TARGETPOS).unwrap();
         //let targetrotation: Quat = ctx.parameter_back(Self::TARGETROT).unwrap();
         let pose = ctx.pose_back(Self::INPUT, input);
         let mut bone_pose_data: BonePoseFrame = pose.data.unwrap();
-        let mut inner_pose_data = bone_pose_data.inner_mut();
+        let inner_pose_data = bone_pose_data.inner_mut();
 
         for (bone_path, bone_id) in inner_pose_data.paths.iter() {
             if *bone_path == target {
                 let bone = inner_pose_data.bones[*bone_id].clone();
                 if let Some(parent_path) = bone_path.parent() {
                     if let Some(grandparent_path) = parent_path.parent() {
-                        // NOTE : targetposition and rotation need to be in the frame of reference used for that
-                        // a is gp, b is p, c is target bones current state, t is target state
+                        let target_gp = ctx.root_to_bone_space(
+                            Transform::from_translation(target_pos_char),
+                            inner_pose_data,
+                            grandparent_path.parent().unwrap().clone(),
+                            pose.timestamp,
+                        );
+
+                        let target_pos_gp = target_gp.translation;
+
                         let parent_id = inner_pose_data.paths.get(&parent_path).unwrap();
                         let parent_frame = {
                             let parent_bone = inner_pose_data.bones.get_mut(*parent_id).unwrap();
                             parent_bone.to_transform_frame_linear()
                         };
-                        let mut parent_transform = parent_frame.sample_linear_at(pose.timestamp);
+                        let parent_transform = parent_frame.sample_linear_at(pose.timestamp);
 
                         let grandparent_id = inner_pose_data.paths.get(&grandparent_path).unwrap();
                         let grandparent_bone =
                             inner_pose_data.bones.get_mut(*grandparent_id).unwrap();
                         let grandparent_frame = grandparent_bone.to_transform_frame_linear();
-                        let mut grandparent_transform =
+                        let grandparent_transform =
                             grandparent_frame.sample_linear_at(pose.timestamp);
 
                         let bone_frame = bone.to_transform_frame_linear();
                         let bone_transform = bone_frame.sample_linear_at(pose.timestamp);
 
-                        // TODO : transform the local space to grandparent space for the calculations
                         let parent_gp_transform = grandparent_transform * parent_transform;
                         let bone_gp_transform = parent_gp_transform * bone_transform;
 
-                        let eps = 0.01;
-                        let length_gp_p = (parent_gp_transform.translation
-                            - grandparent_transform.translation)
-                            .length();
-                        let length_targetcurr_p =
-                            (parent_gp_transform.translation - bone_gp_transform.translation).length();
-                        let length_gp_target = (targetposition - grandparent_transform.translation)
-                            .length()
-                            .clamp(eps, length_gp_p + length_targetcurr_p - eps);
+                        let (bone_gp_transform, parent_gp_transform, grandparent_transform) =
+                            two_bone_ik(
+                                bone_gp_transform,
+                                parent_gp_transform,
+                                grandparent_transform,
+                                target_pos_gp,
+                            );
 
-                        //get current interior angles
-                        let curr_gp_int = (bone_gp_transform.translation
-                            - grandparent_transform.translation)
-                            .normalize()
-                            .dot(
-                                (parent_gp_transform.translation - grandparent_transform.translation)
-                                    .normalize(),
-                            )
-                            .clamp(-1., 1.)
-                            .acos();
+                        let parent_transform = Transform::from_matrix(
+                            grandparent_transform.compute_matrix().inverse(),
+                        ) * parent_gp_transform;
+                        let bone_transform =
+                            Transform::from_matrix(parent_gp_transform.compute_matrix().inverse())
+                                * bone_gp_transform;
 
-                        let curr_p_int = (grandparent_transform.translation
-                            - parent_gp_transform.translation)
-                            .normalize()
-                            .dot(
-                                (bone_gp_transform.translation - parent_gp_transform.translation)
-                                    .normalize(),
-                            )
-                            .clamp(-1., 1.)
-                            .acos();
-
-                        let curr_gp_target_int = (bone_gp_transform.translation
-                            - grandparent_transform.translation)
-                            .normalize()
-                            .dot((targetposition - grandparent_transform.translation).normalize())
-                            .clamp(-1., 1.)
-                            .acos();
-
-                        // get desired interior angles
-                        let des_gp_int = (length_targetcurr_p * length_targetcurr_p
-                            - length_gp_p * length_gp_p
-                            - length_gp_target * length_gp_target)
-                            / (-2. * length_gp_p * length_gp_target).clamp(-1., 1.).acos();
-                        let des_p_int = (length_gp_target * length_gp_target
-                            - length_gp_p * length_gp_p
-                            - length_targetcurr_p * length_targetcurr_p)
-                            / (-2. * length_gp_p * length_targetcurr_p)
-                                .clamp(-1., 1.)
-                                .acos();
-
-                        // rotation axis and angles, gr are global rotations
-                        // TODO check with formula
-                        let axis0 = (bone_gp_transform.translation
-                            - grandparent_transform.translation.cross(
-                                parent_gp_transform.translation - grandparent_transform.translation,
-                            ))
-                        .normalize();
-
-                        let axis1 = (bone_gp_transform.translation
-                            - grandparent_transform.translation)
-                            .cross(targetposition - grandparent_transform.translation)
-                            .normalize();
-
-                        let inverse_gp_global = grandparent_transform.rotation.inverse();
-                        let inverse_p_global = parent_gp_transform.rotation.inverse();
-                        let r0 = Quat::from_axis_angle(
-                            (inverse_gp_global * axis0).normalize(),
-                            des_gp_int - curr_gp_int,
-                        );
-                        let r1 = Quat::from_axis_angle(
-                            (inverse_p_global * axis0).normalize(),
-                            des_p_int - curr_p_int,
-                        );
-
-                        let r2 = Quat::from_axis_angle(
-                            (inverse_gp_global * axis1).normalize(),
-                            curr_gp_target_int,
-                        );
-
-                        // set grandparent and parent rotations
-                        grandparent_transform.rotation = grandparent_transform.rotation * (r0 * r2);
-                        parent_transform.rotation = parent_transform.rotation * r1;
-
-                        grandparent_bone
+                        inner_pose_data.bones[*grandparent_id]
                             .rotation
                             .as_mut()
                             .unwrap()
@@ -169,6 +108,12 @@ impl NodeLike for TwoBoneIKNode {
                             .as_mut()
                             .unwrap()
                             .map_mut(|_| parent_transform.rotation);
+
+                        inner_pose_data.bones[*bone_id]
+                            .rotation
+                            .as_mut()
+                            .unwrap()
+                            .map_mut(|_| bone_transform.rotation);
                     }
                 }
             }
@@ -196,6 +141,82 @@ impl NodeLike for TwoBoneIKNode {
     }
 
     fn display_name(&self) -> String {
-        "TwoBoneIK".into()
+        "Two Bone IK".into()
     }
+}
+
+fn two_bone_ik(
+    bone: Transform,
+    parent: Transform,
+    grandparent: Transform,
+    target_pos: Vec3,
+) -> (Transform, Transform, Transform) {
+    const MAX_LEN_OFFSET: f32 = 0.01;
+
+    // compute joint positions
+    let in_end_loc = bone.translation;
+    let in_mid_loc = parent.translation;
+    let in_root_loc = grandparent.translation;
+
+    // compute bone lengths
+    let upper_len = in_root_loc.distance(in_mid_loc);
+    let lower_len = in_mid_loc.distance(in_end_loc);
+    let max_len = upper_len + lower_len - MAX_LEN_OFFSET;
+
+    // compute input planar basis vectors
+    let to_end = (in_end_loc - in_root_loc).normalize();
+    let in_pole_vec = (in_mid_loc - in_root_loc).reject_from(to_end).normalize();
+
+    // compute final planar basis vectors
+    let to_target_offset = (target_pos - in_root_loc).clamp_length_max(max_len);
+    let to_target_dist = to_target_offset.length();
+    let to_target = to_target_offset / to_target_dist;
+
+    let to_target_swing = Quat::from_rotation_arc(to_end, to_target);
+    let out_pole_vec = to_target_swing * in_pole_vec;
+
+    // apply law of cosines to get middle joint angle
+    let denom = 2. * upper_len * to_target_dist;
+    let mut cos_angle = 0.;
+    if denom > f32::EPSILON {
+        cos_angle = (to_target_dist * to_target_dist + upper_len * upper_len
+            - lower_len * lower_len)
+            / denom;
+    }
+    let angle = cos_angle.acos();
+
+    // compute final joint positions
+    let pole_dist = upper_len * angle.sin();
+    let eff_dist = upper_len * cos_angle;
+    let out_end_loc = in_root_loc + to_target_offset;
+    let out_mid_loc = in_root_loc + eff_dist * to_target + pole_dist * out_pole_vec;
+
+    // compute final rotations
+    let in_to_mid = in_mid_loc - in_root_loc;
+    let out_to_mid = out_mid_loc - in_root_loc;
+    let root_swing = Quat::from_rotation_arc(in_to_mid.normalize(), out_to_mid.normalize());
+    let in_end_loc_with_root_swing = in_root_loc + root_swing * (in_end_loc - in_root_loc);
+    let to_in_end = in_end_loc_with_root_swing - out_mid_loc;
+    let to_out_end = out_end_loc - out_mid_loc;
+    let mid_swing =
+        Quat::from_rotation_arc(to_in_end.normalize(), to_out_end.normalize()) * root_swing;
+
+    // set up output transforms
+    let out_grandparent = Transform {
+        rotation: root_swing * grandparent.rotation,
+        ..grandparent
+    };
+
+    let out_parent = Transform {
+        translation: out_mid_loc,
+        rotation: mid_swing * parent.rotation,
+        ..parent
+    };
+    let out_bone = Transform {
+        translation: out_end_loc,
+        rotation: mid_swing * bone.rotation,
+        ..bone
+    };
+
+    (out_bone, out_parent, out_grandparent)
 }

@@ -3,7 +3,7 @@ use super::{
         process_animated_scenes, spawn_animated_scenes, AnimatedScene, AnimatedSceneLoader,
     },
     animation_graph::loader::{AnimationGraphLoader, GraphClipLoader},
-    systems::animation_player,
+    systems::{animation_player, animation_player_deferred_gizmos},
 };
 use crate::prelude::{AnimationGraph, AnimationGraphPlayer, GraphClip};
 use bevy::{prelude::*, transform::TransformSystem};
@@ -31,7 +31,9 @@ impl Plugin for AnimationGraphPlugin {
             .add_systems(PreUpdate, (spawn_animated_scenes, process_animated_scenes))
             .add_systems(
                 PostUpdate,
-                animation_player.before(TransformSystem::TransformPropagate),
+                (animation_player, animation_player_deferred_gizmos)
+                    .chain()
+                    .before(TransformSystem::TransformPropagate),
             );
     }
 }

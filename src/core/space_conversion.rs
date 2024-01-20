@@ -1,7 +1,10 @@
 use super::{
     animation_clip::EntityPath,
     context::PassContext,
-    frame::{BoneFrame, BonePoseFrame, CharacterPoseFrame, GlobalPoseFrame, ValueFrame}, pose::BoneId,
+    frame::{
+        BoneFrame, BonePoseFrame, CharacterPoseFrame, GlobalPoseFrame, InnerPoseFrame, ValueFrame,
+    },
+    pose::BoneId,
 };
 use bevy::{ecs::entity::Entity, transform::components::Transform, utils::HashMap};
 use std::collections::VecDeque;
@@ -14,7 +17,35 @@ pub trait SpaceConversion {
     fn global_to_bone(&self, data: &GlobalPoseFrame) -> BonePoseFrame;
     fn global_to_character(&self, data: &GlobalPoseFrame) -> CharacterPoseFrame;
 
-    fn map_downwards(&self, transform: Transform, data: &BonePoseFrame, source: BoneId, target: BoneId);
+    /// Given a transform in a space relative to a given bone, convert it into a space
+    /// relative to a descendant bone.
+    ///
+    /// NOTE: data should be in bone space
+    ///
+    /// ### Panics
+    /// Panics if `source` is not an ancestor of `target`.
+    fn change_bone_space(
+        &self,
+        transform: Transform,
+        data: &InnerPoseFrame, // Should be in bone space
+        source: BoneId,
+        target: BoneId,
+        timestamp: f32,
+    ) -> Transform;
+    /// Given a transform in a space relative to the root bone, convert it into a space
+    /// relative to a descendant bone.
+    ///
+    /// NOTE: data should be in bone space
+    ///
+    /// ### Panics
+    /// Panics if `source` is not an ancestor of `target`.
+    fn root_to_bone_space(
+        &self,
+        transform: Transform,
+        data: &InnerPoseFrame, // Should be in bone space
+        target: BoneId,
+        timestamp: f32,
+    ) -> Transform;
 
     fn extend_skeleton_bone(&self, data: &BonePoseFrame) -> BonePoseFrame;
 }
@@ -450,33 +481,48 @@ impl SpaceConversion for PassContext<'_> {
         new_frame
     }
 
-    fn map_downwards(&self,transform: Transform, data: &BonePoseFrame, source: BoneId, target: BoneId) {
-        let (entity, parent_path, parent_transform_frame) = queue.pop_front().unwrap();
-        // --- Compute the updated transform frame
-        // -------------------------------------------------------
-        // First, build the entity path for the current entity
-        let entity_name = self.resources.names_query.get(entity).unwrap();
-        let entity_path = parent_path.child(entity_name.clone());
+    fn change_bone_space(
+        &self,
+        transform: Transform,
+        data: &InnerPoseFrame, // Should be in bone space
+        source: BoneId,
+        target: BoneId,
+        timestamp: f32,
+    ) -> Transform {
+        let mut curr_path = target;
+        let mut curr_transform = Transform::IDENTITY;
 
-        // Get the entity's current local transform
-        let (entity_transform, _) = self.resources.transform_query.get(entity).unwrap();
-        let inner_data = data.inner_ref();
-        // Get the corresponding bone frame
-        let bone_frame: BoneFrame = if inner_data.paths.contains_key(&entity_path) {
-            let bone_id = inner_data.paths.get(&entity_path).unwrap();
-            inner_data.bones[*bone_id].clone()
-        } else {
-            BoneFrame::default()
+        while curr_path != source {
+            let bone_frame: BoneFrame = if data.paths.contains_key(&curr_path) {
+                let bone_id = data.paths.get(&curr_path).unwrap();
+                data.bones[*bone_id].clone()
+            } else {
+                BoneFrame::default()
+            };
+            let curr_entity = self.entity_map.get(&curr_path).unwrap();
+            let curr_local_transform = self.resources.transform_query.get(*curr_entity).unwrap().0;
+            let merged_local_transform =
+                bone_frame.to_transform_linear_with_base(*curr_local_transform, timestamp);
+
+            curr_transform = merged_local_transform * curr_transform;
+            curr_path = curr_path.parent().unwrap();
+        }
+
+        Transform::from_matrix(curr_transform.compute_matrix().inverse()) * transform
+    }
+
+    fn root_to_bone_space(
+        &self,
+        transform: Transform,
+        data: &InnerPoseFrame, // Should be in bone space
+        target: BoneId,
+        timestamp: f32,
+    ) -> Transform {
+        let root_name = self.resources.names_query.get(self.root_entity).unwrap();
+        let root_path = EntityPath {
+            parts: vec![root_name.clone()],
         };
 
-        // Obtain a merged local transform frame
-        let mut local_transform_frame = ValueFrame {
-            prev: *entity_transform,
-            prev_timestamp: f32::MIN,
-            next: *entity_transform,
-            next_timestamp: f32::MAX,
-            prev_is_wrapped: true,
-            next_is_wrapped: true,
-        };
+        self.change_bone_space(transform, data, root_path, target, timestamp)
     }
 }

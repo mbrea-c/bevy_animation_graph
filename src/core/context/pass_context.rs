@@ -1,15 +1,16 @@
-use bevy::ecs::entity::Entity;
+use bevy::{ecs::entity::Entity, utils::HashMap};
 
 use crate::{
     core::{
         animation_graph::{InputOverlay, NodeId, PinId, SourcePin, TargetPin, TimeUpdate},
         duration_data::DurationData,
         frame::PoseFrame,
+        pose::BoneId,
     },
     prelude::{AnimationGraph, ParamValue},
 };
 
-use super::{GraphContext, SystemResources};
+use super::{deferred_gizmos::DeferredGizmoRef, GraphContext, SystemResources};
 
 #[derive(Clone, Copy)]
 pub struct NodeContext<'a> {
@@ -25,6 +26,8 @@ pub struct PassContext<'a> {
     pub node_context: Option<NodeContext<'a>>,
     parent: Option<PassContextRef<'a>>,
     pub root_entity: Entity,
+    pub entity_map: &'a HashMap<BoneId, Entity>,
+    pub deferred_gizmos: DeferredGizmoRef,
 }
 
 impl<'a> PassContext<'a> {
@@ -34,6 +37,8 @@ impl<'a> PassContext<'a> {
         resources: &'a SystemResources,
         overlay: &'a InputOverlay,
         root_entity: Entity,
+        entity_map: &'a HashMap<BoneId, Entity>,
+        deferred_gizmos: impl Into<DeferredGizmoRef>,
     ) -> Self {
         Self {
             context: context.into(),
@@ -42,6 +47,8 @@ impl<'a> PassContext<'a> {
             node_context: None,
             parent: None,
             root_entity,
+            entity_map,
+            deferred_gizmos: deferred_gizmos.into(),
         }
     }
 
@@ -55,6 +62,8 @@ impl<'a> PassContext<'a> {
             node_context: Some(NodeContext { node_id, graph }),
             parent: self.parent.clone(),
             root_entity: self.root_entity,
+            entity_map: self.entity_map,
+            deferred_gizmos: self.deferred_gizmos.clone(),
         }
     }
 
@@ -68,6 +77,8 @@ impl<'a> PassContext<'a> {
             node_context: None,
             parent: self.parent.clone(),
             root_entity: self.root_entity,
+            entity_map: self.entity_map,
+            deferred_gizmos: self.deferred_gizmos.clone(),
         }
     }
 
@@ -84,6 +95,8 @@ impl<'a> PassContext<'a> {
             node_context: self.node_context,
             parent: Some(self.into()),
             root_entity: self.root_entity,
+            entity_map: self.entity_map,
+            deferred_gizmos: self.deferred_gizmos.clone(),
         }
     }
 

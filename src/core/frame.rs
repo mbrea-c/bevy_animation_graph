@@ -169,7 +169,7 @@ impl BoneFrame {
     }
 
     pub fn to_transform_frame_linear(&self) -> ValueFrame<Transform> {
-        let mut transform_frame = ValueFrame {
+        let transform_frame = ValueFrame {
             prev: Transform::IDENTITY,
             prev_timestamp: f32::MIN,
             next: Transform::IDENTITY,
@@ -178,12 +178,20 @@ impl BoneFrame {
             next_is_wrapped: true,
         };
 
+        self.to_transform_frame_linear_with_base_frame(transform_frame)
+    }
+
+    pub fn to_transform_frame_linear_with_base_frame(
+        &self,
+        base_frame: ValueFrame<Transform>,
+    ) -> ValueFrame<Transform> {
+        let mut transform_frame = base_frame;
         if let Some(translation_frame) = &self.translation {
             transform_frame =
                 transform_frame.merge_linear(translation_frame, |transform, translation| {
                     Transform {
                         translation: *translation,
-                        ..transform.clone()
+                        ..*transform
                     }
                 });
         }
@@ -192,7 +200,7 @@ impl BoneFrame {
             transform_frame =
                 transform_frame.merge_linear(rotation_frame, |transform, rotation| Transform {
                     rotation: *rotation,
-                    ..transform.clone()
+                    ..*transform
                 });
         }
 
@@ -200,11 +208,39 @@ impl BoneFrame {
             transform_frame =
                 transform_frame.merge_linear(scale_frame, |transform, scale| Transform {
                     scale: *scale,
-                    ..transform.clone()
+                    ..*transform
                 });
         }
 
         transform_frame
+    }
+
+    pub fn to_transform_frame_linear_with_base(&self, base: Transform) -> ValueFrame<Transform> {
+        let transform_frame = ValueFrame {
+            prev: base,
+            prev_timestamp: f32::MIN,
+            next: base,
+            next_timestamp: f32::MAX,
+            prev_is_wrapped: true,
+            next_is_wrapped: true,
+        };
+
+        self.to_transform_frame_linear_with_base_frame(transform_frame)
+    }
+
+    pub fn to_transform_linear_with_base(&self, mut base: Transform, timestamp: f32) -> Transform {
+        if let Some(translation_frame) = &self.translation {
+            base.translation = translation_frame.sample_linear_at(timestamp);
+        }
+        if let Some(rotation_frame) = &self.rotation {
+            base.rotation = rotation_frame.sample_linear_at(timestamp);
+        }
+
+        if let Some(scale_frame) = &self.scale {
+            base.scale = scale_frame.sample_linear_at(timestamp);
+        }
+
+        base
     }
 }
 

@@ -134,7 +134,7 @@ fn write_col(
                 ParamSpec::BoneMask => String::from("󰚌"),
                 ParamSpec::Quat => String::from("󰑵"),
                 ParamSpec::Vec3 => String::from("󰵉"),
-                ParamSpec::EntityPath => String::from("EntityPath")
+                ParamSpec::EntityPath => String::from("EntityPath"),
             };
 
             write!(
@@ -221,7 +221,7 @@ impl AsDotLabel for ParamValue {
             ParamValue::Quat(q) => format!("{}", q),
             ParamValue::BoneMask(_) => "Bone Mask".to_string(),
             ParamValue::Vec3(v) => format!("{}", v),
-            ParamValue::EntityPath(p) => "EntityPath".to_string(),
+            ParamValue::EntityPath(_) => "EntityPath".to_string(),
         }
     }
 }
