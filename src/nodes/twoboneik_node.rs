@@ -140,6 +140,7 @@ impl NodeLike for TwoBoneIKNode {
     }
 }
 
+// Adapted from https://blog.littlepolygon.com/posts/twobone/
 fn two_bone_ik(
     bone: Transform,
     parent: Transform,
