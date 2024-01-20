@@ -1,10 +1,10 @@
+use super::bone_mask::{BoneMask, BoneMaskSerial};
+use crate::{core::animation_clip::EntityPath, utils::unwrap::Unwrap};
 use bevy::{
     math::{Quat, Vec3},
     reflect::Reflect,
 };
 use serde::{Deserialize, Serialize};
-use crate::{utils::unwrap::Unwrap, core::animation_clip::EntityPath};
-use super::bone_mask::{BoneMask, BoneMaskSerial};
 
 #[derive(Reflect, Clone, Copy, Debug, Serialize, Deserialize)]
 pub struct OptParamSpec {
