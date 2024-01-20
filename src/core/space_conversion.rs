@@ -1,7 +1,7 @@
 use super::{
     animation_clip::EntityPath,
     context::PassContext,
-    frame::{BoneFrame, BonePoseFrame, CharacterPoseFrame, GlobalPoseFrame, ValueFrame},
+    frame::{BoneFrame, BonePoseFrame, CharacterPoseFrame, GlobalPoseFrame, ValueFrame}, pose::BoneId,
 };
 use bevy::{ecs::entity::Entity, transform::components::Transform, utils::HashMap};
 use std::collections::VecDeque;
@@ -13,6 +13,8 @@ pub trait SpaceConversion {
     fn character_to_global(&self, data: &CharacterPoseFrame) -> GlobalPoseFrame;
     fn global_to_bone(&self, data: &GlobalPoseFrame) -> BonePoseFrame;
     fn global_to_character(&self, data: &GlobalPoseFrame) -> CharacterPoseFrame;
+
+    fn map_downwards(&self, transform: Transform, data: &BonePoseFrame, source: BoneId, target: BoneId);
 
     fn extend_skeleton_bone(&self, data: &BonePoseFrame) -> BonePoseFrame;
 }
@@ -446,5 +448,35 @@ impl SpaceConversion for PassContext<'_> {
         }
 
         new_frame
+    }
+
+    fn map_downwards(&self,transform: Transform, data: &BonePoseFrame, source: BoneId, target: BoneId) {
+        let (entity, parent_path, parent_transform_frame) = queue.pop_front().unwrap();
+        // --- Compute the updated transform frame
+        // -------------------------------------------------------
+        // First, build the entity path for the current entity
+        let entity_name = self.resources.names_query.get(entity).unwrap();
+        let entity_path = parent_path.child(entity_name.clone());
+
+        // Get the entity's current local transform
+        let (entity_transform, _) = self.resources.transform_query.get(entity).unwrap();
+        let inner_data = data.inner_ref();
+        // Get the corresponding bone frame
+        let bone_frame: BoneFrame = if inner_data.paths.contains_key(&entity_path) {
+            let bone_id = inner_data.paths.get(&entity_path).unwrap();
+            inner_data.bones[*bone_id].clone()
+        } else {
+            BoneFrame::default()
+        };
+
+        // Obtain a merged local transform frame
+        let mut local_transform_frame = ValueFrame {
+            prev: *entity_transform,
+            prev_timestamp: f32::MIN,
+            next: *entity_transform,
+            next_timestamp: f32::MAX,
+            prev_is_wrapped: true,
+            next_is_wrapped: true,
+        };
     }
 }

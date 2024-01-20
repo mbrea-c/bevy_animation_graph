@@ -14,10 +14,7 @@
         (name: "Make Rotation", node: RotationArc),
         (name: "Rotate", node: Rotation),
         (name: "Extend to skeleton", node: ExtendSkeleton),
-        (name: "ToCharacter", node: IntoCharacterSpace),
         (name: "DoIK", node: TwoBoneIK),
-        (name: "ToBone", node: IntoBoneSpace),
-
         (name: "Param graph", node: Graph("animation_graphs/velocity_to_params.animgraph.ron")),
     ],
     input_parameters: {
@@ -49,7 +46,7 @@
         ("Target Path", ("DoIK", "Target Path")),
         ("Target Position", ("DoIK", "Target Position")),
     ],
-    output_pose_edge: Some("ToBone"),
+    output_pose_edge: Some("DoIK"),
     parameter_edges: [
         (("Param graph", "blend_fac"),("Blend", "Factor")),
         (("Param graph", "speed_fac"),("Speed", "Speed")),
@@ -68,8 +65,6 @@
         ("Loop", ("Speed", "Pose In")),
         ("Speed", ("Rotate", "Pose In")),
         ("Rotate", ("Extend to skeleton", "Pose In")),
-        ("Extend to skeleton", ("ToCharacter", "Pose In")),
-        ("ToCharacter", ("DoIK", "Pose In")),
-        ("DoIK", ("ToBone", "Pose In"))
+        ("Extend to skeleton", ("DoIK", "Pose In")),
     ],
 )
