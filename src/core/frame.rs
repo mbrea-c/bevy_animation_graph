@@ -517,13 +517,27 @@ impl PoseFrame {
     }
 }
 
-#[derive(Clone, Copy, Debug, Reflect, Default, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Reflect, Default, Serialize, Deserialize, PartialEq, Eq)]
 pub enum PoseSpec {
     #[default]
     BoneSpace,
     CharacterSpace,
     GlobalSpace,
     Any,
+}
+
+impl PoseSpec {
+    pub fn compatible(&self, other: &Self) -> bool {
+        if self == other {
+            true
+        } else {
+            match (self, other) {
+                (Self::Any, _) => true,
+                (_, Self::Any) => true,
+                _ => false,
+            }
+        }
+    }
 }
 
 impl From<&PoseFrameData> for PoseSpec {

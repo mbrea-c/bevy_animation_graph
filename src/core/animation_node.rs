@@ -19,7 +19,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-pub trait NodeLike: Send + Sync {
+pub trait NodeLike: Send + Sync + Reflect {
     fn parameter_pass(&self, _ctx: PassContext) -> HashMap<PinId, ParamValue> {
         HashMap::new()
     }
@@ -232,6 +232,32 @@ impl AnimationNodeType {
                 let mut nod = n.node.lock().unwrap();
                 f(nod.deref_mut())
             }
+        }
+    }
+
+    pub fn inner_reflect(&mut self) -> &mut dyn Reflect {
+        match self {
+            AnimationNodeType::Clip(n) => n,
+            AnimationNodeType::Blend(n) => n,
+            AnimationNodeType::Chain(n) => n,
+            AnimationNodeType::FlipLR(n) => n,
+            AnimationNodeType::Loop(n) => n,
+            AnimationNodeType::Speed(n) => n,
+            AnimationNodeType::Rotation(n) => n,
+            AnimationNodeType::IntoBoneSpace(n) => n,
+            AnimationNodeType::IntoCharacterSpace(n) => n,
+            AnimationNodeType::IntoGlobalSpace(n) => n,
+            AnimationNodeType::ExtendSkeleton(n) => n,
+            AnimationNodeType::TwoBoneIK(n) => n,
+            AnimationNodeType::AddF32(n) => n,
+            AnimationNodeType::MulF32(n) => n,
+            AnimationNodeType::DivF32(n) => n,
+            AnimationNodeType::SubF32(n) => n,
+            AnimationNodeType::ClampF32(n) => n,
+            AnimationNodeType::AbsF32(n) => n,
+            AnimationNodeType::RotationArc(n) => n,
+            AnimationNodeType::Graph(n) => n,
+            AnimationNodeType::Custom(_) => todo!(),
         }
     }
 }

@@ -1,4 +1,4 @@
-use super::bone_mask::{BoneMask, BoneMaskSerial};
+use super::bone_mask::BoneMask;
 use crate::{core::animation_clip::EntityPath, utils::unwrap::Unwrap};
 use bevy::{
     math::{Quat, Vec3},
@@ -28,7 +28,7 @@ impl From<ParamSpec> for OptParamSpec {
     }
 }
 
-#[derive(Reflect, Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Reflect, Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ParamSpec {
     F32,
     Vec3,
@@ -37,34 +37,13 @@ pub enum ParamSpec {
     BoneMask,
 }
 
-#[derive(Reflect, Clone, Debug)]
+#[derive(Serialize, Deserialize, Reflect, Clone, Debug)]
 pub enum ParamValue {
     F32(f32),
     Vec3(Vec3),
     EntityPath(EntityPath),
     Quat(Quat),
     BoneMask(BoneMask),
-}
-
-#[derive(Reflect, Clone, Debug, Serialize, Deserialize)]
-pub enum ParamValueSerial {
-    F32(f32),
-    Vec3(Vec3),
-    EntityPath(Vec<String>),
-    Quat(Quat),
-    BoneMask(BoneMaskSerial),
-}
-
-impl From<ParamValueSerial> for ParamValue {
-    fn from(value: ParamValueSerial) -> Self {
-        match value {
-            ParamValueSerial::F32(v) => ParamValue::F32(v),
-            ParamValueSerial::Vec3(v) => ParamValue::Vec3(v),
-            ParamValueSerial::EntityPath(v) => ParamValue::EntityPath(v.into()),
-            ParamValueSerial::Quat(v) => ParamValue::Quat(v),
-            ParamValueSerial::BoneMask(v) => ParamValue::BoneMask(v.into()),
-        }
-    }
 }
 
 impl Unwrap<f32> for ParamValue {

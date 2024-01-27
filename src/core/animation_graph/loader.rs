@@ -1,21 +1,24 @@
-use super::AnimationGraph;
+use super::{
+    serial::{AnimationGraphSerial, AnimationNodeTypeSerial},
+    AnimationGraph,
+};
 use crate::{
-    core::{animation_clip::GraphClip, frame::PoseSpec, parameters::ParamValueSerial},
+    core::animation_clip::GraphClip,
     nodes::{
         blend_node::BlendNode, chain_node::ChainNode, clip_node::ClipNode,
         flip_lr_node::FlipLRNode, loop_node::LoopNode, speed_node::SpeedNode, AbsF32, AddF32,
         ClampF32, DivF32, GraphNode, MulF32,
     },
     prelude::{
-        ExtendSkeleton, IntoBoneSpaceNode, IntoCharacterSpaceNode, ParamSpec, RotationArcNode,
-        RotationNode, SubF32, TwoBoneIKNode,
+        ExtendSkeleton, IntoBoneSpaceNode, IntoCharacterSpaceNode, IntoGlobalSpaceNode,
+        RotationArcNode, RotationNode, SubF32, TwoBoneIKNode,
     },
     utils::asset_loader_error::AssetLoaderError,
 };
 use bevy::{
     asset::{io::Reader, AssetLoader, AsyncReadExt, LoadContext},
     gltf::Gltf,
-    utils::{BoxedFuture, HashMap},
+    utils::BoxedFuture,
 };
 use serde::{Deserialize, Serialize};
 
@@ -89,65 +92,6 @@ impl AssetLoader for GraphClipLoader {
     }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
-pub struct AnimationGraphSerial {
-    nodes: Vec<AnimationNodeSerial>,
-    #[serde(default)]
-    input_parameters: HashMap<String, ParamValueSerial>,
-    #[serde(default)]
-    input_pose_spec: HashMap<String, PoseSpec>,
-    #[serde(default)]
-    output_parameter_spec: HashMap<String, ParamSpec>,
-    #[serde(default)]
-    output_pose_spec: Option<PoseSpec>,
-    /// (from_node, from_out_edge) -> (to_node, to_in_edge)
-    /// Note that this is the opposite as [`AnimationGraph`] in order to make
-    /// construction easier, and hand-editing of graph files more natural.
-    #[serde(default)]
-    parameter_edges: Vec<((String, String), (String, String))>,
-    #[serde(default)]
-    pose_edges: Vec<(String, (String, String))>,
-
-    /// parameter_name -> (to_node, to_in_edge)
-    #[serde(default)]
-    input_parameter_edges: Vec<(String, (String, String))>,
-    #[serde(default)]
-    output_parameter_edges: Vec<((String, String), String)>,
-    #[serde(default)]
-    input_pose_edges: Vec<(String, (String, String))>,
-    #[serde(default)]
-    output_pose_edge: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct AnimationNodeSerial {
-    name: String,
-    node: AnimationNodeTypeSerial,
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-pub enum AnimationNodeTypeSerial {
-    Clip(String, Option<f32>),
-    Blend,
-    Chain,
-    FlipLR,
-    Loop,
-    Speed,
-    Rotation,
-    AddF32,
-    SubF32,
-    MulF32,
-    DivF32,
-    ClampF32,
-    AbsF32,
-    RotationArc,
-    IntoBoneSpace,
-    IntoCharacterSpace,
-    ExtendSkeleton,
-    TwoBoneIK,
-    Graph(String),
-}
-
 #[derive(Default)]
 pub struct AnimationGraphLoader;
 
@@ -168,6 +112,13 @@ impl AssetLoader for AnimationGraphLoader {
             let serial: AnimationGraphSerial = ron::de::from_bytes(&bytes)?;
 
             let mut graph = AnimationGraph::new();
+
+            // --- Set up extra data
+            // --- Needs to be done before adding nodes in case data is missing, so that it
+            // --- gets properly initialized.
+            // ------------------------------------------------------------------------------------
+            graph.extra = serial.extra;
+            // ------------------------------------------------------------------------------------
 
             // --- Add nodes
             // ------------------------------------------------------------------------------------
@@ -209,6 +160,9 @@ impl AssetLoader for AnimationGraphLoader {
                     AnimationNodeTypeSerial::TwoBoneIK => {
                         TwoBoneIKNode::new().wrapped(&serial_node.name)
                     }
+                    AnimationNodeTypeSerial::IntoGlobalSpace => {
+                        IntoGlobalSpaceNode::new().wrapped(&serial_node.name)
+                    }
                 };
                 graph.add_node(node);
             }
@@ -216,46 +170,24 @@ impl AssetLoader for AnimationGraphLoader {
 
             // --- Set up inputs and outputs
             // ------------------------------------------------------------------------------------
-            for (param_name, param_value) in &serial.input_parameters {
+            for (param_name, param_value) in &serial.default_parameters {
                 graph.set_default_parameter(param_name, param_value.clone().into());
             }
-            for (pose_name, pose_spec) in &serial.input_pose_spec {
+            for (pose_name, pose_spec) in &serial.input_poses {
                 graph.add_input_pose(pose_name, *pose_spec);
             }
-            for (param_name, param_spec) in &serial.output_parameter_spec {
+            for (param_name, param_spec) in &serial.output_parameters {
                 graph.add_output_parameter(param_name, *param_spec);
             }
-
-            if let Some(output_pose_spec) = serial.output_pose_spec {
+            if let Some(output_pose_spec) = serial.output_pose {
                 graph.add_output_pose(output_pose_spec);
             }
             // ------------------------------------------------------------------------------------
 
             // --- Set up edges
             // ------------------------------------------------------------------------------------
-            for ((source_node, source_edge), (target_node, target_edge)) in &serial.parameter_edges
-            {
-                graph.add_node_parameter_edge(source_node, source_edge, target_node, target_edge);
-            }
-
-            for (source_node, (target_node, target_pin)) in &serial.pose_edges {
-                graph.add_node_pose_edge(source_node, target_node, target_pin);
-            }
-
-            for (param_name, (target_node, target_edge)) in &serial.input_parameter_edges {
-                graph.add_input_parameter_edge(param_name, target_node, target_edge);
-            }
-
-            for ((source_node, source_edge), output_name) in &serial.output_parameter_edges {
-                graph.add_output_parameter_edge(source_node, source_edge, output_name);
-            }
-
-            for (param_name, (target_node, target_edge)) in &serial.input_pose_edges {
-                graph.add_input_pose_edge(param_name, target_node, target_edge);
-            }
-
-            if let Some(node_name) = &serial.output_pose_edge {
-                graph.add_output_pose_edge(node_name);
+            for (target_pin, source_pin) in serial.edges_inverted.clone().into_iter() {
+                graph.add_edge(source_pin.map_into(), target_pin.map_into());
             }
             // ------------------------------------------------------------------------------------
 

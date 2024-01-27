@@ -1,15 +1,13 @@
-use super::{GraphContext, SystemResources};
+use crate::prelude::AnimationGraph;
+use bevy::asset::Assets;
 
+#[derive(Clone, Copy)]
 pub struct SpecContext<'a> {
-    pub context: &'a mut GraphContext,
-    pub context_tmp: &'a SystemResources<'a, 'a>,
+    pub graph_assets: &'a Assets<AnimationGraph>,
 }
 
 impl<'a> SpecContext<'a> {
-    pub fn new(context: &'a mut GraphContext, context_tmp: &'a SystemResources) -> Self {
-        Self {
-            context,
-            context_tmp,
-        }
+    pub fn new(graph_assets: &'a Assets<AnimationGraph>) -> Self {
+        Self { graph_assets }
     }
 }

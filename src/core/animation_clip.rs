@@ -1,6 +1,7 @@
 use bevy::{
     asset::prelude::*, core::prelude::*, math::prelude::*, reflect::prelude::*, utils::HashMap,
 };
+use serde::{Deserialize, Serialize};
 
 /// List of keyframes for one of the attribute of a [`Transform`].
 ///
@@ -69,6 +70,30 @@ impl From<Vec<String>> for EntityPath {
         Self {
             parts: value.into_iter().map(Name::new).collect(),
         }
+    }
+}
+
+impl From<EntityPath> for Vec<String> {
+    fn from(value: EntityPath) -> Self {
+        value.parts.into_iter().map(|n| n.to_string()).collect()
+    }
+}
+
+impl Serialize for EntityPath {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        Vec::<String>::from(self.clone()).serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for EntityPath {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        Vec::<String>::deserialize(deserializer).map(Self::from)
     }
 }
 
