@@ -531,11 +531,7 @@ impl PoseSpec {
         if self == other {
             true
         } else {
-            match (self, other) {
-                (Self::Any, _) => true,
-                (_, Self::Any) => true,
-                _ => false,
-            }
+            matches!((self, other), (Self::Any, _) | (_, Self::Any))
         }
     }
 }

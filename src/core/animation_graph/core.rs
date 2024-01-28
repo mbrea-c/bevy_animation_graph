@@ -1,3 +1,4 @@
+use super::pin;
 use crate::{
     core::{
         animation_node::{AnimationNode, NodeLike},
@@ -18,8 +19,6 @@ use bevy::{
 };
 use serde::{Deserialize, Serialize};
 use std::error::Error;
-
-use super::pin;
 
 pub type NodeId = String;
 pub type PinId = String;
@@ -165,21 +164,38 @@ impl Extra {
             self.node_positions.insert(node_id, Vec2::ZERO);
         }
     }
+
+    /// Rename node if node exists and new name is available, otherwise return false.
+    pub fn rename_node(&mut self, old_id: impl Into<NodeId>, new_id: impl Into<NodeId>) -> bool {
+        let old_id = old_id.into();
+        let new_id = new_id.into();
+
+        if !self.node_positions.contains_key(&old_id) || self.node_positions.contains_key(&new_id) {
+            return false;
+        }
+
+        let pos = self.node_positions.remove(&old_id).unwrap();
+        self.node_positions.insert(new_id, pos);
+
+        true
+    }
 }
 
 #[derive(Debug, Clone, Asset, TypeUuid, Reflect)]
 #[uuid = "92411396-01ae-4528-9839-709a7a321263"]
 pub struct AnimationGraph {
+    #[reflect(ignore)]
     pub nodes: HashMap<String, AnimationNode>,
     /// Inverted, indexed by end pin.
+    #[reflect(ignore)]
     pub edges: HashMap<TargetPin, SourcePin>,
-    pub default_output: Option<String>,
 
     pub default_parameters: HashMap<PinId, ParamValue>,
     pub input_poses: HashMap<PinId, PoseSpec>,
     pub output_parameters: HashMap<PinId, ParamSpec>,
     pub output_pose: Option<PoseSpec>,
 
+    #[reflect(ignore)]
     pub extra: Extra,
 }
 
@@ -195,7 +211,6 @@ impl AnimationGraph {
             nodes: HashMap::new(),
             edges: HashMap::new(),
 
-            default_output: None,
             default_parameters: HashMap::new(),
             input_poses: HashMap::new(),
             output_parameters: HashMap::new(),
@@ -213,6 +228,13 @@ impl AnimationGraph {
         self.nodes.insert(node.name.clone(), node);
     }
 
+    /// Add a new node to the graph
+    pub fn remove_node(&mut self, node_id: impl Into<NodeId>) {
+        let node_id = node_id.into();
+        self.nodes.remove(&node_id);
+        self.extra.node_positions.remove(&node_id);
+    }
+
     /// Add a new edge to the graph
     pub fn add_edge(&mut self, source_pin: SourcePin, target_pin: TargetPin) {
         self.edges.insert(target_pin, source_pin);
@@ -223,23 +245,24 @@ impl AnimationGraph {
         self.edges.remove(target_pin)
     }
 
-    /// Rename node if node exists and new name is available, otherwise return Error.
+    /// Rename node if node exists and new name is available, otherwise return false.
     /// Will rename all references to the node in the graph.
     pub fn rename_node(
         &mut self,
         old_node_id: impl Into<NodeId>,
         new_node_id: impl Into<NodeId>,
-    ) -> Result<(), ()> {
+    ) -> bool {
         let old_id = old_node_id.into();
         let new_id = new_node_id.into();
 
         if !self.nodes.contains_key(&old_id) || self.nodes.contains_key(&new_id) {
-            return Err(());
+            return false;
         }
 
         let mut node = self.nodes.remove(&old_id).unwrap();
         node.name = new_id.clone();
         self.nodes.insert(new_id.clone(), node);
+        let _ = self.extra.rename_node(&old_id, &new_id);
 
         let keys = self.edges.keys().cloned().collect::<Vec<_>>();
         for target_pin in keys.into_iter() {
@@ -250,7 +273,7 @@ impl AnimationGraph {
             self.edges.insert(new_target_pin, new_source_pin);
         }
 
-        Ok(())
+        true
     }
     // ----------------------------------------------------------------------------------------
 
@@ -503,8 +526,7 @@ impl AnimationGraph {
         match source_pin {
             SourcePin::NodePose(sn) => {
                 let node = self.nodes.get(sn)?;
-                let p_spec = node.pose_output_spec(ctx);
-                p_spec
+                node.pose_output_spec(ctx)
             }
             SourcePin::InputPose(ip) => self.input_poses.get(ip).copied(),
             _ => None,
@@ -606,7 +628,7 @@ impl AnimationGraph {
         target_pin: &TargetPin,
         ctx: SpecContext,
     ) -> bool {
-        self.source_exists(&source_pin, ctx) && self.target_exists(&target_pin, ctx)
+        self.source_exists(source_pin, ctx) && self.target_exists(target_pin, ctx)
     }
 
     // Verify that all edges have a source and target. If not, return a set of edges that

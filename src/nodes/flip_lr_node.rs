@@ -9,6 +9,7 @@ use bevy::prelude::*;
 use bevy::utils::HashMap;
 
 #[derive(Reflect, Clone, Debug)]
+#[reflect(Default)]
 pub struct FlipLRNode {}
 
 impl Default for FlipLRNode {
@@ -54,6 +55,6 @@ impl NodeLike for FlipLRNode {
     }
 
     fn display_name(&self) -> String {
-        "🯈|🯇 Flip Left/Right".into()
+        "🚻 Flip Left/Right".into()
     }
 }

@@ -3,9 +3,11 @@ use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
 use crate::core::frame::{PoseFrame, PoseSpec};
 use crate::prelude::{OptParamSpec, ParamSpec, PassContext, SpecContext};
+use bevy::reflect::std_traits::ReflectDefault;
 use bevy::{reflect::Reflect, utils::HashMap};
 
 #[derive(Reflect, Clone, Debug, Default)]
+#[reflect(Default)]
 pub struct SpeedNode;
 
 impl SpeedNode {
@@ -64,6 +66,6 @@ impl NodeLike for SpeedNode {
     }
 
     fn display_name(&self) -> String {
-        "󰓅 Speed".into()
+        "⌚ Speed".into()
     }
 }

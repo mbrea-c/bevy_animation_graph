@@ -28,8 +28,9 @@ impl From<ParamSpec> for OptParamSpec {
     }
 }
 
-#[derive(Reflect, Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Reflect, Default, Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ParamSpec {
+    #[default]
     F32,
     Vec3,
     EntityPath,
@@ -44,6 +45,12 @@ pub enum ParamValue {
     EntityPath(EntityPath),
     Quat(Quat),
     BoneMask(BoneMask),
+}
+
+impl Default for ParamValue {
+    fn default() -> Self {
+        Self::F32(0.)
+    }
 }
 
 impl Unwrap<f32> for ParamValue {

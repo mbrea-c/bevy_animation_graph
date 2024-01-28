@@ -2,6 +2,7 @@ use crate::core::animation_node::{AnimationNode, AnimationNodeType, CustomNode, 
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
+#[reflect(Default)]
 pub struct DummyNode {}
 
 impl DummyNode {

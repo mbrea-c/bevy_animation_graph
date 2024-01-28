@@ -46,8 +46,7 @@ pub struct EntityPath {
 }
 
 impl EntityPath {
-    /// Produce a new `EntityPath` with the given child entity name
-    /// appended to the end
+    /// Produce a new `EntityPath` with the given child entity name appended to the end
     pub fn child(&self, child: impl Into<Name>) -> Self {
         let mut new_path = self.clone();
         new_path.parts.push(child.into());
@@ -61,6 +60,57 @@ impl EntityPath {
             Some(parent)
         } else {
             None
+        }
+    }
+
+    /// Returns a string representation of the path, with '/' as the separator. If any path parts
+    /// themselves contain '/', they will be escaped
+    pub fn to_slashed_string(&self) -> String {
+        let mut escaped_parts = vec![];
+        for part in &self.parts {
+            escaped_parts.push(part.to_string().replace('\\', "\\\\").replace('/', "\\/"));
+        }
+
+        escaped_parts.join("/")
+    }
+
+    pub fn from_slashed_string(path: String) -> Self {
+        Self {
+            parts: (InterpretEscapedString { s: path.chars() })
+                .map(Name::new)
+                .collect(),
+        }
+    }
+}
+
+struct InterpretEscapedString<'a> {
+    s: std::str::Chars<'a>,
+}
+
+impl<'a> Iterator for InterpretEscapedString<'a> {
+    type Item = String;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mut curr_item: Vec<char> = vec![];
+
+        while let Some(c) = self.s.next() {
+            match c {
+                '\\' => match self.s.next() {
+                    None => curr_item.push('\\'), // Trailing backslash just gets returned
+                    Some('/') => curr_item.push('/'),
+                    Some('\\') => curr_item.push('\\'),
+                    // etc.
+                    Some(c) => curr_item.extend(vec!['\\', c]), // Erroneous escape sequence just is a literal
+                },
+                '/' => return Some(curr_item.into_iter().collect()),
+                c => curr_item.push(c),
+            }
+        }
+
+        if curr_item.is_empty() {
+            None
+        } else {
+            Some(curr_item.into_iter().collect())
         }
     }
 }
@@ -160,5 +210,38 @@ impl From<bevy::animation::AnimationClip> for GraphClip {
         // HACK: to get the corret type, since bevy's AnimationClip
         // does not expose its internals
         unsafe { std::mem::transmute(value) }
+    }
+}
+
+//tests
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn entity_path_slashed_string_roundtrip() {
+        let path = "simple/path/here".to_string();
+        let path_rountrip = EntityPath::from_slashed_string(path.clone()).to_slashed_string();
+        assert_eq!(path, path_rountrip);
+
+        let path = "simple/patl/here/with escaled\\/part".to_string();
+        let path_rountrip = EntityPath::from_slashed_string(path.clone()).to_slashed_string();
+        assert_eq!(path, path_rountrip);
+    }
+
+    #[test]
+    fn from_slashed_string_with_escaped_slashes() {
+        let path = "simple/path/here/with escaled\\/part".to_string();
+        let entity_path = EntityPath {
+            parts: vec![
+                Name::new("simple"),
+                Name::new("path"),
+                Name::new("here"),
+                Name::new("with escaled/part"),
+            ],
+        };
+
+        assert_eq!(entity_path, EntityPath::from_slashed_string(path.clone()));
+        assert_eq!(path, entity_path.to_slashed_string());
     }
 }

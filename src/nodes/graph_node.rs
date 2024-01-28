@@ -7,6 +7,7 @@ use bevy::prelude::*;
 use bevy::utils::HashMap;
 
 #[derive(Reflect, Clone, Debug, Default)]
+#[reflect(Default)]
 pub struct GraphNode {
     pub(crate) graph: Handle<AnimationGraph>,
 }
@@ -102,6 +103,6 @@ impl NodeLike for GraphNode {
     }
 
     fn display_name(&self) -> String {
-        "󱁉 Graph".into()
+        "📈 Graph".into()
     }
 }

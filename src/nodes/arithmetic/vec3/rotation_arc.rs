@@ -6,6 +6,7 @@ use bevy::prelude::*;
 use bevy::utils::HashMap;
 
 #[derive(Reflect, Clone, Debug, Default)]
+#[reflect(Default)]
 pub struct RotationArcNode {}
 
 impl RotationArcNode {

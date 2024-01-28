@@ -9,9 +9,13 @@ use crate::{
     prelude::{PassContext, SpecContext},
     utils::unwrap::Unwrap,
 };
-use bevy::{reflect::Reflect, utils::HashMap};
+use bevy::{
+    reflect::{std_traits::ReflectDefault, Reflect},
+    utils::HashMap,
+};
 
 #[derive(Reflect, Clone, Debug, Default)]
+#[reflect(Default)]
 pub struct ExtendSkeleton {}
 
 impl ExtendSkeleton {

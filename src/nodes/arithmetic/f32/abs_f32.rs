@@ -5,6 +5,7 @@ use bevy::prelude::*;
 use bevy::utils::HashMap;
 
 #[derive(Reflect, Clone, Debug, Default)]
+#[reflect(Default)]
 pub struct AbsF32 {}
 
 impl AbsF32 {

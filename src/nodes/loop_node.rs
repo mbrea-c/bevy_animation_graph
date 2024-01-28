@@ -7,6 +7,7 @@ use bevy::prelude::*;
 use bevy::utils::HashMap;
 
 #[derive(Reflect, Clone, Debug, Default)]
+#[reflect(Default)]
 pub struct LoopNode {}
 
 impl LoopNode {
@@ -78,6 +79,6 @@ impl NodeLike for LoopNode {
     }
 
     fn display_name(&self) -> String {
-        "🗘 Loop".into()
+        "🔄 Loop".into()
     }
 }

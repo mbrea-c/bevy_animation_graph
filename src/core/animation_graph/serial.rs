@@ -70,6 +70,7 @@ pub enum AnimationNodeTypeSerial {
     IntoGlobalSpace,
     ExtendSkeleton,
     TwoBoneIK,
+    Dummy,
     Graph(String),
 }
 
@@ -91,14 +92,14 @@ impl From<&AnimationGraph> for AnimationGraphSerial {
             input_poses: value
                 .input_poses
                 .iter()
-                .map(|(k, v)| (k.into(), v.clone()))
+                .map(|(k, v)| (k.into(), *v))
                 .collect(),
             output_parameters: value
                 .output_parameters
                 .iter()
-                .map(|(k, v)| (k.into(), v.clone()))
+                .map(|(k, v)| (k.into(), *v))
                 .collect(),
-            output_pose: value.output_pose.clone(),
+            output_pose: value.output_pose,
             extra: value.extra.clone(),
         }
     }
@@ -138,6 +139,7 @@ impl From<&AnimationNodeType> for AnimationNodeTypeSerial {
             AnimationNodeType::ClampF32(_) => AnimationNodeTypeSerial::ClampF32,
             AnimationNodeType::AbsF32(_) => AnimationNodeTypeSerial::AbsF32,
             AnimationNodeType::RotationArc(_) => AnimationNodeTypeSerial::RotationArc,
+            AnimationNodeType::Dummy(_) => AnimationNodeTypeSerial::Dummy,
             AnimationNodeType::Graph(n) => {
                 AnimationNodeTypeSerial::Graph(n.graph.path().unwrap().to_string())
             }

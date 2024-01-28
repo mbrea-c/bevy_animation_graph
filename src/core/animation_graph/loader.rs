@@ -10,7 +10,7 @@ use crate::{
         ClampF32, DivF32, GraphNode, MulF32,
     },
     prelude::{
-        ExtendSkeleton, IntoBoneSpaceNode, IntoCharacterSpaceNode, IntoGlobalSpaceNode,
+        DummyNode, ExtendSkeleton, IntoBoneSpaceNode, IntoCharacterSpaceNode, IntoGlobalSpaceNode,
         RotationArcNode, RotationNode, SubF32, TwoBoneIKNode,
     },
     utils::asset_loader_error::AssetLoaderError,
@@ -163,6 +163,7 @@ impl AssetLoader for AnimationGraphLoader {
                     AnimationNodeTypeSerial::IntoGlobalSpace => {
                         IntoGlobalSpaceNode::new().wrapped(&serial_node.name)
                     }
+                    AnimationNodeTypeSerial::Dummy => DummyNode::new().wrapped(&serial_node.name),
                 };
                 graph.add_node(node);
             }
@@ -171,7 +172,7 @@ impl AssetLoader for AnimationGraphLoader {
             // --- Set up inputs and outputs
             // ------------------------------------------------------------------------------------
             for (param_name, param_value) in &serial.default_parameters {
-                graph.set_default_parameter(param_name, param_value.clone().into());
+                graph.set_default_parameter(param_name, param_value.clone());
             }
             for (pose_name, pose_spec) in &serial.input_poses {
                 graph.add_input_pose(pose_name, *pose_spec);
