@@ -79,7 +79,7 @@ The resulting locomotion graph looks like this:
 And the parameter computation graph:
 ![Parameter graph example](parameter_graph.png)
 
-A more complex example is included in [examples/human.rs](examples/human.rs).
+A more complex example is included in [crates/bevy_animation_graph/examples/human.rs](crates/bevy_animation_graph/examples/human.rs).
 
 ## Contributing
 
