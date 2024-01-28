@@ -1,4 +1,3 @@
-use super::lib::*;
 use bevy_egui::egui;
 use bevy_inspector_egui::bevy_egui;
 use derivative::Derivative;
@@ -10,15 +9,6 @@ use derivative::Derivative;
 pub struct PinArgs {
     pub background: Option<egui::Color32>,
     pub hovered: Option<egui::Color32>,
-}
-
-impl PinArgs {
-    pub const fn new() -> Self {
-        Self {
-            background: None,
-            hovered: None,
-        }
-    }
 }
 
 #[derive(PartialEq, Clone, Copy, Debug)]
@@ -36,6 +26,7 @@ impl Default for PinType {
 /// Controls the shape of an attribut pin.
 /// Triangle and TriangleFilled are not currently implemented and will not be drawn
 #[derive(Clone, Copy, Debug)]
+#[allow(dead_code)]
 pub enum PinShape {
     Circle,
     CircleFilled,

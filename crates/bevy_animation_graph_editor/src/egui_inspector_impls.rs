@@ -1,6 +1,5 @@
 use bevy::{
-    asset::{io::AssetSourceId, Asset, AssetServer, Assets, Handle, UntypedAssetId},
-    ecs::system::CommandQueue,
+    asset::{Asset, AssetServer, Assets, Handle, UntypedAssetId},
     reflect::{FromReflect, Reflect, TypePath, TypeRegistry},
     utils::HashMap,
 };
@@ -21,7 +20,7 @@ type InspectorEguiImplFnReadonly =
     fn(&dyn Any, &mut egui::Ui, &dyn Any, egui::Id, InspectorUi<'_, '_>);
 
 fn many_unimplemented<T: Any>(
-    ui: &mut egui::Ui,
+    _ui: &mut egui::Ui,
     _options: &dyn Any,
     _id: egui::Id,
     _env: InspectorUi<'_, '_>,
@@ -50,12 +49,12 @@ pub fn register_editor_impls(type_registry: &mut TypeRegistry) {
     add_no_many::<Handle<AnimationGraph>>(
         type_registry,
         asset_picker_ui::<AnimationGraph>,
-        asset_picker_ui_readonly::<AnimationGraph>,
+        todo_readonly_ui,
     );
     add_no_many::<Handle<GraphClip>>(
         type_registry,
         asset_picker_ui::<GraphClip>,
-        asset_picker_ui_readonly::<GraphClip>,
+        todo_readonly_ui,
     );
     add_no_many::<EntityPath>(type_registry, entity_path_ui_mut, entity_path_ui_readonly);
     add_no_many::<AnimationGraph>(type_registry, graph_ui_mut, todo_readonly_ui);
@@ -64,9 +63,9 @@ pub fn register_editor_impls(type_registry: &mut TypeRegistry) {
 pub fn entity_path_ui_mut(
     value: &mut dyn Any,
     ui: &mut egui::Ui,
-    options: &dyn Any,
-    id: egui::Id,
-    mut env: InspectorUi<'_, '_>,
+    _options: &dyn Any,
+    _id: egui::Id,
+    mut _env: InspectorUi<'_, '_>,
 ) -> bool {
     let value = value.downcast_mut::<EntityPath>().unwrap();
     let mut slashed_path = value.to_slashed_string();
@@ -83,9 +82,9 @@ pub fn entity_path_ui_mut(
 pub fn entity_path_ui_readonly(
     value: &dyn Any,
     ui: &mut egui::Ui,
-    options: &dyn Any,
-    id: egui::Id,
-    mut env: InspectorUi<'_, '_>,
+    _options: &dyn Any,
+    _id: egui::Id,
+    mut _env: InspectorUi<'_, '_>,
 ) {
     let value = value.downcast_ref::<EntityPath>().unwrap();
     let slashed_path = value.to_slashed_string();
@@ -95,8 +94,8 @@ pub fn entity_path_ui_readonly(
 pub fn graph_ui_mut(
     value: &mut dyn Any,
     ui: &mut egui::Ui,
-    options: &dyn Any,
-    id: egui::Id,
+    _options: &dyn Any,
+    _id: egui::Id,
     mut env: InspectorUi<'_, '_>,
 ) -> bool {
     let value = value.downcast_mut::<AnimationGraph>().unwrap();
@@ -155,9 +154,9 @@ pub fn better_hashmap<T: Clone + FromReflect + TypePath + Default>(
 pub fn asset_picker_ui<T: Asset>(
     value: &mut dyn Any,
     ui: &mut egui::Ui,
-    options: &dyn Any,
-    id: egui::Id,
-    mut env: InspectorUi<'_, '_>,
+    _options: &dyn Any,
+    _id: egui::Id,
+    env: InspectorUi<'_, '_>,
 ) -> bool {
     let value = value.downcast_mut::<Handle<T>>().unwrap();
     let value_id = value.id();
@@ -169,7 +168,7 @@ pub fn asset_picker_ui<T: Asset>(
         .unwrap()
         .split_off_resource(TypeId::of::<Assets<T>>());
     let t_assets = world_t_assets.get_resource_mut::<Assets<T>>().unwrap();
-    let (asset_server, world) = world.split_off_resource_typed::<AssetServer>().unwrap();
+    let (asset_server, _) = world.split_off_resource_typed::<AssetServer>().unwrap();
 
     let mut selected = value_id;
     egui::ComboBox::from_id_source(&value)
@@ -206,23 +205,12 @@ pub fn asset_picker_ui<T: Asset>(
 }
 
 pub fn todo_readonly_ui(
-    value: &dyn Any,
+    _value: &dyn Any,
     ui: &mut egui::Ui,
-    options: &dyn Any,
-    id: egui::Id,
-    mut env: InspectorUi<'_, '_>,
+    _options: &dyn Any,
+    _id: egui::Id,
+    mut _env: InspectorUi<'_, '_>,
 ) {
-    ui.label("TODO: Asset picker readonly. If you see this please report an issue.");
-}
-
-pub fn asset_picker_ui_readonly<T: Asset>(
-    value: &dyn Any,
-    ui: &mut egui::Ui,
-    options: &dyn Any,
-    id: egui::Id,
-    mut env: InspectorUi<'_, '_>,
-) {
-    let value = value.downcast_ref::<Handle<T>>().unwrap();
     ui.label("TODO: Asset picker readonly. If you see this please report an issue.");
 }
 

@@ -2,7 +2,6 @@ use crate::egui_inspector_impls::handle_name;
 use crate::egui_nodes::lib::NodesContext;
 use crate::graph_show::{make_graph_indices, GraphIndices, GraphReprSpec};
 use crate::graph_update::{convert_graph_change, update_graph, Change, GraphChange};
-use crate::Cli;
 use bevy::core_pipeline::clear_color::ClearColorConfig;
 use bevy::ecs::system::CommandQueue;
 use bevy::prelude::*;
@@ -18,7 +17,6 @@ use bevy_animation_graph::core::context::SpecContext;
 use bevy_egui::EguiContext;
 use bevy_inspector_egui::bevy_egui::EguiUserTextures;
 use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
-use bevy_inspector_egui::restricted_world_view::RestrictedWorldView;
 use bevy_inspector_egui::{bevy_egui, egui};
 use egui_dock::{DockArea, DockState, NodeIndex, Style};
 
@@ -142,29 +140,7 @@ impl egui_dock::TabViewer for TabViewer<'_> {
     type Tab = EguiWindow;
 
     fn ui(&mut self, ui: &mut egui_dock::egui::Ui, window: &mut Self::Tab) {
-        let type_registry = self.world.resource::<AppTypeRegistry>().0.clone();
-        let type_registry = type_registry.read();
-
-        // if !self.graph_changes.is_empty() {
-        //     self.world
-        //         .resource_scope::<Assets<AnimationGraph>, ()>(|_, mut graph_assets| {
-        //             update_graph(self.graph_changes.clone(), &mut graph_assets);
-        //         });
-        //     self.graph_changes.clear();
-        // }
-
         match window {
-            // EguiWindow::GameView => {
-            //     *self.viewport_rect = ui.clip_rect();
-
-            //     draw_gizmo(ui, self.world, self.selected_entities, self.gizmo_mode);
-            // }
-            // EguiWindow::Hierarchy => {
-            //     let selected = hierarchy_ui(self.world, ui, self.selected_entities);
-            //     if selected {
-            //         *self.selection = InspectorSelection::Entities;
-            //     }
-            // }
             EguiWindow::GraphSelector => graph_selector(self.world, ui, self.selection),
             EguiWindow::SceneSelector => scene_selector(self.world, ui, self.selection),
             EguiWindow::GraphEditor => {
@@ -181,9 +157,6 @@ impl egui_dock::TabViewer for TabViewer<'_> {
             }
             EguiWindow::NodeCreate => {
                 node_creator(self.world, ui, self.selection, self.graph_changes)
-            }
-            _ => {
-                ui.label("TODO");
             }
         }
 
@@ -207,11 +180,6 @@ impl egui_dock::TabViewer for TabViewer<'_> {
         format!("{window:?}").into()
     }
 
-    fn clear_background(&self, window: &Self::Tab) -> bool {
-        //!matches!(window, EguiWindow::GameView)
-        true
-    }
-
     fn closeable(&mut self, _tab: &mut Self::Tab) -> bool {
         false
     }
@@ -228,7 +196,7 @@ fn graph_editor(
         return;
     };
 
-    world.resource_scope::<Assets<AnimationGraph>, ()>(|world, graph_assets| {
+    world.resource_scope::<Assets<AnimationGraph>, ()>(|_, graph_assets| {
         if !graph_assets.contains(graph_selection.graph) {
             return;
         }
@@ -284,25 +252,17 @@ pub fn graph_selector(world: &mut World, ui: &mut egui::Ui, selection: &mut Insp
 
     world.resource_scope::<AssetServer, ()>(|world, asset_server| {
         // create a context with access to the world except for the `R` resource
-        world.resource_scope::<Assets<AnimationGraph>, ()>(|world, mut assets| {
-            world.resource_scope::<Cli, ()>(|world, cli| {
-                let mut cx = Context {
-                    world: Some(RestrictedWorldView::new(world)),
-                    queue: Some(&mut queue),
-                };
+        world.resource_scope::<Assets<AnimationGraph>, ()>(|_, assets| {
+            let mut assets: Vec<_> = assets.ids().collect();
+            assets.sort_by(|a, b| a.cmp(b));
+            for handle_id in assets {
+                let response =
+                    ui.selectable_label(false, handle_name(handle_id.untyped(), &asset_server));
 
-                let mut assets: Vec<_> = assets.iter_mut().collect();
-                assets.sort_by(|(a, _), (b, _)| a.cmp(b));
-                for (handle_id, asset) in assets {
-                    let id = egui::Id::new(handle_id);
-                    let response =
-                        ui.selectable_label(false, handle_name(handle_id.untyped(), &asset_server));
-
-                    if response.double_clicked() {
-                        chosen_id = Some(handle_id);
-                    }
+                if response.double_clicked() {
+                    chosen_id = Some(handle_id);
                 }
-            });
+            }
         });
     });
     queue.apply(world);
@@ -322,26 +282,18 @@ pub fn scene_selector(world: &mut World, ui: &mut egui::Ui, selection: &mut Insp
 
     world.resource_scope::<AssetServer, ()>(|world, asset_server| {
         // create a context with access to the world except for the `R` resource
-        world.resource_scope::<Assets<AnimatedScene>, ()>(|world, mut assets| {
-            world.resource_scope::<Cli, ()>(|world, cli| {
-                let mut cx = Context {
-                    world: Some(RestrictedWorldView::new(world)),
-                    queue: Some(&mut queue),
-                };
+        world.resource_scope::<Assets<AnimatedScene>, ()>(|_, assets| {
+            let mut assets: Vec<_> = assets.ids().collect();
+            assets.sort_by(|a, b| a.cmp(b));
+            for handle_id in assets {
+                let path = asset_server.get_path(handle_id).unwrap();
+                let response =
+                    ui.selectable_label(false, handle_name(handle_id.untyped(), &asset_server));
 
-                let mut assets: Vec<_> = assets.iter_mut().collect();
-                assets.sort_by(|(a, _), (b, _)| a.cmp(b));
-                for (handle_id, asset) in assets {
-                    let path = asset_server.get_path(handle_id).unwrap();
-                    let id = egui::Id::new(handle_id);
-                    let response =
-                        ui.selectable_label(false, handle_name(handle_id.untyped(), &asset_server));
-
-                    if response.double_clicked() {
-                        chosen_handle = Some(asset_server.get_handle(path).unwrap());
-                    }
+                if response.double_clicked() {
+                    chosen_handle = Some(asset_server.get_handle(path).unwrap());
                 }
-            });
+            }
         });
     });
     queue.apply(world);

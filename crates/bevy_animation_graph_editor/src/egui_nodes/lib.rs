@@ -1,48 +1,3 @@
-//! egui_nodes: A Egui port of [imnodes](https://github.com/Nelarius/imnodes)
-//!
-//! # Using egui_nodes
-//!
-//! There are some simple examples [here](https://github.com/theoparis/egui_nodes/tree/main/examples)
-//!
-//! Here is the basic usage:
-//! ``` rust
-//! use egui_nodes::{Context, NodeConstructor, LinkArgs};
-//! use egui::Ui;
-//!
-//! pub fn example_graph(ctx: &mut Context, links: &mut Vec<(usize, usize)>, ui: &mut Ui) {
-//!     // add nodes with attributes
-//!     let nodes = vec![
-//!         NodeConstructor::new(0, Default::default())
-//!             .with_title(|ui| ui.label("Example Node A"))
-//!             .with_input_attribute(0, Default::default(), |ui| ui.label("Input"))
-//!             .with_static_attribute(1, |ui| ui.label("Can't Connect to Me"))
-//!             .with_output_attribute(2, Default::default(), |ui| ui.label("Output")),
-//!         NodeConstructor::new(1, Default::default())
-//!             .with_title(|ui| ui.label("Example Node B"))
-//!             .with_static_attribute(3, |ui| ui.label("Can't Connect to Me"))
-//!             .with_output_attribute(4, Default::default(), |ui| ui.label("Output"))
-//!             .with_input_attribute(5, Default::default(), |ui| ui.label("Input"))
-//!     ];
-//!
-//!     // add them to the ui
-//!     ctx.show(
-//!         nodes,
-//!         links.iter().enumerate().map(|(i, (start, end))| (i, *start, *end, LinkArgs::default())),
-//!         ui
-//!     );
-//!     
-//!     // remove destroyed links
-//!     if let Some(idx) = ctx.link_destroyed() {
-//!         links.remove(idx);
-//!     }
-//!
-//!     // add created links
-//!     if let Some((start, end, _)) = ctx.link_created() {
-//!         links.push((start, end))
-//!     }
-//! }
-//! ```
-
 use bevy::math::Vec2;
 use bevy_egui::egui;
 use bevy_inspector_egui::bevy_egui;
@@ -371,25 +326,30 @@ impl NodesContext {
         response
     }
 
+    #[allow(dead_code)]
     pub fn set_node_draggable(&mut self, node_id: usize, draggable: bool) {
         self.nodes.get_mut(&node_id).unwrap().state.draggable = draggable;
     }
 
     /// Check if there is a node that is hovered by the pointer
+    #[allow(dead_code)]
     pub fn node_hovered(&self) -> Option<usize> {
         self.frame_state.hovered_node_index
     }
 
     /// Check if there is a link that is hovered by the pointer
+    #[allow(dead_code)]
     pub fn link_hovered(&self) -> Option<usize> {
         self.frame_state.hovered_link_idx
     }
 
     /// Check if there is a pin that is hovered by the pointer
+    #[allow(dead_code)]
     pub fn pin_hovered(&self) -> Option<usize> {
         self.frame_state.hovered_pin_index
     }
 
+    #[allow(dead_code)]
     pub fn num_selected_nodes(&self) -> usize {
         self.state.selected_link_indices.len()
     }
@@ -398,24 +358,29 @@ impl NodesContext {
         self.state.selected_node_indices.clone()
     }
 
+    #[allow(dead_code)]
     pub fn get_selected_links(&self) -> Vec<usize> {
         self.state.selected_link_indices.clone()
     }
 
+    #[allow(dead_code)]
     pub fn clear_node_selection(&mut self) {
         self.state.selected_node_indices.clear()
     }
 
+    #[allow(dead_code)]
     pub fn clear_link_selection(&mut self) {
         self.state.selected_link_indices.clear()
     }
 
     /// Check if an attribute is currently being interacted with
+    #[allow(dead_code)]
     pub fn active_attribute(&self) -> Option<usize> {
         self.frame_state.active_pin
     }
 
     /// Has a new link been created from a pin?
+    #[allow(dead_code)]
     pub fn link_started(&self) -> Option<usize> {
         if self.frame_state.element_state_change.link_started {
             Some(
@@ -430,6 +395,7 @@ impl NodesContext {
     }
 
     /// Has a link been dropped? if including_detached_links then links that were detached then dropped are included
+    #[allow(dead_code)]
     pub fn link_dropped(&self, including_detached_links: bool) -> Option<usize> {
         if self.frame_state.element_state_change.link_dropped
             && (including_detached_links
@@ -483,6 +449,7 @@ impl NodesContext {
 
     /// Has a new link been created? Includes start and end node
     /// -> Option<start_pin, start_node, end_pin, end_node created_from_snap>
+    #[allow(dead_code)]
     pub fn link_created_node(&self) -> Option<(usize, usize, usize, usize, bool)> {
         if self.frame_state.element_state_change.link_created {
             let (start_pin_id, start_node_id, end_pin_id, end_node_id) = {
@@ -530,6 +497,7 @@ impl NodesContext {
     }
 
     /// If an existing link has been detached
+    #[allow(dead_code)]
     pub fn link_destroyed(&self) -> Option<usize> {
         self.frame_state.deleted_link_idx
     }
@@ -539,14 +507,17 @@ impl NodesContext {
         &self.frame_state.graph_changes
     }
 
+    #[allow(dead_code)]
     pub fn get_panning(&self) -> egui::Vec2 {
         self.state.panning
     }
 
+    #[allow(dead_code)]
     pub fn reset_panniing(&mut self, panning: egui::Vec2) {
         self.state.panning = panning;
     }
 
+    #[allow(dead_code)]
     pub fn get_node_dimensions(&self, id: usize) -> Option<egui::Vec2> {
         self.nodes.get(&id).map(|n| n.state.rect.size())
     }
@@ -713,6 +684,7 @@ impl NodesContext {
         }
     }
 
+    #[allow(dead_code)]
     fn screen_space_to_grid_space(&self, v: egui::Pos2) -> egui::Pos2 {
         v - self.frame_state.canvas_origin_screen_space() - self.state.panning
     }
@@ -721,10 +693,12 @@ impl NodesContext {
         v + self.frame_state.canvas_origin_screen_space() + self.state.panning
     }
 
+    #[allow(dead_code)]
     fn grid_space_to_editor_spcae(&self, v: egui::Pos2) -> egui::Pos2 {
         v + self.state.panning
     }
 
+    #[allow(dead_code)]
     fn editor_space_to_grid_spcae(&self, v: egui::Pos2) -> egui::Pos2 {
         v - self.state.panning
     }
@@ -1463,6 +1437,7 @@ pub struct IO {
 
 /// Used to track which Egui Modifier needs to be pressed for certain IO actions
 #[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
 pub enum Modifier {
     Alt,
     Crtl,

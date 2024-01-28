@@ -8,7 +8,7 @@ use std::path::PathBuf;
 
 use bevy::{
     asset::{
-        io::{file::FileAssetReader, AssetReader, AssetSource},
+        io::{file::FileAssetReader, AssetReader},
         LoadedFolder,
     },
     prelude::*,
@@ -102,6 +102,7 @@ fn save_graph_system(world: &mut World) {
                     // file path via "other means".
                     // unsafe downcast reader to FileAssetReader, since as_any is not implemented
                     // pray that nothing goes wrong
+                    // TODO: An alternative could perhaps be to use the value in the Cli resource?
                     let reader =
                         unsafe { &*((reader as *const dyn AssetReader) as *const FileAssetReader) };
                     let mut final_path = reader.root_path().clone();

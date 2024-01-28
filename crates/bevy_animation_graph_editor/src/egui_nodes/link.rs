@@ -1,4 +1,4 @@
-use super::{lib::*, pin::PinType};
+use super::pin::PinType;
 use bevy_egui::egui;
 use bevy_inspector_egui::bevy_egui;
 use derivative::Derivative;

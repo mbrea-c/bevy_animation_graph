@@ -4,7 +4,7 @@ use bevy_inspector_egui::bevy_egui;
 use super::{
     lib::*,
     link::{LinkColorArgs, LinkDataColorStyle},
-    node::{NodeData, NodeDataColorStyle, NodeDataLayoutStyle},
+    node::{NodeDataColorStyle, NodeDataLayoutStyle},
     pin::{PinDataColorStyle, PinType},
 };
 
@@ -32,6 +32,7 @@ pub enum ColorStyle {
 
 /// Controls some style aspects
 #[derive(Debug)]
+#[allow(dead_code)]
 pub enum StyleFlags {
     None = 0,
     NodeOutline = 1 << 0,
@@ -77,6 +78,7 @@ impl ColorStyle {
     }
 
     /// classic color style
+    #[allow(dead_code)]
     pub fn colors_classic() -> [egui::Color32; ColorStyle::Count as usize] {
         let mut colors = [egui::Color32::BLACK; ColorStyle::Count as usize];
         colors[ColorStyle::NodeBackground as usize] =
@@ -114,6 +116,7 @@ impl ColorStyle {
     }
 
     /// light color style
+    #[allow(dead_code)]
     pub fn colors_light() -> [egui::Color32; ColorStyle::Count as usize] {
         let mut colors = [egui::Color32::BLACK; ColorStyle::Count as usize];
         colors[ColorStyle::NodeBackground as usize] =
