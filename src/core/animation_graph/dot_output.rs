@@ -330,11 +330,14 @@ impl ToDot for AnimationGraph {
             };
             write!(f, "</TD></TR>",)?;
 
-            let in_param = node.parameter_input_spec(SpecContext::new(ctx, context_tmp));
-            let out_param = node.parameter_output_spec(SpecContext::new(ctx, context_tmp));
+            let in_param =
+                node.parameter_input_spec(SpecContext::new(&context_tmp.animation_graph_assets));
+            let out_param =
+                node.parameter_output_spec(SpecContext::new(&context_tmp.animation_graph_assets));
 
-            let in_td = node.pose_input_spec(SpecContext::new(ctx, context_tmp));
-            let out_td = node.pose_output_spec(SpecContext::new(ctx, context_tmp));
+            let in_td = node.pose_input_spec(SpecContext::new(&context_tmp.animation_graph_assets));
+            let out_td =
+                node.pose_output_spec(SpecContext::new(&context_tmp.animation_graph_assets));
 
             write_rows(
                 f,
@@ -366,7 +369,11 @@ impl ToDot for AnimationGraph {
         )?;
         write!(f, "<TR><TD COLSPAN=\"2\"><B>{}</B>", name)?;
         write!(f, "</TD></TR>",)?;
-        let out_param = self.input_parameters.clone();
+        let out_param = self
+            .default_parameters
+            .iter()
+            .map(|(k, v)| (k.into(), v.into()))
+            .collect();
         write_rows(f, HashMap::new(), out_param)?;
         writeln!(f, "</TABLE>>]")?;
         // --------------------------------------------------------

@@ -9,6 +9,7 @@ use bevy::prelude::*;
 use bevy::utils::HashMap;
 
 #[derive(Reflect, Clone, Debug)]
+#[reflect(Default)]
 pub struct RotationNode {}
 
 impl Default for RotationNode {
@@ -81,6 +82,6 @@ impl NodeLike for RotationNode {
     }
 
     fn display_name(&self) -> String {
-        "󰶘 Rotation".into()
+        "⮩ Rotation".into()
     }
 }

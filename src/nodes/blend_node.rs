@@ -8,6 +8,7 @@ use bevy::prelude::*;
 use bevy::utils::HashMap;
 
 #[derive(Reflect, Clone, Debug, Default)]
+#[reflect(Default)]
 pub struct BlendNode;
 
 impl BlendNode {
@@ -66,6 +67,6 @@ impl NodeLike for BlendNode {
     }
 
     fn display_name(&self) -> String {
-        "󰳫 Blend".into()
+        "∑ Blend".into()
     }
 }

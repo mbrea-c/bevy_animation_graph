@@ -6,6 +6,7 @@ use bevy::prelude::*;
 use bevy::utils::HashMap;
 
 #[derive(Reflect, Clone, Debug, Default)]
+#[reflect(Default)]
 pub struct RotationArcNode {}
 
 impl RotationArcNode {
@@ -35,13 +36,13 @@ impl NodeLike for RotationArcNode {
 
     fn parameter_input_spec(&self, _: SpecContext) -> HashMap<PinId, OptParamSpec> {
         HashMap::from([
-            (Self::INPUT_1.into(), ParamSpec::F32.into()),
-            (Self::INPUT_2.into(), ParamSpec::F32.into()),
+            (Self::INPUT_1.into(), ParamSpec::Vec3.into()),
+            (Self::INPUT_2.into(), ParamSpec::Vec3.into()),
         ])
     }
 
     fn parameter_output_spec(&self, _: SpecContext) -> HashMap<PinId, ParamSpec> {
-        HashMap::from([(Self::OUTPUT.into(), ParamSpec::F32)])
+        HashMap::from([(Self::OUTPUT.into(), ParamSpec::Quat)])
     }
 
     fn display_name(&self) -> String {

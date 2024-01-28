@@ -1,3 +1,4 @@
+use super::pin;
 use crate::{
     core::{
         animation_node::{AnimationNode, NodeLike},
@@ -7,31 +8,23 @@ use crate::{
     },
     prelude::{
         DeferredGizmos, GraphContext, OptParamSpec, ParamSpec, ParamValue, PassContext,
-        SampleLinearAt, SystemResources,
+        SampleLinearAt, SpecContext, SystemResources,
     },
     utils::unwrap::Unwrap,
 };
-use bevy::{prelude::*, reflect::TypeUuid, utils::HashMap};
+use bevy::{
+    prelude::*,
+    reflect::TypeUuid,
+    utils::{HashMap, HashSet},
+};
+use serde::{Deserialize, Serialize};
 use std::error::Error;
 
 pub type NodeId = String;
 pub type PinId = String;
 
-#[derive(Reflect, Debug, Clone, PartialEq, Eq, Hash)]
-pub enum TargetPin {
-    NodeParameter(NodeId, PinId),
-    OutputParameter(PinId),
-    NodePose(NodeId, PinId),
-    OutputPose,
-}
-
-#[derive(Reflect, Debug, Clone, PartialEq, Eq, Hash)]
-pub enum SourcePin {
-    NodeParameter(NodeId, PinId),
-    InputParameter(PinId),
-    NodePose(NodeId),
-    InputPose(PinId),
-}
+pub type TargetPin = pin::TargetPin<NodeId, PinId>;
+pub type SourcePin = pin::SourcePin<NodeId, PinId>;
 
 #[derive(Reflect, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct Edge {
@@ -133,19 +126,77 @@ impl std::fmt::Display for GraphError {
 
 impl Error for GraphError {}
 
+#[derive(Debug, Clone, Reflect, Default)]
+pub struct ExplainedGraphError {}
+
+/// Extra data for the graph that has no effect in evaluation.
+/// Used for editor data, such as node positions in screen.
+#[derive(Debug, Clone, Reflect, Default, Serialize, Deserialize)]
+pub struct Extra {
+    /// Positions in canvas of each node
+    pub node_positions: HashMap<NodeId, Vec2>,
+    /// Position in canvas of special inputs node
+    pub input_position: Vec2,
+    /// Position in canvas of special outputs node
+    pub output_position: Vec2,
+}
+
+impl Extra {
+    /// Set node position (for editor)
+    pub fn set_node_position(&mut self, node_id: impl Into<NodeId>, position: Vec2) {
+        self.node_positions.insert(node_id.into(), position);
+    }
+
+    /// Set input node position (for editor)
+    pub fn set_input_position(&mut self, position: Vec2) {
+        self.input_position = position;
+    }
+
+    /// Set input node position (for editor)
+    pub fn set_output_position(&mut self, position: Vec2) {
+        self.output_position = position;
+    }
+
+    /// Add default position for new node if not already there
+    pub fn node_added(&mut self, node_id: impl Into<NodeId>) {
+        let node_id = node_id.into();
+        if !self.node_positions.contains_key(&node_id) {
+            self.node_positions.insert(node_id, Vec2::ZERO);
+        }
+    }
+
+    /// Rename node if node exists and new name is available, otherwise return false.
+    pub fn rename_node(&mut self, old_id: impl Into<NodeId>, new_id: impl Into<NodeId>) -> bool {
+        let old_id = old_id.into();
+        let new_id = new_id.into();
+
+        if !self.node_positions.contains_key(&old_id) || self.node_positions.contains_key(&new_id) {
+            return false;
+        }
+
+        let pos = self.node_positions.remove(&old_id).unwrap();
+        self.node_positions.insert(new_id, pos);
+
+        true
+    }
+}
+
 #[derive(Debug, Clone, Asset, TypeUuid, Reflect)]
 #[uuid = "92411396-01ae-4528-9839-709a7a321263"]
 pub struct AnimationGraph {
+    #[reflect(ignore)]
     pub nodes: HashMap<String, AnimationNode>,
-    /// Inverted, indexed by output node name.
+    /// Inverted, indexed by end pin.
+    #[reflect(ignore)]
     pub edges: HashMap<TargetPin, SourcePin>,
-    pub default_output: Option<String>,
 
     pub default_parameters: HashMap<PinId, ParamValue>,
-    pub input_parameters: HashMap<PinId, OptParamSpec>,
     pub input_poses: HashMap<PinId, PoseSpec>,
     pub output_parameters: HashMap<PinId, ParamSpec>,
     pub output_pose: Option<PoseSpec>,
+
+    #[reflect(ignore)]
+    pub extra: Extra,
 }
 
 impl Default for AnimationGraph {
@@ -160,12 +211,12 @@ impl AnimationGraph {
             nodes: HashMap::new(),
             edges: HashMap::new(),
 
-            default_output: None,
             default_parameters: HashMap::new(),
-            input_parameters: HashMap::new(),
             input_poses: HashMap::new(),
             output_parameters: HashMap::new(),
             output_pose: None,
+
+            extra: Extra::default(),
         }
     }
 
@@ -173,12 +224,56 @@ impl AnimationGraph {
     // ----------------------------------------------------------------------------------------
     /// Add a new node to the graph
     pub fn add_node(&mut self, node: AnimationNode) {
+        self.extra.node_added(&node.name);
         self.nodes.insert(node.name.clone(), node);
+    }
+
+    /// Add a new node to the graph
+    pub fn remove_node(&mut self, node_id: impl Into<NodeId>) {
+        let node_id = node_id.into();
+        self.nodes.remove(&node_id);
+        self.extra.node_positions.remove(&node_id);
     }
 
     /// Add a new edge to the graph
     pub fn add_edge(&mut self, source_pin: SourcePin, target_pin: TargetPin) {
         self.edges.insert(target_pin, source_pin);
+    }
+
+    /// Remove an edge from the graph.
+    pub fn remove_edge(&mut self, target_pin: &TargetPin) -> Option<SourcePin> {
+        self.edges.remove(target_pin)
+    }
+
+    /// Rename node if node exists and new name is available, otherwise return false.
+    /// Will rename all references to the node in the graph.
+    pub fn rename_node(
+        &mut self,
+        old_node_id: impl Into<NodeId>,
+        new_node_id: impl Into<NodeId>,
+    ) -> bool {
+        let old_id = old_node_id.into();
+        let new_id = new_node_id.into();
+
+        if !self.nodes.contains_key(&old_id) || self.nodes.contains_key(&new_id) {
+            return false;
+        }
+
+        let mut node = self.nodes.remove(&old_id).unwrap();
+        node.name = new_id.clone();
+        self.nodes.insert(new_id.clone(), node);
+        let _ = self.extra.rename_node(&old_id, &new_id);
+
+        let keys = self.edges.keys().cloned().collect::<Vec<_>>();
+        for target_pin in keys.into_iter() {
+            let source_pin = self.edges.remove(&target_pin).unwrap();
+            let new_target_pin = target_pin.node_renamed(old_id.clone(), new_id.clone());
+            let new_source_pin = source_pin.node_renamed(old_id.clone(), new_id.clone());
+
+            self.edges.insert(new_target_pin, new_source_pin);
+        }
+
+        true
     }
     // ----------------------------------------------------------------------------------------
 
@@ -189,7 +284,6 @@ impl AnimationGraph {
         let parameter_name = parameter_name.into();
         let mut spec = OptParamSpec::from(&value);
         spec.optional = true;
-        self.input_parameters.insert(parameter_name.clone(), spec);
         self.default_parameters
             .insert(parameter_name.clone(), value);
     }
@@ -332,6 +426,228 @@ impl AnimationGraph {
         }
         Ok(())
     }
+
+    /// Check whether a new edge can be added to the graph. If not, return whether an edge
+    /// can be removed to maybe make it possible.
+    /// It is not guaranteed that the edge will be legal after a single edge removal,
+    /// so this function should be called repeatedly until it returns Ok(()) or Err(None)
+    pub fn can_add_edge(&self, edge: Edge, ctx: SpecContext) -> Result<(), Option<Edge>> {
+        // --- Verify source and target exist
+        // -----------------------------------------------------------------
+        if !self.edge_ends_exist(&edge.source, &edge.target, ctx) {
+            return Err(None);
+        }
+        // -----------------------------------------------------------------
+
+        // --- Verify matching types
+        // -----------------------------------------------------------------
+        if !self.edge_end_types_match(&edge.source, &edge.target, ctx) {
+            return Err(None);
+        }
+        // -----------------------------------------------------------------
+
+        // --- Verify target does not already exist
+        // -----------------------------------------------------------------
+        if self.edges.contains_key(&edge.target) {
+            return Err(Some(Edge {
+                source: self.edges.get(&edge.target).unwrap().clone(),
+                target: edge.target,
+            }));
+        }
+        // -----------------------------------------------------------------
+
+        Ok(())
+    }
+
+    /// Verify that graph edges are legal. If not, return a set of edges that
+    /// when removed would make the graph legal.
+    ///
+    /// Reasons for edges to make the graph illegal are:
+    ///  - Two pose edges share the same source.
+    ///  - An edge source and target pins have different types. This could be:
+    ///    - Pose pin connected to a parameter pin.
+    ///    - Pose type mismatch.
+    ///    - Parameter type mismatch.
+    ///  - An edge source pin, target pin or both are missing. This could be because:
+    ///    - The source node, target node or both are missing.
+    ///    - The source node or target node do not have the named pin.
+    ///  - Cycle.
+    pub fn validate_edges(&self, ctx: SpecContext) -> Result<(), HashSet<Edge>> {
+        let mut illegal_edges = self.validate_pose_edges_one_to_one();
+        illegal_edges.extend(self.validate_edge_type_match(ctx));
+        illegal_edges.extend(self.validate_edge_ends_present(ctx));
+
+        // TODO: Cycle detection
+
+        if illegal_edges.is_empty() {
+            Ok(())
+        } else {
+            Err(illegal_edges)
+        }
+    }
+
+    fn extract_target_param_spec(
+        &self,
+        target_pin: &TargetPin,
+        ctx: SpecContext,
+    ) -> Option<ParamSpec> {
+        match target_pin {
+            TargetPin::NodeParameter(tn, tp) => {
+                let node = self.nodes.get(tn)?;
+                let p_spec = node.parameter_input_spec(ctx);
+                p_spec.get(tp).map(|op| op.spec)
+            }
+            TargetPin::OutputParameter(op) => self.output_parameters.get(op).copied(),
+            _ => None,
+        }
+    }
+
+    fn extract_source_param_spec(
+        &self,
+        source_pin: &SourcePin,
+        ctx: SpecContext,
+    ) -> Option<ParamSpec> {
+        match source_pin {
+            SourcePin::NodeParameter(tn, tp) => {
+                let node = self.nodes.get(tn)?;
+                let p_spec = node.parameter_output_spec(ctx);
+                p_spec.get(tp).copied()
+            }
+            SourcePin::InputParameter(ip) => self.default_parameters.get(ip).map(|ip| ip.into()),
+            _ => None,
+        }
+    }
+
+    fn extract_source_pose_spec(
+        &self,
+        source_pin: &SourcePin,
+        ctx: SpecContext,
+    ) -> Option<PoseSpec> {
+        match source_pin {
+            SourcePin::NodePose(sn) => {
+                let node = self.nodes.get(sn)?;
+                node.pose_output_spec(ctx)
+            }
+            SourcePin::InputPose(ip) => self.input_poses.get(ip).copied(),
+            _ => None,
+        }
+    }
+
+    fn extract_target_pose_spec(
+        &self,
+        target_pin: &TargetPin,
+        ctx: SpecContext,
+    ) -> Option<PoseSpec> {
+        match target_pin {
+            TargetPin::NodePose(tn, tp) => {
+                let node = self.nodes.get(tn)?;
+                node.pose_input_spec(ctx).get(tp).copied()
+            }
+            TargetPin::OutputPose => self.output_pose,
+            _ => None,
+        }
+    }
+
+    /// Verify that no two pose edges have mismatched types. If not, return a set of edges that
+    /// when removed would make the graph legal (according to this restriction).
+    fn validate_edge_type_match(&self, ctx: SpecContext) -> HashSet<Edge> {
+        let mut illegal_edges = HashSet::new();
+
+        for (target_pin, source_pin) in self.edges.iter() {
+            if !self.edge_end_types_match(source_pin, target_pin, ctx) {
+                illegal_edges.insert(Edge {
+                    source: source_pin.clone(),
+                    target: target_pin.clone(),
+                });
+            }
+        }
+
+        illegal_edges
+    }
+
+    /// Verify that no two pose edges share the same source. If not, return a set of edges that
+    /// when removed would make the graph legal (according to this restriction).
+    fn validate_pose_edges_one_to_one(&self) -> HashSet<Edge> {
+        let mut illegal_edges = HashSet::new();
+
+        let mut used_sources = HashSet::<SourcePin>::new();
+
+        for (target_pin, source_pin) in self.edges.iter() {
+            match source_pin {
+                SourcePin::NodePose(_) | SourcePin::InputPose(_) => {
+                    if used_sources.contains(source_pin) {
+                        illegal_edges.insert(Edge {
+                            source: source_pin.clone(),
+                            target: target_pin.clone(),
+                        });
+                    } else {
+                        used_sources.insert(source_pin.clone());
+                    }
+                }
+                _ => {}
+            }
+        }
+
+        illegal_edges
+    }
+
+    fn source_exists(&self, source_pin: &SourcePin, ctx: SpecContext) -> bool {
+        self.extract_source_param_spec(source_pin, ctx).is_some()
+            || self.extract_source_pose_spec(source_pin, ctx).is_some()
+    }
+
+    fn target_exists(&self, target_pin: &TargetPin, ctx: SpecContext) -> bool {
+        self.extract_target_param_spec(target_pin, ctx).is_some()
+            || self.extract_target_pose_spec(target_pin, ctx).is_some()
+    }
+
+    fn edge_end_types_match(
+        &self,
+        source_pin: &SourcePin,
+        target_pin: &TargetPin,
+        ctx: SpecContext,
+    ) -> bool {
+        if let Some(source_spec) = self.extract_source_param_spec(source_pin, ctx) {
+            self.extract_target_param_spec(target_pin, ctx)
+                .and_then(|target_spec| (source_spec == target_spec).then_some(()))
+                .is_some()
+        } else {
+            self.extract_source_pose_spec(source_pin, ctx)
+                .and_then(|source_spec| {
+                    self.extract_target_pose_spec(target_pin, ctx)
+                        .map(|target_spec| (source_spec, target_spec))
+                })
+                .and_then(|(s, t)| (s.compatible(&t)).then_some(()))
+                .is_some()
+        }
+    }
+
+    fn edge_ends_exist(
+        &self,
+        source_pin: &SourcePin,
+        target_pin: &TargetPin,
+        ctx: SpecContext,
+    ) -> bool {
+        self.source_exists(source_pin, ctx) && self.target_exists(target_pin, ctx)
+    }
+
+    // Verify that all edges have a source and target. If not, return a set of edges that
+    // when removed would make the graph legal (according to this restriction).
+    fn validate_edge_ends_present(&self, ctx: SpecContext) -> HashSet<Edge> {
+        let mut illegal_edges = HashSet::new();
+
+        for (target_pin, source_pin) in self.edges.iter() {
+            if !self.edge_ends_exist(source_pin, target_pin, ctx) {
+                illegal_edges.insert(Edge {
+                    source: source_pin.clone(),
+                    target: target_pin.clone(),
+                });
+            }
+        }
+
+        illegal_edges
+    }
+
     // ----------------------------------------------------------------------------------------
 
     // --- Computations

@@ -7,6 +7,7 @@ use bevy::prelude::*;
 use bevy::utils::HashMap;
 
 #[derive(Reflect, Clone, Debug, Default)]
+#[reflect(Default)]
 pub struct GraphNode {
     pub(crate) graph: Handle<AnimationGraph>,
 }
@@ -78,42 +79,30 @@ impl NodeLike for GraphNode {
     }
 
     fn parameter_input_spec(&self, ctx: SpecContext) -> HashMap<PinId, OptParamSpec> {
-        let graph = ctx
-            .context_tmp
-            .animation_graph_assets
-            .get(&self.graph)
-            .unwrap();
-        graph.input_parameters.clone()
+        let graph = ctx.graph_assets.get(&self.graph).unwrap();
+        graph
+            .default_parameters
+            .iter()
+            .map(|(k, v)| (k.into(), v.into()))
+            .collect()
     }
 
     fn parameter_output_spec(&self, ctx: SpecContext) -> HashMap<PinId, ParamSpec> {
-        let graph = ctx
-            .context_tmp
-            .animation_graph_assets
-            .get(&self.graph)
-            .unwrap();
+        let graph = ctx.graph_assets.get(&self.graph).unwrap();
         graph.output_parameters.clone()
     }
 
     fn pose_input_spec(&self, ctx: SpecContext) -> HashMap<PinId, PoseSpec> {
-        let graph = ctx
-            .context_tmp
-            .animation_graph_assets
-            .get(&self.graph)
-            .unwrap();
+        let graph = ctx.graph_assets.get(&self.graph).unwrap();
         graph.input_poses.clone()
     }
 
     fn pose_output_spec(&self, ctx: SpecContext) -> Option<PoseSpec> {
-        let graph = ctx
-            .context_tmp
-            .animation_graph_assets
-            .get(&self.graph)
-            .unwrap();
+        let graph = ctx.graph_assets.get(&self.graph).unwrap();
         graph.output_pose
     }
 
     fn display_name(&self) -> String {
-        "󱁉 Graph".into()
+        "📈 Graph".into()
     }
 }

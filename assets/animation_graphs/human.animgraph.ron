@@ -11,13 +11,11 @@
         (name: "Blend", node: Blend), 
         (name: "Loop", node: Loop), 
         (name: "Speed", node: Speed), 
-
         (name: "Make Rotation", node: RotationArc),
         (name: "Rotate", node: Rotation),
-
         (name: "Param graph", node: Graph("animation_graphs/velocity_to_params.animgraph.ron")),
     ],
-    input_parameters: {
+    default_parameters: {
         "Target Speed": F32(1.5),
         "Target Direction": Vec3((1., 0., 0.)),
 
@@ -31,32 +29,28 @@
         ),
         "Z": Vec3((0., 0., 1.)),
     },
-    output_pose_spec: Some(BoneSpace),
-    input_parameter_edges: [
-        ("Target Speed", ("Param graph", "Target Speed")),
-
-        ("Z",                ("Make Rotation", "Vec3 In 1")),
-        ("Target Direction", ("Make Rotation", "Vec3 In 2")),
-
-        ("Rotation Mask", ("Rotate", "Bone Mask")),
-    ],
-    output_pose_edge: Some("Rotate"),
-    parameter_edges: [
-        (("Param graph", "blend_fac"),("Blend", "Factor")),
-        (("Param graph", "speed_fac"),("Speed", "Speed")),
-        (("Make Rotation", "Quat Out"),("Rotate", "Rotation")),
-    ],
-    pose_edges: [
-        ("Walk Clip", ("Walk Chain", "Pose In 1")),
-        ("Walk Clip 2", ("Walk Flip LR", "Pose In")),
-        ("Walk Flip LR", ("Walk Chain", "Pose In 2")),
-        ("Run Clip", ("Run Chain", "Pose In 1")),
-        ("Run Clip 2", ("Run Flip LR", "Pose In")),
-        ("Run Flip LR", ("Run Chain", "Pose In 2")),
-        ("Walk Chain", ("Blend", "Pose In 1")),
-        ("Run Chain", ("Blend", "Pose In 2")),
-        ("Blend", ("Loop", "Pose In")),
-        ("Loop", ("Speed", "Pose In")),
-        ("Speed", ("Rotate", "Pose In")),
-    ],
+    output_pose: Some(BoneSpace),
+    edges_inverted: {
+        NodeParameter("Param graph", "Target Speed"): InputParameter("Target Speed"),
+        NodeParameter("Make Rotation", "Vec3 In 1"): InputParameter("Z"),
+        NodeParameter("Make Rotation", "Vec3 In 2"): InputParameter("Target Direction"),
+        NodeParameter("Rotate", "Bone Mask"): InputParameter("Rotation Mask"),
+        NodeParameter("DoIK", "Target Path"): InputParameter("Target Path"),
+        NodeParameter("DoIK", "Target Position"): InputParameter("Target Position"),
+        NodeParameter("Blend", "Factor"): NodeParameter("Param graph", "blend_fac"),
+        NodeParameter("Speed", "Speed"): NodeParameter("Param graph", "speed_fac"),
+        NodeParameter("Rotate", "Rotation"): NodeParameter("Make Rotation", "Quat Out"), 
+        NodePose("Walk Chain", "Pose In 1"): NodePose("Walk Clip"),
+        NodePose("Walk Flip LR", "Pose In"): NodePose("Walk Clip 2"),
+        NodePose("Walk Chain", "Pose In 2"): NodePose("Walk Flip LR"),
+        NodePose("Run Chain", "Pose In 1"): NodePose("Run Clip"),
+        NodePose("Run Flip LR", "Pose In"): NodePose("Run Clip 2"),
+        NodePose("Run Chain", "Pose In 2"): NodePose("Run Flip LR"),
+        NodePose("Blend", "Pose In 1"): NodePose("Walk Chain"),
+        NodePose("Blend", "Pose In 2"): NodePose("Run Chain"),
+        NodePose("Loop", "Pose In"): NodePose("Blend"),
+        NodePose("Speed", "Pose In"): NodePose("Loop"),
+        NodePose("Rotate", "Pose In"): NodePose("Speed"),
+        OutputPose: NodePose("Rotate"),
+    },
 )

@@ -10,7 +10,8 @@ use crate::prelude::{PassContext, SpecContext};
 use bevy::asset::Handle;
 use bevy::reflect::prelude::*;
 
-#[derive(Reflect, Clone, Debug)]
+#[derive(Reflect, Clone, Debug, Default)]
+#[reflect(Default)]
 pub struct ClipNode {
     pub(crate) clip: Handle<GraphClip>,
     pub(crate) override_duration: Option<f32>,

@@ -8,9 +8,13 @@ use crate::{
     },
     prelude::{PassContext, SpecContext},
 };
-use bevy::{reflect::Reflect, utils::HashMap};
+use bevy::{
+    reflect::{std_traits::ReflectDefault, Reflect},
+    utils::HashMap,
+};
 
 #[derive(Reflect, Clone, Debug, Default)]
+#[reflect(Default)]
 pub struct IntoGlobalSpaceNode {}
 
 impl IntoGlobalSpaceNode {

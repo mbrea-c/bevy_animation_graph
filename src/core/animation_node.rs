@@ -19,7 +19,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-pub trait NodeLike: Send + Sync {
+pub trait NodeLike: Send + Sync + Reflect {
     fn parameter_pass(&self, _ctx: PassContext) -> HashMap<PinId, ParamValue> {
         HashMap::new()
     }
@@ -80,7 +80,7 @@ impl std::fmt::Debug for CustomNode {
     }
 }
 
-#[derive(Reflect, Clone, Debug)]
+#[derive(Reflect, Clone, Debug, Default)]
 pub struct AnimationNode {
     pub name: String,
     pub node: AnimationNodeType,
@@ -127,7 +127,13 @@ impl NodeLike for AnimationNode {
 }
 
 #[derive(Reflect, Clone, Debug)]
+#[reflect(Default)]
 pub enum AnimationNodeType {
+    // --- Dummy (default no-op node)
+    // ------------------------------------------------
+    Dummy(DummyNode),
+    // ------------------------------------------------
+
     // --- Pose Nodes
     // ------------------------------------------------
     Clip(ClipNode),
@@ -173,6 +179,12 @@ pub enum AnimationNodeType {
     Custom(#[reflect(ignore)] CustomNode),
 }
 
+impl Default for AnimationNodeType {
+    fn default() -> Self {
+        Self::Dummy(DummyNode::new())
+    }
+}
+
 impl AnimationNodeType {
     pub fn map<O, F>(&self, f: F) -> O
     where
@@ -199,6 +211,7 @@ impl AnimationNodeType {
             AnimationNodeType::IntoGlobalSpace(n) => f(n),
             AnimationNodeType::ExtendSkeleton(n) => f(n),
             AnimationNodeType::TwoBoneIK(n) => f(n),
+            AnimationNodeType::Dummy(n) => f(n),
             AnimationNodeType::Custom(n) => f(n.node.lock().unwrap().deref()),
         }
     }
@@ -228,10 +241,38 @@ impl AnimationNodeType {
             AnimationNodeType::IntoGlobalSpace(n) => f(n),
             AnimationNodeType::ExtendSkeleton(n) => f(n),
             AnimationNodeType::TwoBoneIK(n) => f(n),
+            AnimationNodeType::Dummy(n) => f(n),
             AnimationNodeType::Custom(n) => {
                 let mut nod = n.node.lock().unwrap();
                 f(nod.deref_mut())
             }
+        }
+    }
+
+    pub fn inner_reflect(&mut self) -> &mut dyn Reflect {
+        match self {
+            AnimationNodeType::Clip(n) => n,
+            AnimationNodeType::Blend(n) => n,
+            AnimationNodeType::Chain(n) => n,
+            AnimationNodeType::FlipLR(n) => n,
+            AnimationNodeType::Loop(n) => n,
+            AnimationNodeType::Speed(n) => n,
+            AnimationNodeType::Rotation(n) => n,
+            AnimationNodeType::IntoBoneSpace(n) => n,
+            AnimationNodeType::IntoCharacterSpace(n) => n,
+            AnimationNodeType::IntoGlobalSpace(n) => n,
+            AnimationNodeType::ExtendSkeleton(n) => n,
+            AnimationNodeType::TwoBoneIK(n) => n,
+            AnimationNodeType::AddF32(n) => n,
+            AnimationNodeType::MulF32(n) => n,
+            AnimationNodeType::DivF32(n) => n,
+            AnimationNodeType::SubF32(n) => n,
+            AnimationNodeType::ClampF32(n) => n,
+            AnimationNodeType::AbsF32(n) => n,
+            AnimationNodeType::RotationArc(n) => n,
+            AnimationNodeType::Graph(n) => n,
+            AnimationNodeType::Dummy(n) => n,
+            AnimationNodeType::Custom(_) => todo!(),
         }
     }
 }

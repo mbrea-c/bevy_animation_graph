@@ -8,6 +8,7 @@ use bevy::prelude::*;
 use bevy::utils::HashMap;
 
 #[derive(Reflect, Clone, Debug, Default)]
+#[reflect(Default)]
 pub struct ChainNode {}
 
 impl ChainNode {
@@ -75,6 +76,6 @@ impl NodeLike for ChainNode {
     }
 
     fn display_name(&self) -> String {
-        " Chain".into()
+        "⛓ Chain".into()
     }
 }

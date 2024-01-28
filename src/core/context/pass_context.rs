@@ -20,11 +20,11 @@ pub struct NodeContext<'a> {
 
 #[derive(Clone)]
 pub struct PassContext<'a> {
-    context: GraphContextRef,
+    pub context: GraphContextRef,
     pub resources: &'a SystemResources<'a, 'a>,
     pub overlay: &'a InputOverlay,
     pub node_context: Option<NodeContext<'a>>,
-    parent: Option<PassContextRef<'a>>,
+    pub parent: Option<PassContextRef<'a>>,
     pub root_entity: Entity,
     pub entity_map: &'a HashMap<BoneId, Entity>,
     pub deferred_gizmos: DeferredGizmoRef,
@@ -176,7 +176,7 @@ impl<'a> PassContext<'a> {
 }
 
 #[derive(Clone)]
-struct PassContextRef<'a> {
+pub struct PassContextRef<'a> {
     ctx: *const PassContext<'a>,
 }
 
@@ -195,7 +195,7 @@ impl<'a> PassContextRef<'a> {
 // Internal mutability lets goooooooooo
 // May god have mercy on us
 #[derive(Clone)]
-pub(crate) struct GraphContextRef {
+pub struct GraphContextRef {
     context: *mut GraphContext,
 }
 

@@ -1,6 +1,6 @@
 use bevy::{
     math::{Quat, Vec3},
-    reflect::Reflect,
+    reflect::{std_traits::ReflectDefault, Reflect},
     transform::components::Transform,
     utils::HashMap,
 };
@@ -19,6 +19,7 @@ use crate::{
 };
 
 #[derive(Reflect, Clone, Debug, Default)]
+#[reflect(Default)]
 pub struct TwoBoneIKNode {}
 
 impl TwoBoneIKNode {
