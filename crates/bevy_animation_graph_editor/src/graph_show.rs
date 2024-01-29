@@ -12,8 +12,7 @@ use bevy_animation_graph::core::{
     frame::PoseSpec,
     parameters::ParamSpec,
 };
-use bevy_egui::egui;
-use bevy_inspector_egui::{bevy_egui, egui::Color32};
+use bevy_inspector_egui::egui::Color32;
 
 /// returns (base, hovered, selected)
 fn param_spec_to_colors(spec: ParamSpec) -> (Color32, Color32, Color32) {
@@ -175,7 +174,7 @@ pub fn make_graph_indices(graph: &AnimationGraph, ctx: SpecContext) -> GraphIndi
         graph_indices.node_indices.add_mapping(node.name.clone());
 
         // add pins
-        for (name, _) in node.parameter_input_spec(ctx.clone()).iter() {
+        for (name, _) in node.parameter_input_spec(ctx).iter() {
             graph_indices
                 .pin_indices
                 .add_mapping(Pin::Target(TargetPin::NodeParameter(
@@ -183,7 +182,7 @@ pub fn make_graph_indices(graph: &AnimationGraph, ctx: SpecContext) -> GraphIndi
                     name.clone(),
                 )));
         }
-        for (name, _) in node.parameter_output_spec(ctx.clone()).iter() {
+        for (name, _) in node.parameter_output_spec(ctx).iter() {
             graph_indices
                 .pin_indices
                 .add_mapping(Pin::Source(SourcePin::NodeParameter(
@@ -191,7 +190,7 @@ pub fn make_graph_indices(graph: &AnimationGraph, ctx: SpecContext) -> GraphIndi
                     name.clone(),
                 )));
         }
-        for (name, _) in node.pose_input_spec(ctx.clone()).iter() {
+        for (name, _) in node.pose_input_spec(ctx).iter() {
             graph_indices
                 .pin_indices
                 .add_mapping(Pin::Target(TargetPin::NodePose(
@@ -199,7 +198,7 @@ pub fn make_graph_indices(graph: &AnimationGraph, ctx: SpecContext) -> GraphIndi
                     name.clone(),
                 )));
         }
-        if let Some(_) = node.pose_output_spec(ctx.clone()) {
+        if node.pose_output_spec(ctx).is_some() {
             graph_indices
                 .pin_indices
                 .add_mapping(Pin::Source(SourcePin::NodePose(node.name.clone())));
@@ -221,7 +220,7 @@ pub fn make_graph_indices(graph: &AnimationGraph, ctx: SpecContext) -> GraphIndi
             .pin_indices
             .add_mapping(Pin::Target(TargetPin::OutputParameter(name.clone())));
     }
-    if let Some(_) = &graph.output_pose {
+    if graph.output_pose.is_some() {
         graph_indices
             .pin_indices
             .add_mapping(Pin::Target(TargetPin::OutputPose));
@@ -253,9 +252,9 @@ impl GraphReprSpec {
     pub fn from_graph(graph: &AnimationGraph, indices: &GraphIndices, ctx: SpecContext) -> Self {
         let mut repr_spec = GraphReprSpec::default();
 
-        repr_spec.add_nodes(graph, indices, ctx.clone());
+        repr_spec.add_nodes(graph, indices, ctx);
         repr_spec.add_input_output_nodes(graph, indices);
-        repr_spec.add_edges(graph, indices, ctx.clone());
+        repr_spec.add_edges(graph, indices, ctx);
 
         repr_spec
     }
@@ -264,10 +263,6 @@ impl GraphReprSpec {
         for node in graph.nodes.values() {
             let mut constructor = NodeSpec {
                 id: indices.node_indices.id(&node.name).unwrap(),
-                args: NodeArgs {
-                    outline: Some(egui::Color32::LIGHT_BLUE),
-                    ..Default::default()
-                },
                 name: node.name.clone(),
                 subtitle: node.display_name(),
                 origin: graph
@@ -281,7 +276,7 @@ impl GraphReprSpec {
             };
 
             // parameter input pins
-            for (name, spec) in node.parameter_input_spec(ctx.clone()).iter() {
+            for (name, spec) in node.parameter_input_spec(ctx).iter() {
                 let spec = spec.spec;
                 let (base, hovered, _) = param_spec_to_colors(spec);
                 let pin = Pin::Target(TargetPin::NodeParameter(node.name.clone(), name.clone()));
@@ -294,14 +289,13 @@ impl GraphReprSpec {
                     style_args: PinArgs {
                         background: Some(base),
                         hovered: Some(hovered),
-                        ..Default::default()
                     },
                     ..Default::default()
                 });
             }
             // parameter output pins
-            for (name, spec) in node.parameter_output_spec(ctx.clone()).iter() {
-                let (base, hovered, _) = param_spec_to_colors(spec.clone());
+            for (name, spec) in node.parameter_output_spec(ctx).iter() {
+                let (base, hovered, _) = param_spec_to_colors(*spec);
                 let pin = Pin::Source(SourcePin::NodeParameter(node.name.clone(), name.clone()));
                 let pin_id = indices.pin_indices.id(&pin).unwrap();
                 let name = name.clone();
@@ -312,14 +306,13 @@ impl GraphReprSpec {
                     style_args: PinArgs {
                         background: Some(base),
                         hovered: Some(hovered),
-                        ..Default::default()
                     },
                     ..Default::default()
                 });
             }
             // pose input pins
-            for (name, spec) in node.pose_input_spec(ctx.clone()).iter() {
-                let (base, hovered, _) = pose_spec_to_colors(spec.clone());
+            for (name, spec) in node.pose_input_spec(ctx).iter() {
+                let (base, hovered, _) = pose_spec_to_colors(*spec);
                 let pin = Pin::Target(TargetPin::NodePose(node.name.clone(), name.clone()));
                 let pin_id = indices.pin_indices.id(&pin).unwrap();
                 let name = name.clone();
@@ -331,13 +324,12 @@ impl GraphReprSpec {
                     style_args: PinArgs {
                         background: Some(base),
                         hovered: Some(hovered),
-                        ..Default::default()
                     },
                     ..Default::default()
                 });
             }
             // pose input pin
-            if let Some(spec) = node.pose_output_spec(ctx.clone()) {
+            if let Some(spec) = node.pose_output_spec(ctx) {
                 let (base, hovered, _) = pose_spec_to_colors(spec);
                 let pin = Pin::Source(SourcePin::NodePose(node.name.clone()));
                 let pin_id = indices.pin_indices.id(&pin).unwrap();
@@ -349,7 +341,6 @@ impl GraphReprSpec {
                     style_args: PinArgs {
                         background: Some(base),
                         hovered: Some(hovered),
-                        ..Default::default()
                     },
                     ..Default::default()
                 });
@@ -388,14 +379,13 @@ impl GraphReprSpec {
                 style_args: PinArgs {
                     background: Some(base),
                     hovered: Some(hovered),
-                    ..Default::default()
                 },
                 ..Default::default()
             });
         }
 
         for (name, spec) in graph.input_poses.iter() {
-            let (base, hovered, _) = pose_spec_to_colors(spec.clone());
+            let (base, hovered, _) = pose_spec_to_colors(*spec);
             let pin = Pin::Source(SourcePin::InputPose(name.clone()));
             let pin_id = indices.pin_indices.id(&pin).unwrap();
             let name = name.clone();
@@ -407,7 +397,6 @@ impl GraphReprSpec {
                 style_args: PinArgs {
                     background: Some(base),
                     hovered: Some(hovered),
-                    ..Default::default()
                 },
                 ..Default::default()
             });
@@ -431,7 +420,7 @@ impl GraphReprSpec {
             ..Default::default()
         };
         for (name, spec) in graph.output_parameters.iter() {
-            let (base, hovered, _) = param_spec_to_colors(spec.clone());
+            let (base, hovered, _) = param_spec_to_colors(*spec);
             let pin = Pin::Target(TargetPin::OutputParameter(name.clone()));
             let pin_id = indices.pin_indices.id(&pin).unwrap();
             let name = name.clone();
@@ -442,14 +431,13 @@ impl GraphReprSpec {
                 style_args: PinArgs {
                     background: Some(base),
                     hovered: Some(hovered),
-                    ..Default::default()
                 },
                 ..Default::default()
             });
         }
 
         if let Some(spec) = graph.output_pose {
-            let (base, hovered, _) = pose_spec_to_colors(spec.clone());
+            let (base, hovered, _) = pose_spec_to_colors(spec);
             let pin = Pin::Target(TargetPin::OutputPose);
             let pin_id = indices.pin_indices.id(&pin).unwrap();
             output_node_contructor.attributes.push(PinSpec {
@@ -460,7 +448,6 @@ impl GraphReprSpec {
                 style_args: PinArgs {
                     background: Some(base),
                     hovered: Some(hovered),
-                    ..Default::default()
                 },
                 ..Default::default()
             });
@@ -492,7 +479,7 @@ impl GraphReprSpec {
                 }
                 TargetPin::OutputParameter(pid) => {
                     let spec = graph.output_parameters.get(pid).unwrap();
-                    let (base, hovered, selected) = param_spec_to_colors(spec.clone());
+                    let (base, hovered, selected) = param_spec_to_colors(*spec);
                     (
                         LinkColorArgs {
                             base: Some(base),
@@ -505,7 +492,7 @@ impl GraphReprSpec {
                 TargetPin::NodePose(nid, pid) => {
                     let poses = graph.nodes.get(nid).unwrap().pose_input_spec(ctx);
                     let spec = poses.get(pid).unwrap();
-                    let (base, hovered, selected) = pose_spec_to_colors(spec.clone());
+                    let (base, hovered, selected) = pose_spec_to_colors(*spec);
                     (
                         LinkColorArgs {
                             base: Some(base),
@@ -517,7 +504,7 @@ impl GraphReprSpec {
                 }
                 TargetPin::OutputPose => {
                     let spec = graph.output_pose.as_ref().unwrap();
-                    let (base, hovered, selected) = pose_spec_to_colors(spec.clone());
+                    let (base, hovered, selected) = pose_spec_to_colors(*spec);
                     (
                         LinkColorArgs {
                             base: Some(base),
@@ -535,7 +522,6 @@ impl GraphReprSpec {
                 end_pin_index: target_id,
                 thickness: Some(thickness),
                 color_style: color,
-                ..Default::default()
             });
         }
     }

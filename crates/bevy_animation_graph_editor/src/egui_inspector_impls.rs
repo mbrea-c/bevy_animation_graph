@@ -19,7 +19,7 @@ type InspectorEguiImplFn =
 type InspectorEguiImplFnReadonly =
     fn(&dyn Any, &mut egui::Ui, &dyn Any, egui::Id, InspectorUi<'_, '_>);
 
-fn many_unimplemented<T: Any>(
+fn many_unimplemented(
     _ui: &mut egui::Ui,
     _options: &dyn Any,
     _id: egui::Id,
@@ -41,7 +41,7 @@ fn add_no_many<T: 'static>(
         .insert(InspectorEguiImpl::new(
             fn_mut,
             fn_readonly,
-            many_unimplemented::<T>,
+            many_unimplemented,
         ));
 }
 
@@ -182,7 +182,7 @@ pub fn asset_picker_ui<T: Asset>(
         })
         .show_ui(ui, |ui| {
             let mut assets_ids: Vec<_> = t_assets.ids().collect();
-            assets_ids.sort_by(|a, b| a.cmp(b));
+            assets_ids.sort();
             for asset_id in assets_ids {
                 ui.selectable_value(
                     &mut selected,

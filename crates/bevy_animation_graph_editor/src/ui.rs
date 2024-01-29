@@ -254,7 +254,7 @@ pub fn graph_selector(world: &mut World, ui: &mut egui::Ui, selection: &mut Insp
         // create a context with access to the world except for the `R` resource
         world.resource_scope::<Assets<AnimationGraph>, ()>(|_, assets| {
             let mut assets: Vec<_> = assets.ids().collect();
-            assets.sort_by(|a, b| a.cmp(b));
+            assets.sort();
             for handle_id in assets {
                 let response =
                     ui.selectable_label(false, handle_name(handle_id.untyped(), &asset_server));
@@ -284,7 +284,7 @@ pub fn scene_selector(world: &mut World, ui: &mut egui::Ui, selection: &mut Insp
         // create a context with access to the world except for the `R` resource
         world.resource_scope::<Assets<AnimatedScene>, ()>(|_, assets| {
             let mut assets: Vec<_> = assets.ids().collect();
-            assets.sort_by(|a, b| a.cmp(b));
+            assets.sort();
             for handle_id in assets {
                 let path = asset_server.get_path(handle_id).unwrap();
                 let response =
@@ -497,8 +497,8 @@ fn graph_indices(world: &mut World, graph_id: AssetId<AnimationGraph>) -> GraphI
         let spec_context = SpecContext {
             graph_assets: &graph_assets,
         };
-        let idx = make_graph_indices(graph, spec_context.clone());
-        idx
+        
+        make_graph_indices(graph, spec_context)
     })
 }
 
@@ -514,7 +514,7 @@ fn animated_scene_preview(
 
     let cube_preview_texture_id =
         world.resource_scope::<EguiUserTextures, egui::TextureId>(|_, user_textures| {
-            user_textures.image_id(&preview_image).unwrap()
+            user_textures.image_id(preview_image).unwrap()
         });
 
     let available_size = ui.available_size();

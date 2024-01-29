@@ -41,17 +41,15 @@ fn main() {
 
     let mut app = App::new();
 
-    // app.register_asset_source("graphs", {
-    //     let source = cli.asset_source.clone();
-    //     AssetSource::build().with_reader(move || {
-    //         let s = source.clone();
-    //         Box::new(FileAssetReader::new(s))
-    //     })
-    // })
-    app.add_plugins(DefaultPlugins.set(AssetPlugin {
-        file_path: cli.asset_source.to_string_lossy().into(),
-        ..Default::default()
-    }))
+    app.add_plugins(
+        DefaultPlugins.set(AssetPlugin {
+            file_path: std::fs::canonicalize(&cli.asset_source)
+                .unwrap()
+                .to_string_lossy()
+                .into(),
+            ..Default::default()
+        }),
+    )
     .add_plugins(EguiPlugin)
     .add_plugins(AnimationGraphPlugin)
     .add_plugins(DefaultInspectorConfigPlugin)

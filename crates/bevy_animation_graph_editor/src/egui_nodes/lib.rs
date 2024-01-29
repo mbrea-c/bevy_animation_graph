@@ -179,7 +179,7 @@ pub struct NodesContext {
 
 impl NodesContext {
     /// Displays the current state of the editor on a give Egui Ui as well as updating user input to the context
-    pub fn show<'a>(
+    pub fn show(
         &mut self,
         nodes: impl IntoIterator<Item = NodeSpec>,
         links: impl IntoIterator<Item = LinkSpec>,
@@ -524,14 +524,13 @@ impl NodesContext {
 }
 
 impl NodesContext {
-    fn add_node<'a>(&mut self, node_spec: NodeSpec, ui: &mut egui::Ui) {
+    fn add_node(&mut self, node_spec: NodeSpec, ui: &mut egui::Ui) {
         let node_state = if let Some(node) = self.nodes.get(&node_spec.id) {
             let mut state = node.state.clone();
             state.pin_indices.clear();
             state
         } else {
-            let state = NodeState::default();
-            state
+            NodeState::default()
         };
         let mut node = Node {
             spec: node_spec,
@@ -629,12 +628,13 @@ impl NodesContext {
     }
 
     fn add_link(&mut self, link_spec: LinkSpec, ui: &mut egui::Ui) {
-        let mut link_state = LinkState::default();
-        link_state.shape = Some(ui.painter().add(egui::Shape::Noop));
-        link_state.color_style = self
-            .settings
-            .style
-            .format_link(link_spec.color_style.clone());
+        let link_state = LinkState {
+            shape: Some(ui.painter().add(egui::Shape::Noop)),
+            color_style: self
+                .settings
+                .style
+                .format_link(link_spec.color_style.clone()),
+        };
         self.links.insert(
             link_spec.id,
             Link {
@@ -742,7 +742,7 @@ impl NodesContext {
 
         let hover_radius_sqr = self.settings.style.pin_hover_radius.powi(2);
         for idx in self.pins.keys() {
-            if self.frame_state.occluded_pin_indices.contains(&idx) {
+            if self.frame_state.occluded_pin_indices.contains(idx) {
                 continue;
             }
 
