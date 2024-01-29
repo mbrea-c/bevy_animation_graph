@@ -217,9 +217,7 @@ pub fn todo_readonly_ui(
 pub fn handle_name(handle: UntypedAssetId, asset_server: &AssetServer) -> String {
     asset_server
         .get_path(handle)
-        .unwrap()
-        .path()
-        .to_str()
-        .unwrap()
-        .into()
+        .map_or("Unsaved Asset".to_string(), |p| {
+            p.path().to_str().unwrap().into()
+        })
 }

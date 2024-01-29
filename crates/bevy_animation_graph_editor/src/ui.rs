@@ -1,7 +1,9 @@
 use crate::egui_inspector_impls::handle_name;
 use crate::egui_nodes::lib::NodesContext;
+use crate::graph_saving::SaveGraph;
 use crate::graph_show::{make_graph_indices, GraphIndices, GraphReprSpec};
 use crate::graph_update::{convert_graph_change, update_graph, Change, GraphChange};
+use crate::GraphHandles;
 use bevy::core_pipeline::clear_color::ClearColorConfig;
 use bevy::ecs::system::CommandQueue;
 use bevy::prelude::*;
@@ -67,11 +69,20 @@ pub struct InspectorSelection {
     node_creation: NodeCreation,
 }
 
+pub struct RequestSave {
+    graph: AssetId<AnimationGraph>,
+}
+
 #[derive(Resource)]
 pub struct UiState {
     state: DockState<EguiWindow>,
     pub selection: InspectorSelection,
     graph_changes: Vec<GraphChange>,
+    /// Requests to save a graph. These still need confirmation from the user,
+    /// and specification of path where graph should be saved.
+    save_requests: Vec<RequestSave>,
+    /// Save events to be fired as bevy events after Ui system has finished running
+    save_events: Vec<SaveGraph>,
     preview_image: Handle<Image>,
 }
 
@@ -94,22 +105,28 @@ impl UiState {
             tree.split_below(graph_selector, 0.2, vec![EguiWindow::SceneSelector]);
         let [_node_inspector, _preview] =
             tree.split_above(inspectors, 0.2, vec![EguiWindow::Preview]);
-        //let [_game, _bottom] =
-        //tree.split_below(game, 0.8, vec![EguiWindow::Resources, EguiWindow::Assets]);
 
         Self {
             state,
             selection: InspectorSelection::default(),
             graph_changes: vec![],
+            save_requests: vec![],
+            save_events: vec![],
             preview_image: Handle::default(),
         }
     }
 
     fn ui(&mut self, world: &mut World, ctx: &mut egui::Context) {
+        for save_request in self.save_requests.drain(..) {
+            self.state
+                .add_window(vec![TabViewer::create_graph_saver_tab(world, save_request)]);
+        }
         let mut tab_viewer = TabViewer {
             world,
             selection: &mut self.selection,
             graph_changes: &mut self.graph_changes,
+            save_requests: &mut self.save_requests,
+            save_events: &mut self.save_events,
             preview_image: &self.preview_image,
         };
         DockArea::new(&mut self.state)
@@ -121,18 +138,37 @@ impl UiState {
 #[derive(Debug)]
 enum EguiWindow {
     GraphEditor,
+    NodeCreate,
+    Preview,
     GraphSelector,
     SceneSelector,
     NodeInspector,
     GraphInspector,
-    NodeCreate,
-    Preview,
+
+    GraphSaver(AssetId<AnimationGraph>, String, bool),
+}
+
+impl EguiWindow {
+    pub fn display_name(&self) -> String {
+        match self {
+            EguiWindow::GraphEditor => "Graph Editor".into(),
+            EguiWindow::NodeCreate => "Create Node".into(),
+            EguiWindow::Preview => "Preview Scene".into(),
+            EguiWindow::GraphSelector => "Select Graph".into(),
+            EguiWindow::SceneSelector => "Select Scene".into(),
+            EguiWindow::NodeInspector => "Inspect Node".into(),
+            EguiWindow::GraphInspector => "Inspect Graph IO".into(),
+            EguiWindow::GraphSaver(_, _, _) => "Save Graph".into(),
+        }
+    }
 }
 
 struct TabViewer<'a> {
     world: &'a mut World,
     selection: &'a mut InspectorSelection,
     graph_changes: &'a mut Vec<GraphChange>,
+    save_requests: &'a mut Vec<RequestSave>,
+    save_events: &'a mut Vec<SaveGraph>,
     preview_image: &'a Handle<Image>,
 }
 
@@ -141,22 +177,31 @@ impl egui_dock::TabViewer for TabViewer<'_> {
 
     fn ui(&mut self, ui: &mut egui_dock::egui::Ui, window: &mut Self::Tab) {
         match window {
-            EguiWindow::GraphSelector => graph_selector(self.world, ui, self.selection),
-            EguiWindow::SceneSelector => scene_selector(self.world, ui, self.selection),
+            EguiWindow::GraphSelector => Self::graph_selector(self.world, ui, self.selection),
+            EguiWindow::SceneSelector => Self::scene_selector(self.world, ui, self.selection),
             EguiWindow::GraphEditor => {
-                graph_editor(self.world, ui, self.selection, self.graph_changes)
+                Self::graph_editor(
+                    self.world,
+                    ui,
+                    self.selection,
+                    self.graph_changes,
+                    self.save_requests,
+                );
             }
             EguiWindow::NodeInspector => {
-                node_inspector(self.world, ui, self.selection, self.graph_changes)
+                Self::node_inspector(self.world, ui, self.selection, self.graph_changes);
             }
             EguiWindow::GraphInspector => {
-                graph_inspector(self.world, ui, self.selection, self.graph_changes)
+                Self::graph_inspector(self.world, ui, self.selection, self.graph_changes);
             }
             EguiWindow::Preview => {
-                animated_scene_preview(self.world, ui, self.preview_image, self.selection)
+                Self::animated_scene_preview(self.world, ui, self.preview_image, self.selection);
             }
             EguiWindow::NodeCreate => {
-                node_creator(self.world, ui, self.selection, self.graph_changes)
+                Self::node_creator(self.world, ui, self.selection, self.graph_changes);
+            }
+            EguiWindow::GraphSaver(graph, path, done) => {
+                Self::graph_saver(ui, self.save_events, *graph, path, done);
             }
         }
 
@@ -170,152 +215,417 @@ impl egui_dock::TabViewer for TabViewer<'_> {
             if must_regen_indices {
                 if let Some(graph_selection) = self.selection.graph_editor.as_mut() {
                     graph_selection.graph_indices =
-                        graph_indices(self.world, graph_selection.graph);
+                        Self::graph_indices(self.world, graph_selection.graph);
                 }
             }
         }
+    }
+
+    fn force_close(&mut self, tab: &mut Self::Tab) -> bool {
+        matches!(tab, EguiWindow::GraphSaver(_, _, true))
     }
 
     fn title(&mut self, window: &mut Self::Tab) -> egui_dock::egui::WidgetText {
-        format!("{window:?}").into()
+        window.display_name().into()
     }
 
-    fn closeable(&mut self, _tab: &mut Self::Tab) -> bool {
-        false
+    fn closeable(&mut self, tab: &mut Self::Tab) -> bool {
+        matches!(tab, EguiWindow::GraphSaver(_, _, false))
     }
 }
 
-fn graph_editor(
-    world: &mut World,
-    ui: &mut egui::Ui,
-    selection: &mut InspectorSelection,
-    graph_changes: &mut Vec<GraphChange>,
-) {
-    let Some(graph_selection) = &mut selection.graph_editor else {
-        ui.centered_and_justified(|ui| ui.label("Select a graph to edit!"));
-        return;
-    };
+/// Ui functions
+impl TabViewer<'_> {
+    fn graph_saver(
+        ui: &mut egui::Ui,
+        save_events: &mut Vec<SaveGraph>,
+        graph_id: AssetId<AnimationGraph>,
+        path: &mut String,
+        done: &mut bool,
+    ) {
+        ui.label("Save graph as:");
+        ui.text_edit_singleline(path);
+        ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
+            if ui.button("Save").clicked() {
+                *done = true;
+                save_events.push(SaveGraph {
+                    graph: graph_id,
+                    virtual_path: path.clone().into(),
+                });
+            }
+        });
+    }
 
-    world.resource_scope::<Assets<AnimationGraph>, ()>(|_, graph_assets| {
-        if !graph_assets.contains(graph_selection.graph) {
+    fn graph_editor(
+        world: &mut World,
+        ui: &mut egui::Ui,
+        selection: &mut InspectorSelection,
+        graph_changes: &mut Vec<GraphChange>,
+        save_requests: &mut Vec<RequestSave>,
+    ) {
+        let Some(graph_selection) = &mut selection.graph_editor else {
+            ui.centered_and_justified(|ui| ui.label("Select a graph to edit!"));
             return;
+        };
+
+        world.resource_scope::<Assets<AnimationGraph>, ()>(|_, graph_assets| {
+            if !graph_assets.contains(graph_selection.graph) {
+                return;
+            }
+
+            let changes = {
+                let graph = graph_assets.get(graph_selection.graph).unwrap();
+                let spec_context = SpecContext {
+                    graph_assets: &graph_assets,
+                };
+                let nodes =
+                    GraphReprSpec::from_graph(graph, &graph_selection.graph_indices, spec_context);
+                graph_selection
+                    .nodes_context
+                    .show(nodes.nodes, nodes.edges, ui);
+                graph_selection.nodes_context.get_changes().clone()
+            }
+            .into_iter()
+            .map(|c| {
+                convert_graph_change(c, &graph_selection.graph_indices, graph_selection.graph)
+            });
+            graph_changes.extend(changes);
+
+            // --- Update selection for node inspector
+            // ----------------------------------------------------------------
+            if let Some(selected_node) = graph_selection
+                .nodes_context
+                .get_selected_nodes()
+                .iter()
+                .rev()
+                .find(|id| **id > 1)
+            {
+                if *selected_node > 1 {
+                    let node_name = graph_selection
+                        .graph_indices
+                        .node_indices
+                        .name(*selected_node)
+                        .unwrap();
+                    if let Some(node_selection) = &mut selection.node {
+                        if &node_selection.node != node_name
+                            || node_selection.graph != graph_selection.graph
+                        {
+                            node_selection.node = node_name.clone();
+                            node_selection.name_buf = node_name.clone();
+                            node_selection.graph = graph_selection.graph;
+                        }
+                    } else {
+                        selection.node = Some(NodeSelection {
+                            graph: graph_selection.graph,
+                            node: node_name.clone(),
+                            name_buf: node_name.clone(),
+                        });
+                    }
+                }
+            }
+            // ----------------------------------------------------------------
+        });
+
+        // --- Initiate graph saving if Ctrl+S pressed
+        // ----------------------------------------------------------------
+        world.resource_scope::<Input<KeyCode>, ()>(|_, input| {
+            if input.pressed(KeyCode::ControlLeft) && input.just_pressed(KeyCode::S) {
+                save_requests.push(RequestSave {
+                    graph: graph_selection.graph,
+                });
+            }
+        });
+        // ----------------------------------------------------------------
+    }
+
+    /// Display all assets of the specified asset type `A`
+    pub fn graph_selector(
+        world: &mut World,
+        ui: &mut egui::Ui,
+        selection: &mut InspectorSelection,
+    ) {
+        let mut queue = CommandQueue::default();
+        let mut chosen_id: Option<AssetId<AnimationGraph>> = None;
+
+        world.resource_scope::<AssetServer, ()>(|world, asset_server| {
+            // create a context with access to the world except for the `R` resource
+            world.resource_scope::<Assets<AnimationGraph>, ()>(|world, mut graph_assets| {
+                let mut assets: Vec<_> = graph_assets.ids().collect();
+                assets.sort();
+                for handle_id in assets {
+                    let response =
+                        ui.selectable_label(false, handle_name(handle_id.untyped(), &asset_server));
+
+                    if response.double_clicked() {
+                        chosen_id = Some(handle_id);
+                    }
+                }
+                ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
+                    let mut graph_handles = world.get_resource_mut::<GraphHandles>().unwrap();
+                    if ui.button("New Graph").clicked() {
+                        let new_handle = graph_assets.add(AnimationGraph::default());
+                        info!("Creating graph with id: {:?}", new_handle.id());
+                        graph_handles.unsaved.insert(new_handle);
+                    }
+                });
+            });
+        });
+        queue.apply(world);
+        if let Some(chosen_id) = chosen_id {
+            selection.graph_editor = Some(GraphSelection {
+                graph: chosen_id,
+                graph_indices: Self::graph_indices(world, chosen_id),
+                nodes_context: NodesContext::default(),
+            });
+        }
+    }
+
+    pub fn scene_selector(
+        world: &mut World,
+        ui: &mut egui::Ui,
+        selection: &mut InspectorSelection,
+    ) {
+        let mut queue = CommandQueue::default();
+
+        let mut chosen_handle: Option<Handle<AnimatedScene>> = None;
+
+        world.resource_scope::<AssetServer, ()>(|world, asset_server| {
+            // create a context with access to the world except for the `R` resource
+            world.resource_scope::<Assets<AnimatedScene>, ()>(|_, assets| {
+                let mut assets: Vec<_> = assets.ids().collect();
+                assets.sort();
+                for handle_id in assets {
+                    let path = asset_server.get_path(handle_id).unwrap();
+                    let response =
+                        ui.selectable_label(false, handle_name(handle_id.untyped(), &asset_server));
+
+                    if response.double_clicked() {
+                        chosen_handle = Some(asset_server.get_handle(path).unwrap());
+                    }
+                }
+            });
+        });
+        queue.apply(world);
+
+        if let Some(chosen_handle) = chosen_handle {
+            selection.scene = Some(SceneSelection {
+                scene: chosen_handle,
+                respawn: true,
+            });
+        }
+    }
+
+    fn graph_inspector(
+        world: &mut World,
+        ui: &mut egui::Ui,
+        selection: &mut InspectorSelection,
+        graph_changes: &mut Vec<GraphChange>,
+    ) {
+        let mut changes = Vec::new();
+
+        let Some(graph_selection) = &mut selection.graph_editor else {
+            return;
+        };
+
+        let unsafe_world = world.as_unsafe_world_cell();
+        let type_registry = unsafe {
+            unsafe_world
+                .get_resource::<AppTypeRegistry>()
+                .unwrap()
+                .0
+                .clone()
+        };
+        let mut graph_assets = unsafe {
+            unsafe_world
+                .get_resource_mut::<Assets<AnimationGraph>>()
+                .unwrap()
+        };
+        let graph = graph_assets.get_mut(graph_selection.graph).unwrap();
+
+        let type_registry = type_registry.read();
+        let mut queue = CommandQueue::default();
+        let mut cx = Context {
+            world: Some(unsafe { unsafe_world.world_mut() }.into()),
+            queue: Some(&mut queue),
+        };
+        let mut env = InspectorUi::for_bevy(&type_registry, &mut cx);
+
+        let changed = env.ui_for_reflect(graph, ui);
+
+        if changed {
+            changes.push(GraphChange {
+                change: Change::GraphValidate,
+                graph: graph_selection.graph,
+            });
         }
 
-        let changes = {
-            let graph = graph_assets.get(graph_selection.graph).unwrap();
+        graph_changes.extend(changes);
+
+        queue.apply(world);
+    }
+
+    fn node_creator(
+        world: &mut World,
+        ui: &mut egui::Ui,
+        selection: &mut InspectorSelection,
+        graph_changes: &mut Vec<GraphChange>,
+    ) {
+        let unsafe_world = world.as_unsafe_world_cell();
+        let type_registry = unsafe {
+            unsafe_world
+                .get_resource::<AppTypeRegistry>()
+                .unwrap()
+                .0
+                .clone()
+        };
+
+        let type_registry = type_registry.read();
+        let mut queue = CommandQueue::default();
+        let mut cx = Context {
+            world: Some(unsafe { unsafe_world.world_mut() }.into()),
+            queue: Some(&mut queue),
+        };
+        let mut env = InspectorUi::for_bevy(&type_registry, &mut cx);
+
+        env.ui_for_reflect(&mut selection.node_creation.node, ui);
+        let submit_response = ui.button("Create node");
+
+        if submit_response.clicked() && selection.graph_editor.is_some() {
+            let graph_selection = selection.graph_editor.as_ref().unwrap();
+            graph_changes.push(GraphChange {
+                change: Change::NodeCreated(selection.node_creation.node.clone()),
+                graph: graph_selection.graph,
+            });
+        }
+
+        queue.apply(world);
+    }
+
+    fn node_inspector(
+        world: &mut World,
+        ui: &mut egui::Ui,
+        selection: &mut InspectorSelection,
+        graph_changes: &mut Vec<GraphChange>,
+    ) {
+        let mut changes = Vec::new();
+
+        let Some(node_selection) = &mut selection.node else {
+            return;
+        };
+
+        let unsafe_world = world.as_unsafe_world_cell();
+        let type_registry = unsafe {
+            unsafe_world
+                .get_resource::<AppTypeRegistry>()
+                .unwrap()
+                .0
+                .clone()
+        };
+        let mut graph_assets = unsafe {
+            unsafe_world
+                .get_resource_mut::<Assets<AnimationGraph>>()
+                .unwrap()
+        };
+        let graph = graph_assets.get_mut(node_selection.graph).unwrap();
+        let Some(node) = graph.nodes.get_mut(&node_selection.node) else {
+            selection.node = None;
+            return;
+        };
+
+        let response = ui.text_edit_singleline(&mut node_selection.name_buf);
+        if response.lost_focus() {
+            changes.push(GraphChange {
+                change: Change::NodeRenamed(
+                    node_selection.node.clone(),
+                    node_selection.name_buf.clone(),
+                ),
+                graph: node_selection.graph,
+            });
+        }
+
+        let type_registry = type_registry.read();
+        let mut queue = CommandQueue::default();
+        let mut cx = Context {
+            world: Some(unsafe { unsafe_world.world_mut() }.into()),
+            queue: Some(&mut queue),
+        };
+        let mut env = InspectorUi::for_bevy(&type_registry, &mut cx);
+
+        let inner = node.node.inner_reflect();
+        let changed = env.ui_for_reflect(inner, ui);
+
+        if changed {
+            changes.push(GraphChange {
+                change: Change::GraphValidate,
+                graph: node_selection.graph,
+            });
+        }
+
+        graph_changes.extend(changes);
+
+        queue.apply(world);
+    }
+
+    fn animated_scene_preview(
+        world: &mut World,
+        ui: &mut egui::Ui,
+        preview_image: &Handle<Image>,
+        selection: &mut InspectorSelection,
+    ) {
+        if ui.button("Close Preview").clicked() {
+            selection.scene = None;
+        }
+
+        let cube_preview_texture_id =
+            world.resource_scope::<EguiUserTextures, egui::TextureId>(|_, user_textures| {
+                user_textures.image_id(preview_image).unwrap()
+            });
+
+        let available_size = ui.available_size();
+        let e3d_size = Extent3d {
+            width: available_size.x as u32,
+            height: available_size.y as u32,
+            ..default()
+        };
+        world.resource_scope::<Assets<Image>, ()>(|_, mut images| {
+            let image = images.get_mut(preview_image).unwrap();
+            image.texture_descriptor.size = e3d_size;
+            image.resize(e3d_size);
+        });
+        ui.image(egui::load::SizedTexture::new(
+            cube_preview_texture_id,
+            available_size,
+        ));
+    }
+}
+
+/// Helper functions
+impl TabViewer<'_> {
+    fn create_graph_saver_tab(world: &mut World, save_request: RequestSave) -> EguiWindow {
+        world.resource_scope::<AssetServer, EguiWindow>(|_, asset_server| {
+            let path = asset_server
+                .get_path(save_request.graph)
+                .map_or("".into(), |p| p.path().to_string_lossy().into());
+            EguiWindow::GraphSaver(save_request.graph, path, false)
+        })
+    }
+
+    fn graph_indices(world: &mut World, graph_id: AssetId<AnimationGraph>) -> GraphIndices {
+        world.resource_scope::<Assets<AnimationGraph>, GraphIndices>(|_, graph_assets| {
+            let graph = graph_assets.get(graph_id).unwrap();
             let spec_context = SpecContext {
                 graph_assets: &graph_assets,
             };
-            let nodes =
-                GraphReprSpec::from_graph(graph, &graph_selection.graph_indices, spec_context);
-            graph_selection
-                .nodes_context
-                .show(nodes.nodes, nodes.edges, ui);
-            graph_selection.nodes_context.get_changes().clone()
-        }
-        .into_iter()
-        .map(|c| convert_graph_change(c, &graph_selection.graph_indices, graph_selection.graph));
-        graph_changes.extend(changes);
 
-        if let Some(selected_node) = graph_selection
-            .nodes_context
-            .get_selected_nodes()
-            .iter()
-            .rev()
-            .find(|id| **id > 1)
-        {
-            if *selected_node > 1 {
-                let node_name = graph_selection
-                    .graph_indices
-                    .node_indices
-                    .name(*selected_node)
-                    .unwrap();
-                if let Some(node_selection) = &mut selection.node {
-                    if &node_selection.node != node_name
-                        || node_selection.graph != graph_selection.graph
-                    {
-                        node_selection.node = node_name.clone();
-                        node_selection.name_buf = node_name.clone();
-                        node_selection.graph = graph_selection.graph;
-                    }
-                } else {
-                    selection.node = Some(NodeSelection {
-                        graph: graph_selection.graph,
-                        node: node_name.clone(),
-                        name_buf: node_name.clone(),
-                    });
-                }
-            }
-        }
-    });
-}
-
-/// Display all assets of the specified asset type `A`
-pub fn graph_selector(world: &mut World, ui: &mut egui::Ui, selection: &mut InspectorSelection) {
-    let mut queue = CommandQueue::default();
-
-    let mut chosen_id: Option<AssetId<AnimationGraph>> = None;
-
-    world.resource_scope::<AssetServer, ()>(|world, asset_server| {
-        // create a context with access to the world except for the `R` resource
-        world.resource_scope::<Assets<AnimationGraph>, ()>(|_, assets| {
-            let mut assets: Vec<_> = assets.ids().collect();
-            assets.sort();
-            for handle_id in assets {
-                let response =
-                    ui.selectable_label(false, handle_name(handle_id.untyped(), &asset_server));
-
-                if response.double_clicked() {
-                    chosen_id = Some(handle_id);
-                }
-            }
-        });
-    });
-    queue.apply(world);
-    if let Some(chosen_id) = chosen_id {
-        selection.graph_editor = Some(GraphSelection {
-            graph: chosen_id,
-            graph_indices: graph_indices(world, chosen_id),
-            nodes_context: NodesContext::default(),
-        });
-    }
-}
-
-pub fn scene_selector(world: &mut World, ui: &mut egui::Ui, selection: &mut InspectorSelection) {
-    let mut queue = CommandQueue::default();
-
-    let mut chosen_handle: Option<Handle<AnimatedScene>> = None;
-
-    world.resource_scope::<AssetServer, ()>(|world, asset_server| {
-        // create a context with access to the world except for the `R` resource
-        world.resource_scope::<Assets<AnimatedScene>, ()>(|_, assets| {
-            let mut assets: Vec<_> = assets.ids().collect();
-            assets.sort();
-            for handle_id in assets {
-                let path = asset_server.get_path(handle_id).unwrap();
-                let response =
-                    ui.selectable_label(false, handle_name(handle_id.untyped(), &asset_server));
-
-                if response.double_clicked() {
-                    chosen_handle = Some(asset_server.get_handle(path).unwrap());
-                }
-            }
-        });
-    });
-    queue.apply(world);
-
-    if let Some(chosen_handle) = chosen_handle {
-        selection.scene = Some(SceneSelection {
-            scene: chosen_handle,
-            respawn: true,
-        });
+            make_graph_indices(graph, spec_context)
+        })
     }
 }
 
 #[derive(Component)]
 pub struct PreviewScene;
 
-pub fn scene_spawner(
+pub fn scene_spawner_system(
     mut commands: Commands,
     mut query: Query<(Entity, &Handle<AnimatedScene>), With<PreviewScene>>,
     mut ui_state: ResMut<UiState>,
@@ -346,201 +656,16 @@ pub fn scene_spawner(
     }
 }
 
-fn graph_inspector(
-    world: &mut World,
-    ui: &mut egui::Ui,
-    selection: &mut InspectorSelection,
-    graph_changes: &mut Vec<GraphChange>,
+pub fn graph_save_event_system(
+    mut ui_state: ResMut<UiState>,
+    mut evw_save_graph: EventWriter<SaveGraph>,
 ) {
-    let mut changes = Vec::new();
-
-    let Some(graph_selection) = &mut selection.graph_editor else {
-        return;
-    };
-
-    let unsafe_world = world.as_unsafe_world_cell();
-    let type_registry = unsafe {
-        unsafe_world
-            .get_resource::<AppTypeRegistry>()
-            .unwrap()
-            .0
-            .clone()
-    };
-    let mut graph_assets = unsafe {
-        unsafe_world
-            .get_resource_mut::<Assets<AnimationGraph>>()
-            .unwrap()
-    };
-    let graph = graph_assets.get_mut(graph_selection.graph).unwrap();
-
-    let type_registry = type_registry.read();
-    let mut queue = CommandQueue::default();
-    let mut cx = Context {
-        world: Some(unsafe { unsafe_world.world_mut() }.into()),
-        queue: Some(&mut queue),
-    };
-    let mut env = InspectorUi::for_bevy(&type_registry, &mut cx);
-
-    let changed = env.ui_for_reflect(graph, ui);
-
-    if changed {
-        changes.push(GraphChange {
-            change: Change::GraphValidate,
-            graph: graph_selection.graph,
-        });
+    for save_event in ui_state.save_events.drain(..) {
+        evw_save_graph.send(save_event);
     }
-
-    graph_changes.extend(changes);
-
-    queue.apply(world);
 }
 
-fn node_creator(
-    world: &mut World,
-    ui: &mut egui::Ui,
-    selection: &mut InspectorSelection,
-    graph_changes: &mut Vec<GraphChange>,
-) {
-    let unsafe_world = world.as_unsafe_world_cell();
-    let type_registry = unsafe {
-        unsafe_world
-            .get_resource::<AppTypeRegistry>()
-            .unwrap()
-            .0
-            .clone()
-    };
-
-    let type_registry = type_registry.read();
-    let mut queue = CommandQueue::default();
-    let mut cx = Context {
-        world: Some(unsafe { unsafe_world.world_mut() }.into()),
-        queue: Some(&mut queue),
-    };
-    let mut env = InspectorUi::for_bevy(&type_registry, &mut cx);
-
-    env.ui_for_reflect(&mut selection.node_creation.node, ui);
-    let submit_response = ui.button("Create node");
-
-    if submit_response.clicked() && selection.graph_editor.is_some() {
-        let graph_selection = selection.graph_editor.as_ref().unwrap();
-        graph_changes.push(GraphChange {
-            change: Change::NodeCreated(selection.node_creation.node.clone()),
-            graph: graph_selection.graph,
-        });
-    }
-
-    queue.apply(world);
-}
-
-fn node_inspector(
-    world: &mut World,
-    ui: &mut egui::Ui,
-    selection: &mut InspectorSelection,
-    graph_changes: &mut Vec<GraphChange>,
-) {
-    let mut changes = Vec::new();
-
-    let Some(node_selection) = &mut selection.node else {
-        return;
-    };
-
-    let unsafe_world = world.as_unsafe_world_cell();
-    let type_registry = unsafe {
-        unsafe_world
-            .get_resource::<AppTypeRegistry>()
-            .unwrap()
-            .0
-            .clone()
-    };
-    let mut graph_assets = unsafe {
-        unsafe_world
-            .get_resource_mut::<Assets<AnimationGraph>>()
-            .unwrap()
-    };
-    let graph = graph_assets.get_mut(node_selection.graph).unwrap();
-    let Some(node) = graph.nodes.get_mut(&node_selection.node) else {
-        selection.node = None;
-        return;
-    };
-
-    let response = ui.text_edit_singleline(&mut node_selection.name_buf);
-    if response.lost_focus() {
-        changes.push(GraphChange {
-            change: Change::NodeRenamed(
-                node_selection.node.clone(),
-                node_selection.name_buf.clone(),
-            ),
-            graph: node_selection.graph,
-        });
-    }
-
-    let type_registry = type_registry.read();
-    let mut queue = CommandQueue::default();
-    let mut cx = Context {
-        world: Some(unsafe { unsafe_world.world_mut() }.into()),
-        queue: Some(&mut queue),
-    };
-    let mut env = InspectorUi::for_bevy(&type_registry, &mut cx);
-
-    let inner = node.node.inner_reflect();
-    let changed = env.ui_for_reflect(inner, ui);
-
-    if changed {
-        changes.push(GraphChange {
-            change: Change::GraphValidate,
-            graph: node_selection.graph,
-        });
-    }
-
-    graph_changes.extend(changes);
-
-    queue.apply(world);
-}
-
-fn graph_indices(world: &mut World, graph_id: AssetId<AnimationGraph>) -> GraphIndices {
-    world.resource_scope::<Assets<AnimationGraph>, GraphIndices>(|_, graph_assets| {
-        let graph = graph_assets.get(graph_id).unwrap();
-        let spec_context = SpecContext {
-            graph_assets: &graph_assets,
-        };
-
-        make_graph_indices(graph, spec_context)
-    })
-}
-
-fn animated_scene_preview(
-    world: &mut World,
-    ui: &mut egui::Ui,
-    preview_image: &Handle<Image>,
-    selection: &mut InspectorSelection,
-) {
-    if ui.button("Close Preview").clicked() {
-        selection.scene = None;
-    }
-
-    let cube_preview_texture_id =
-        world.resource_scope::<EguiUserTextures, egui::TextureId>(|_, user_textures| {
-            user_textures.image_id(preview_image).unwrap()
-        });
-
-    let available_size = ui.available_size();
-    let e3d_size = Extent3d {
-        width: available_size.x as u32,
-        height: available_size.y as u32,
-        ..default()
-    };
-    world.resource_scope::<Assets<Image>, ()>(|_, mut images| {
-        let image = images.get_mut(preview_image).unwrap();
-        image.texture_descriptor.size = e3d_size;
-        image.resize(e3d_size);
-    });
-    ui.image(egui::load::SizedTexture::new(
-        cube_preview_texture_id,
-        available_size,
-    ));
-}
-
-pub fn setup(
+pub fn setup_system(
     mut egui_user_textures: ResMut<bevy_egui::EguiUserTextures>,
     mut ui_state: ResMut<UiState>,
     mut commands: Commands,
