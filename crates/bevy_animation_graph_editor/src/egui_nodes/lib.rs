@@ -1029,12 +1029,20 @@ impl NodesContext {
             std::mem::swap(&mut box_rect.min.y, &mut box_rect.max.y);
         }
 
+        let old_selected_node_indices = self.state.selected_node_indices.clone();
         self.state.selected_node_indices.clear();
         for (idx, node) in self.nodes.iter() {
             if box_rect.intersects(node.state.rect) {
                 self.state.selected_node_indices.push(*idx);
             }
         }
+        self.state.selected_node_indices.sort_by_key(|idx| {
+            old_selected_node_indices
+                .iter()
+                .position(|x| x == idx)
+                .map(|u| u as i32)
+                .unwrap_or(i32::MAX)
+        });
 
         self.state.selected_link_indices.clear();
         for (idx, link) in self.links.iter() {

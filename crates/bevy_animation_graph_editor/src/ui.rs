@@ -217,7 +217,13 @@ fn graph_editor(
         .map(|c| convert_graph_change(c, &graph_selection.graph_indices, graph_selection.graph));
         graph_changes.extend(changes);
 
-        if let Some(selected_node) = graph_selection.nodes_context.get_selected_nodes().last() {
+        if let Some(selected_node) = graph_selection
+            .nodes_context
+            .get_selected_nodes()
+            .iter()
+            .rev()
+            .find(|id| **id > 1)
+        {
             if *selected_node > 1 {
                 let node_name = graph_selection
                     .graph_indices
