@@ -497,7 +497,7 @@ fn graph_indices(world: &mut World, graph_id: AssetId<AnimationGraph>) -> GraphI
         let spec_context = SpecContext {
             graph_assets: &graph_assets,
         };
-        
+
         make_graph_indices(graph, spec_context)
     })
 }
