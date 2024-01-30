@@ -2,7 +2,7 @@ use crate::core::animation_graph::{PinId, PinMap, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
 use crate::core::frame::{PoseFrame, PoseSpec};
-use crate::prelude::{OptParamSpec, ParamSpec, ParamValue, PassContext, SpecContext};
+use crate::prelude::{ParamValue, PassContext, SpecContext};
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 

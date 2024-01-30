@@ -1,6 +1,6 @@
 use crate::{
     core::{
-        animation_graph::{PinId, PinMap, TimeUpdate},
+        animation_graph::{PinMap, TimeUpdate},
         animation_node::{AnimationNode, AnimationNodeType, NodeLike},
         duration_data::DurationData,
         frame::{PoseFrame, PoseFrameData, PoseSpec},
@@ -10,7 +10,6 @@ use crate::{
 };
 use bevy::{
     reflect::{std_traits::ReflectDefault, Reflect},
-    utils::HashMap,
 };
 
 #[derive(Reflect, Clone, Debug, Default)]

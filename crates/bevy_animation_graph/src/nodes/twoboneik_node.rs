@@ -2,13 +2,12 @@ use bevy::{
     math::{Quat, Vec3},
     reflect::{std_traits::ReflectDefault, Reflect},
     transform::components::Transform,
-    utils::HashMap,
 };
 
 use crate::{
     core::{
         animation_clip::EntityPath,
-        animation_graph::{PinId, PinMap, TimeUpdate},
+        animation_graph::{PinMap, TimeUpdate},
         animation_node::{AnimationNode, AnimationNodeType, NodeLike},
         duration_data::DurationData,
         frame::{BonePoseFrame, PoseFrame, PoseFrameData, PoseSpec},
