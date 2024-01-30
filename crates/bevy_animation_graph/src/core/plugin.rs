@@ -4,7 +4,7 @@ use super::{
     },
     animation_graph::loader::{AnimationGraphLoader, GraphClipLoader},
     frame::PoseSpec,
-    parameters::{ParamSpec, ParamValue},
+    parameters::{BoneMask, ParamSpec, ParamValue},
     systems::{animation_player, animation_player_deferred_gizmos},
 };
 use crate::prelude::{
@@ -51,6 +51,7 @@ impl AnimationGraphPlugin {
             .register_asset_reflect::<AnimatedScene>()
             .register_type::<AnimationGraphPlayer>()
             .register_type::<EntityPath>()
+            .register_type::<BoneMask>()
             .register_type::<ParamValue>()
             .register_type::<ParamSpec>()
             .register_type::<PoseSpec>()

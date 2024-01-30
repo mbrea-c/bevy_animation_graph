@@ -102,9 +102,9 @@ impl UiState {
         let [_graph_editor, graph_selector] =
             tree.split_left(graph_editor, 0.2, vec![EguiWindow::GraphSelector]);
         let [_graph_selector, _scene_selector] =
-            tree.split_below(graph_selector, 0.2, vec![EguiWindow::SceneSelector]);
+            tree.split_below(graph_selector, 0.5, vec![EguiWindow::SceneSelector]);
         let [_node_inspector, _preview] =
-            tree.split_above(inspectors, 0.2, vec![EguiWindow::Preview]);
+            tree.split_above(inspectors, 0.4, vec![EguiWindow::Preview]);
 
         Self {
             state,
@@ -205,7 +205,7 @@ impl egui_dock::TabViewer for TabViewer<'_> {
             }
         }
 
-        if !self.graph_changes.is_empty() {
+        while !self.graph_changes.is_empty() {
             let must_regen_indices =
                 self.world
                     .resource_scope::<Assets<AnimationGraph>, bool>(|_, mut graph_assets| {
@@ -215,7 +215,7 @@ impl egui_dock::TabViewer for TabViewer<'_> {
             if must_regen_indices {
                 if let Some(graph_selection) = self.selection.graph_editor.as_mut() {
                     graph_selection.graph_indices =
-                        Self::graph_indices(self.world, graph_selection.graph);
+                        Self::update_graph_indices(self.world, graph_selection.graph);
                 }
             }
         }
@@ -374,7 +374,7 @@ impl TabViewer<'_> {
         if let Some(chosen_id) = chosen_id {
             selection.graph_editor = Some(GraphSelection {
                 graph: chosen_id,
-                graph_indices: Self::graph_indices(world, chosen_id),
+                graph_indices: Self::update_graph_indices(world, chosen_id),
                 nodes_context: NodesContext::default(),
             });
         }
@@ -610,15 +610,46 @@ impl TabViewer<'_> {
         })
     }
 
-    fn graph_indices(world: &mut World, graph_id: AssetId<AnimationGraph>) -> GraphIndices {
-        world.resource_scope::<Assets<AnimationGraph>, GraphIndices>(|_, graph_assets| {
-            let graph = graph_assets.get(graph_id).unwrap();
-            let spec_context = SpecContext {
-                graph_assets: &graph_assets,
-            };
-
-            make_graph_indices(graph, spec_context)
+    fn update_graph(world: &mut World, changes: Vec<GraphChange>) -> bool {
+        world.resource_scope::<Assets<AnimationGraph>, bool>(|_, mut graph_assets| {
+            update_graph(changes, &mut graph_assets)
         })
+    }
+
+    fn update_graph_indices(world: &mut World, graph_id: AssetId<AnimationGraph>) -> GraphIndices {
+        let mut res = Self::indices_one_step(world, graph_id);
+
+        while let Err(changes) = &res {
+            Self::update_graph(world, changes.clone());
+            res = Self::indices_one_step(world, graph_id);
+        }
+
+        res.unwrap()
+    }
+
+    fn indices_one_step(
+        world: &mut World,
+        graph_id: AssetId<AnimationGraph>,
+    ) -> Result<GraphIndices, Vec<GraphChange>> {
+        world.resource_scope::<Assets<AnimationGraph>, Result<GraphIndices, Vec<GraphChange>>>(
+            |_, graph_assets| {
+                let graph = graph_assets.get(graph_id).unwrap();
+                let spec_context = SpecContext {
+                    graph_assets: &graph_assets,
+                };
+
+                match make_graph_indices(graph, spec_context) {
+                    Err(targets) => Err(targets
+                        .into_iter()
+                        .map(|t| GraphChange {
+                            graph: graph_id,
+                            change: Change::LinkRemoved(t),
+                        })
+                        .collect()),
+                    Ok(indices) => Ok(indices),
+                }
+            },
+        )
     }
 }
 

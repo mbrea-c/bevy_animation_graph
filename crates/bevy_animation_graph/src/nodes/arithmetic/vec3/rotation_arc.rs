@@ -1,4 +1,4 @@
-use crate::core::animation_graph::PinId;
+use crate::core::animation_graph::{PinId, PinMap};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::prelude::{OptParamSpec, ParamSpec, ParamValue, PassContext, SpecContext};
 use crate::utils::unwrap::Unwrap;
@@ -34,15 +34,16 @@ impl NodeLike for RotationArcNode {
         )])
     }
 
-    fn parameter_input_spec(&self, _: SpecContext) -> HashMap<PinId, OptParamSpec> {
-        HashMap::from([
+    fn parameter_input_spec(&self, _: SpecContext) -> PinMap<OptParamSpec> {
+        [
             (Self::INPUT_1.into(), ParamSpec::Vec3.into()),
             (Self::INPUT_2.into(), ParamSpec::Vec3.into()),
-        ])
+        ]
+        .into()
     }
 
-    fn parameter_output_spec(&self, _: SpecContext) -> HashMap<PinId, ParamSpec> {
-        HashMap::from([(Self::OUTPUT.into(), ParamSpec::Quat)])
+    fn parameter_output_spec(&self, _: SpecContext) -> PinMap<ParamSpec> {
+        [(Self::OUTPUT.into(), ParamSpec::Quat)].into()
     }
 
     fn display_name(&self) -> String {

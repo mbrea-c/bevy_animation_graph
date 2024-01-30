@@ -1,4 +1,4 @@
-use crate::core::animation_graph::{PinId, TimeUpdate};
+use crate::core::animation_graph::{PinId, PinMap, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
 use crate::core::frame::{BonePoseFrame, PoseFrame, PoseFrameData, PoseSpec};
@@ -46,8 +46,8 @@ impl NodeLike for FlipLRNode {
         })
     }
 
-    fn pose_input_spec(&self, _: SpecContext) -> HashMap<PinId, PoseSpec> {
-        HashMap::from([(Self::INPUT.into(), PoseSpec::BoneSpace)])
+    fn pose_input_spec(&self, _: SpecContext) -> PinMap<PoseSpec> {
+        [(Self::INPUT.into(), PoseSpec::BoneSpace)].into()
     }
 
     fn pose_output_spec(&self, _: SpecContext) -> Option<PoseSpec> {

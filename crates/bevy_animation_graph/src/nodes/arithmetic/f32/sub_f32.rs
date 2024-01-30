@@ -1,4 +1,4 @@
-use crate::core::animation_graph::PinId;
+use crate::core::animation_graph::{PinId, PinMap};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::prelude::{OptParamSpec, ParamSpec, ParamValue, PassContext, SpecContext};
 use bevy::prelude::*;
@@ -30,15 +30,16 @@ impl NodeLike for SubF32 {
         HashMap::from([(Self::OUTPUT.into(), ParamValue::F32(input_1 - input_2))])
     }
 
-    fn parameter_input_spec(&self, _: SpecContext) -> HashMap<PinId, OptParamSpec> {
-        HashMap::from([
+    fn parameter_input_spec(&self, _: SpecContext) -> PinMap<OptParamSpec> {
+        [
             (Self::INPUT_1.into(), ParamSpec::F32.into()),
             (Self::INPUT_2.into(), ParamSpec::F32.into()),
-        ])
+        ]
+        .into()
     }
 
-    fn parameter_output_spec(&self, _: SpecContext) -> HashMap<PinId, ParamSpec> {
-        HashMap::from([(Self::OUTPUT.into(), ParamSpec::F32)])
+    fn parameter_output_spec(&self, _: SpecContext) -> PinMap<ParamSpec> {
+        [(Self::OUTPUT.into(), ParamSpec::F32)].into()
     }
 
     fn display_name(&self) -> String {

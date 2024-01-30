@@ -327,4 +327,5 @@ pub mod prelude {
     pub use super::interpolation::linear::*;
     pub use super::nodes::*;
     pub use super::sampling::prelude::*;
+    pub use super::utils::ordered_map::OrderedMap;
 }

@@ -10,7 +10,7 @@ use bevy_animation_graph::core::{animation_graph::AnimationGraph, plugin::Animat
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::{bevy_egui, DefaultInspectorConfigPlugin};
 use clap::Parser;
-use egui_inspector_impls::register_editor_impls;
+use egui_inspector_impls::BetterInspectorPlugin;
 use graph_saving::{save_graph_system, SaveGraph};
 use std::path::PathBuf;
 use ui::UiState;
@@ -48,6 +48,7 @@ fn main() {
         .add_plugins(EguiPlugin)
         .add_plugins(AnimationGraphPlugin)
         .add_plugins(DefaultInspectorConfigPlugin)
+        .add_plugins(BetterInspectorPlugin)
         .insert_resource(UiState::new())
         .insert_resource(cli)
         .add_systems(Startup, (load_target_graph, ui::setup_system))
@@ -61,12 +62,6 @@ fn main() {
             )
                 .chain(),
         );
-
-    {
-        let type_registry = app.world.resource::<bevy::ecs::prelude::AppTypeRegistry>();
-        let mut type_registry = type_registry.write();
-        register_editor_impls(&mut type_registry);
-    }
 
     app.run();
 }

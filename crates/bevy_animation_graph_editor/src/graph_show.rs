@@ -166,7 +166,10 @@ impl GraphIndices {
     }
 }
 
-pub fn make_graph_indices(graph: &AnimationGraph, ctx: SpecContext) -> GraphIndices {
+pub fn make_graph_indices(
+    graph: &AnimationGraph,
+    ctx: SpecContext,
+) -> Result<GraphIndices, Vec<TargetPin>> {
     let mut graph_indices = GraphIndices::default();
 
     for node in graph.nodes.values() {
@@ -226,20 +229,32 @@ pub fn make_graph_indices(graph: &AnimationGraph, ctx: SpecContext) -> GraphIndi
             .add_mapping(Pin::Target(TargetPin::OutputPose));
     }
 
+    let mut remove_edges = vec![];
+
     // Add edges
     for (target_pin, source_pin) in graph.edges.iter() {
-        let source_id = graph_indices
+        let Some(source_id) = graph_indices
             .pin_indices
             .id(&Pin::Source(source_pin.clone()))
-            .unwrap();
-        let target_id = graph_indices
+        else {
+            remove_edges.push(target_pin.clone());
+            continue;
+        };
+        let Some(target_id) = graph_indices
             .pin_indices
             .id(&Pin::Target(target_pin.clone()))
-            .unwrap();
+        else {
+            remove_edges.push(target_pin.clone());
+            continue;
+        };
         graph_indices.edge_indices.add_mapping(source_id, target_id);
     }
 
-    graph_indices
+    if remove_edges.is_empty() {
+        Ok(graph_indices)
+    } else {
+        Err(remove_edges)
+    }
 }
 
 #[derive(Default)]

@@ -1,4 +1,4 @@
-use crate::core::animation_graph::{PinId, TimeUpdate};
+use crate::core::animation_graph::{PinId, PinMap, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
 use crate::core::frame::{PoseFrame, PoseSpec};
@@ -53,12 +53,12 @@ impl NodeLike for SpeedNode {
         Some(in_pose_frame)
     }
 
-    fn parameter_input_spec(&self, _: SpecContext) -> HashMap<PinId, OptParamSpec> {
-        HashMap::from([(Self::SPEED.into(), ParamSpec::F32.into())])
+    fn parameter_input_spec(&self, _: SpecContext) -> PinMap<OptParamSpec> {
+        [(Self::SPEED.into(), ParamSpec::F32.into())].into()
     }
 
-    fn pose_input_spec(&self, _: SpecContext) -> HashMap<PinId, PoseSpec> {
-        HashMap::from([(Self::INPUT.into(), PoseSpec::Any)])
+    fn pose_input_spec(&self, _: SpecContext) -> PinMap<PoseSpec> {
+        [(Self::INPUT.into(), PoseSpec::Any)].into()
     }
 
     fn pose_output_spec(&self, _: SpecContext) -> Option<PoseSpec> {

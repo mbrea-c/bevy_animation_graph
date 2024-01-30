@@ -91,18 +91,7 @@
         NodeParameter("Rotate", "Bone Mask"): InputParameter("Rotation Mask"),
     },
     default_parameters: {
-        "Rotation Mask": BoneMask(Positive(
-            bones: {
-                [
-                    "Main Controller",
-                    "Main Controller",
-                ]: 1.0,
-            },
-        )),
         "Z": Vec3((0.0, 0.0, 1.0)),
-        "Target Position": Vec3((2.5, -0.2, 1.0)),
-        "Target Speed": F32(1.5),
-        "Target Direction": Vec3((1.0, 0.0, 0.0)),
         "Target Path": EntityPath([
             "Main Controller",
             "Main Controller",
@@ -114,6 +103,17 @@
             "Lower Arm L",
             "Wrist L",
         ]),
+        "Target Position": Vec3((2.5, -0.2, 1.0)),
+        "Target Speed": F32(1.5),
+        "Target Direction": Vec3((1.0, 0.0, 0.0)),
+        "Rotation Mask": BoneMask(Positive(
+            bones: {
+                [
+                    "Main Controller",
+                    "Main Controller",
+                ]: 1.0,
+            },
+        )),
     },
     input_poses: {},
     output_parameters: {},

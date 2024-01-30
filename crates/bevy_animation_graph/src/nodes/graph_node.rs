@@ -1,4 +1,6 @@
-use crate::core::animation_graph::{AnimationGraph, InputOverlay, PinId, TargetPin, TimeUpdate};
+use crate::core::animation_graph::{
+    AnimationGraph, InputOverlay, PinId, PinMap, TargetPin, TimeUpdate,
+};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
 use crate::core::frame::{PoseFrame, PoseSpec};
@@ -78,7 +80,7 @@ impl NodeLike for GraphNode {
         }
     }
 
-    fn parameter_input_spec(&self, ctx: SpecContext) -> HashMap<PinId, OptParamSpec> {
+    fn parameter_input_spec(&self, ctx: SpecContext) -> PinMap<OptParamSpec> {
         let graph = ctx.graph_assets.get(&self.graph).unwrap();
         graph
             .default_parameters
@@ -87,12 +89,12 @@ impl NodeLike for GraphNode {
             .collect()
     }
 
-    fn parameter_output_spec(&self, ctx: SpecContext) -> HashMap<PinId, ParamSpec> {
+    fn parameter_output_spec(&self, ctx: SpecContext) -> PinMap<ParamSpec> {
         let graph = ctx.graph_assets.get(&self.graph).unwrap();
         graph.output_parameters.clone()
     }
 
-    fn pose_input_spec(&self, ctx: SpecContext) -> HashMap<PinId, PoseSpec> {
+    fn pose_input_spec(&self, ctx: SpecContext) -> PinMap<PoseSpec> {
         let graph = ctx.graph_assets.get(&self.graph).unwrap();
         graph.input_poses.clone()
     }

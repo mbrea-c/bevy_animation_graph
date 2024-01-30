@@ -10,7 +10,7 @@ use crate::{
         DeferredGizmos, GraphContext, OptParamSpec, ParamSpec, ParamValue, PassContext,
         SampleLinearAt, SpecContext, SystemResources,
     },
-    utils::unwrap::Unwrap,
+    utils::{ordered_map::OrderedMap, unwrap::Unwrap},
 };
 use bevy::{
     prelude::*,
@@ -181,6 +181,8 @@ impl Extra {
     }
 }
 
+pub type PinMap<V> = OrderedMap<PinId, V>;
+
 #[derive(Debug, Clone, Asset, TypeUuid, Reflect)]
 #[uuid = "92411396-01ae-4528-9839-709a7a321263"]
 pub struct AnimationGraph {
@@ -190,9 +192,9 @@ pub struct AnimationGraph {
     #[reflect(ignore)]
     pub edges: HashMap<TargetPin, SourcePin>,
 
-    pub default_parameters: HashMap<PinId, ParamValue>,
-    pub input_poses: HashMap<PinId, PoseSpec>,
-    pub output_parameters: HashMap<PinId, ParamSpec>,
+    pub default_parameters: PinMap<ParamValue>,
+    pub input_poses: PinMap<PoseSpec>,
+    pub output_parameters: PinMap<ParamSpec>,
     pub output_pose: Option<PoseSpec>,
 
     #[reflect(ignore)]
@@ -211,9 +213,9 @@ impl AnimationGraph {
             nodes: HashMap::new(),
             edges: HashMap::new(),
 
-            default_parameters: HashMap::new(),
-            input_poses: HashMap::new(),
-            output_parameters: HashMap::new(),
+            default_parameters: PinMap::new(),
+            input_poses: PinMap::new(),
+            output_parameters: PinMap::new(),
             output_pose: None,
 
             extra: Extra::default(),

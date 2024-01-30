@@ -1036,6 +1036,7 @@ impl NodesContext {
                 self.state.selected_node_indices.push(*idx);
             }
         }
+        // Force stability
         self.state.selected_node_indices.sort_by_key(|idx| {
             old_selected_node_indices
                 .iter()

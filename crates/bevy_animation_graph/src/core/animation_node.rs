@@ -1,5 +1,5 @@
 use super::{
-    animation_graph::{PinId, TimeUpdate},
+    animation_graph::{PinId, PinMap, TimeUpdate},
     duration_data::DurationData,
     frame::{PoseFrame, PoseSpec},
     parameters::{OptParamSpec, ParamSpec, ParamValue},
@@ -32,16 +32,16 @@ pub trait NodeLike: Send + Sync + Reflect {
         None
     }
 
-    fn parameter_input_spec(&self, _ctx: SpecContext) -> HashMap<PinId, OptParamSpec> {
-        HashMap::new()
+    fn parameter_input_spec(&self, _ctx: SpecContext) -> PinMap<OptParamSpec> {
+        PinMap::new()
     }
 
-    fn parameter_output_spec(&self, _ctx: SpecContext) -> HashMap<PinId, ParamSpec> {
-        HashMap::new()
+    fn parameter_output_spec(&self, _ctx: SpecContext) -> PinMap<ParamSpec> {
+        PinMap::new()
     }
 
-    fn pose_input_spec(&self, _ctx: SpecContext) -> HashMap<PinId, PoseSpec> {
-        HashMap::new()
+    fn pose_input_spec(&self, _ctx: SpecContext) -> PinMap<PoseSpec> {
+        PinMap::new()
     }
 
     /// Specify whether or not a node outputs a pose, and which space the pose is in
@@ -105,15 +105,15 @@ impl NodeLike for AnimationNode {
         self.node.map(|n| n.pose_pass(input, ctx))
     }
 
-    fn parameter_input_spec(&self, ctx: SpecContext) -> HashMap<PinId, OptParamSpec> {
+    fn parameter_input_spec(&self, ctx: SpecContext) -> PinMap<OptParamSpec> {
         self.node.map(|n| n.parameter_input_spec(ctx))
     }
 
-    fn parameter_output_spec(&self, ctx: SpecContext) -> HashMap<PinId, ParamSpec> {
+    fn parameter_output_spec(&self, ctx: SpecContext) -> PinMap<ParamSpec> {
         self.node.map(|n| n.parameter_output_spec(ctx))
     }
 
-    fn pose_input_spec(&self, ctx: SpecContext) -> HashMap<PinId, PoseSpec> {
+    fn pose_input_spec(&self, ctx: SpecContext) -> PinMap<PoseSpec> {
         self.node.map(|n| n.pose_input_spec(ctx))
     }
 

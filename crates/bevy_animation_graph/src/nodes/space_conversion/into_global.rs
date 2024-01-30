@@ -1,6 +1,6 @@
 use crate::{
     core::{
-        animation_graph::{PinId, TimeUpdate},
+        animation_graph::{PinId, PinMap, TimeUpdate},
         animation_node::{AnimationNode, AnimationNodeType, NodeLike},
         duration_data::DurationData,
         frame::{PoseFrame, PoseFrameData, PoseSpec},
@@ -46,8 +46,8 @@ impl NodeLike for IntoGlobalSpaceNode {
         })
     }
 
-    fn pose_input_spec(&self, _ctx: SpecContext) -> HashMap<PinId, PoseSpec> {
-        HashMap::from([(Self::POSE_IN.into(), PoseSpec::Any)])
+    fn pose_input_spec(&self, _ctx: SpecContext) -> PinMap<PoseSpec> {
+        [(Self::POSE_IN.into(), PoseSpec::Any)].into()
     }
 
     fn pose_output_spec(&self, _ctx: SpecContext) -> Option<PoseSpec> {
