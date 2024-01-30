@@ -1,5 +1,0 @@
-(
-    source: "models/character_rigged.gltf#Scene0",
-    path_to_player: ["Main Controller"],
-    animation_graph: "animation_graphs/human.animgraph.ron",
-)

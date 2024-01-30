@@ -1,6 +1,0 @@
-(
-    source: GltfNamed(
-        path: "models/character_rigged.gltf",
-        animation_name: "WalkBaked2",
-    ),
-)
