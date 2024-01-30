@@ -4,7 +4,7 @@ use crate::core::duration_data::DurationData;
 use crate::core::frame::{PoseFrame, PoseSpec};
 use crate::prelude::{OptParamSpec, ParamSpec, PassContext, SpecContext};
 use bevy::reflect::std_traits::ReflectDefault;
-use bevy::{reflect::Reflect};
+use bevy::reflect::Reflect;
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default)]

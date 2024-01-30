@@ -7,7 +7,6 @@ use crate::prelude::{OptParamSpec, ParamSpec, PassContext, SpecContext};
 use crate::utils::unwrap::Unwrap;
 use bevy::prelude::*;
 
-
 #[derive(Reflect, Clone, Debug)]
 #[reflect(Default)]
 pub struct RotationNode {}

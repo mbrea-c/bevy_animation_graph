@@ -6,7 +6,6 @@ use crate::core::frame::{PoseFrame, PoseSpec};
 use crate::prelude::{PassContext, SpecContext};
 use bevy::prelude::*;
 
-
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default)]
 pub struct ChainNode {}

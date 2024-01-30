@@ -8,9 +8,7 @@ use crate::{
     },
     prelude::{PassContext, SpecContext},
 };
-use bevy::{
-    reflect::{std_traits::ReflectDefault, Reflect},
-};
+use bevy::reflect::{std_traits::ReflectDefault, Reflect};
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default)]
