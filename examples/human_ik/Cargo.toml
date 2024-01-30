@@ -1,0 +1,7 @@
+[package]
+name = "human_ik"
+publish = false
+
+[dependencies]
+bevy = { workspace = true }
+bevy_animation_graph = { path = "../../crates/bevy_animation_graph" }

@@ -2,6 +2,7 @@ use super::{pin, AnimationGraph, Extra};
 use crate::{
     core::frame::PoseSpec,
     prelude::{AnimationNode, AnimationNodeType, ParamSpec, ParamValue},
+    utils::ordered_map::OrderedMap,
 };
 use bevy::utils::HashMap;
 use serde::{Deserialize, Serialize};
@@ -30,11 +31,11 @@ pub struct AnimationGraphSerial {
     pub edges_inverted: HashMap<TargetPinSerial, SourcePinSerial>,
 
     #[serde(default)]
-    pub default_parameters: HashMap<PinIdSerial, ParamValue>,
+    pub default_parameters: OrderedMap<PinIdSerial, ParamValue>,
     #[serde(default)]
-    pub input_poses: HashMap<PinIdSerial, PoseSpec>,
+    pub input_poses: OrderedMap<PinIdSerial, PoseSpec>,
     #[serde(default)]
-    pub output_parameters: HashMap<PinIdSerial, ParamSpec>,
+    pub output_parameters: OrderedMap<PinIdSerial, ParamSpec>,
     #[serde(default)]
     pub output_pose: Option<PoseSpec>,
 

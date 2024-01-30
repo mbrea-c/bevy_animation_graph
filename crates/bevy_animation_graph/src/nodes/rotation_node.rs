@@ -1,4 +1,4 @@
-use crate::core::animation_graph::{PinId, TimeUpdate};
+use crate::core::animation_graph::{PinMap, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
 use crate::core::frame::{BonePoseFrame, PoseFrame, PoseFrameData, PoseSpec};
@@ -6,7 +6,6 @@ use crate::core::parameters::BoneMask;
 use crate::prelude::{OptParamSpec, ParamSpec, PassContext, SpecContext};
 use crate::utils::unwrap::Unwrap;
 use bevy::prelude::*;
-use bevy::utils::HashMap;
 
 #[derive(Reflect, Clone, Debug)]
 #[reflect(Default)]
@@ -66,15 +65,16 @@ impl NodeLike for RotationNode {
         })
     }
 
-    fn parameter_input_spec(&self, _ctx: SpecContext) -> HashMap<PinId, OptParamSpec> {
-        HashMap::from([
+    fn parameter_input_spec(&self, _ctx: SpecContext) -> PinMap<OptParamSpec> {
+        [
             (Self::MASK.into(), ParamSpec::BoneMask.into()),
             (Self::ROTATION.into(), ParamSpec::Quat.into()),
-        ])
+        ]
+        .into()
     }
 
-    fn pose_input_spec(&self, _: SpecContext) -> HashMap<PinId, PoseSpec> {
-        HashMap::from([(Self::INPUT.into(), PoseSpec::BoneSpace)])
+    fn pose_input_spec(&self, _: SpecContext) -> PinMap<PoseSpec> {
+        [(Self::INPUT.into(), PoseSpec::BoneSpace)].into()
     }
 
     fn pose_output_spec(&self, _: SpecContext) -> Option<PoseSpec> {

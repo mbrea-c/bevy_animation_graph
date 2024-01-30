@@ -40,6 +40,7 @@ pub struct VariableCurve {
 
 /// Path to an entity, with [`Name`]s. Each entity in a path must have a name.
 #[derive(Reflect, Clone, Debug, Hash, PartialEq, Eq, Default)]
+#[reflect(Default)]
 pub struct EntityPath {
     /// Parts of the path
     pub parts: Vec<Name>,

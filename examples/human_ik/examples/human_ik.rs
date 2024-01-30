@@ -1,3 +1,6 @@
+extern crate bevy;
+extern crate bevy_animation_graph;
+
 use bevy::{pbr::CascadeShadowConfigBuilder, prelude::*};
 use bevy_animation_graph::core::animated_scene::{AnimatedSceneBundle, AnimatedSceneInstance};
 use bevy_animation_graph::prelude::*;
@@ -5,7 +8,10 @@ use std::f32::consts::PI;
 
 fn main() {
     App::new()
-        .add_plugins(DefaultPlugins)
+        .add_plugins(DefaultPlugins.set(AssetPlugin {
+            file_path: "../../assets".to_string(),
+            ..default()
+        }))
         .add_plugins(AnimationGraphPlugin)
         .insert_resource(AmbientLight {
             color: Color::WHITE,
@@ -59,7 +65,7 @@ fn setup(
     // Animated character
     commands.spawn((
         AnimatedSceneBundle {
-            animated_scene: asset_server.load("animated_scenes/human.animscn.ron"),
+            animated_scene: asset_server.load("animated_scenes/human_ik.animscn.ron"),
             transform: Transform::from_xyz(0., 0., 0.),
             ..default()
         },

@@ -2,13 +2,12 @@ use bevy::{
     math::{Quat, Vec3},
     reflect::{std_traits::ReflectDefault, Reflect},
     transform::components::Transform,
-    utils::HashMap,
 };
 
 use crate::{
     core::{
         animation_clip::EntityPath,
-        animation_graph::{PinId, TimeUpdate},
+        animation_graph::{PinMap, TimeUpdate},
         animation_node::{AnimationNode, AnimationNodeType, NodeLike},
         duration_data::DurationData,
         frame::{BonePoseFrame, PoseFrame, PoseFrameData, PoseSpec},
@@ -121,15 +120,16 @@ impl NodeLike for TwoBoneIKNode {
         })
     }
 
-    fn parameter_input_spec(&self, _: SpecContext) -> HashMap<PinId, OptParamSpec> {
-        HashMap::from([
+    fn parameter_input_spec(&self, _: SpecContext) -> PinMap<OptParamSpec> {
+        [
             (Self::TARGETBONE.into(), ParamSpec::EntityPath.into()),
             (Self::TARGETPOS.into(), ParamSpec::Vec3.into()),
-        ])
+        ]
+        .into()
     }
 
-    fn pose_input_spec(&self, _: SpecContext) -> HashMap<PinId, PoseSpec> {
-        HashMap::from([(Self::INPUT.into(), PoseSpec::BoneSpace)])
+    fn pose_input_spec(&self, _: SpecContext) -> PinMap<PoseSpec> {
+        [(Self::INPUT.into(), PoseSpec::BoneSpace)].into()
     }
 
     fn pose_output_spec(&self, _: SpecContext) -> Option<PoseSpec> {

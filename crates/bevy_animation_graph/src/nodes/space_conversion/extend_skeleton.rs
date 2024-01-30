@@ -1,6 +1,6 @@
 use crate::{
     core::{
-        animation_graph::{PinId, TimeUpdate},
+        animation_graph::{PinMap, TimeUpdate},
         animation_node::{AnimationNode, AnimationNodeType, NodeLike},
         duration_data::DurationData,
         frame::{BonePoseFrame, PoseFrame, PoseFrameData, PoseSpec},
@@ -9,10 +9,7 @@ use crate::{
     prelude::{PassContext, SpecContext},
     utils::unwrap::Unwrap,
 };
-use bevy::{
-    reflect::{std_traits::ReflectDefault, Reflect},
-    utils::HashMap,
-};
+use bevy::reflect::{std_traits::ReflectDefault, Reflect};
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default)]
@@ -44,8 +41,8 @@ impl NodeLike for ExtendSkeleton {
         })
     }
 
-    fn pose_input_spec(&self, _ctx: SpecContext) -> HashMap<PinId, PoseSpec> {
-        HashMap::from([(Self::POSE_IN.into(), PoseSpec::BoneSpace)])
+    fn pose_input_spec(&self, _ctx: SpecContext) -> PinMap<PoseSpec> {
+        [(Self::POSE_IN.into(), PoseSpec::BoneSpace)].into()
     }
 
     fn pose_output_spec(&self, _ctx: SpecContext) -> Option<PoseSpec> {

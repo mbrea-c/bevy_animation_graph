@@ -1,8 +1,8 @@
-use crate::core::animation_graph::{PinId, TimeUpdate};
+use crate::core::animation_graph::{PinId, PinMap, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
 use crate::core::frame::{PoseFrame, PoseSpec};
-use crate::prelude::{OptParamSpec, ParamSpec, ParamValue, PassContext, SpecContext};
+use crate::prelude::{ParamValue, PassContext, SpecContext};
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 
@@ -62,16 +62,8 @@ impl NodeLike for LoopNode {
         Some(pose)
     }
 
-    fn parameter_input_spec(&self, _: SpecContext) -> HashMap<PinId, OptParamSpec> {
-        HashMap::new()
-    }
-
-    fn parameter_output_spec(&self, _: SpecContext) -> HashMap<PinId, ParamSpec> {
-        HashMap::new()
-    }
-
-    fn pose_input_spec(&self, _: SpecContext) -> HashMap<PinId, PoseSpec> {
-        HashMap::from([(Self::INPUT.into(), PoseSpec::Any)])
+    fn pose_input_spec(&self, _: SpecContext) -> PinMap<PoseSpec> {
+        [(Self::INPUT.into(), PoseSpec::Any)].into()
     }
 
     fn pose_output_spec(&self, _: SpecContext) -> Option<PoseSpec> {

@@ -1,13 +1,25 @@
 use crate::core::pose::BoneId;
-use bevy::{reflect::Reflect, utils::HashMap};
+use bevy::{
+    reflect::{std_traits::ReflectDefault, Reflect},
+    utils::HashMap,
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Reflect, Clone, Debug)]
+#[reflect(Default)]
 pub enum BoneMask {
     /// If a bone is in the bones map, weight is given. Otherwise, weight is zero
     Positive { bones: HashMap<BoneId, f32> },
     /// If a bone is not in bones map, weight is 1. Otherwise, weight is as given
     Negative { bones: HashMap<BoneId, f32> },
+}
+
+impl Default for BoneMask {
+    fn default() -> Self {
+        Self::Positive {
+            bones: Default::default(),
+        }
+    }
 }
 
 impl BoneMask {
