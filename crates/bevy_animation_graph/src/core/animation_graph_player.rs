@@ -1,6 +1,7 @@
 use super::{
     animation_graph::{AnimationGraph, InputOverlay, TimeState, TimeUpdate},
     context::DeferredGizmos,
+    errors::GraphError,
     parameters::ParamValue,
     pose::{BoneId, Pose},
 };
@@ -19,6 +20,9 @@ pub struct AnimationGraphPlayer {
     pub(crate) deferred_gizmos: DeferredGizmos,
 
     input_overlay: InputOverlay,
+    /// Error that ocurred during graph evaluation in the last frame
+    #[reflect(ignore)]
+    error: Option<GraphError>,
 }
 
 impl AnimationGraphPlayer {
@@ -33,6 +37,7 @@ impl AnimationGraphPlayer {
             deferred_gizmos: DeferredGizmos::default(),
 
             input_overlay: InputOverlay::default(),
+            error: None,
         }
     }
 
@@ -83,19 +88,26 @@ impl AnimationGraphPlayer {
             return None;
         };
 
-        Some(
-            graph
-                .query_with_overlay(
-                    self.elapsed.update,
-                    &mut self.context,
-                    system_resources,
-                    &self.input_overlay,
-                    root_entity,
-                    entity_map,
-                    &mut self.deferred_gizmos,
-                )
-                .unwrap_or(Pose::default()),
-        )
+        let pose = match graph.query_with_overlay(
+            self.elapsed.update,
+            &mut self.context,
+            system_resources,
+            &self.input_overlay,
+            root_entity,
+            entity_map,
+            &mut self.deferred_gizmos,
+        ) {
+            Ok(pose) => {
+                self.error = None;
+                pose
+            }
+            Err(error) => {
+                self.error = Some(error);
+                Pose::default()
+            }
+        };
+
+        Some(pose)
     }
 
     pub fn pause(&mut self) -> &mut Self {
@@ -119,5 +131,11 @@ impl AnimationGraphPlayer {
 
     pub fn get_animation_graph(&self) -> Option<Handle<AnimationGraph>> {
         self.animation.clone()
+    }
+
+    /// If graph evaluation produced an error in the last frame return the error, otherwise return
+    /// `None`.
+    pub fn get_error(&self) -> Option<GraphError> {
+        self.error.clone()
     }
 }
