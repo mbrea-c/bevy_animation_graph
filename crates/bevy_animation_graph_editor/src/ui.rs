@@ -460,7 +460,8 @@ impl TabViewer<'_> {
         };
         let mut env = InspectorUi::for_bevy(&type_registry, &mut cx);
 
-        let changed = env.ui_for_reflect(graph, ui);
+        let changed =
+            env.ui_for_reflect_with_options(graph, ui, egui::Id::new(graph_selection.graph), &());
 
         if changed {
             changes.push(GraphChange {

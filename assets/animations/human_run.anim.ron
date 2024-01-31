@@ -1,6 +1,6 @@
 (
     source: GltfNamed(
         path: "models/character_rigged.gltf",
-        animation_name: "ActionBaked",
+        animation_name: "RunBake",
     ),
 )

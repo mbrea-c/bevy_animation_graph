@@ -16,7 +16,12 @@ impl<T: InterpolateLinear + FromReflect + TypePath> SampleLinearAt for ValueFram
     type Output = T;
 
     fn sample_linear_at(&self, time: f32) -> Self::Output {
-        let time = time.clamp(self.prev_timestamp, self.next_timestamp);
+        let time = time.clamp(
+            self.prev_timestamp,
+            // In order to prevent a silly crash
+            // TODO: A better solution must be found
+            self.next_timestamp.max(self.prev_timestamp),
+        );
         let f = if self.prev_timestamp == self.next_timestamp {
             0.
         } else {

@@ -2309,6 +2309,7 @@ name = "human_ik"
 version = "0.0.0"
 dependencies = [
  "bevy",
+ "bevy-inspector-egui",
  "bevy_animation_graph",
 ]
 

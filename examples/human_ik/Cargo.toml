@@ -5,3 +5,4 @@ publish = false
 [dependencies]
 bevy = { workspace = true }
 bevy_animation_graph = { path = "../../crates/bevy_animation_graph" }
+bevy-inspector-egui = "0.22"
