@@ -3,7 +3,7 @@ use crate::{
     core::{
         animation_node::{AnimationNode, NodeLike},
         duration_data::DurationData,
-        errors::GraphError,
+        errors::{GraphError, GraphValidationError},
         frame::{BonePoseFrame, PoseFrame, PoseSpec},
         pose::{BoneId, Pose},
     },
@@ -19,7 +19,6 @@ use bevy::{
     utils::{HashMap, HashSet},
 };
 use serde::{Deserialize, Serialize};
-use std::error::Error;
 
 pub type NodeId = String;
 pub type PinId = String;
@@ -115,20 +114,6 @@ impl InputOverlay {
         self.poses.clear();
     }
 }
-
-#[derive(Debug, Clone, Reflect, Default)]
-pub struct GraphValidationError(String);
-
-impl std::fmt::Display for GraphValidationError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Inconsistent graph: {}", self.0)
-    }
-}
-
-impl Error for GraphValidationError {}
-
-#[derive(Debug, Clone, Reflect, Default)]
-pub struct ExplainedGraphError {}
 
 /// Extra data for the graph that has no effect in evaluation.
 /// Used for editor data, such as node positions in screen.
@@ -407,17 +392,17 @@ impl AnimationGraph {
                 let ex = counters.get_mut(source_pin).unwrap();
                 match (ex, source_type) {
                     (SourceType::Parameter, SourceType::Pose) => {
-                        return Err(GraphValidationError(
+                        return Err(GraphValidationError::UnknownError(
                             "Inconsistent edge types connected to the same pin".into(),
                         ))
                     }
                     (SourceType::Pose, SourceType::Parameter) => {
-                        return Err(GraphValidationError(
+                        return Err(GraphValidationError::UnknownError(
                             "Inconsistent edge types connected to the same pin".into(),
                         ))
                     }
                     (SourceType::Pose, SourceType::Pose) => {
-                        return Err(GraphValidationError(
+                        return Err(GraphValidationError::UnknownError(
                             "Only one target can be connected to each pose output".into(),
                         ))
                     }
