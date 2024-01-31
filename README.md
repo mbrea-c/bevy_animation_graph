@@ -35,10 +35,6 @@ This library aims to fill this gap in the Bevy ecosystem.
 - Export animation graphs in graphviz `.dot` format for visualization.
 - Output from graph nodes is cached to avoid unnecessary computations.
 
-### Editor usage demonstration
-
-[![Demo](https://img.youtube.com/vi/q-JBSQJIcX0/hqdefault.jpg)](https://www.youtube.com/watch?v=q-JBSQJIcX0)
-
 ## Planned Features
 
 In order of priority:
@@ -75,14 +71,18 @@ bevy_animation_graph = { git = "https://github.com/mbrea-c/bevy_animation_graph.
 The documentation in [docs.rs](https://docs.rs/bevy_animation_graph) contains an
 introduction of the library and an explanation of a simple animation graph example.
 
-The complete example is also included in [examples/fox.rs](examples/fox.rs).
+The complete example is also included in the
+[examples/fox/](examples/fox/examples/fox.rs) package.
 
-The resulting locomotion graph looks like this:
+A more complex example is included in the [examples/human/](examples/human/examples/human.rs) package.
+
+### Screenshots
+
 ![Locomotion graph example](locomotion_graph.png)
-And the parameter computation graph:
-![Parameter graph example](parameter_graph.png)
 
-A more complex example is included in [crates/bevy_animation_graph/examples/human.rs](crates/bevy_animation_graph/examples/human.rs).
+### Editor usage demonstration
+
+[![Demo](https://img.youtube.com/vi/q-JBSQJIcX0/hqdefault.jpg)](https://www.youtube.com/watch?v=q-JBSQJIcX0)
 
 ## Contributing
 
