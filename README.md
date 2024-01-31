@@ -37,7 +37,7 @@ This library aims to fill this gap in the Bevy ecosystem.
 
 ### Editor usage demonstration
 
-[![Demo](https://img.youtube.com/vi/q-JBSQJIcX0/0.jpg)](https://www.youtube.com/watch?v=q-JBSQJIcX0)
+[![Demo](https://img.youtube.com/vi/q-JBSQJIcX0/hqdefault.jpg)](https://www.youtube.com/watch?v=q-JBSQJIcX0)
 
 ## Planned Features
 
