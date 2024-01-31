@@ -12,8 +12,11 @@ use bevy::render::render_resource::{
     Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
 };
 use bevy::window::PrimaryWindow;
-use bevy_animation_graph::core::animated_scene::{AnimatedScene, AnimatedSceneBundle};
+use bevy_animation_graph::core::animated_scene::{
+    AnimatedScene, AnimatedSceneBundle, AnimatedSceneInstance,
+};
 use bevy_animation_graph::core::animation_graph::{AnimationGraph, NodeId};
+use bevy_animation_graph::core::animation_graph_player::AnimationGraphPlayer;
 use bevy_animation_graph::core::animation_node::AnimationNode;
 use bevy_animation_graph::core::context::SpecContext;
 use bevy_egui::EguiContext;
@@ -103,8 +106,10 @@ impl UiState {
             tree.split_left(graph_editor, 0.2, vec![EguiWindow::GraphSelector]);
         let [_graph_selector, _scene_selector] =
             tree.split_below(graph_selector, 0.5, vec![EguiWindow::SceneSelector]);
-        let [_node_inspector, _preview] =
-            tree.split_above(inspectors, 0.4, vec![EguiWindow::Preview]);
+        let [_node_inspector, preview] =
+            tree.split_above(inspectors, 0.5, vec![EguiWindow::Preview]);
+        let [_preview, _preview_errors] =
+            tree.split_below(preview, 0.8, vec![EguiWindow::PreviewErrors]);
 
         Self {
             state,
@@ -140,6 +145,7 @@ enum EguiWindow {
     GraphEditor,
     NodeCreate,
     Preview,
+    PreviewErrors,
     GraphSelector,
     SceneSelector,
     NodeInspector,
@@ -154,6 +160,7 @@ impl EguiWindow {
             EguiWindow::GraphEditor => "Graph Editor".into(),
             EguiWindow::NodeCreate => "Create Node".into(),
             EguiWindow::Preview => "Preview Scene".into(),
+            EguiWindow::PreviewErrors => "Errors".into(),
             EguiWindow::GraphSelector => "Select Graph".into(),
             EguiWindow::SceneSelector => "Select Scene".into(),
             EguiWindow::NodeInspector => "Inspect Node".into(),
@@ -202,6 +209,9 @@ impl egui_dock::TabViewer for TabViewer<'_> {
             }
             EguiWindow::GraphSaver(graph, path, done) => {
                 Self::graph_saver(ui, self.save_events, *graph, path, done);
+            }
+            EguiWindow::PreviewErrors => {
+                Self::scene_preview_errors(self.world, ui, self.selection);
             }
         }
 
@@ -596,6 +606,35 @@ impl TabViewer<'_> {
             cube_preview_texture_id,
             available_size,
         ));
+    }
+
+    fn scene_preview_errors(
+        world: &mut World,
+        ui: &mut egui::Ui,
+        selection: &mut InspectorSelection,
+    ) {
+        if selection.scene.is_none() {
+            return;
+        };
+        let mut query = world.query::<(&AnimatedSceneInstance, &PreviewScene)>();
+        let Ok((instance, _)) = query.get_single(world) else {
+            return;
+        };
+        let entity = instance.player_entity;
+        let mut query = world.query::<&AnimationGraphPlayer>();
+        let Ok(player) = query.get(world, entity) else {
+            return;
+        };
+        if let Some(error) = player.get_error() {
+            ui.horizontal(|ui| {
+                ui.label("⚠");
+                ui.label(format!("{}", error));
+            });
+        } else {
+            ui.centered_and_justified(|ui| {
+                ui.label("No errors to show");
+            });
+        }
     }
 }
 

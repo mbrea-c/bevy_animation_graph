@@ -1,7 +1,5 @@
-use crate::{
-    prelude::{AnimationGraph, AnimationGraphPlayer},
-    utils::asset_loader_error::AssetLoaderError,
-};
+use super::errors::AssetLoaderError;
+use crate::prelude::{AnimationGraph, AnimationGraphPlayer};
 use bevy::{
     asset::{io::Reader, Asset, AssetLoader, AsyncReadExt, Handle, LoadContext},
     core::Name,

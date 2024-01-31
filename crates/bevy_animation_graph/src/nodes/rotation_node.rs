@@ -1,6 +1,7 @@
 use crate::core::animation_graph::{PinMap, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
+use crate::core::errors::GraphError;
 use crate::core::frame::{BonePoseFrame, PoseFrame, PoseFrameData, PoseSpec};
 use crate::core::parameters::BoneMask;
 use crate::prelude::{OptParamSpec, ParamSpec, PassContext, SpecContext};
@@ -33,14 +34,18 @@ impl RotationNode {
 }
 
 impl NodeLike for RotationNode {
-    fn duration_pass(&self, mut ctx: PassContext) -> Option<DurationData> {
-        Some(ctx.duration_back(Self::INPUT))
+    fn duration_pass(&self, mut ctx: PassContext) -> Result<Option<DurationData>, GraphError> {
+        Ok(Some(ctx.duration_back(Self::INPUT)?))
     }
 
-    fn pose_pass(&self, input: TimeUpdate, mut ctx: PassContext) -> Option<PoseFrame> {
-        let mask: BoneMask = ctx.parameter_back(Self::MASK).unwrap();
-        let rotation: Quat = ctx.parameter_back(Self::ROTATION).unwrap();
-        let pose = ctx.pose_back(Self::INPUT, input);
+    fn pose_pass(
+        &self,
+        input: TimeUpdate,
+        mut ctx: PassContext,
+    ) -> Result<Option<PoseFrame>, GraphError> {
+        let mask: BoneMask = ctx.parameter_back(Self::MASK)?.unwrap();
+        let rotation: Quat = ctx.parameter_back(Self::ROTATION)?.unwrap();
+        let pose = ctx.pose_back(Self::INPUT, input)?;
         let time = pose.timestamp;
         let mut pose: BonePoseFrame = pose.data.unwrap();
         let inner_pose = pose.inner_mut();
@@ -59,10 +64,10 @@ impl NodeLike for RotationNode {
             }
         }
 
-        Some(PoseFrame {
+        Ok(Some(PoseFrame {
             data: PoseFrameData::BoneSpace(pose),
             timestamp: time,
-        })
+        }))
     }
 
     fn parameter_input_spec(&self, _ctx: SpecContext) -> PinMap<OptParamSpec> {

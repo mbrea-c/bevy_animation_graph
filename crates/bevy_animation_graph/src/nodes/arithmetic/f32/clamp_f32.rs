@@ -1,5 +1,6 @@
 use crate::core::animation_graph::{PinId, PinMap};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
+use crate::core::errors::GraphError;
 use crate::prelude::{OptParamSpec, ParamSpec, ParamValue, PassContext, SpecContext};
 use bevy::prelude::*;
 use bevy::utils::HashMap;
@@ -24,12 +25,15 @@ impl ClampF32 {
 }
 
 impl NodeLike for ClampF32 {
-    fn parameter_pass(&self, mut ctx: PassContext) -> HashMap<PinId, ParamValue> {
-        let input = ctx.parameter_back(Self::INPUT).unwrap_f32();
-        let min = ctx.parameter_back(Self::CLAMP_MIN).unwrap_f32();
-        let max = ctx.parameter_back(Self::CLAMP_MAX).unwrap_f32();
+    fn parameter_pass(
+        &self,
+        mut ctx: PassContext,
+    ) -> Result<HashMap<PinId, ParamValue>, GraphError> {
+        let input = ctx.parameter_back(Self::INPUT)?.unwrap_f32();
+        let min = ctx.parameter_back(Self::CLAMP_MIN)?.unwrap_f32();
+        let max = ctx.parameter_back(Self::CLAMP_MAX)?.unwrap_f32();
 
-        HashMap::from([(Self::OUTPUT.into(), ParamValue::F32(input.clamp(min, max)))])
+        Ok([(Self::OUTPUT.into(), ParamValue::F32(input.clamp(min, max)))].into())
     }
 
     fn parameter_input_spec(&self, _: SpecContext) -> PinMap<OptParamSpec> {

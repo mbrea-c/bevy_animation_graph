@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 use thiserror::Error;
 
+use super::GraphValidationError;
+
 /// Possible errors that can be produced by a custom asset loader
 #[non_exhaustive]
 #[derive(Debug, Error)]
@@ -20,5 +22,5 @@ pub enum AssetLoaderError {
     #[error("Animated scene path is incorrect: {0}")]
     AnimatedSceneMissingName(String),
     #[error("Graph does not satisfy constraints: {0}")]
-    InconsistentGraphError(#[from] crate::core::animation_graph::GraphError),
+    InconsistentGraphError(#[from] GraphValidationError),
 }
