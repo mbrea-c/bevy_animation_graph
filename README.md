@@ -74,7 +74,7 @@ introduction of the library and an explanation of a simple animation graph examp
 The complete example is also included in the
 [examples/fox/](examples/fox/examples/fox.rs) package.
 
-A more complex example is included in the [examples/human/](examples/human/examples/human.rs) package.
+A more complex example is included in the [examples/human_ik/](examples/human_ik/examples/human_ik.rs) package.
 
 ### Screenshots
 
