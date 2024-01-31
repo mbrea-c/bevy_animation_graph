@@ -16,9 +16,11 @@ This library aims to fill this gap in the Bevy ecosystem.
 ## Current Features
 
 - Animation graphs are assets. They can be loaded from asset files, or created in code with an ergonomic API.
+- Visual graph editor.
 - Available nodes:
   - Animation clip playback.
   - Animation chaining (i.e. play one node after another).
+  - Two-bone inverse kinematics.
   - Looping.
   - Linear Blending (in bone space).
   - Mirror animation about the YZ plane.
@@ -33,15 +35,16 @@ This library aims to fill this gap in the Bevy ecosystem.
 - Export animation graphs in graphviz `.dot` format for visualization.
 - Output from graph nodes is cached to avoid unnecessary computations.
 
+### Editor usage demonstration
+
+[![Demo](https://img.youtube.com/vi/q-JBSQJIcX0/0.jpg)](https://www.youtube.com/watch?v=q-JBSQJIcX0)
+
 ## Planned Features
 
 In order of priority:
 
 1. Finite state machines.
 1. Synchronization tracks.
-1. More procedural animation nodes:
-   1. Two-bone IK
-1. Graph editor UI tool
 1. Ragdoll and physics integration (inititally `bevy_xpbd`, possibly rapier later):
    1. Using a bone mask to specify which bones are kinematically driven, and which bones are simulated (i.e. _ragdolled_)
    2. Pose matching with joint motors (pending on joint motors being implemented in `bevy_xpbd`, currently WIP)
