@@ -71,7 +71,7 @@ impl AnimationGraphPlayer {
     /// Query the animation graph with the latest time update and inputs
     pub(crate) fn query(
         &mut self,
-        context_tmp: &SystemResources,
+        system_resources: &SystemResources,
         root_entity: Entity,
         entity_map: &HashMap<BoneId, Entity>,
     ) -> Option<Pose> {
@@ -79,19 +79,23 @@ impl AnimationGraphPlayer {
             return None;
         };
 
-        let Some(graph) = context_tmp.animation_graph_assets.get(graph_handle) else {
+        let Some(graph) = system_resources.animation_graph_assets.get(graph_handle) else {
             return None;
         };
 
-        Some(graph.query_with_overlay(
-            self.elapsed.update,
-            &mut self.context,
-            context_tmp,
-            &self.input_overlay,
-            root_entity,
-            entity_map,
-            &mut self.deferred_gizmos,
-        ))
+        Some(
+            graph
+                .query_with_overlay(
+                    self.elapsed.update,
+                    &mut self.context,
+                    system_resources,
+                    &self.input_overlay,
+                    root_entity,
+                    entity_map,
+                    &mut self.deferred_gizmos,
+                )
+                .unwrap_or(Pose::default()),
+        )
     }
 
     pub fn pause(&mut self) -> &mut Self {

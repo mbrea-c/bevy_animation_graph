@@ -2,6 +2,7 @@ use crate::core::animation_clip::{GraphClip, Keyframes};
 use crate::core::animation_graph::TimeUpdate;
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
+use crate::core::errors::GraphError;
 use crate::core::frame::{
     BoneFrame, InnerPoseFrame, PoseFrame, PoseFrameData, PoseSpec, ValueFrame,
 };
@@ -45,14 +46,18 @@ impl ClipNode {
 }
 
 impl NodeLike for ClipNode {
-    fn duration_pass(&self, ctx: PassContext) -> Option<DurationData> {
-        Some(Some(self.clip_duration(&ctx)))
+    fn duration_pass(&self, ctx: PassContext) -> Result<Option<DurationData>, GraphError> {
+        Ok(Some(Some(self.clip_duration(&ctx))))
     }
 
-    fn pose_pass(&self, time_update: TimeUpdate, ctx: PassContext) -> Option<PoseFrame> {
+    fn pose_pass(
+        &self,
+        time_update: TimeUpdate,
+        ctx: PassContext,
+    ) -> Result<Option<PoseFrame>, GraphError> {
         let clip_duration = self.clip_duration(&ctx);
         let Some(clip) = ctx.resources.graph_clip_assets.get(&self.clip) else {
-            return Some(PoseFrame::default());
+            return Ok(Some(PoseFrame::default()));
         };
 
         let prev_time = ctx.prev_time_fwd();
@@ -160,7 +165,7 @@ impl NodeLike for ClipNode {
             timestamp: time,
         };
 
-        Some(pose_frame)
+        Ok(Some(pose_frame))
     }
 
     fn pose_output_spec(&self, _: SpecContext) -> Option<PoseSpec> {

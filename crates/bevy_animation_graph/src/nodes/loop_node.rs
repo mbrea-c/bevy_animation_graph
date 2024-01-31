@@ -1,6 +1,7 @@
 use crate::core::animation_graph::{PinId, PinMap, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
+use crate::core::errors::GraphError;
 use crate::core::frame::{PoseFrame, PoseSpec};
 use crate::prelude::{ParamValue, PassContext, SpecContext};
 use bevy::prelude::*;
@@ -24,19 +25,23 @@ impl LoopNode {
 }
 
 impl NodeLike for LoopNode {
-    fn parameter_pass(&self, _: PassContext) -> HashMap<PinId, ParamValue> {
-        HashMap::new()
+    fn parameter_pass(&self, _: PassContext) -> Result<HashMap<PinId, ParamValue>, GraphError> {
+        Ok(HashMap::new())
     }
 
-    fn duration_pass(&self, _: PassContext) -> Option<DurationData> {
-        Some(None)
+    fn duration_pass(&self, _: PassContext) -> Result<Option<DurationData>, GraphError> {
+        Ok(Some(None))
     }
 
-    fn pose_pass(&self, input: TimeUpdate, mut ctx: PassContext) -> Option<PoseFrame> {
-        let duration = ctx.duration_back(Self::INPUT);
+    fn pose_pass(
+        &self,
+        input: TimeUpdate,
+        mut ctx: PassContext,
+    ) -> Result<Option<PoseFrame>, GraphError> {
+        let duration = ctx.duration_back(Self::INPUT)?;
 
         let Some(duration) = duration else {
-            return Some(ctx.pose_back(Self::INPUT, input));
+            return Ok(Some(ctx.pose_back(Self::INPUT, input)?));
         };
 
         let prev_time = ctx.prev_time_fwd();
@@ -54,12 +59,12 @@ impl NodeLike for LoopNode {
             TimeUpdate::Absolute(_) => TimeUpdate::Absolute(t),
         };
 
-        let mut pose = ctx.pose_back(Self::INPUT, fw_upd);
+        let mut pose = ctx.pose_back(Self::INPUT, fw_upd)?;
 
         let t_extra = curr_time.div_euclid(duration) * duration;
         pose.map_ts(|t| t + t_extra);
 
-        Some(pose)
+        Ok(Some(pose))
     }
 
     fn pose_input_spec(&self, _: SpecContext) -> PinMap<PoseSpec> {

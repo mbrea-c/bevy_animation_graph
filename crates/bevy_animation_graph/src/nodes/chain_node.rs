@@ -2,6 +2,7 @@ use crate::chaining::Chainable;
 use crate::core::animation_graph::{PinMap, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
+use crate::core::errors::GraphError;
 use crate::core::frame::{PoseFrame, PoseSpec};
 use crate::prelude::{PassContext, SpecContext};
 use bevy::prelude::*;
@@ -25,9 +26,9 @@ impl ChainNode {
 }
 
 impl NodeLike for ChainNode {
-    fn duration_pass(&self, mut ctx: PassContext) -> Option<DurationData> {
-        let source_duration_1 = ctx.duration_back(Self::INPUT_1);
-        let source_duration_2 = ctx.duration_back(Self::INPUT_2);
+    fn duration_pass(&self, mut ctx: PassContext) -> Result<Option<DurationData>, GraphError> {
+        let source_duration_1 = ctx.duration_back(Self::INPUT_1)?;
+        let source_duration_2 = ctx.duration_back(Self::INPUT_2)?;
 
         let out_duration = match (source_duration_1, source_duration_2) {
             (Some(duration_1), Some(duration_2)) => Some(duration_1 + duration_2),
@@ -36,22 +37,26 @@ impl NodeLike for ChainNode {
             (None, None) => None,
         };
 
-        Some(out_duration)
+        Ok(Some(out_duration))
     }
 
-    fn pose_pass(&self, input: TimeUpdate, mut ctx: PassContext) -> Option<PoseFrame> {
-        let duration_1 = ctx.duration_back(Self::INPUT_1);
+    fn pose_pass(
+        &self,
+        input: TimeUpdate,
+        mut ctx: PassContext,
+    ) -> Result<Option<PoseFrame>, GraphError> {
+        let duration_1 = ctx.duration_back(Self::INPUT_1)?;
         let Some(duration_1) = duration_1 else {
             // First input is infinite, forward time update without change
-            return Some(ctx.pose_back(Self::INPUT_1, input));
+            return Ok(Some(ctx.pose_back(Self::INPUT_1, input)?));
         };
 
-        let pose_1 = ctx.pose_back(Self::INPUT_1, input);
+        let pose_1 = ctx.pose_back(Self::INPUT_1, input)?;
         let curr_time = pose_1.timestamp;
 
-        let pose_2 = ctx.pose_back(Self::INPUT_2, TimeUpdate::Absolute(curr_time - duration_1));
+        let pose_2 = ctx.pose_back(Self::INPUT_2, TimeUpdate::Absolute(curr_time - duration_1))?;
 
-        let duration_2 = ctx.duration_back(Self::INPUT_2);
+        let duration_2 = ctx.duration_back(Self::INPUT_2)?;
 
         let out_pose = pose_1.chain(
             &pose_2,
@@ -60,7 +65,7 @@ impl NodeLike for ChainNode {
             curr_time,
         );
 
-        Some(out_pose)
+        Ok(Some(out_pose))
     }
 
     fn pose_input_spec(&self, _: SpecContext) -> PinMap<PoseSpec> {

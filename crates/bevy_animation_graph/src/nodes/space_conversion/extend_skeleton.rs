@@ -3,6 +3,7 @@ use crate::{
         animation_graph::{PinMap, TimeUpdate},
         animation_node::{AnimationNode, AnimationNodeType, NodeLike},
         duration_data::DurationData,
+        errors::GraphError,
         frame::{BonePoseFrame, PoseFrame, PoseFrameData, PoseSpec},
         space_conversion::SpaceConversion,
     },
@@ -28,17 +29,22 @@ impl ExtendSkeleton {
 }
 
 impl NodeLike for ExtendSkeleton {
-    fn duration_pass(&self, mut ctx: PassContext) -> Option<DurationData> {
-        Some(ctx.duration_back(Self::POSE_IN))
+    fn duration_pass(&self, mut ctx: PassContext) -> Result<Option<DurationData>, GraphError> {
+        Ok(Some(ctx.duration_back(Self::POSE_IN)?))
     }
 
-    fn pose_pass(&self, time_update: TimeUpdate, mut ctx: PassContext) -> Option<PoseFrame> {
-        let in_pose = ctx.pose_back(Self::POSE_IN, time_update);
+    fn pose_pass(
+        &self,
+        time_update: TimeUpdate,
+        mut ctx: PassContext,
+    ) -> Result<Option<PoseFrame>, GraphError> {
+        let in_pose = ctx.pose_back(Self::POSE_IN, time_update)?;
         let bone_pose_frame: BonePoseFrame = in_pose.data.unwrap();
-        Some(PoseFrame {
+
+        Ok(Some(PoseFrame {
             data: PoseFrameData::BoneSpace(ctx.extend_skeleton_bone(&bone_pose_frame)),
             ..in_pose
-        })
+        }))
     }
 
     fn pose_input_spec(&self, _ctx: SpecContext) -> PinMap<PoseSpec> {

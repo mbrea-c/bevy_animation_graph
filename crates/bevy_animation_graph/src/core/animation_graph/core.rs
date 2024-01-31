@@ -3,6 +3,7 @@ use crate::{
     core::{
         animation_node::{AnimationNode, NodeLike},
         duration_data::DurationData,
+        errors::GraphError,
         frame::{BonePoseFrame, PoseFrame, PoseSpec},
         pose::{BoneId, Pose},
     },
@@ -116,15 +117,15 @@ impl InputOverlay {
 }
 
 #[derive(Debug, Clone, Reflect, Default)]
-pub struct GraphError(String);
+pub struct GraphValidationError(String);
 
-impl std::fmt::Display for GraphError {
+impl std::fmt::Display for GraphValidationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Inconsistent graph: {}", self.0)
     }
 }
 
-impl Error for GraphError {}
+impl Error for GraphValidationError {}
 
 #[derive(Debug, Clone, Reflect, Default)]
 pub struct ExplainedGraphError {}
@@ -386,7 +387,7 @@ impl AnimationGraph {
 
     // --- Verification
     // ----------------------------------------------------------------------------------------
-    pub fn validate(&self) -> Result<(), GraphError> {
+    pub fn validate(&self) -> Result<(), GraphValidationError> {
         enum SourceType {
             Parameter,
             Pose,
@@ -406,17 +407,17 @@ impl AnimationGraph {
                 let ex = counters.get_mut(source_pin).unwrap();
                 match (ex, source_type) {
                     (SourceType::Parameter, SourceType::Pose) => {
-                        return Err(GraphError(
+                        return Err(GraphValidationError(
                             "Inconsistent edge types connected to the same pin".into(),
                         ))
                     }
                     (SourceType::Pose, SourceType::Parameter) => {
-                        return Err(GraphError(
+                        return Err(GraphValidationError(
                             "Inconsistent edge types connected to the same pin".into(),
                         ))
                     }
                     (SourceType::Pose, SourceType::Pose) => {
-                        return Err(GraphError(
+                        return Err(GraphValidationError(
                             "Only one target can be connected to each pose output".into(),
                         ))
                     }
@@ -654,20 +655,24 @@ impl AnimationGraph {
 
     // --- Computations
     // ----------------------------------------------------------------------------------------
-    pub fn get_parameter(&self, target_pin: TargetPin, mut ctx: PassContext) -> Option<ParamValue> {
+    pub fn get_parameter(
+        &self,
+        target_pin: TargetPin,
+        mut ctx: PassContext,
+    ) -> Result<ParamValue, GraphError> {
         let source_pin = self.edges.get(&target_pin);
 
         let Some(source_pin) = source_pin else {
-            return None;
+            return Err(GraphError::MissingInputEdge(target_pin));
         };
 
         if let Some(val) = ctx.context().get_parameter(source_pin) {
-            return Some(val.clone());
+            return Ok(val.clone());
         }
 
         let source_value = match source_pin {
             SourcePin::NodeParameter(node_id, pin_id) => {
-                let outputs = self.nodes[node_id].parameter_pass(ctx.with_node(node_id, self));
+                let outputs = self.nodes[node_id].parameter_pass(ctx.with_node(node_id, self))?;
 
                 for (pin_id, value) in outputs.iter() {
                     ctx.context().set_parameter(
@@ -680,7 +685,9 @@ impl AnimationGraph {
             }
             SourcePin::InputParameter(pin_id) => {
                 let out = if ctx.has_parent() {
-                    ctx.parent().parameter_back_opt(pin_id)
+                    ctx.parent()
+                        .parameter_back(pin_id)
+                        .map_or_else(|_| None, |p| Some(p))
                 } else {
                     None
                 }
@@ -696,17 +703,20 @@ impl AnimationGraph {
             }
         };
 
-        Some(source_value)
+        Ok(source_value)
     }
 
-    pub fn get_duration(&self, target_pin: TargetPin, mut ctx: PassContext) -> DurationData {
-        let source_pin = self
-            .edges
-            .get(&target_pin)
-            .unwrap_or_else(|| panic!("Target pin {target_pin:?} is disconnected"));
+    pub fn get_duration(
+        &self,
+        target_pin: TargetPin,
+        mut ctx: PassContext,
+    ) -> Result<DurationData, GraphError> {
+        let Some(source_pin) = self.edges.get(&target_pin) else {
+            return Err(GraphError::MissingInputEdge(target_pin));
+        };
 
         if let Some(val) = ctx.context().get_duration(source_pin) {
-            return val;
+            return Ok(val);
         }
 
         let source_value = match source_pin {
@@ -717,7 +727,7 @@ impl AnimationGraph {
                 panic!("Incompatible pins connected: {source_pin:?} --> {target_pin:?}")
             }
             SourcePin::NodePose(node_id) => {
-                let output = self.nodes[node_id].duration_pass(ctx.with_node(node_id, self));
+                let output = self.nodes[node_id].duration_pass(ctx.with_node(node_id, self))?;
 
                 if let Some(value) = output {
                     ctx.context()
@@ -730,12 +740,12 @@ impl AnimationGraph {
                 if let Some(v) = ctx.overlay.durations.get(pin_id) {
                     *v
                 } else {
-                    ctx.parent().duration_back(pin_id)
+                    ctx.parent().duration_back(pin_id)?
                 }
             }
         };
 
-        source_value
+        Ok(source_value)
     }
 
     pub fn get_pose(
@@ -743,14 +753,13 @@ impl AnimationGraph {
         time_update: TimeUpdate,
         target_pin: TargetPin,
         mut ctx: PassContext,
-    ) -> PoseFrame {
-        let source_pin = self
-            .edges
-            .get(&target_pin)
-            .unwrap_or_else(|| panic!("Target pose pin {target_pin:?} is disconnected"));
+    ) -> Result<PoseFrame, GraphError> {
+        let Some(source_pin) = self.edges.get(&target_pin) else {
+            return Err(GraphError::MissingInputEdge(target_pin));
+        };
 
         if let Some(val) = ctx.context().get_pose(source_pin) {
-            return val.clone();
+            return Ok(val.clone());
         }
 
         let source_value = match source_pin {
@@ -762,7 +771,7 @@ impl AnimationGraph {
             }
             SourcePin::NodePose(node_id) => {
                 let output = self.nodes[node_id]
-                    .pose_pass(time_update, ctx.with_node(node_id, self))
+                    .pose_pass(time_update, ctx.with_node(node_id, self))?
                     .unwrap();
 
                 ctx.context().set_pose(source_pin.clone(), output.clone());
@@ -774,12 +783,12 @@ impl AnimationGraph {
                 if let Some(v) = ctx.overlay.poses.get(pin_id) {
                     v.clone()
                 } else {
-                    ctx.parent().pose_back(pin_id, time_update)
+                    ctx.parent().pose_back(pin_id, time_update)?
                 }
             }
         };
 
-        source_value
+        Ok(source_value)
     }
 
     pub fn query(
@@ -790,7 +799,7 @@ impl AnimationGraph {
         root_entity: Entity,
         entity_map: &HashMap<BoneId, Entity>,
         deferred_gizmos: &mut DeferredGizmos,
-    ) -> Pose {
+    ) -> Result<Pose, GraphError> {
         self.query_with_overlay(
             time_update,
             context,
@@ -812,7 +821,7 @@ impl AnimationGraph {
         root_entity: Entity,
         entity_map: &HashMap<BoneId, Entity>,
         deferred_gizmos: &mut DeferredGizmos,
-    ) -> Pose {
+    ) -> Result<Pose, GraphError> {
         context.push_caches();
         let out = self.get_pose(
             time_update,
@@ -825,11 +834,11 @@ impl AnimationGraph {
                 entity_map,
                 deferred_gizmos,
             ),
-        );
+        )?;
         let time = out.timestamp;
         let bone_frame: BonePoseFrame = out.data.unwrap();
 
-        bone_frame.sample_linear_at(time)
+        Ok(bone_frame.sample_linear_at(time))
     }
     // ----------------------------------------------------------------------------------------
 }

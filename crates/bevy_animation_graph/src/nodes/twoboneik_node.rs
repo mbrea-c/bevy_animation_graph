@@ -10,6 +10,7 @@ use crate::{
         animation_graph::{PinMap, TimeUpdate},
         animation_node::{AnimationNode, AnimationNodeType, NodeLike},
         duration_data::DurationData,
+        errors::GraphError,
         frame::{BonePoseFrame, PoseFrame, PoseFrameData, PoseSpec},
         space_conversion::SpaceConversion,
     },
@@ -36,15 +37,19 @@ impl TwoBoneIKNode {
 }
 
 impl NodeLike for TwoBoneIKNode {
-    fn duration_pass(&self, mut ctx: PassContext) -> Option<DurationData> {
-        Some(ctx.duration_back(Self::INPUT))
+    fn duration_pass(&self, mut ctx: PassContext) -> Result<Option<DurationData>, GraphError> {
+        Ok(Some(ctx.duration_back(Self::INPUT)?))
     }
 
-    fn pose_pass(&self, input: TimeUpdate, mut ctx: PassContext) -> Option<PoseFrame> {
-        let target: EntityPath = ctx.parameter_back(Self::TARGETBONE).unwrap();
-        let target_pos_char: Vec3 = ctx.parameter_back(Self::TARGETPOS).unwrap();
+    fn pose_pass(
+        &self,
+        input: TimeUpdate,
+        mut ctx: PassContext,
+    ) -> Result<Option<PoseFrame>, GraphError> {
+        let target: EntityPath = ctx.parameter_back(Self::TARGETBONE)?.unwrap();
+        let target_pos_char: Vec3 = ctx.parameter_back(Self::TARGETPOS)?.unwrap();
         //let targetrotation: Quat = ctx.parameter_back(Self::TARGETROT).unwrap();
-        let pose = ctx.pose_back(Self::INPUT, input);
+        let pose = ctx.pose_back(Self::INPUT, input)?;
         let mut bone_pose_data: BonePoseFrame = pose.data.unwrap();
         let inner_pose_data = bone_pose_data.inner_mut();
 
@@ -114,10 +119,10 @@ impl NodeLike for TwoBoneIKNode {
                 .map_mut(|_| bone_transform.rotation);
         }
 
-        Some(PoseFrame {
+        Ok(Some(PoseFrame {
             data: PoseFrameData::BoneSpace(bone_pose_data),
             timestamp: pose.timestamp,
-        })
+        }))
     }
 
     fn parameter_input_spec(&self, _: SpecContext) -> PinMap<OptParamSpec> {

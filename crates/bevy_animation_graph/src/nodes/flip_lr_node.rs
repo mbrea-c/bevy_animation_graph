@@ -1,6 +1,7 @@
 use crate::core::animation_graph::{PinMap, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
+use crate::core::errors::GraphError;
 use crate::core::frame::{BonePoseFrame, PoseFrame, PoseFrameData, PoseSpec};
 use crate::flipping::FlipXBySuffix;
 use crate::prelude::{PassContext, SpecContext};
@@ -31,18 +32,23 @@ impl FlipLRNode {
 }
 
 impl NodeLike for FlipLRNode {
-    fn duration_pass(&self, mut ctx: PassContext) -> Option<DurationData> {
-        Some(ctx.duration_back(Self::INPUT))
+    fn duration_pass(&self, mut ctx: PassContext) -> Result<Option<DurationData>, GraphError> {
+        Ok(Some(ctx.duration_back(Self::INPUT)?))
     }
 
-    fn pose_pass(&self, input: TimeUpdate, mut ctx: PassContext) -> Option<PoseFrame> {
-        let in_pose_frame = ctx.pose_back(Self::INPUT, input);
+    fn pose_pass(
+        &self,
+        input: TimeUpdate,
+        mut ctx: PassContext,
+    ) -> Result<Option<PoseFrame>, GraphError> {
+        let in_pose_frame = ctx.pose_back(Self::INPUT, input)?;
         let bone_frame: BonePoseFrame = in_pose_frame.data.unwrap();
         let flipped_pose_frame = bone_frame.flipped_by_suffix("R".into(), "L".into());
-        Some(PoseFrame {
+
+        Ok(Some(PoseFrame {
             data: PoseFrameData::BoneSpace(flipped_pose_frame),
             timestamp: in_pose_frame.timestamp,
-        })
+        }))
     }
 
     fn pose_input_spec(&self, _: SpecContext) -> PinMap<PoseSpec> {

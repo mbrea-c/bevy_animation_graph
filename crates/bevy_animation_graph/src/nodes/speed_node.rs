@@ -1,6 +1,7 @@
 use crate::core::animation_graph::{PinMap, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
+use crate::core::errors::GraphError;
 use crate::core::frame::{PoseFrame, PoseSpec};
 use crate::prelude::{OptParamSpec, ParamSpec, PassContext, SpecContext};
 use bevy::reflect::std_traits::ReflectDefault;
@@ -25,32 +26,36 @@ impl SpeedNode {
 }
 
 impl NodeLike for SpeedNode {
-    fn duration_pass(&self, mut ctx: PassContext) -> Option<DurationData> {
-        let speed = ctx.parameter_back(Self::SPEED).unwrap_f32();
+    fn duration_pass(&self, mut ctx: PassContext) -> Result<Option<DurationData>, GraphError> {
+        let speed = ctx.parameter_back(Self::SPEED)?.unwrap_f32();
 
         let out_duration = if speed == 0. {
             None
         } else {
-            let duration = ctx.duration_back(Self::INPUT);
+            let duration = ctx.duration_back(Self::INPUT)?;
             duration.as_ref().map(|duration| duration / speed)
         };
 
-        Some(out_duration)
+        Ok(Some(out_duration))
     }
 
-    fn pose_pass(&self, input: TimeUpdate, mut ctx: PassContext) -> Option<PoseFrame> {
-        let speed = ctx.parameter_back(Self::SPEED).unwrap_f32();
+    fn pose_pass(
+        &self,
+        input: TimeUpdate,
+        mut ctx: PassContext,
+    ) -> Result<Option<PoseFrame>, GraphError> {
+        let speed = ctx.parameter_back(Self::SPEED)?.unwrap_f32();
         let fw_upd = match input {
             TimeUpdate::Delta(dt) => TimeUpdate::Delta(dt * speed),
             TimeUpdate::Absolute(t) => TimeUpdate::Absolute(t * speed),
         };
-        let mut in_pose_frame = ctx.pose_back(Self::INPUT, fw_upd);
+        let mut in_pose_frame = ctx.pose_back(Self::INPUT, fw_upd)?;
 
         if speed != 0. {
             in_pose_frame.map_ts(|t| t / speed.abs());
         }
 
-        Some(in_pose_frame)
+        Ok(Some(in_pose_frame))
     }
 
     fn parameter_input_spec(&self, _: SpecContext) -> PinMap<OptParamSpec> {

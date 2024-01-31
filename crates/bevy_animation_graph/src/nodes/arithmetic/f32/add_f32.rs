@@ -1,5 +1,6 @@
 use crate::core::animation_graph::{PinId, PinMap};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
+use crate::core::errors::GraphError;
 use crate::prelude::{OptParamSpec, ParamSpec, ParamValue, PassContext, SpecContext};
 use bevy::prelude::*;
 use bevy::utils::HashMap;
@@ -23,11 +24,14 @@ impl AddF32 {
 }
 
 impl NodeLike for AddF32 {
-    fn parameter_pass(&self, mut ctx: PassContext) -> HashMap<PinId, ParamValue> {
-        let input_1 = ctx.parameter_back(Self::INPUT_1).unwrap_f32();
-        let input_2 = ctx.parameter_back(Self::INPUT_2).unwrap_f32();
+    fn parameter_pass(
+        &self,
+        mut ctx: PassContext,
+    ) -> Result<HashMap<PinId, ParamValue>, GraphError> {
+        let input_1 = ctx.parameter_back(Self::INPUT_1)?.unwrap_f32();
+        let input_2 = ctx.parameter_back(Self::INPUT_2)?.unwrap_f32();
 
-        HashMap::from([(Self::OUTPUT.into(), ParamValue::F32(input_1 + input_2))])
+        Ok([(Self::OUTPUT.into(), ParamValue::F32(input_1 + input_2))].into())
     }
 
     fn parameter_input_spec(&self, _: SpecContext) -> PinMap<OptParamSpec> {

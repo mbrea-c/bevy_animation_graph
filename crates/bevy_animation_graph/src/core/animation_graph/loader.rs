@@ -3,7 +3,7 @@ use super::{
     AnimationGraph,
 };
 use crate::{
-    core::animation_clip::GraphClip,
+    core::{animation_clip::GraphClip, errors::AssetLoaderError},
     nodes::{
         blend_node::BlendNode, chain_node::ChainNode, clip_node::ClipNode,
         flip_lr_node::FlipLRNode, loop_node::LoopNode, speed_node::SpeedNode, AbsF32, AddF32,
@@ -13,7 +13,6 @@ use crate::{
         DummyNode, ExtendSkeleton, IntoBoneSpaceNode, IntoCharacterSpaceNode, IntoGlobalSpaceNode,
         RotationArcNode, RotationNode, SubF32, TwoBoneIKNode,
     },
-    utils::asset_loader_error::AssetLoaderError,
 };
 use bevy::{
     asset::{io::Reader, AssetLoader, AsyncReadExt, LoadContext},

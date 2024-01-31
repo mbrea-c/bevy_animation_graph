@@ -1,6 +1,7 @@
 use super::{
     animation_graph::{PinId, PinMap, TimeUpdate},
     duration_data::DurationData,
+    errors::GraphError,
     frame::{PoseFrame, PoseSpec},
     parameters::{OptParamSpec, ParamSpec, ParamValue},
 };
@@ -20,16 +21,20 @@ use std::{
 };
 
 pub trait NodeLike: Send + Sync + Reflect {
-    fn parameter_pass(&self, _ctx: PassContext) -> HashMap<PinId, ParamValue> {
-        HashMap::new()
+    fn parameter_pass(&self, _ctx: PassContext) -> Result<HashMap<PinId, ParamValue>, GraphError> {
+        Ok(HashMap::new())
     }
 
-    fn duration_pass(&self, _ctx: PassContext) -> Option<DurationData> {
-        None
+    fn duration_pass(&self, _ctx: PassContext) -> Result<Option<DurationData>, GraphError> {
+        Ok(None)
     }
 
-    fn pose_pass(&self, _time_update: TimeUpdate, _ctx: PassContext) -> Option<PoseFrame> {
-        None
+    fn pose_pass(
+        &self,
+        _time_update: TimeUpdate,
+        _ctx: PassContext,
+    ) -> Result<Option<PoseFrame>, GraphError> {
+        Ok(None)
     }
 
     fn parameter_input_spec(&self, _ctx: SpecContext) -> PinMap<OptParamSpec> {
@@ -93,15 +98,19 @@ impl AnimationNode {
 }
 
 impl NodeLike for AnimationNode {
-    fn parameter_pass(&self, ctx: PassContext) -> HashMap<PinId, ParamValue> {
+    fn parameter_pass(&self, ctx: PassContext) -> Result<HashMap<PinId, ParamValue>, GraphError> {
         self.node.map(|n| n.parameter_pass(ctx))
     }
 
-    fn duration_pass(&self, ctx: PassContext) -> Option<DurationData> {
+    fn duration_pass(&self, ctx: PassContext) -> Result<Option<DurationData>, GraphError> {
         self.node.map(|n| n.duration_pass(ctx))
     }
 
-    fn pose_pass(&self, input: TimeUpdate, ctx: PassContext) -> Option<PoseFrame> {
+    fn pose_pass(
+        &self,
+        input: TimeUpdate,
+        ctx: PassContext,
+    ) -> Result<Option<PoseFrame>, GraphError> {
         self.node.map(|n| n.pose_pass(input, ctx))
     }
 

@@ -4,6 +4,7 @@ use crate::{
     core::{
         animation_graph::{InputOverlay, NodeId, PinId, SourcePin, TargetPin, TimeUpdate},
         duration_data::DurationData,
+        errors::GraphError,
         frame::PoseFrame,
         pose::BoneId,
     },
@@ -117,21 +118,7 @@ impl<'a> PassContext<'a> {
     }
 
     /// Request an input parameter from the graph
-    ///
-    /// # Panics
-    ///
-    /// Panics if the paremeter is not found
-    pub fn parameter_back(&mut self, pin_id: impl Into<PinId>) -> ParamValue {
-        let node_ctx = self.node_context.unwrap();
-        let target_pin = TargetPin::NodeParameter(node_ctx.node_id.clone(), pin_id.into());
-        node_ctx
-            .graph
-            .get_parameter(target_pin, self.without_node())
-            .unwrap()
-    }
-
-    /// Request an input parameter from the graph, returns None if the parameter is not found.
-    pub fn parameter_back_opt(&mut self, pin_id: impl Into<PinId>) -> Option<ParamValue> {
+    pub fn parameter_back(&mut self, pin_id: impl Into<PinId>) -> Result<ParamValue, GraphError> {
         let node_ctx = self.node_context.unwrap();
         let target_pin = TargetPin::NodeParameter(node_ctx.node_id.clone(), pin_id.into());
         node_ctx
@@ -140,14 +127,18 @@ impl<'a> PassContext<'a> {
     }
 
     /// Request the duration of an input pose pin.
-    pub fn duration_back(&mut self, pin_id: impl Into<PinId>) -> DurationData {
+    pub fn duration_back(&mut self, pin_id: impl Into<PinId>) -> Result<DurationData, GraphError> {
         let node_ctx = self.node_context.unwrap();
         let target_pin = TargetPin::NodePose(node_ctx.node_id.clone(), pin_id.into());
         node_ctx.graph.get_duration(target_pin, self.without_node())
     }
 
     /// Request an input pose.
-    pub fn pose_back(&mut self, pin_id: impl Into<PinId>, time_update: TimeUpdate) -> PoseFrame {
+    pub fn pose_back(
+        &mut self,
+        pin_id: impl Into<PinId>,
+        time_update: TimeUpdate,
+    ) -> Result<PoseFrame, GraphError> {
         let node_ctx = self.node_context.unwrap();
         let target_pin = TargetPin::NodePose(node_ctx.node_id.clone(), pin_id.into());
         node_ctx
