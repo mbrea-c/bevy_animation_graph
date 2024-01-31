@@ -80,7 +80,9 @@ A more complex example is included in the [examples/human/](examples/human/examp
 
 ![Locomotion graph example](locomotion_graph.png)
 
-### Editor usage demonstration
+### Editor usage demonstration video
+
+In YouTube:
 
 [![Demo](https://img.youtube.com/vi/q-JBSQJIcX0/hqdefault.jpg)](https://www.youtube.com/watch?v=q-JBSQJIcX0)
 
