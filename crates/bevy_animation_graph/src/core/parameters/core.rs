@@ -2,11 +2,12 @@ use super::bone_mask::BoneMask;
 use crate::{core::animation_clip::EntityPath, utils::unwrap::Unwrap};
 use bevy::{
     math::{Quat, Vec3},
-    reflect::Reflect,
+    reflect::{std_traits::ReflectDefault, Reflect},
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Reflect, Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Reflect, Clone, Copy, Debug, Serialize, Deserialize, Default)]
+#[reflect(Default)]
 pub struct OptParamSpec {
     pub spec: ParamSpec,
     pub optional: bool,
@@ -29,6 +30,7 @@ impl From<ParamSpec> for OptParamSpec {
 }
 
 #[derive(Reflect, Default, Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[reflect(Default)]
 pub enum ParamSpec {
     #[default]
     F32,
