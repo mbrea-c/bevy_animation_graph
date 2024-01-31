@@ -35,6 +35,8 @@ This library aims to fill this gap in the Bevy ecosystem.
 - Export animation graphs in graphviz `.dot` format for visualization.
 - Output from graph nodes is cached to avoid unnecessary computations.
 
+Feel free to request new nodes if some feature you need is currently missing.
+
 ## Planned Features
 
 In order of priority:
