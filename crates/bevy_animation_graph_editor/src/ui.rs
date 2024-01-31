@@ -613,7 +613,7 @@ impl TabViewer<'_> {
         ui: &mut egui::Ui,
         selection: &mut InspectorSelection,
     ) {
-        let Some(scene_selection) = &mut selection.scene else {
+        if selection.scene.is_none() {
             return;
         };
         let mut query = world.query::<(&AnimatedSceneInstance, &PreviewScene)>();

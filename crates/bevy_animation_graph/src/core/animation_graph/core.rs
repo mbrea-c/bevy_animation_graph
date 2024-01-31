@@ -672,7 +672,7 @@ impl AnimationGraph {
                 let out = if ctx.has_parent() {
                     ctx.parent()
                         .parameter_back(pin_id)
-                        .map_or_else(|_| None, |p| Some(p))
+                        .map_or_else(|_| None, Some)
                 } else {
                     None
                 }
