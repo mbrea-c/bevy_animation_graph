@@ -1,9 +1,11 @@
 extern crate bevy;
 extern crate bevy_animation_graph;
+extern crate bevy_inspector_egui;
 
 use bevy::{pbr::CascadeShadowConfigBuilder, prelude::*};
 use bevy_animation_graph::core::animated_scene::{AnimatedSceneBundle, AnimatedSceneInstance};
 use bevy_animation_graph::prelude::*;
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use std::f32::consts::PI;
 
 fn main() {
@@ -13,6 +15,7 @@ fn main() {
             ..default()
         }))
         .add_plugins(AnimationGraphPlugin)
+        .add_plugins(WorldInspectorPlugin::new())
         .insert_resource(AmbientLight {
             color: Color::WHITE,
             brightness: 0.1,

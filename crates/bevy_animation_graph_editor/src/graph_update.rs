@@ -151,12 +151,14 @@ pub fn update_graph(
                 }
             }
             Change::NodeCreated(animation_node) => {
-                info!("Adding node {:?}", animation_node.name);
-                graph.add_node(animation_node);
-                changes.push(GraphChange {
-                    graph: change.graph,
-                    change: Change::GraphValidate,
-                });
+                if !graph.nodes.contains_key(&animation_node.name) {
+                    info!("Adding node {:?}", animation_node.name);
+                    graph.add_node(animation_node);
+                    changes.push(GraphChange {
+                        graph: change.graph,
+                        change: Change::GraphValidate,
+                    });
+                }
             }
             Change::NodeRemoved(node_id) => {
                 info!("Removing node {:?}", node_id);

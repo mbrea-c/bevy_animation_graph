@@ -518,6 +518,7 @@ impl PoseFrame {
 }
 
 #[derive(Clone, Copy, Debug, Reflect, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[reflect(Default)]
 pub enum PoseSpec {
     #[default]
     BoneSpace,

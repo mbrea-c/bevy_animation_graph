@@ -90,7 +90,9 @@ impl NodeLike for GraphNode {
     }
 
     fn parameter_input_spec(&self, ctx: SpecContext) -> PinMap<OptParamSpec> {
-        let graph = ctx.graph_assets.get(&self.graph).unwrap();
+        let Some(graph) = ctx.graph_assets.get(&self.graph) else {
+            return Default::default();
+        };
         graph
             .default_parameters
             .iter()
@@ -99,17 +101,23 @@ impl NodeLike for GraphNode {
     }
 
     fn parameter_output_spec(&self, ctx: SpecContext) -> PinMap<ParamSpec> {
-        let graph = ctx.graph_assets.get(&self.graph).unwrap();
+        let Some(graph) = ctx.graph_assets.get(&self.graph) else {
+            return Default::default();
+        };
         graph.output_parameters.clone()
     }
 
     fn pose_input_spec(&self, ctx: SpecContext) -> PinMap<PoseSpec> {
-        let graph = ctx.graph_assets.get(&self.graph).unwrap();
+        let Some(graph) = ctx.graph_assets.get(&self.graph) else {
+            return Default::default();
+        };
         graph.input_poses.clone()
     }
 
     fn pose_output_spec(&self, ctx: SpecContext) -> Option<PoseSpec> {
-        let graph = ctx.graph_assets.get(&self.graph).unwrap();
+        let Some(graph) = ctx.graph_assets.get(&self.graph) else {
+            return Default::default();
+        };
         graph.output_pose
     }
 
