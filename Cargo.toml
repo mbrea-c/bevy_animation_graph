@@ -2,5 +2,12 @@
 members = ["crates/*", "examples/*"]
 resolver = "2"
 
+[workspace.package]
+version = "0.2.0"
+license = "MIT OR Apache-2.0"
+readme = "README.md"
+edition = "2021"
+repository = "https://github.com/mbrea-c/bevy_animation_graph"
+
 [workspace.dependencies]
 bevy = { version = "0.12.1" }

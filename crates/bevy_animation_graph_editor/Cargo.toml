@@ -1,17 +1,17 @@
 [package]
 name = "bevy_animation_graph_editor"
-version = "0.1.0"
-edition = "2021"
-license = "MIT OR Apache-2.0"
-readme = "README.md"
-repository = "https://github.com/mbrea-c/bevy_animation_graph"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+readme = { workspace = true }
+repository = { workspace = true }
 description = "Animation graph editor for the Bevy game engine"
 keywords = ["bevy", "animation", "gamedev", "editor", "graph"]
 
 [dependencies]
 bevy = { workspace = true, features = ["file_watcher"] }
 derivative = "2.2.0"
-bevy_animation_graph = { path = "../bevy_animation_graph/" }
+bevy_animation_graph = { path = "../bevy_animation_graph/", version = "0.2.0" }
 clap = { version = "4.4.18", features = ["derive"] }
 bevy-inspector-egui = "0.22.1"
 ron = "0.8.1"

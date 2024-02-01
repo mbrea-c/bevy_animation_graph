@@ -1,4 +1,5 @@
 ![Crates.io](https://img.shields.io/crates/v/bevy_animation_graph) ![Crates.io](https://img.shields.io/crates/d/bevy_animation_graph)
+![Crates.io](https://img.shields.io/crates/v/bevy_animation_graph_editor) ![Crates.io](https://img.shields.io/crates/d/bevy_animation_graph_editor)
 [![CI](https://github.com/mbrea-c/bevy_animation_graph/actions/workflows/ci.yaml/badge.svg)](https://github.com/mbrea-c/bevy_animation_graph/actions/workflows/ci.yaml)
 
 # Bevy Animation Graph
