@@ -1,10 +1,10 @@
 [package]
 name = "bevy_animation_graph_editor"
-version = "0.1.0"
-edition = "2021"
-license = "MIT OR Apache-2.0"
-readme = "README.md"
-repository = "https://github.com/mbrea-c/bevy_animation_graph"
+version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+readme = { workspace = true }
+repository = { workspace = true }
 description = "Animation graph editor for the Bevy game engine"
 keywords = ["bevy", "animation", "gamedev", "editor", "graph"]
 
