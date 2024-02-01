@@ -84,8 +84,10 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
       - name: Install Dependencies
         run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev
-      - name: Run cargo publish dry run
+      - name: Run cargo publish dry run for library
         run: cargo publish --dry-run -p bevy_animation_graph
+      - name: Run cargo publish dry run for editor
+        run: cargo publish --dry-run -p bevy_animation_graph_editor
 
   # Run cargo fmt --all -- --check
   format:
