@@ -28,6 +28,14 @@
 //!   [`AnimationGraphPlayer`]'s API, as doing it this way will not actally mutate the graph.
 //!   This enables the same graph to be used by multiple animation players at once.
 //!   See [the examples section](#examples) for a developed example.
+//!   The preferred way of editing graphs is using the visual editor: after [installing the
+//!   editor](#editor-installation), run the command
+//!   ```bash
+//!   bevy_animation_graph_editor -a <PATH_TO_ASSETS_DIRECTORY>
+//!   ```
+//!   to start the editor on the given assets folder. At the moment the editor only supports
+//!   creating and modifying animation graphs, but it can present a live preview of an
+//!   `AnimatedScene` asset.
 //! - [`AnimatedScene`], defined in `*.animscn.ron` files. These assets solve the ergonomics problem
 //!   of spawning in a scene that is animated via an animation graph. Without [`AnimatedScene`],
 //!   you would have to spawn the scene, manually find and remove remove Bevy's
@@ -82,10 +90,28 @@
 //!     - [`RotationArcNode`]: Given two vectors, output quaternion rotation needed to rotate the first
 //!       into the second.
 //!
+//! ## Editor installation
+//!
+//! The editor is in a separate crate, appropriately named `bevy_animation_graph_editor`. Install
+//! it just like you would install any other cargo binary. In order to install the latest version
+//! published to crates.io, run:
+//! ```bash
+//! cargo install bevy_animation_graph_editor
+//! ```
+//! To install the latest version from the git repository, run:
+//! ```bash
+//! cargo install --git 'https://github.com/mbrea-c/bevy_animation_graph.git' bevy_animation_graph_editor
+//! ```
+//! Finally, to install from a local version of the workspace, run
+//! ```bash
+//! cargo install --path <PATH_TO_WORKSPACE> bevy_animation_graph_editor
+//! ```
+//!
 //! ## Graphviz `.dot` export
 //!
-//! This crate provides a binary utility `show_graph` which outputs any animation graph asset as a `.dot`
-//! file:
+//! While the editor now provides a more convenient way of visualizing, creating and editing
+//! graphs, there's also the option of exporting the graph to a `.dot` file for visualization. This
+//! crate provides a binary utility `show_graph` which does just that:
 //!
 //! ```text
 //!     show_graph <GRAPH ASSET PATH> <OUTPUT FILE PATH>
@@ -144,122 +170,10 @@
 //! 2. Blend the two animations together using `blend_fac`. Loop the result and
 //!    apply the speed factor `speed_fac`.
 //!
-//! The resulting graph is defined like so:
-//!
-//! ```ron
-//! // In file assets/animation_graphs/fox.animgraph.ron
-//! (
-//!     nodes: [
-//!         (name: "Walk Clip", node: Clip("animations/fox_walk.anim.ron", None)),
-//!         (name: "Run Clip",  node: Clip("animations/fox_run.anim.ron", None)),
-//!         (name: "Blend", node: Blend),
-//!         (name: "Loop Walk", node: Loop),
-//!         (name: "Loop Run", node: Loop),
-//!         (name: "Speed", node: Speed),
-//!
-//!         (name: "Param graph", node: Graph("animation_graphs/velocity_to_params.animgraph.ron")),
-//!     ],
-//!     input_parameters: {
-//!         "Target Speed": F32(1.5),
-//!         "Blend Start": F32(0.5),
-//!         "Blend End": F32(1.5),
-//!     },
-//!     output_pose_spec: true,
-//!     input_parameter_edges: [
-//!         ("Target Speed", ("Param graph", "Target Speed")),
-//!         ("Blend Start", ("Param graph", "Blend Start")),
-//!         ("Blend End", ("Param graph", "Blend End")),
-//!     ],
-//!     output_pose_edge: Some("Speed"),
-//!     parameter_edges: [
-//!         (("Param graph", "blend_fac"),("Blend", "Factor")),
-//!         (("Param graph", "speed_fac"),("Speed", "Speed")),
-//!     ],
-//!     pose_edges: [
-//!         ("Walk Clip", ("Loop Walk", "Pose In")),
-//!         ("Run Clip", ("Loop Run", "Pose In")),
-//!         ("Loop Walk", ("Blend", "Pose In 1")),
-//!         ("Loop Run", ("Blend", "Pose In 2")),
-//!         ("Blend", ("Speed", "Pose In")),
-//!     ],
-//! )
-//! ```
-//!
-//! We have extracted the computation of `blend_fac` and `speed_fac` into a separate
-//! graph that we reference as a node above:
-//!
-//! ```ron
-//! // In file: assets/animation_graphs/velocity_to_params.animgraph.ron
-//! (
-//!     nodes: [
-//!         (name: "Alpha Tmp 1", node: SubF32),
-//!         (name: "Alpha Tmp 2", node: SubF32),
-//!         (name: "Alpha Tmp 3", node: DivF32),
-//!         (name: "Target Speed Abs", node: AbsF32),
-//!         (name: "Alpha", node: ClampF32),
-//!
-//!         (name: "1-Alpha", node: SubF32),
-//!         (name: "Factored walk speed", node: MulF32),
-//!         (name: "Factored run speed", node: MulF32),
-//!         (name: "Blended base speed", node: AddF32),
-//!         (name: "Speed factor", node: DivF32),
-//!     ],
-//!     input_parameters: {
-//!         "Walk Base Speed": F32(0.3),
-//!         "Run Base Speed": F32(0.8),
-//!         "Blend Start": F32(1.0),
-//!         "Blend End": F32(3.0),
-//!
-//!         "Target Speed": F32(1.5),
-//!
-//!         // Constant values
-//!         "ZERO": F32(0.),
-//!         "ONE": F32(1.),
-//!     },
-//!     output_parameter_spec: {
-//!         "speed_fac": F32,
-//!         "blend_fac": F32,
-//!     },
-//!     input_parameter_edges: [
-//!         // Alpha clamp range
-//!         ("ZERO", ("Alpha", "Min")),
-//!         ("ONE", ("Alpha", "Max")),
-//!
-//!         // Alpha parameters
-//!         ("Target Speed", ("Target Speed Abs", "F32 In")),
-//!         ("Blend Start", ("Alpha Tmp 1", "F32 In 2")),
-//!         ("Blend End",   ("Alpha Tmp 2", "F32 In 1")),
-//!         ("Blend Start", ("Alpha Tmp 2", "F32 In 2")),
-//!
-//!         // Speed factor parameters
-//!         ("ONE", ("1-Alpha", "F32 In 1")),
-//!         ("Walk Base Speed", ("Factored walk speed", "F32 In 1")),
-//!         ("Run Base Speed", ("Factored run speed", "F32 In 1")),
-//!         ("Target Speed", ("Speed factor", "F32 In 1")),
-//!     ],
-//!     parameter_edges: [
-//!         // Blend alpha computation
-//!         // ((abs(target_speed) - blend_start) / (blend_end - blend_start)).clamp(0., 1.);
-//!         (("Target Speed Abs", "F32 Out"), ("Alpha Tmp 1", "F32 In 1")),
-//!         (("Alpha Tmp 1", "F32 Out"), ("Alpha Tmp 3", "F32 In 1")),
-//!         (("Alpha Tmp 2", "F32 Out"), ("Alpha Tmp 3", "F32 In 2")),
-//!         (("Alpha Tmp 3", "F32 Out"), ("Alpha", "F32 In")),
-//!
-//!         // Speed factor computation
-//!         // target_speed / (walk_base_speed * (1. - alpha) + run_base_seed * alpha)
-//!         (("Alpha", "F32 Out"),("1-Alpha", "F32 In 2")),
-//!         (("1-Alpha", "F32 Out"),("Factored walk speed", "F32 In 2")),
-//!         (("Alpha", "F32 Out"),("Factored run speed", "F32 In 2")),
-//!         (("Factored walk speed", "F32 Out"), ("Blended base speed", "F32 In 1")),
-//!         (("Factored run speed", "F32 Out"), ("Blended base speed", "F32 In 2")),
-//!         (("Blended base speed", "F32 Out"),("Speed factor", "F32 In 2")),
-//!     ],
-//!     output_parameter_edges: [
-//!         (("Alpha", "F32 Out"), "blend_fac"),
-//!         (("Speed factor", "F32 Out"), "speed_fac"),
-//!     ],
-//! )
-//! ```
+//! The resulting graphs can be seen in the assets directory of [the source repository](https://github.com/mbrea-c/bevy_animation_graph), under
+//! [assets/animation_graphs/velocity_to_params.animgraph.ron](https://github.com/mbrea-c/bevy_animation_graph/blob/master/assets/animation_graphs/velocity_to_params.animgraph.ron) (for computing `speed_fac` and `blend_fac`) and
+//! [assets/animation_graphs/fox.animgraph.ron](https://github.com/mbrea-c/bevy_animation_graph/blob/master/assets/animation_graphs/fox.animgraph.ron)
+//! (for the animation tasks).
 //!
 //! ## How does this library work?
 //!
