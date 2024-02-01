@@ -35,8 +35,6 @@ This library aims to fill this gap in the Bevy ecosystem.
 - Output from graph nodes is cached to avoid unnecessary computations.
 - Support for custom nodes written in Rust (with the caveat that custom nodes cannot be serialized/deserialized as assets).
 
-Feel free to request new nodes if some feature you need is currently missing.
-
 ## Planned Features
 
 Being worked on:
