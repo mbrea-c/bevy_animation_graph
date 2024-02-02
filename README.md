@@ -109,10 +109,10 @@ In YouTube:
 
 [![Demo](https://img.youtube.com/vi/q-JBSQJIcX0/hqdefault.jpg)](https://www.youtube.com/watch?v=q-JBSQJIcX0)
 
-## Contributing
+## Contributing or getting help
 
 If you run into a bug or want to discuss potential new features, feel free to post an issue, open a PR or reach out to me in Discord
-(@mbreac in the Bevy discord).
+(@mbreac in the Bevy discord, there's a crate-help post for `bevy_animation_graph` there: [link](https://discord.com/channels/691052431525675048/1202998277482479616)).
 
 ## FAQ
 
