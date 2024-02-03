@@ -479,7 +479,7 @@ dependencies = [
 
 [[package]]
 name = "bevy_animation_graph"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bevy",
  "indexmap 2.2.1",
@@ -490,7 +490,7 @@ dependencies = [
 
 [[package]]
 name = "bevy_animation_graph_editor"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bevy",
  "bevy-inspector-egui",

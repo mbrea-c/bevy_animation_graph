@@ -123,17 +123,19 @@ pub fn animation_player(
     mut animation_players: Query<(Entity, Option<&Parent>, &mut AnimationGraphPlayer)>,
     sysres: SystemResources,
 ) {
-    for (root, maybe_parent, player) in &mut animation_players {
-        run_animation_player(
-            root,
-            player,
-            &time,
-            &morphs,
-            maybe_parent,
-            &parents,
-            &sysres,
-        );
-    }
+    animation_players
+        .par_iter_mut()
+        .for_each(|(root, maybe_parent, player)| {
+            run_animation_player(
+                root,
+                player,
+                &time,
+                &morphs,
+                maybe_parent,
+                &parents,
+                &sysres,
+            );
+        });
 }
 
 /// System that will draw deferred gizmo commands called during graph evaluation
