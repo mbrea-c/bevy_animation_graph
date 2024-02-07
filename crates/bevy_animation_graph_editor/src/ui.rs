@@ -1,8 +1,11 @@
-use crate::egui_inspector_impls::handle_name;
+use std::path::PathBuf;
+
+use crate::egui_inspector_impls::handle_path;
 use crate::egui_nodes::lib::NodesContext;
 use crate::graph_saving::SaveGraph;
 use crate::graph_show::{make_graph_indices, GraphIndices, GraphReprSpec};
 use crate::graph_update::{convert_graph_change, update_graph, Change, GraphChange};
+use crate::tree::{Tree, TreeInternal, TreeResult};
 use crate::GraphHandles;
 use bevy::core_pipeline::clear_color::ClearColorConfig;
 use bevy::ecs::system::CommandQueue;
@@ -15,6 +18,7 @@ use bevy::window::PrimaryWindow;
 use bevy_animation_graph::core::animated_scene::{
     AnimatedScene, AnimatedSceneBundle, AnimatedSceneInstance,
 };
+use bevy_animation_graph::core::animation_clip::EntityPath;
 use bevy_animation_graph::core::animation_graph::{AnimationGraph, NodeId};
 use bevy_animation_graph::core::animation_graph_player::AnimationGraphPlayer;
 use bevy_animation_graph::core::animation_node::AnimationNode;
@@ -24,6 +28,7 @@ use bevy_inspector_egui::bevy_egui::EguiUserTextures;
 use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
 use bevy_inspector_egui::{bevy_egui, egui};
 use egui_dock::{DockArea, DockState, NodeIndex, Style};
+use egui_notify::{Anchor, Toasts};
 
 #[derive(Component)]
 struct MainCamera;
@@ -70,6 +75,7 @@ pub struct InspectorSelection {
     node: Option<NodeSelection>,
     scene: Option<SceneSelection>,
     node_creation: NodeCreation,
+    entity_path: Option<EntityPath>,
 }
 
 pub struct RequestSave {
@@ -87,6 +93,7 @@ pub struct UiState {
     /// Save events to be fired as bevy events after Ui system has finished running
     save_events: Vec<SaveGraph>,
     preview_image: Handle<Image>,
+    notifications: Toasts,
 }
 
 impl UiState {
@@ -106,8 +113,11 @@ impl UiState {
             tree.split_left(graph_editor, 0.2, vec![EguiWindow::GraphSelector]);
         let [_graph_selector, _scene_selector] =
             tree.split_below(graph_selector, 0.5, vec![EguiWindow::SceneSelector]);
-        let [_node_inspector, preview] =
-            tree.split_above(inspectors, 0.5, vec![EguiWindow::Preview]);
+        let [_node_inspector, preview] = tree.split_above(
+            inspectors,
+            0.5,
+            vec![EguiWindow::Preview, EguiWindow::PreviewHierarchy],
+        );
         let [_preview, _preview_errors] =
             tree.split_below(preview, 0.8, vec![EguiWindow::PreviewErrors]);
 
@@ -118,6 +128,9 @@ impl UiState {
             save_requests: vec![],
             save_events: vec![],
             preview_image: Handle::default(),
+            notifications: Toasts::new()
+                .with_anchor(Anchor::BottomRight)
+                .with_default_font(egui::FontId::proportional(12.)),
         }
     }
 
@@ -133,10 +146,13 @@ impl UiState {
             save_requests: &mut self.save_requests,
             save_events: &mut self.save_events,
             preview_image: &self.preview_image,
+            notifications: &mut self.notifications,
         };
         DockArea::new(&mut self.state)
             .style(Style::from_egui(ctx.style().as_ref()))
             .show(ctx, &mut tab_viewer);
+
+        self.notifications.show(ctx);
     }
 }
 
@@ -145,6 +161,7 @@ enum EguiWindow {
     GraphEditor,
     NodeCreate,
     Preview,
+    PreviewHierarchy,
     PreviewErrors,
     GraphSelector,
     SceneSelector,
@@ -160,6 +177,7 @@ impl EguiWindow {
             EguiWindow::GraphEditor => "Graph Editor".into(),
             EguiWindow::NodeCreate => "Create Node".into(),
             EguiWindow::Preview => "Preview Scene".into(),
+            EguiWindow::PreviewHierarchy => "Preview Hierarchy".into(),
             EguiWindow::PreviewErrors => "Errors".into(),
             EguiWindow::GraphSelector => "Select Graph".into(),
             EguiWindow::SceneSelector => "Select Scene".into(),
@@ -177,6 +195,7 @@ struct TabViewer<'a> {
     save_requests: &'a mut Vec<RequestSave>,
     save_events: &'a mut Vec<SaveGraph>,
     preview_image: &'a Handle<Image>,
+    notifications: &'a mut Toasts,
 }
 
 impl egui_dock::TabViewer for TabViewer<'_> {
@@ -212,6 +231,9 @@ impl egui_dock::TabViewer for TabViewer<'_> {
             }
             EguiWindow::PreviewErrors => {
                 Self::scene_preview_errors(self.world, ui, self.selection);
+            }
+            EguiWindow::PreviewHierarchy => {
+                Self::scene_preview_entity_tree(self.world, ui, self.selection, self.notifications)
             }
         }
 
@@ -266,6 +288,38 @@ impl TabViewer<'_> {
         });
     }
 
+    fn scene_preview_entity_tree(
+        world: &mut World,
+        ui: &mut egui::Ui,
+        selection: &mut InspectorSelection,
+        notifications: &mut Toasts,
+    ) {
+        if selection.scene.is_none() {
+            return;
+        };
+        let mut query = world.query::<(&AnimatedSceneInstance, &PreviewScene)>();
+        let Ok((instance, _)) = query.get_single(world) else {
+            return;
+        };
+        let entity = instance.player_entity;
+        let tree = Tree::entity_tree(world, entity);
+        match Self::select_from_branches(ui, tree.0) {
+            TreeResult::Leaf((_, path)) => {
+                let path = EntityPath { parts: path };
+                ui.output_mut(|o| o.copied_text = path.to_slashed_string());
+                notifications.info(format!("{} copied to clipboard", path.to_slashed_string()));
+                selection.entity_path = Some(path);
+            }
+            TreeResult::Node((_, path)) => {
+                let path = EntityPath { parts: path };
+                ui.output_mut(|o| o.copied_text = path.to_slashed_string());
+                notifications.info(format!("{} copied to clipboard", path.to_slashed_string()));
+                selection.entity_path = Some(path);
+            }
+            TreeResult::None => (),
+        }
+    }
+
     fn graph_editor(
         world: &mut World,
         ui: &mut egui::Ui,
@@ -278,7 +332,7 @@ impl TabViewer<'_> {
             return;
         };
 
-        world.resource_scope::<Assets<AnimationGraph>, ()>(|_, graph_assets| {
+        world.resource_scope::<Assets<AnimationGraph>, ()>(|_, mut graph_assets| {
             if !graph_assets.contains(graph_selection.graph) {
                 return;
             }
@@ -301,8 +355,14 @@ impl TabViewer<'_> {
             });
             graph_changes.extend(changes);
 
-            // --- Update selection for node inspector
+            // --- Update selection for node inspector.
+            // --- And enable debug render for latest node selected only
             // ----------------------------------------------------------------
+
+            let graph = graph_assets.get_mut(graph_selection.graph).unwrap();
+            for (_, node) in graph.nodes.iter_mut() {
+                node.should_debug = false;
+            }
             if let Some(selected_node) = graph_selection
                 .nodes_context
                 .get_selected_nodes()
@@ -316,6 +376,7 @@ impl TabViewer<'_> {
                         .node_indices
                         .name(*selected_node)
                         .unwrap();
+                    graph.nodes.get_mut(node_name).unwrap().should_debug = true;
                     if let Some(node_selection) = &mut selection.node {
                         if &node_selection.node != node_name
                             || node_selection.graph != graph_selection.graph
@@ -362,13 +423,12 @@ impl TabViewer<'_> {
             world.resource_scope::<Assets<AnimationGraph>, ()>(|world, mut graph_assets| {
                 let mut assets: Vec<_> = graph_assets.ids().collect();
                 assets.sort();
-                for handle_id in assets {
-                    let response =
-                        ui.selectable_label(false, handle_name(handle_id.untyped(), &asset_server));
-
-                    if response.double_clicked() {
-                        chosen_id = Some(handle_id);
-                    }
+                let paths = assets
+                    .into_iter()
+                    .map(|id| (handle_path(id.untyped(), &asset_server), id))
+                    .collect();
+                if let TreeResult::Leaf(id) = Self::path_selector(ui, paths) {
+                    chosen_id = Some(id);
                 }
                 ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
                     let mut graph_handles = world.get_resource_mut::<GraphHandles>().unwrap();
@@ -404,14 +464,17 @@ impl TabViewer<'_> {
             world.resource_scope::<Assets<AnimatedScene>, ()>(|_, assets| {
                 let mut assets: Vec<_> = assets.ids().collect();
                 assets.sort();
-                for handle_id in assets {
-                    let path = asset_server.get_path(handle_id).unwrap();
-                    let response =
-                        ui.selectable_label(false, handle_name(handle_id.untyped(), &asset_server));
-
-                    if response.double_clicked() {
-                        chosen_handle = Some(asset_server.get_handle(path).unwrap());
-                    }
+                let paths = assets
+                    .into_iter()
+                    .map(|id| (handle_path(id.untyped(), &asset_server), id))
+                    .collect();
+                let chosen_id = Self::path_selector(ui, paths);
+                if let TreeResult::Leaf(id) = chosen_id {
+                    chosen_handle = Some(
+                        asset_server
+                            .get_handle(asset_server.get_path(id).unwrap())
+                            .unwrap(),
+                    )
                 }
             });
         });
@@ -650,6 +713,60 @@ impl TabViewer<'_> {
         })
     }
 
+    fn path_selector<T>(ui: &mut egui::Ui, paths: Vec<(PathBuf, T)>) -> TreeResult<(), T> {
+        // First, preprocess paths into a tree structure
+        let mut tree = Tree::default();
+        for (path, val) in paths {
+            let parts: Vec<String> = path
+                .components()
+                .map(|c| c.as_os_str().to_string_lossy().into())
+                .collect();
+            tree.insert(parts, val);
+        }
+
+        // Then, display the tree
+        Self::select_from_branches(ui, tree.0)
+    }
+
+    fn select_from_branches<I, L>(
+        ui: &mut egui::Ui,
+        branches: Vec<TreeInternal<I, L>>,
+    ) -> TreeResult<I, L> {
+        let mut res = TreeResult::None;
+
+        for branch in branches {
+            res = res.or(Self::select_from_tree_internal(ui, branch));
+        }
+
+        res
+    }
+
+    fn select_from_tree_internal<I, L>(
+        ui: &mut egui::Ui,
+        tree: TreeInternal<I, L>,
+    ) -> TreeResult<I, L> {
+        match tree {
+            TreeInternal::Leaf(name, val) => {
+                if ui.selectable_label(false, name).clicked() {
+                    TreeResult::Leaf(val)
+                } else {
+                    TreeResult::None
+                }
+            }
+            TreeInternal::Node(name, val, subtree) => {
+                let res = ui.collapsing(name, |ui| Self::select_from_branches(ui, subtree));
+                if res.header_response.clicked() {
+                    TreeResult::Node(val)
+                } else {
+                    TreeResult::None
+                }
+                .or(res.body_returned.unwrap_or(TreeResult::None))
+                //.body_returned
+                //.flatten(),
+            }
+        }
+    }
+
     fn update_graph(world: &mut World, changes: Vec<GraphChange>) -> bool {
         world.resource_scope::<Assets<AnimationGraph>, bool>(|_, mut graph_assets| {
             update_graph(changes, &mut graph_assets)
@@ -734,6 +851,28 @@ pub fn graph_save_event_system(
     for save_event in ui_state.save_events.drain(..) {
         evw_save_graph.send(save_event);
     }
+}
+
+pub fn graph_debug_draw_bone_system(
+    ui_state: Res<UiState>,
+    scene_instance_query: Query<&AnimatedSceneInstance, With<PreviewScene>>,
+    mut player_query: Query<&mut AnimationGraphPlayer>,
+) {
+    let Some(path) = ui_state.selection.entity_path.as_ref() else {
+        return;
+    };
+    if ui_state.selection.scene.is_none() {
+        return;
+    };
+    let Ok(instance) = scene_instance_query.get_single() else {
+        return;
+    };
+    let entity = instance.player_entity;
+    let Ok(mut player) = player_query.get_mut(entity) else {
+        return;
+    };
+
+    player.gizmo_for_bones(vec![path.clone()])
 }
 
 pub fn setup_system(

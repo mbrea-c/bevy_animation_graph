@@ -497,6 +497,7 @@ dependencies = [
  "bevy_animation_graph",
  "clap",
  "derivative",
+ "egui-notify",
  "egui_dock",
  "ron",
 ]
@@ -1722,6 +1723,15 @@ dependencies = [
  "ahash",
  "epaint",
  "nohash-hasher",
+]
+
+[[package]]
+name = "egui-notify"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bedb26510c661d5d69958aae802d768aa1c344673e9029a20b356fa7f8a4a8e1"
+dependencies = [
+ "egui",
 ]
 
 [[package]]

@@ -46,7 +46,7 @@
         ),
         (
             name: "Rotate",
-            node: Rotation,
+            node: Rotation(Blend, Local, Linear, 1),
         ),
         (
             name: "Walk Chain",

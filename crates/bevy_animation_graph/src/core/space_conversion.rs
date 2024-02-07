@@ -24,7 +24,7 @@ pub trait SpaceConversion {
     ///
     /// ### Panics
     /// Panics if `source` is not an ancestor of `target`.
-    fn change_bone_space(
+    fn change_bone_space_down(
         &self,
         transform: Transform,
         data: &InnerPoseFrame, // Should be in bone space
@@ -32,6 +32,23 @@ pub trait SpaceConversion {
         target: BoneId,
         timestamp: f32,
     ) -> Transform;
+
+    /// Given a transform in a space relative to a given bone, convert it into a space
+    /// relative to an ancestor bone.
+    ///
+    /// NOTE: data should be in bone space
+    ///
+    /// ### Panics
+    /// Panics if `source` is not an ancestor of `target`.
+    fn change_bone_space_up(
+        &self,
+        transform: Transform,
+        data: &InnerPoseFrame, // Should be in bone space
+        source: BoneId,
+        target: BoneId,
+        timestamp: f32,
+    ) -> Transform;
+
     /// Given a transform in a space relative to the root bone, convert it into a space
     /// relative to a descendant bone.
     ///
@@ -42,6 +59,22 @@ pub trait SpaceConversion {
     fn root_to_bone_space(
         &self,
         transform: Transform,
+        data: &InnerPoseFrame, // Should be in bone space
+        target: BoneId,
+        timestamp: f32,
+    ) -> Transform;
+
+    /// Returns transform of bone in character space
+    fn character_transform_of_bone(
+        &self,
+        data: &InnerPoseFrame, // Should be in bone space
+        target: BoneId,
+        timestamp: f32,
+    ) -> Transform;
+
+    /// Returns transform of bone in character space
+    fn global_transform_of_bone(
+        &self,
         data: &InnerPoseFrame, // Should be in bone space
         target: BoneId,
         timestamp: f32,
@@ -430,7 +463,7 @@ impl SpaceConversion for PassContext<'_> {
         new_frame
     }
 
-    fn change_bone_space(
+    fn change_bone_space_down(
         &self,
         transform: Transform,
         data: &InnerPoseFrame, // Should be in bone space
@@ -472,6 +505,65 @@ impl SpaceConversion for PassContext<'_> {
             parts: vec![root_name.clone()],
         };
 
-        self.change_bone_space(transform, data, root_path, target, timestamp)
+        self.change_bone_space_down(transform, data, root_path, target, timestamp)
+    }
+
+    fn character_transform_of_bone(
+        &self,
+        data: &InnerPoseFrame,
+        target: BoneId,
+        timestamp: f32,
+    ) -> Transform {
+        let root_name = self.resources.names_query.get(self.root_entity).unwrap();
+        let root_path = EntityPath {
+            parts: vec![root_name.clone()],
+        };
+
+        self.change_bone_space_up(Transform::IDENTITY, data, target, root_path, timestamp)
+    }
+
+    fn global_transform_of_bone(
+        &self,
+        data: &InnerPoseFrame,
+        target: BoneId,
+        timestamp: f32,
+    ) -> Transform {
+        let (_, root_transform_global) = self
+            .resources
+            .transform_query
+            .get(self.root_entity)
+            .unwrap();
+        root_transform_global.compute_transform()
+            * self.character_transform_of_bone(data, target, timestamp)
+    }
+
+    fn change_bone_space_up(
+        &self,
+        transform: Transform,
+        data: &InnerPoseFrame, // Should be in bone space
+        source: BoneId,
+        target: BoneId,
+        timestamp: f32,
+    ) -> Transform {
+        let mut curr_path = source;
+        let mut curr_transform = Transform::IDENTITY;
+
+        while curr_path != target {
+            let bone_frame: BoneFrame = if data.paths.contains_key(&curr_path) {
+                let bone_id = data.paths.get(&curr_path).unwrap();
+                data.bones[*bone_id].clone()
+            } else {
+                BoneFrame::default()
+            };
+            let curr_entity = self.entity_map.get(&curr_path).unwrap();
+            let curr_local_transform = self.resources.transform_query.get(*curr_entity).unwrap().0;
+            let merged_local_transform =
+                bone_frame.to_transform_linear_with_base(*curr_local_transform, timestamp);
+
+            curr_transform = merged_local_transform * curr_transform;
+            curr_path = curr_path.parent().unwrap();
+        }
+
+        curr_transform * transform
     }
 }

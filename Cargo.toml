@@ -1,6 +1,9 @@
 [workspace]
 members = ["crates/*", "examples/*"]
 resolver = "2"
+# In order to run the bevy_animation_graph_editor when using cargo run by
+# default
+default-members = ["crates/bevy_animation_graph_editor"]
 
 [workspace.package]
 version = "0.2.0"

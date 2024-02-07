@@ -4,7 +4,7 @@ use crate::core::duration_data::DurationData;
 use crate::core::errors::GraphError;
 use crate::core::frame::{BonePoseFrame, PoseFrame, PoseFrameData, PoseSpec};
 use crate::flipping::FlipXBySuffix;
-use crate::prelude::{PassContext, SpecContext};
+use crate::prelude::{BoneDebugGizmos, PassContext, SpecContext};
 use crate::utils::unwrap::Unwrap;
 use bevy::prelude::*;
 
@@ -43,7 +43,16 @@ impl NodeLike for FlipLRNode {
     ) -> Result<Option<PoseFrame>, GraphError> {
         let in_pose_frame = ctx.pose_back(Self::INPUT, input)?;
         let bone_frame: BonePoseFrame = in_pose_frame.data.unwrap();
+
+        ctx.pose_bone_gizmos(Color::RED, bone_frame.inner_ref(), in_pose_frame.timestamp);
+
         let flipped_pose_frame = bone_frame.flipped_by_suffix("R".into(), "L".into());
+
+        ctx.pose_bone_gizmos(
+            Color::BLUE,
+            flipped_pose_frame.inner_ref(),
+            in_pose_frame.timestamp,
+        );
 
         Ok(Some(PoseFrame {
             data: PoseFrameData::BoneSpace(flipped_pose_frame),

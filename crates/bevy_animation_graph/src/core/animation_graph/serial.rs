@@ -1,7 +1,10 @@
 use super::{pin, AnimationGraph, Extra};
 use crate::{
     core::frame::PoseSpec,
-    prelude::{AnimationNode, AnimationNodeType, ParamSpec, ParamValue},
+    prelude::{
+        AnimationNode, AnimationNodeType, ChainDecay, ParamSpec, ParamValue, RotationMode,
+        RotationSpace,
+    },
     utils::ordered_map::OrderedMap,
 };
 use bevy::utils::HashMap;
@@ -58,7 +61,13 @@ pub enum AnimationNodeTypeSerial {
     FlipLR,
     Loop,
     Speed,
-    Rotation,
+    Rotation(
+        RotationMode,
+        RotationSpace,
+        ChainDecay,
+        usize,
+        #[serde(default)] f32,
+    ),
     AddF32,
     SubF32,
     MulF32,
@@ -127,7 +136,13 @@ impl From<&AnimationNodeType> for AnimationNodeTypeSerial {
             AnimationNodeType::FlipLR(_) => AnimationNodeTypeSerial::FlipLR,
             AnimationNodeType::Loop(_) => AnimationNodeTypeSerial::Loop,
             AnimationNodeType::Speed(_) => AnimationNodeTypeSerial::Speed,
-            AnimationNodeType::Rotation(_) => AnimationNodeTypeSerial::Rotation,
+            AnimationNodeType::Rotation(n) => AnimationNodeTypeSerial::Rotation(
+                n.application_mode,
+                n.rotation_space,
+                n.chain_decay,
+                n.chain_length,
+                n.base_weight,
+            ),
             AnimationNodeType::IntoBoneSpace(_) => AnimationNodeTypeSerial::IntoBoneSpace,
             AnimationNodeType::IntoCharacterSpace(_) => AnimationNodeTypeSerial::IntoCharacterSpace,
             AnimationNodeType::IntoGlobalSpace(_) => AnimationNodeTypeSerial::IntoGlobalSpace,

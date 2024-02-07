@@ -21,6 +21,7 @@ use bevy_inspector_egui::{
 use std::{
     any::{Any, TypeId},
     hash::{Hash, Hasher},
+    path::PathBuf,
 };
 
 pub struct BetterInspectorPlugin;
@@ -570,6 +571,12 @@ pub fn todo_readonly_ui(
     mut _env: InspectorUi<'_, '_>,
 ) {
     ui.label("TODO: Asset picker readonly. If you see this please report an issue.");
+}
+
+pub fn handle_path(handle: UntypedAssetId, asset_server: &AssetServer) -> PathBuf {
+    asset_server
+        .get_path(handle)
+        .map_or("Unsaved Asset".into(), |p| p.path().to_owned())
 }
 
 pub fn handle_name(handle: UntypedAssetId, asset_server: &AssetServer) -> String {

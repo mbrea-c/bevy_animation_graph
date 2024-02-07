@@ -29,6 +29,7 @@ pub struct PassContext<'a> {
     pub root_entity: Entity,
     pub entity_map: &'a HashMap<BoneId, Entity>,
     pub deferred_gizmos: DeferredGizmoRef,
+    pub should_debug: bool,
 }
 
 impl<'a> PassContext<'a> {
@@ -50,6 +51,7 @@ impl<'a> PassContext<'a> {
             root_entity,
             entity_map,
             deferred_gizmos: deferred_gizmos.into(),
+            should_debug: false,
         }
     }
 
@@ -65,6 +67,7 @@ impl<'a> PassContext<'a> {
             root_entity: self.root_entity,
             entity_map: self.entity_map,
             deferred_gizmos: self.deferred_gizmos.clone(),
+            should_debug: self.should_debug,
         }
     }
 
@@ -80,6 +83,22 @@ impl<'a> PassContext<'a> {
             root_entity: self.root_entity,
             entity_map: self.entity_map,
             deferred_gizmos: self.deferred_gizmos.clone(),
+            should_debug: self.should_debug,
+        }
+    }
+
+    /// Returns a pass context with updated `should_debug`
+    pub fn with_debugging(&self, should_debug: bool) -> Self {
+        Self {
+            context: self.context.clone(),
+            resources: self.resources,
+            overlay: self.overlay,
+            node_context: self.node_context,
+            parent: self.parent.clone(),
+            root_entity: self.root_entity,
+            entity_map: self.entity_map,
+            deferred_gizmos: self.deferred_gizmos.clone(),
+            should_debug,
         }
     }
 
@@ -98,6 +117,7 @@ impl<'a> PassContext<'a> {
             root_entity: self.root_entity,
             entity_map: self.entity_map,
             deferred_gizmos: self.deferred_gizmos.clone(),
+            should_debug: self.should_debug,
         }
     }
 
