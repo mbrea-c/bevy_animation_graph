@@ -17,9 +17,25 @@ fn main() {
             color: Color::WHITE,
             brightness: 0.1,
         })
+        .insert_resource(Params::default())
         .add_systems(Startup, setup)
         .add_systems(Update, keyboard_animation_control)
         .run();
+}
+
+#[derive(Resource)]
+struct Params {
+    pub speed: f32,
+    pub direction: Vec3,
+}
+
+impl Default for Params {
+    fn default() -> Self {
+        Self {
+            speed: 1.0,
+            direction: Vec3::Z,
+        }
+    }
 }
 
 #[derive(Component)]
@@ -76,14 +92,14 @@ fn setup(
     println!("\tSPACE: Play/Pause animation");
     println!("\tR: Reset animation");
     println!("\tUp/Down: Increase/decrease movement speed");
+    println!("\tLeft/Right: Rotate character");
 }
 
 fn keyboard_animation_control(
     keyboard_input: Res<Input<KeyCode>>,
     human_character: Query<&AnimatedSceneInstance, With<Human>>,
     mut animation_players: Query<&mut AnimationGraphPlayer>,
-    mut velocity: Local<f32>,
-    mut direction: Local<Vec3>,
+    mut params: ResMut<Params>,
     time: Res<Time>,
 ) {
     let Ok(AnimatedSceneInstance { player_entity }) = human_character.get_single() else {
@@ -106,23 +122,25 @@ fn keyboard_animation_control(
     }
 
     if keyboard_input.pressed(KeyCode::Up) {
-        *velocity += 0.5 * time.delta_seconds();
+        params.speed += 0.5 * time.delta_seconds();
     }
     if keyboard_input.pressed(KeyCode::Down) {
-        *velocity -= 0.5 * time.delta_seconds();
+        params.speed -= 0.5 * time.delta_seconds();
     }
 
-    if *direction == Vec3::ZERO {
-        *direction = Vec3::Z;
+    if params.direction == Vec3::ZERO {
+        params.direction = Vec3::Z;
     }
 
     if keyboard_input.pressed(KeyCode::Right) {
-        *direction = (Quat::from_rotation_y(1. * time.delta_seconds()) * *direction).normalize();
+        params.direction =
+            (Quat::from_rotation_y(1. * time.delta_seconds()) * params.direction).normalize();
     }
     if keyboard_input.pressed(KeyCode::Left) {
-        *direction = (Quat::from_rotation_y(-1. * time.delta_seconds()) * *direction).normalize();
+        params.direction =
+            (Quat::from_rotation_y(-1. * time.delta_seconds()) * params.direction).normalize();
     }
 
-    player.set_input_parameter("Target Speed", (*velocity).into());
-    player.set_input_parameter("Target Direction", (*direction).into());
+    player.set_input_parameter("Target Speed", params.speed.into());
+    player.set_input_parameter("Target Direction", params.direction.into());
 }
