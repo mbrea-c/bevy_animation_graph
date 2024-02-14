@@ -1,13 +1,15 @@
-use bevy::reflect::Reflect;
+use bevy::reflect::{std_traits::ReflectDefault, Reflect};
 use regex::{escape, Regex};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Default, Reflect, Clone, Serialize, Deserialize)]
+#[reflect(Default)]
 pub struct FlipConfig {
     pub name_mapper: FlipNameMapper,
 }
 
 #[derive(Debug, Reflect, Clone)]
+#[reflect(Default)]
 pub struct PatternMapper {
     key_1: String,
     key_2: String,
@@ -118,6 +120,7 @@ impl Default for PatternMapperSerial {
 }
 
 #[derive(Debug, Reflect, Clone, Serialize, Deserialize)]
+#[reflect(Default)]
 pub enum FlipNameMapper {
     Pattern(PatternMapper),
 }
