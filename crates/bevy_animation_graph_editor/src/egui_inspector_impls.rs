@@ -1,7 +1,8 @@
 use bevy::{
     app::Plugin,
     asset::{Asset, AssetServer, Assets, Handle, UntypedAssetId},
-    ecs::system::Resource,
+    ecs::{prelude::AppTypeRegistry, system::Resource},
+    prelude::App,
     reflect::{FromReflect, Reflect, TypePath, TypeRegistry},
     utils::HashMap,
 };
@@ -12,6 +13,7 @@ use bevy_animation_graph::{
         frame::PoseSpec,
         parameters::{BoneMask, ParamSpec, ParamValue},
     },
+    flipping::config::{PatternMapper, PatternMapperSerial},
     prelude::OrderedMap,
 };
 use bevy_inspector_egui::{
@@ -25,7 +27,7 @@ use std::{
 
 pub struct BetterInspectorPlugin;
 impl Plugin for BetterInspectorPlugin {
-    fn build(&self, app: &mut bevy::prelude::App) {
+    fn build(&self, app: &mut App) {
         app.insert_resource(EguiInspectorBuffers::<
             HashMap<EntityPath, f32>,
             Vec<(EntityPath, f32)>,
@@ -49,7 +51,9 @@ impl Plugin for BetterInspectorPlugin {
         app.register_type::<OrderedMap<PinId, ParamSpec>>();
         app.register_type::<OrderedMap<PinId, PoseSpec>>();
 
-        let type_registry = app.world.resource::<bevy::ecs::prelude::AppTypeRegistry>();
+        PatternMapperInspector::register(app);
+
+        let type_registry = app.world.resource::<AppTypeRegistry>();
         let mut type_registry = type_registry.write();
         let type_registry = &mut type_registry;
 
@@ -221,6 +225,60 @@ pub fn entity_path_readonly(
     let value = value.downcast_ref::<EntityPath>().unwrap();
     let slashed_path = value.to_slashed_string();
     ui.label(slashed_path);
+}
+
+pub struct PatternMapperInspector;
+
+impl PatternMapperInspector {
+    pub fn register(app: &mut App) {
+        app.insert_resource(EguiInspectorBuffers::<PatternMapper, PatternMapperSerial>::default());
+        let type_registry = app.world.resource::<AppTypeRegistry>();
+        let mut type_registry = type_registry.write();
+        let type_registry = &mut type_registry;
+        add_no_many::<PatternMapper>(type_registry, Self::mutable, Self::readonly);
+    }
+
+    pub fn mutable(
+        value: &mut dyn Any,
+        ui: &mut egui::Ui,
+        _options: &dyn Any,
+        id: egui::Id,
+        mut env: InspectorUi<'_, '_>,
+    ) -> bool {
+        let value = value.downcast_mut::<PatternMapper>().unwrap();
+        let buffered = get_buffered::<PatternMapper, PatternMapperSerial>(
+            env.context.world.as_mut().unwrap(),
+            id,
+            || value.clone().into(),
+        );
+        match env.ui_for_reflect_with_options(buffered, ui, id, &()) {
+            true => {
+                if let Ok(mapper) = PatternMapper::try_from(buffered.clone()) {
+                    *value = mapper;
+                    true
+                } else {
+                    false
+                }
+            }
+            false => false,
+        }
+    }
+
+    pub fn readonly(
+        value: &dyn Any,
+        ui: &mut egui::Ui,
+        _options: &dyn Any,
+        id: egui::Id,
+        mut env: InspectorUi<'_, '_>,
+    ) {
+        let value = value.downcast_ref::<PatternMapper>().unwrap();
+        let buffered = get_buffered::<PatternMapper, PatternMapperSerial>(
+            env.context.world.as_mut().unwrap(),
+            id,
+            || value.clone().into(),
+        );
+        env.ui_for_reflect_readonly_with_options(buffered, ui, id, &());
+    }
 }
 
 pub fn animation_graph_mut(

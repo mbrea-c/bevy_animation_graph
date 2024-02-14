@@ -8,6 +8,7 @@ use super::{
     systems::{animation_player, animation_player_deferred_gizmos},
 };
 use crate::prelude::{
+    config::{FlipConfig, FlipNameMapper, PatternMapper, PatternMapperSerial},
     AbsF32, AddF32, AnimationGraph, AnimationGraphPlayer, AnimationNodeType, BlendNode, ChainNode,
     ClampF32, ClipNode, DivF32, DummyNode, ExtendSkeleton, FlipLRNode, GraphClip, GraphNode,
     IntoBoneSpaceNode, IntoCharacterSpaceNode, IntoGlobalSpaceNode, LoopNode, MulF32,
@@ -57,7 +58,10 @@ impl AnimationGraphPlugin {
             .register_type::<PoseSpec>()
             .register_type::<AnimationNode>()
             .register_type::<AnimationNodeType>()
-
+            .register_type::<FlipConfig>()
+            .register_type::<FlipNameMapper>()
+            .register_type::<PatternMapper>()
+            .register_type::<PatternMapperSerial>()
         // --- Node registrations
         // ------------------------------------------
             .register_type::<BlendNode>()
