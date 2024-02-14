@@ -1,0 +1,34 @@
+name: DryRun
+
+on: {}
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Run cargo publish pipeline as a dry run
+  dry_run:
+    name: Dry Run Publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+      - name: Cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.toml') }}
+      - name: Install stable toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install Dependencies
+        run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev
+      - name: Run cargo publish dry run for library
+        run: cargo publish --dry-run -p bevy_animation_graph
+      - name: Run cargo publish dry run for editor
+        run: cargo publish --dry-run -p bevy_animation_graph_editor

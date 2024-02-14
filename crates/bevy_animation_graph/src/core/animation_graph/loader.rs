@@ -129,7 +129,9 @@ impl AssetLoader for AnimationGraphLoader {
                     }
                     AnimationNodeTypeSerial::Blend => BlendNode::new().wrapped(&serial_node.name),
                     AnimationNodeTypeSerial::Chain => ChainNode::new().wrapped(&serial_node.name),
-                    AnimationNodeTypeSerial::FlipLR => FlipLRNode::new().wrapped(&serial_node.name),
+                    AnimationNodeTypeSerial::FlipLR { config } => {
+                        FlipLRNode::new(config.clone()).wrapped(&serial_node.name)
+                    }
                     AnimationNodeTypeSerial::Loop => LoopNode::new().wrapped(&serial_node.name),
                     AnimationNodeTypeSerial::Speed => SpeedNode::new().wrapped(&serial_node.name),
                     AnimationNodeTypeSerial::Rotation(mode, space, decay, length, base_weight) => {

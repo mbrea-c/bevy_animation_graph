@@ -4,17 +4,20 @@ use crate::core::duration_data::DurationData;
 use crate::core::errors::GraphError;
 use crate::core::frame::{BonePoseFrame, PoseFrame, PoseFrameData, PoseSpec};
 use crate::flipping::FlipXBySuffix;
+use crate::prelude::config::FlipConfig;
 use crate::prelude::{BoneDebugGizmos, PassContext, SpecContext};
 use crate::utils::unwrap::Unwrap;
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug)]
 #[reflect(Default)]
-pub struct FlipLRNode {}
+pub struct FlipLRNode {
+    pub config: FlipConfig,
+}
 
 impl Default for FlipLRNode {
     fn default() -> Self {
-        Self::new()
+        Self::new(FlipConfig::default())
     }
 }
 
@@ -22,8 +25,8 @@ impl FlipLRNode {
     pub const INPUT: &'static str = "Pose In";
     pub const OUTPUT: &'static str = "Pose Out";
 
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(config: FlipConfig) -> Self {
+        Self { config }
     }
 
     pub fn wrapped(self, name: impl Into<String>) -> AnimationNode {
@@ -46,7 +49,7 @@ impl NodeLike for FlipLRNode {
 
         ctx.pose_bone_gizmos(Color::RED, bone_frame.inner_ref(), in_pose_frame.timestamp);
 
-        let flipped_pose_frame = bone_frame.flipped_by_suffix("R".into(), "L".into());
+        let flipped_pose_frame = bone_frame.flipped(&self.config);
 
         ctx.pose_bone_gizmos(
             Color::BLUE,

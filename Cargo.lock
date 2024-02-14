@@ -483,6 +483,7 @@ version = "0.2.0"
 dependencies = [
  "bevy",
  "indexmap 2.2.1",
+ "regex",
  "ron",
  "serde",
  "thiserror",

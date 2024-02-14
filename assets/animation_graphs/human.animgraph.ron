@@ -2,7 +2,7 @@
     nodes: [
         (
             name: "Walk Flip LR",
-            node: FlipLR,
+            node: FlipLR(),
         ),
         (
             name: "Walk Clip",
@@ -18,7 +18,7 @@
         ),
         (
             name: "Run Flip LR",
-            node: FlipLR,
+            node: FlipLR(),
         ),
         (
             name: "Run Chain",

@@ -673,9 +673,7 @@ impl AnimationGraph {
             }
             SourcePin::InputParameter(pin_id) => {
                 let out = if ctx.has_parent() {
-                    ctx.parent()
-                        .parameter_back(pin_id)
-                        .map_or_else(|_| None, Some)
+                    ctx.parent().parameter_back(pin_id).ok()
                 } else {
                     None
                 }
