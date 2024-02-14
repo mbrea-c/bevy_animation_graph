@@ -4,17 +4,20 @@ use crate::core::duration_data::DurationData;
 use crate::core::errors::GraphError;
 use crate::core::frame::{BonePoseFrame, PoseFrame, PoseFrameData, PoseSpec};
 use crate::flipping::FlipXBySuffix;
+use crate::prelude::config::FlipConfig;
 use crate::prelude::{PassContext, SpecContext};
 use crate::utils::unwrap::Unwrap;
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug)]
 #[reflect(Default)]
-pub struct FlipLRNode {}
+pub struct FlipLRNode {
+    pub config: FlipConfig,
+}
 
 impl Default for FlipLRNode {
     fn default() -> Self {
-        Self::new()
+        Self::new(FlipConfig::default())
     }
 }
 
@@ -22,8 +25,8 @@ impl FlipLRNode {
     pub const INPUT: &'static str = "Pose In";
     pub const OUTPUT: &'static str = "Pose Out";
 
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(config: FlipConfig) -> Self {
+        Self { config }
     }
 
     pub fn wrapped(self, name: impl Into<String>) -> AnimationNode {
@@ -43,7 +46,7 @@ impl NodeLike for FlipLRNode {
     ) -> Result<Option<PoseFrame>, GraphError> {
         let in_pose_frame = ctx.pose_back(Self::INPUT, input)?;
         let bone_frame: BonePoseFrame = in_pose_frame.data.unwrap();
-        let flipped_pose_frame = bone_frame.flipped_by_suffix("R".into(), "L".into());
+        let flipped_pose_frame = bone_frame.flipped(&self.config);
 
         Ok(Some(PoseFrame {
             data: PoseFrameData::BoneSpace(flipped_pose_frame),
