@@ -111,7 +111,7 @@ impl Default for PatternMapperSerial {
         Self {
             key_1: "L".into(),
             key_2: "R".into(),
-            pattern_before: r".*".into(),
+            pattern_before: r"^.*".into(),
             pattern_after: r"$".into(),
         }
     }
