@@ -82,7 +82,7 @@ impl PatternMapper {
     pub fn flip(&self, input: &str) -> Option<String> {
         if let Some(captures) = self.regex.captures(input) {
             let key_capture = captures.get(2).unwrap().as_str();
-            let replacement_key = if key_capture == &self.key_1 {
+            let replacement_key = if key_capture == self.key_1 {
                 &self.key_2
             } else {
                 &self.key_1
