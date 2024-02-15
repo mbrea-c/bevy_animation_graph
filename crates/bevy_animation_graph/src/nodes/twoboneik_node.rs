@@ -1,6 +1,7 @@
 use bevy::{
     math::{Quat, Vec3},
     reflect::{std_traits::ReflectDefault, Reflect},
+    render::color::Color,
     transform::components::Transform,
 };
 
@@ -14,7 +15,7 @@ use crate::{
         frame::{BonePoseFrame, PoseFrame, PoseFrameData, PoseSpec},
         space_conversion::SpaceConversion,
     },
-    prelude::{OptParamSpec, ParamSpec, PassContext, SampleLinearAt, SpecContext},
+    prelude::{BoneDebugGizmos, OptParamSpec, ParamSpec, PassContext, SampleLinearAt, SpecContext},
     utils::unwrap::Unwrap,
 };
 
@@ -58,6 +59,18 @@ impl NodeLike for TwoBoneIKNode {
             target.parent(),
             target.parent().and_then(|p| p.parent()),
         ) {
+            // Debug render (if enabled)
+            ctx.bone_gizmo(
+                target.clone(),
+                Color::RED,
+                Some((&inner_pose_data, pose.timestamp)),
+            );
+            ctx.bone_gizmo(
+                parent_path.clone(),
+                Color::RED,
+                Some((&inner_pose_data, pose.timestamp)),
+            );
+
             let bone = inner_pose_data.bones[*bone_id].clone();
             let target_gp = ctx.root_to_bone_space(
                 Transform::from_translation(target_pos_char),
@@ -117,6 +130,18 @@ impl NodeLike for TwoBoneIKNode {
                 .as_mut()
                 .unwrap()
                 .map_mut(|_| bone_transform.rotation);
+
+            // Debug render (if enabled)
+            ctx.bone_gizmo(
+                target.clone(),
+                Color::BLUE,
+                Some((&inner_pose_data, pose.timestamp)),
+            );
+            ctx.bone_gizmo(
+                parent_path.clone(),
+                Color::BLUE,
+                Some((&inner_pose_data, pose.timestamp)),
+            );
         }
 
         Ok(Some(PoseFrame {

@@ -136,6 +136,11 @@ pub fn animation_player(
                 &sysres,
             );
         });
+    animation_players
+        .par_iter_mut()
+        .for_each(|(root, _, player)| {
+            debug_draw_animation_players(player, root, &sysres);
+        });
 }
 
 /// System that will draw deferred gizmo commands called during graph evaluation
@@ -171,9 +176,9 @@ pub fn run_animation_player(
         .update(player.pending_update);
     player.pending_update = None;
 
-    let entity_map = build_entity_map(root, system_resources);
+    player.entity_map = build_entity_map(root, system_resources);
 
-    let Some(out_pose) = player.query(system_resources, root, &entity_map) else {
+    let Some(out_pose) = player.query(system_resources, root) else {
         return;
     };
 
@@ -188,6 +193,14 @@ pub fn run_animation_player(
         parents,
         &system_resources.children_query,
     );
+}
+
+pub fn debug_draw_animation_players(
+    mut player: Mut<AnimationGraphPlayer>,
+    root_entity: Entity,
+    system_resources: &SystemResources,
+) {
+    player.debug_draw_bones(system_resources, root_entity);
 }
 
 /// Update `weights` based on weights in `keyframe` with a linear interpolation

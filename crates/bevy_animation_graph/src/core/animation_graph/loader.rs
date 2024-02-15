@@ -134,8 +134,9 @@ impl AssetLoader for AnimationGraphLoader {
                     }
                     AnimationNodeTypeSerial::Loop => LoopNode::new().wrapped(&serial_node.name),
                     AnimationNodeTypeSerial::Speed => SpeedNode::new().wrapped(&serial_node.name),
-                    AnimationNodeTypeSerial::Rotation => {
-                        RotationNode::new().wrapped(&serial_node.name)
+                    AnimationNodeTypeSerial::Rotation(mode, space, decay, length, base_weight) => {
+                        RotationNode::new(*mode, *space, *decay, *length, *base_weight)
+                            .wrapped(&serial_node.name)
                     }
                     AnimationNodeTypeSerial::AddF32 => AddF32::new().wrapped(&serial_node.name),
                     AnimationNodeTypeSerial::SubF32 => SubF32::new().wrapped(&serial_node.name),

@@ -89,11 +89,17 @@ impl std::fmt::Debug for CustomNode {
 pub struct AnimationNode {
     pub name: String,
     pub node: AnimationNodeType,
+    #[reflect(ignore)]
+    pub should_debug: bool,
 }
 
 impl AnimationNode {
     pub fn new_from_nodetype(name: String, node: AnimationNodeType) -> Self {
-        Self { name, node }
+        Self {
+            name,
+            node,
+            should_debug: false,
+        }
     }
 }
 

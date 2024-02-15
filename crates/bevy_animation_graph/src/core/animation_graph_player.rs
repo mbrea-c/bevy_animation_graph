@@ -1,12 +1,14 @@
 use super::{
     animation_graph::{AnimationGraph, InputOverlay, TimeState, TimeUpdate},
-    context::DeferredGizmos,
+    context::{BoneDebugGizmos, DeferredGizmos, PassContext},
     errors::GraphError,
     parameters::ParamValue,
     pose::{BoneId, Pose},
 };
 use crate::prelude::{GraphContext, SystemResources};
-use bevy::{asset::prelude::*, ecs::prelude::*, reflect::prelude::*, utils::HashMap};
+use bevy::{
+    asset::prelude::*, ecs::prelude::*, reflect::prelude::*, render::color::Color, utils::HashMap,
+};
 
 /// Animation controls
 #[derive(Component, Default, Reflect)]
@@ -18,6 +20,8 @@ pub struct AnimationGraphPlayer {
     pub(crate) pending_update: Option<TimeUpdate>,
     pub(crate) context: GraphContext,
     pub(crate) deferred_gizmos: DeferredGizmos,
+    pub(crate) debug_draw_bones: Vec<BoneId>,
+    pub(crate) entity_map: HashMap<BoneId, Entity>,
 
     input_overlay: InputOverlay,
     /// Error that ocurred during graph evaluation in the last frame
@@ -29,15 +33,7 @@ impl AnimationGraphPlayer {
     /// Create a new animation graph player, with no graph playing
     pub fn new() -> Self {
         Self {
-            paused: false,
-            animation: None,
-            elapsed: TimeState::default(),
-            pending_update: None,
-            context: GraphContext::default(),
-            deferred_gizmos: DeferredGizmos::default(),
-
-            input_overlay: InputOverlay::default(),
-            error: None,
+            ..Default::default()
         }
     }
 
@@ -78,7 +74,6 @@ impl AnimationGraphPlayer {
         &mut self,
         system_resources: &SystemResources,
         root_entity: Entity,
-        entity_map: &HashMap<BoneId, Entity>,
     ) -> Option<Pose> {
         let Some(graph_handle) = &self.animation else {
             return None;
@@ -94,7 +89,7 @@ impl AnimationGraphPlayer {
             system_resources,
             &self.input_overlay,
             root_entity,
-            entity_map,
+            &self.entity_map,
             &mut self.deferred_gizmos,
         ) {
             Ok(pose) => {
@@ -108,6 +103,43 @@ impl AnimationGraphPlayer {
         };
 
         Some(pose)
+    }
+
+    pub fn get_pass_context<'a>(
+        &'a mut self,
+        system_resources: &'a SystemResources,
+        root_entity: Entity,
+    ) -> PassContext<'a> {
+        PassContext::new(
+            &mut self.context,
+            system_resources,
+            &self.input_overlay,
+            root_entity,
+            &self.entity_map,
+            &mut self.deferred_gizmos,
+        )
+    }
+
+    pub fn gizmo_for_bones(&mut self, bones: impl IntoIterator<Item = BoneId>) {
+        self.debug_draw_bones.extend(bones);
+    }
+
+    pub(crate) fn debug_draw_bones(
+        &mut self,
+        system_resources: &SystemResources,
+        root_entity: Entity,
+    ) {
+        if self.debug_draw_bones.is_empty() {
+            return;
+        }
+
+        let mut bones = std::mem::take(&mut self.debug_draw_bones);
+        let mut ctx = self
+            .get_pass_context(system_resources, root_entity)
+            .with_debugging(true);
+        for bone_id in bones.drain(..) {
+            ctx.bone_gizmo(bone_id, Color::YELLOW, None);
+        }
     }
 
     pub fn pause(&mut self) -> &mut Self {

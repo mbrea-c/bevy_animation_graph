@@ -657,7 +657,10 @@ impl AnimationGraph {
 
         let source_value = match source_pin {
             SourcePin::NodeParameter(node_id, pin_id) => {
-                let outputs = self.nodes[node_id].parameter_pass(ctx.with_node(node_id, self))?;
+                let node = &self.nodes[node_id];
+                let should_debug = node.should_debug;
+                let outputs =
+                    node.parameter_pass(ctx.with_node(node_id, self).with_debugging(should_debug))?;
 
                 for (pin_id, value) in outputs.iter() {
                     ctx.context().set_parameter(
@@ -710,7 +713,10 @@ impl AnimationGraph {
                 panic!("Incompatible pins connected: {source_pin:?} --> {target_pin:?}")
             }
             SourcePin::NodePose(node_id) => {
-                let output = self.nodes[node_id].duration_pass(ctx.with_node(node_id, self))?;
+                let node = &self.nodes[node_id];
+                let should_debug = node.should_debug;
+                let output =
+                    node.duration_pass(ctx.with_node(node_id, self).with_debugging(should_debug))?;
 
                 if let Some(value) = output {
                     ctx.context()
@@ -753,8 +759,13 @@ impl AnimationGraph {
                 panic!("Incompatible pins connected: {source_pin:?} --> {target_pin:?}")
             }
             SourcePin::NodePose(node_id) => {
-                let output = self.nodes[node_id]
-                    .pose_pass(time_update, ctx.with_node(node_id, self))?
+                let node = &self.nodes[node_id];
+                let should_debug = node.should_debug;
+                let output = node
+                    .pose_pass(
+                        time_update,
+                        ctx.with_node(node_id, self).with_debugging(should_debug),
+                    )?
                     .unwrap();
 
                 ctx.context().set_pose(source_pin.clone(), output.clone());

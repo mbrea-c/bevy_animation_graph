@@ -3,6 +3,7 @@ mod egui_nodes;
 mod graph_saving;
 mod graph_show;
 mod graph_update;
+mod tree;
 mod ui;
 
 use bevy::{asset::LoadedFolder, prelude::*, utils::HashSet};
@@ -13,7 +14,7 @@ use clap::Parser;
 use egui_inspector_impls::BetterInspectorPlugin;
 use graph_saving::{save_graph_system, SaveGraph};
 use std::path::PathBuf;
-use ui::UiState;
+use ui::{graph_debug_draw_bone_system, UiState};
 
 #[derive(Parser, Resource)]
 struct Cli {
@@ -51,7 +52,7 @@ fn main() {
         .add_plugins(BetterInspectorPlugin)
         .insert_resource(UiState::new())
         .insert_resource(cli)
-        .add_systems(Startup, (load_target_graph, ui::setup_system))
+        .add_systems(Startup, (core_setup, ui::setup_system))
         .add_systems(
             Update,
             (
@@ -59,6 +60,7 @@ fn main() {
                 ui::graph_save_event_system,
                 ui::scene_spawner_system,
                 save_graph_system,
+                graph_debug_draw_bone_system,
             )
                 .chain(),
         );
@@ -66,9 +68,15 @@ fn main() {
     app.run();
 }
 
-fn load_target_graph(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn core_setup(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut gizmo_config: ResMut<GizmoConfig>,
+) {
     commands.insert_resource(GraphHandles {
         folder: asset_server.load_folder(""),
         unsaved: HashSet::default(),
     });
+
+    gizmo_config.depth_bias = -1.;
 }
