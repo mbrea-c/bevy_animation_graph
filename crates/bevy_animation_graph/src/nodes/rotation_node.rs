@@ -154,7 +154,7 @@ impl NodeLike for RotationNode {
                 .paths
                 .get(&target)
                 .and_then(|bone_id| inner_pose.bones.get_mut(*bone_id).cloned())
-                .unwrap_or_else(|| BoneFrame::default());
+                .unwrap_or_default();
 
             if let Some(mut rot_frame) = bone_frame.rotation {
                 let rot = rot_frame.sample_linear_at(time);
