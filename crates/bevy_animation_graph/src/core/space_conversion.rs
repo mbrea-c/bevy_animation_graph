@@ -64,6 +64,16 @@ pub trait SpaceConversion {
         timestamp: f32,
     ) -> Transform;
 
+    fn global_to_bone_space(
+        &self,
+        transform: Transform,
+        data: &InnerPoseFrame, // Should be in bone space
+        target: BoneId,
+        timestamp: f32,
+    ) -> Transform;
+
+    fn transform_global_to_character(&self, transform: Transform) -> Transform;
+
     /// Returns transform of bone in character space
     fn character_transform_of_bone(
         &self,
@@ -401,6 +411,132 @@ impl SpaceConversion for PassContext<'_> {
         final_pose_frame
     }
 
+    fn change_bone_space_down(
+        &self,
+        transform: Transform,
+        data: &InnerPoseFrame, // Should be in bone space
+        source: BoneId,
+        target: BoneId,
+        timestamp: f32,
+    ) -> Transform {
+        let mut curr_path = target;
+        let mut curr_transform = Transform::IDENTITY;
+
+        while curr_path != source {
+            let bone_frame: BoneFrame = if data.paths.contains_key(&curr_path) {
+                let bone_id = data.paths.get(&curr_path).unwrap();
+                data.bones[*bone_id].clone()
+            } else {
+                BoneFrame::default()
+            };
+            let curr_entity = self.entity_map.get(&curr_path).unwrap();
+            let curr_local_transform = self.resources.transform_query.get(*curr_entity).unwrap().0;
+            let merged_local_transform =
+                bone_frame.to_transform_linear_with_base(*curr_local_transform, timestamp);
+
+            curr_transform = merged_local_transform * curr_transform;
+            curr_path = curr_path.parent().unwrap();
+        }
+
+        Transform::from_matrix(curr_transform.compute_matrix().inverse()) * transform
+    }
+
+    fn change_bone_space_up(
+        &self,
+        transform: Transform,
+        data: &InnerPoseFrame, // Should be in bone space
+        source: BoneId,
+        target: BoneId,
+        timestamp: f32,
+    ) -> Transform {
+        let mut curr_path = source;
+        let mut curr_transform = Transform::IDENTITY;
+
+        while curr_path != target {
+            let bone_frame: BoneFrame = if data.paths.contains_key(&curr_path) {
+                let bone_id = data.paths.get(&curr_path).unwrap();
+                data.bones[*bone_id].clone()
+            } else {
+                BoneFrame::default()
+            };
+            let curr_entity = self.entity_map.get(&curr_path).unwrap();
+            let curr_local_transform = self.resources.transform_query.get(*curr_entity).unwrap().0;
+            let merged_local_transform =
+                bone_frame.to_transform_linear_with_base(*curr_local_transform, timestamp);
+
+            curr_transform = merged_local_transform * curr_transform;
+            curr_path = curr_path.parent().unwrap();
+        }
+
+        curr_transform * transform
+    }
+
+    fn root_to_bone_space(
+        &self,
+        transform: Transform,
+        data: &InnerPoseFrame, // Should be in bone space
+        target: BoneId,
+        timestamp: f32,
+    ) -> Transform {
+        let root_name = self.resources.names_query.get(self.root_entity).unwrap();
+        let root_path = EntityPath {
+            parts: vec![root_name.clone()],
+        };
+
+        self.change_bone_space_down(transform, data, root_path, target, timestamp)
+    }
+
+    fn global_to_bone_space(
+        &self,
+        transform: Transform,
+        data: &InnerPoseFrame, // Should be in bone space
+        target: BoneId,
+        timestamp: f32,
+    ) -> Transform {
+        let character_transform = self.transform_global_to_character(transform);
+        self.root_to_bone_space(character_transform, data, target, timestamp)
+    }
+
+    fn transform_global_to_character(&self, transform: Transform) -> Transform {
+        let (_, root_global_transform) = self
+            .resources
+            .transform_query
+            .get(self.root_entity)
+            .unwrap();
+        let inverse_global_transform =
+            Transform::from_matrix(root_global_transform.compute_matrix().inverse());
+        inverse_global_transform * transform
+    }
+
+    fn character_transform_of_bone(
+        &self,
+        data: &InnerPoseFrame,
+        target: BoneId,
+        timestamp: f32,
+    ) -> Transform {
+        let root_name = self.resources.names_query.get(self.root_entity).unwrap();
+        let root_path = EntityPath {
+            parts: vec![root_name.clone()],
+        };
+
+        self.change_bone_space_up(Transform::IDENTITY, data, target, root_path, timestamp)
+    }
+
+    fn global_transform_of_bone(
+        &self,
+        data: &InnerPoseFrame,
+        target: BoneId,
+        timestamp: f32,
+    ) -> Transform {
+        let (_, root_transform_global) = self
+            .resources
+            .transform_query
+            .get(self.root_entity)
+            .unwrap();
+        root_transform_global.compute_transform()
+            * self.character_transform_of_bone(data, target, timestamp)
+    }
+
     fn extend_skeleton_bone(&self, data: &BonePoseFrame) -> BonePoseFrame {
         let mut new_frame = data.clone();
         let new_frame_inner = new_frame.inner_mut();
@@ -461,109 +597,5 @@ impl SpaceConversion for PassContext<'_> {
         }
 
         new_frame
-    }
-
-    fn change_bone_space_down(
-        &self,
-        transform: Transform,
-        data: &InnerPoseFrame, // Should be in bone space
-        source: BoneId,
-        target: BoneId,
-        timestamp: f32,
-    ) -> Transform {
-        let mut curr_path = target;
-        let mut curr_transform = Transform::IDENTITY;
-
-        while curr_path != source {
-            let bone_frame: BoneFrame = if data.paths.contains_key(&curr_path) {
-                let bone_id = data.paths.get(&curr_path).unwrap();
-                data.bones[*bone_id].clone()
-            } else {
-                BoneFrame::default()
-            };
-            let curr_entity = self.entity_map.get(&curr_path).unwrap();
-            let curr_local_transform = self.resources.transform_query.get(*curr_entity).unwrap().0;
-            let merged_local_transform =
-                bone_frame.to_transform_linear_with_base(*curr_local_transform, timestamp);
-
-            curr_transform = merged_local_transform * curr_transform;
-            curr_path = curr_path.parent().unwrap();
-        }
-
-        Transform::from_matrix(curr_transform.compute_matrix().inverse()) * transform
-    }
-
-    fn root_to_bone_space(
-        &self,
-        transform: Transform,
-        data: &InnerPoseFrame, // Should be in bone space
-        target: BoneId,
-        timestamp: f32,
-    ) -> Transform {
-        let root_name = self.resources.names_query.get(self.root_entity).unwrap();
-        let root_path = EntityPath {
-            parts: vec![root_name.clone()],
-        };
-
-        self.change_bone_space_down(transform, data, root_path, target, timestamp)
-    }
-
-    fn character_transform_of_bone(
-        &self,
-        data: &InnerPoseFrame,
-        target: BoneId,
-        timestamp: f32,
-    ) -> Transform {
-        let root_name = self.resources.names_query.get(self.root_entity).unwrap();
-        let root_path = EntityPath {
-            parts: vec![root_name.clone()],
-        };
-
-        self.change_bone_space_up(Transform::IDENTITY, data, target, root_path, timestamp)
-    }
-
-    fn global_transform_of_bone(
-        &self,
-        data: &InnerPoseFrame,
-        target: BoneId,
-        timestamp: f32,
-    ) -> Transform {
-        let (_, root_transform_global) = self
-            .resources
-            .transform_query
-            .get(self.root_entity)
-            .unwrap();
-        root_transform_global.compute_transform()
-            * self.character_transform_of_bone(data, target, timestamp)
-    }
-
-    fn change_bone_space_up(
-        &self,
-        transform: Transform,
-        data: &InnerPoseFrame, // Should be in bone space
-        source: BoneId,
-        target: BoneId,
-        timestamp: f32,
-    ) -> Transform {
-        let mut curr_path = source;
-        let mut curr_transform = Transform::IDENTITY;
-
-        while curr_path != target {
-            let bone_frame: BoneFrame = if data.paths.contains_key(&curr_path) {
-                let bone_id = data.paths.get(&curr_path).unwrap();
-                data.bones[*bone_id].clone()
-            } else {
-                BoneFrame::default()
-            };
-            let curr_entity = self.entity_map.get(&curr_path).unwrap();
-            let curr_local_transform = self.resources.transform_query.get(*curr_entity).unwrap().0;
-            let merged_local_transform =
-                bone_frame.to_transform_linear_with_base(*curr_local_transform, timestamp);
-
-            curr_transform = merged_local_transform * curr_transform;
-            curr_path = curr_path.parent().unwrap();
-        }
-
-        curr_transform * transform
     }
 }

@@ -134,7 +134,20 @@ impl NodeLike for RotationNode {
                         rotation
                     }
                 }
-                RotationSpace::Global => todo!(),
+                RotationSpace::Global => {
+                    if let Some(parent) = target.parent() {
+                        ctx.global_to_bone_space(
+                            Transform::from_rotation(rotation),
+                            inner_pose,
+                            parent,
+                            time,
+                        )
+                        .rotation
+                    } else {
+                        ctx.transform_global_to_character(Transform::from_rotation(rotation))
+                            .rotation
+                    }
+                }
             };
 
             let mut bone_frame = inner_pose

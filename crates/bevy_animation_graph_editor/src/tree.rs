@@ -94,7 +94,7 @@ impl Tree<(Entity, Vec<Name>), (Entity, Vec<Name>)> {
         let children = children_query
             .get(world, entity)
             .map(|c| c.into_iter().copied().collect::<Vec<_>>())
-            .unwrap_or(vec![]);
+            .unwrap_or_default();
         if children.is_empty() {
             TreeInternal::Leaf(name, (entity, path_to_entity))
         } else {

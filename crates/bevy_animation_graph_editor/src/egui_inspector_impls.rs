@@ -636,11 +636,3 @@ pub fn handle_path(handle: UntypedAssetId, asset_server: &AssetServer) -> PathBu
         .get_path(handle)
         .map_or("Unsaved Asset".into(), |p| p.path().to_owned())
 }
-
-pub fn handle_name(handle: UntypedAssetId, asset_server: &AssetServer) -> String {
-    asset_server
-        .get_path(handle)
-        .map_or("Unsaved Asset".to_string(), |p| {
-            p.path().to_str().unwrap().into()
-        })
-}
