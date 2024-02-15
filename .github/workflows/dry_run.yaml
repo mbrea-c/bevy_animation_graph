@@ -1,6 +1,8 @@
 name: DryRun
 
-on: {}
+on:
+  workflow_dispatch:
+    
 
 env:
   CARGO_TERM_COLOR: always
