@@ -1,94 +1,108 @@
 (
     nodes: [
         (
-            name: "Walk Flip LR",
-            node: FlipLR(),
-        ),
-        (
-            name: "Walk Clip",
-            node: Clip("animations/human_walk.anim.ron", Some(1.0)),
-        ),
-        (
-            name: "Walk Clip 2",
-            node: Clip("animations/human_walk.anim.ron", Some(1.0)),
-        ),
-        (
-            name: "Run Clip",
-            node: Clip("animations/human_run.anim.ron", Some(1.0)),
-        ),
-        (
-            name: "Run Flip LR",
-            node: FlipLR(),
-        ),
-        (
-            name: "Run Chain",
-            node: Chain,
-        ),
-        (
-            name: "Make Rotation",
-            node: RotationArc,
-        ),
-        (
-            name: "Speed",
-            node: Speed,
-        ),
-        (
-            name: "Loop",
-            node: Loop,
-        ),
-        (
-            name: "Blend",
-            node: Blend,
-        ),
-        (
             name: "Run Clip 2",
             node: Clip("animations/human_run.anim.ron", Some(1.0)),
-        ),
-        (
-            name: "Rotate",
-            node: Rotation(Blend, Local, Linear, 1),
         ),
         (
             name: "Walk Chain",
             node: Chain,
         ),
         (
+            name: "Run Flip LR",
+            node: FlipLR(
+                config: (
+                    name_mapper: Pattern((
+                        key_1: "L",
+                        key_2: "R",
+                        pattern_before: "^.*",
+                        pattern_after: "$",
+                    )),
+                ),
+            ),
+        ),
+        (
+            name: "Run Chain",
+            node: Chain,
+        ),
+        (
+            name: "Run Clip",
+            node: Clip("animations/human_run.anim.ron", Some(1.0)),
+        ),
+        (
+            name: "Blend",
+            node: Blend,
+        ),
+        (
+            name: "Walk Flip LR",
+            node: FlipLR(
+                config: (
+                    name_mapper: Pattern((
+                        key_1: "L",
+                        key_2: "R",
+                        pattern_before: "^.*",
+                        pattern_after: "$",
+                    )),
+                ),
+            ),
+        ),
+        (
+            name: "Loop",
+            node: Loop,
+        ),
+        (
+            name: "Speed",
+            node: Speed,
+        ),
+        (
             name: "Param graph",
             node: Graph("animation_graphs/velocity_to_params.animgraph.ron"),
         ),
+        (
+            name: "Make Rotation",
+            node: RotationArc,
+        ),
+        (
+            name: "Walk Clip 2",
+            node: Clip("animations/human_walk.anim.ron", Some(1.0)),
+        ),
+        (
+            name: "Rotate",
+            node: Rotation(Compose, Character, Linear, 1, 1.0),
+        ),
+        (
+            name: "Walk Clip",
+            node: Clip("animations/human_walk.anim.ron", Some(1.0)),
+        ),
     ],
     edges_inverted: {
-        NodePose("Loop", "Pose In"): NodePose("Blend"),
-        NodePose("Walk Flip LR", "Pose In"): NodePose("Walk Clip 2"),
-        NodeParameter("Blend", "Factor"): NodeParameter("Param graph", "blend_fac"),
-        NodePose("Run Chain", "Pose In 1"): NodePose("Run Clip"),
-        OutputPose: NodePose("Rotate"),
-        NodePose("Run Chain", "Pose In 2"): NodePose("Run Flip LR"),
-        NodeParameter("Rotate", "Rotation"): NodeParameter("Make Rotation", "Quat Out"),
-        NodeParameter("Make Rotation", "Vec3 In 2"): InputParameter("Target Direction"),
-        NodePose("Walk Chain", "Pose In 2"): NodePose("Walk Flip LR"),
-        NodePose("Run Flip LR", "Pose In"): NodePose("Run Clip 2"),
-        NodeParameter("Param graph", "Target Speed"): InputParameter("Target Speed"),
-        NodePose("Rotate", "Pose In"): NodePose("Speed"),
-        NodePose("Walk Chain", "Pose In 1"): NodePose("Walk Clip"),
-        NodePose("Blend", "Pose In 1"): NodePose("Walk Chain"),
-        NodeParameter("Speed", "Speed"): NodeParameter("Param graph", "speed_fac"),
-        NodePose("Speed", "Pose In"): NodePose("Loop"),
         NodeParameter("Make Rotation", "Vec3 In 1"): InputParameter("Z"),
-        NodeParameter("Rotate", "Bone Mask"): InputParameter("Rotation Mask"),
+        NodeParameter("Blend", "Factor"): NodeParameter("Param graph", "blend_fac"),
+        NodePose("Loop", "Pose In"): NodePose("Blend"),
+        NodePose("Rotate", "Pose In"): NodePose("Speed"),
+        NodePose("Walk Flip LR", "Pose In"): NodePose("Walk Clip 2"),
+        NodePose("Run Chain", "Pose In 2"): NodePose("Run Flip LR"),
+        NodePose("Speed", "Pose In"): NodePose("Loop"),
+        NodeParameter("Param graph", "Target Speed"): InputParameter("Target Speed"),
+        NodePose("Blend", "Pose In 1"): NodePose("Walk Chain"),
         NodePose("Blend", "Pose In 2"): NodePose("Run Chain"),
+        NodePose("Run Flip LR", "Pose In"): NodePose("Run Clip 2"),
+        NodeParameter("Make Rotation", "Vec3 In 2"): InputParameter("Target Direction"),
+        NodePose("Run Chain", "Pose In 1"): NodePose("Run Clip"),
+        NodeParameter("Speed", "Speed"): NodeParameter("Param graph", "speed_fac"),
+        NodePose("Walk Chain", "Pose In 1"): NodePose("Walk Clip"),
+        NodeParameter("Rotate", "Rotation"): NodeParameter("Make Rotation", "Quat Out"),
+        OutputPose: NodePose("Rotate"),
+        NodeParameter("Rotate", "Bone Mask"): InputParameter("Rotation Mask"),
+        NodePose("Walk Chain", "Pose In 2"): NodePose("Walk Flip LR"),
     },
     default_parameters: {
         "Target Speed": F32(1.5),
-        "Target Direction": Vec3((1.0, 0.0, 0.0)),
-        "Rotation Mask": BoneMask(Positive(
-            bones: {
-                [
-                    "metarig",
-                    "spine",
-                ]: 1.0,
-            },
-        )),
+        "Target Direction": Vec3((0.0, 0.0, -1.0)),
+        "Rotation Mask": EntityPath([
+            "metarig",
+            "spine",
+        ]),
         "Z": Vec3((0.0, 0.0, 1.0)),
     },
     input_poses: {},
@@ -96,20 +110,20 @@
     output_pose: Some(BoneSpace),
     extra: (
         node_positions: {
-            "Param graph": (135.0, 190.0),
-            "Walk Flip LR": (-82.0, -204.0),
-            "Make Rotation": (502.0, 69.0),
             "Walk Clip": (-84.0, -288.0),
+            "Run Flip LR": (-77.0, -21.0),
+            "Blend": (238.0, -142.0),
+            "Walk Flip LR": (-82.0, -204.0),
+            "Run Clip 2": (-216.0, -10.0),
+            "Rotate": (692.0, -97.0),
             "Run Chain": (60.0, -70.0),
             "Run Clip": (-81.0, -102.0),
-            "Run Flip LR": (-77.0, -21.0),
             "Speed": (540.0, -99.0),
             "Loop": (384.0, -92.0),
-            "Blend": (238.0, -142.0),
-            "Run Clip 2": (-216.0, -10.0),
-            "Rotate": (692.0, -96.0),
-            "Walk Chain": (61.0, -248.0),
+            "Param graph": (135.0, 190.0),
+            "Make Rotation": (502.0, 69.0),
             "Walk Clip 2": (-220.0, -210.0),
+            "Walk Chain": (61.0, -248.0),
         },
         input_position: (-242.0, 134.0),
         output_position: (860.0, -42.0),
