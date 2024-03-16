@@ -746,8 +746,10 @@ impl AnimationGraph {
             return Err(GraphError::MissingInputEdge(target_pin));
         };
 
-        if let Some(val) = ctx.context().get_pose(source_pin) {
-            return Ok(val.clone());
+        if ctx.cached_query {
+            if let Some(val) = ctx.context().get_pose(source_pin) {
+                return Ok(val.clone());
+            }
         }
 
         let source_value = match source_pin {
@@ -767,8 +769,10 @@ impl AnimationGraph {
                     )?
                     .unwrap();
 
-                ctx.context().set_pose(source_pin.clone(), output.clone());
-                ctx.context().set_time(source_pin.clone(), output.timestamp);
+                if ctx.cached_query {
+                    ctx.context().set_pose(source_pin.clone(), output.clone());
+                    ctx.context().set_time(source_pin.clone(), output.timestamp);
+                }
 
                 output
             }
@@ -816,7 +820,7 @@ impl AnimationGraph {
         deferred_gizmos: &mut DeferredGizmos,
     ) -> Result<Pose, GraphError> {
         context.push_caches();
-        let out = self.get_pose(
+        Ok(self.get_pose(
             time_update,
             TargetPin::OutputPose,
             PassContext::new(
@@ -827,11 +831,7 @@ impl AnimationGraph {
                 entity_map,
                 deferred_gizmos,
             ),
-        )?;
-        let time = out.timestamp;
-        let bone_frame: BonePoseFrame = out.data.unwrap();
-
-        Ok(bone_frame.sample_linear_at(time))
+        )?)
     }
     // ----------------------------------------------------------------------------------------
 }

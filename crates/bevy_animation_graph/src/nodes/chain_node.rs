@@ -36,7 +36,9 @@ impl NodeLike for ChainNode {
         let source_duration_2 = ctx.duration_back(Self::INPUT_2)?;
 
         let out_duration = match (source_duration_1, source_duration_2) {
-            (Some(duration_1), Some(duration_2)) => Some(duration_1 + duration_2),
+            (Some(duration_1), Some(duration_2)) => {
+                Some(duration_1 + duration_2 + self.interpolation_period)
+            }
             (Some(_), None) => None,
             (None, Some(_)) => None,
             (None, None) => None,

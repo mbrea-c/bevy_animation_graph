@@ -1,6 +1,5 @@
 use super::PassContext;
 use crate::core::{
-    frame::InnerPoseFrame,
     pose::{BoneId, Pose},
     space_conversion::SpaceConversion,
 };

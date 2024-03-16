@@ -5,7 +5,6 @@ use crate::{
         animation_graph::{InputOverlay, NodeId, PinId, SourcePin, TargetPin, TimeUpdate},
         duration_data::DurationData,
         errors::GraphError,
-        frame::PoseFrame,
         pose::{BoneId, Pose},
     },
     prelude::{AnimationGraph, ParamValue},
@@ -29,6 +28,9 @@ pub struct PassContext<'a> {
     pub root_entity: Entity,
     pub entity_map: &'a HashMap<BoneId, Entity>,
     pub deferred_gizmos: DeferredGizmoRef,
+    /// Whether this query should mutate chaches. Useful when getting a pose back but not wanting
+    /// to use the time query to update the times
+    pub cached_query: bool,
     pub should_debug: bool,
 }
 
@@ -51,6 +53,7 @@ impl<'a> PassContext<'a> {
             root_entity,
             entity_map,
             deferred_gizmos: deferred_gizmos.into(),
+            cached_query: true,
             should_debug: false,
         }
     }
@@ -67,6 +70,7 @@ impl<'a> PassContext<'a> {
             root_entity: self.root_entity,
             entity_map: self.entity_map,
             deferred_gizmos: self.deferred_gizmos.clone(),
+            cached_query: self.cached_query,
             should_debug: self.should_debug,
         }
     }
@@ -83,6 +87,7 @@ impl<'a> PassContext<'a> {
             root_entity: self.root_entity,
             entity_map: self.entity_map,
             deferred_gizmos: self.deferred_gizmos.clone(),
+            cached_query: self.cached_query,
             should_debug: self.should_debug,
         }
     }
@@ -98,6 +103,7 @@ impl<'a> PassContext<'a> {
             root_entity: self.root_entity,
             entity_map: self.entity_map,
             deferred_gizmos: self.deferred_gizmos.clone(),
+            cached_query: self.cached_query,
             should_debug,
         }
     }
@@ -117,6 +123,7 @@ impl<'a> PassContext<'a> {
             root_entity: self.root_entity,
             entity_map: self.entity_map,
             deferred_gizmos: self.deferred_gizmos.clone(),
+            cached_query: self.cached_query,
             should_debug: self.should_debug,
         }
     }
@@ -164,6 +171,19 @@ impl<'a> PassContext<'a> {
         node_ctx
             .graph
             .get_pose(time_update, target_pin, self.without_node())
+    }
+
+    /// Request an input pose.
+    pub fn uncached_pose_back(
+        &mut self,
+        pin_id: impl Into<PinId>,
+        time_update: TimeUpdate,
+    ) -> Result<Pose, GraphError> {
+        let node_ctx = self.node_context.unwrap();
+        let target_pin = TargetPin::NodePose(node_ctx.node_id.clone(), pin_id.into());
+        let mut ctx = self.without_node();
+        ctx.cached_query = false;
+        node_ctx.graph.get_pose(time_update, target_pin, ctx)
     }
 
     /// Request the cached time update query from the current frame

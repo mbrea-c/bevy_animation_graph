@@ -65,6 +65,8 @@ impl NodeLike for ClipNode {
         let mut out_pose = Pose::default();
         out_pose.timestamp = time;
 
+        let time = time.clamp(0., clip_duration);
+
         for (path, bone_id) in &clip.paths {
             let curves = clip.get_curves(*bone_id).unwrap();
             let mut bone_pose = BonePose::default();
@@ -88,6 +90,29 @@ impl NodeLike for ClipNode {
                     Err(i) => (i - 1, i, false, false),
                 };
 
+                if prev_is_wrapped {
+                    sample_one_keyframe(step_end, keyframe_count, &curve.keyframes, &mut bone_pose);
+                    continue;
+                }
+                if next_is_wrapped {
+                    sample_one_keyframe(
+                        step_start,
+                        keyframe_count,
+                        &curve.keyframes,
+                        &mut bone_pose,
+                    );
+                    continue;
+                }
+                if step_start == step_end {
+                    sample_one_keyframe(
+                        step_start,
+                        keyframe_count,
+                        &curve.keyframes,
+                        &mut bone_pose,
+                    );
+                    continue;
+                }
+
                 let mut prev_timestamp = curve.keyframe_timestamps[step_start];
                 let mut next_timestamp = curve.keyframe_timestamps[step_end];
 
@@ -97,42 +122,16 @@ impl NodeLike for ClipNode {
                     next_timestamp += clip_duration;
                 }
 
-                let lerp = (time - prev_timestamp) / (next_timestamp - prev_timestamp);
-
-                // Apply the keyframe
-                match &curve.keyframes {
-                    Keyframes::Rotation(keyframes) => {
-                        let prev = keyframes[step_start];
-                        let mut next = keyframes[step_end];
-                        // Choose the smallest angle for the rotation
-                        if next.dot(prev) < 0.0 {
-                            next = -next;
-                        }
-
-                        bone_pose.rotation = Some(prev.interpolate_linear(&next, lerp));
-                    }
-                    Keyframes::Translation(keyframes) => {
-                        let prev = keyframes[step_start];
-                        let next = keyframes[step_end];
-
-                        bone_pose.translation = Some(prev.interpolate_linear(&next, lerp));
-                    }
-
-                    Keyframes::Scale(keyframes) => {
-                        let prev = keyframes[step_start];
-                        let next = keyframes[step_end];
-                        bone_pose.scale = Some(prev.interpolate_linear(&next, lerp));
-                    }
-
-                    Keyframes::Weights(keyframes) => {
-                        let target_count = keyframes.len() / keyframe_count;
-                        let morph_start: Vec<f32> =
-                            get_keyframe(target_count, keyframes, step_start).into();
-                        let morph_end: Vec<f32> =
-                            get_keyframe(target_count, keyframes, step_end).into();
-                        bone_pose.weights = Some(morph_end.interpolate_linear(&morph_end, lerp));
-                    }
-                }
+                sample_two_keyframes(
+                    step_start,
+                    step_end,
+                    prev_timestamp,
+                    next_timestamp,
+                    time,
+                    keyframe_count,
+                    &curve.keyframes,
+                    &mut bone_pose,
+                );
             }
             out_pose.add_bone(bone_pose, path.clone());
         }
@@ -146,5 +145,85 @@ impl NodeLike for ClipNode {
 
     fn display_name(&self) -> String {
         "⏵ Animation Clip".into()
+    }
+}
+
+fn sample_two_keyframes(
+    step_start: usize,
+    step_end: usize,
+    prev_timestamp: f32,
+    next_timestamp: f32,
+    time: f32,
+    keyframe_count: usize,
+    keyframes: &Keyframes,
+    bone_pose: &mut BonePose,
+) {
+    let lerp = if next_timestamp == prev_timestamp {
+        1.
+    } else {
+        (time - prev_timestamp) / (next_timestamp - prev_timestamp)
+    };
+
+    // Apply the keyframe
+    match keyframes {
+        Keyframes::Rotation(keyframes) => {
+            let prev = keyframes[step_start];
+            let mut next = keyframes[step_end];
+            // Choose the smallest angle for the rotation
+            if next.dot(prev) < 0.0 {
+                next = -next;
+            }
+
+            bone_pose.rotation = Some(prev.interpolate_linear(&next, lerp));
+        }
+        Keyframes::Translation(keyframes) => {
+            let prev = keyframes[step_start];
+            let next = keyframes[step_end];
+
+            bone_pose.translation = Some(prev.interpolate_linear(&next, lerp));
+        }
+
+        Keyframes::Scale(keyframes) => {
+            let prev = keyframes[step_start];
+            let next = keyframes[step_end];
+            bone_pose.scale = Some(prev.interpolate_linear(&next, lerp));
+        }
+
+        Keyframes::Weights(keyframes) => {
+            let target_count = keyframes.len() / keyframe_count;
+            let morph_start: Vec<f32> = get_keyframe(target_count, keyframes, step_start).into();
+            let morph_end: Vec<f32> = get_keyframe(target_count, keyframes, step_end).into();
+            bone_pose.weights = Some(morph_start.interpolate_linear(&morph_end, lerp));
+        }
+    }
+}
+
+fn sample_one_keyframe(
+    step: usize,
+    keyframe_count: usize,
+    keyframes: &Keyframes,
+    bone_pose: &mut BonePose,
+) {
+    match keyframes {
+        Keyframes::Rotation(keyframes) => {
+            let frame = keyframes[step];
+
+            bone_pose.rotation = Some(frame);
+        }
+        Keyframes::Translation(keyframes) => {
+            let frame = keyframes[step];
+            bone_pose.translation = Some(frame);
+        }
+
+        Keyframes::Scale(keyframes) => {
+            let frame = keyframes[step];
+            bone_pose.scale = Some(frame);
+        }
+
+        Keyframes::Weights(keyframes) => {
+            let target_count = keyframes.len() / keyframe_count;
+            let morph_start: Vec<f32> = get_keyframe(target_count, keyframes, step).into();
+            bone_pose.weights = Some(morph_start);
+        }
     }
 }

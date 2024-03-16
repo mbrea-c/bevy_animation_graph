@@ -9,8 +9,8 @@ use bevy_animation_graph::core::{
     animation_graph::{AnimationGraph, SourcePin, TargetPin},
     animation_node::NodeLike,
     context::SpecContext,
-    frame::PoseSpec,
     parameters::ParamSpec,
+    pose::PoseSpec,
 };
 use bevy_inspector_egui::egui::Color32;
 

@@ -105,6 +105,8 @@ impl InterpolateLinear for Pose {
             result.add_bone(other.bones[*bone_id].clone(), path.clone());
         }
 
+        result.timestamp = self.timestamp;
+
         result
     }
 }
