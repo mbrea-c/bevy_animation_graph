@@ -2,14 +2,16 @@ use crate::core::animation_graph::{PinId, PinMap, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
 use crate::core::errors::GraphError;
-use crate::core::frame::{PoseFrame, PoseSpec};
+use crate::core::pose::{Pose, PoseSpec};
 use crate::prelude::{ParamValue, PassContext, SpecContext};
 use bevy::prelude::*;
 use bevy::utils::HashMap;
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default)]
-pub struct LoopNode {}
+pub struct LoopNode {
+    // TODO: Interpolation period, like in chain node
+}
 
 impl LoopNode {
     pub const INPUT: &'static str = "Pose In";
@@ -37,7 +39,7 @@ impl NodeLike for LoopNode {
         &self,
         input: TimeUpdate,
         mut ctx: PassContext,
-    ) -> Result<Option<PoseFrame>, GraphError> {
+    ) -> Result<Option<Pose>, GraphError> {
         let duration = ctx.duration_back(Self::INPUT)?;
 
         let Some(duration) = duration else {
@@ -62,7 +64,7 @@ impl NodeLike for LoopNode {
         let mut pose = ctx.pose_back(Self::INPUT, fw_upd)?;
 
         let t_extra = curr_time.div_euclid(duration) * duration;
-        pose.map_ts(|t| t + t_extra);
+        pose.timestamp += t_extra;
 
         Ok(Some(pose))
     }

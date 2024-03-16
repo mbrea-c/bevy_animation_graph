@@ -2,9 +2,8 @@ use crate::core::animation_graph::{PinMap, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
 use crate::core::errors::GraphError;
-use crate::core::frame::{PoseFrame, PoseSpec};
-use crate::interpolation::linear::InterpolateLinear;
-use crate::prelude::{OptParamSpec, ParamSpec, PassContext, SpecContext};
+use crate::core::pose::{Pose, PoseSpec};
+use crate::prelude::{InterpolateLinear, OptParamSpec, ParamSpec, PassContext, SpecContext};
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
@@ -45,7 +44,7 @@ impl NodeLike for BlendNode {
         &self,
         input: TimeUpdate,
         mut ctx: PassContext,
-    ) -> Result<Option<PoseFrame>, GraphError> {
+    ) -> Result<Option<Pose>, GraphError> {
         let in_frame_1 = ctx.pose_back(Self::INPUT_1, input)?;
         let in_frame_2 = ctx.pose_back(Self::INPUT_2, input)?;
 

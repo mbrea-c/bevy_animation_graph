@@ -1,6 +1,4 @@
-use crate::core::frame::{
-    BoneFrame, InnerPoseFrame, PoseFrame, PoseFrameData, PoseSpec, ValueFrame,
-};
+use crate::core::pose::{BonePose, Pose};
 use bevy::prelude::*;
 
 pub trait InterpolateLinear {
@@ -39,15 +37,7 @@ impl InterpolateLinear for Transform {
     }
 }
 
-impl<T: InterpolateLinear + FromReflect + TypePath + std::fmt::Debug + Clone> InterpolateLinear
-    for ValueFrame<T>
-{
-    fn interpolate_linear(&self, other: &Self, f: f32) -> Self {
-        self.merge_linear(other, |l, r| l.interpolate_linear(r, f))
-    }
-}
-
-impl InterpolateLinear for BoneFrame {
+impl InterpolateLinear for BonePose {
     fn interpolate_linear(&self, other: &Self, f: f32) -> Self {
         let mut result = Self::default();
 
@@ -93,9 +83,9 @@ impl InterpolateLinear for BoneFrame {
     }
 }
 
-impl InterpolateLinear for InnerPoseFrame {
+impl InterpolateLinear for Pose {
     fn interpolate_linear(&self, other: &Self, f: f32) -> Self {
-        let mut result = InnerPoseFrame::default();
+        let mut result = Pose::default();
 
         for (path, bone_id) in self.paths.iter() {
             if let Some(other_bone_id) = other.paths.get(path) {
@@ -116,158 +106,5 @@ impl InterpolateLinear for InnerPoseFrame {
         }
 
         result
-    }
-}
-
-impl InterpolateLinear for PoseFrameData {
-    fn interpolate_linear(&self, other: &Self, f: f32) -> Self {
-        match (self, other) {
-            (PoseFrameData::BoneSpace(f1), PoseFrameData::BoneSpace(f2)) => {
-                PoseFrameData::BoneSpace(
-                    f1.inner_ref().interpolate_linear(f2.inner_ref(), f).into(),
-                )
-            }
-            (PoseFrameData::CharacterSpace(f1), PoseFrameData::CharacterSpace(f2)) => {
-                PoseFrameData::CharacterSpace(
-                    f1.inner_ref().interpolate_linear(f2.inner_ref(), f).into(),
-                )
-            }
-            (PoseFrameData::GlobalSpace(f1), PoseFrameData::GlobalSpace(f2)) => {
-                PoseFrameData::GlobalSpace(
-                    f1.inner_ref().interpolate_linear(f2.inner_ref(), f).into(),
-                )
-            }
-            _ => {
-                panic!(
-                    "Tried to chain {:?} with {:?}",
-                    PoseSpec::from(self),
-                    PoseSpec::from(other)
-                )
-            }
-        }
-    }
-}
-
-impl InterpolateLinear for PoseFrame {
-    fn interpolate_linear(&self, other: &Self, f: f32) -> Self {
-        Self {
-            data: self.data.interpolate_linear(&other.data, f),
-            timestamp: self.timestamp,
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_interpolate_value_frame_nest_1() {
-        let frame_1 = ValueFrame {
-            prev: Vec3::new(0., 0., 0.),
-            prev_timestamp: 0.,
-            next: Vec3::new(1., 1., 1.),
-            next_timestamp: 1.,
-            next_is_wrapped: false,
-            prev_is_wrapped: false,
-        };
-        let frame_2 = ValueFrame {
-            prev: Vec3::new(0., 0., 0.),
-            prev_timestamp: 0.2,
-            next: Vec3::new(1., 1., 1.),
-            next_timestamp: 0.8,
-            next_is_wrapped: false,
-            prev_is_wrapped: false,
-        };
-
-        let interpolated_0 = frame_1.interpolate_linear(&frame_2, 0.);
-        let interpolated_half = frame_1.interpolate_linear(&frame_2, 0.5);
-        let interpolated_1 = frame_1.interpolate_linear(&frame_2, 1.);
-
-        let expected_0 = ValueFrame {
-            prev: Vec3::new(0.2, 0.2, 0.2),
-            prev_timestamp: 0.2,
-            next: Vec3::new(0.8, 0.8, 0.8),
-            next_timestamp: 0.8,
-            next_is_wrapped: false,
-            prev_is_wrapped: false,
-        };
-
-        let expected_half = ValueFrame {
-            prev: Vec3::new(0.1, 0.1, 0.1),
-            prev_timestamp: 0.2,
-            next: Vec3::new(0.9, 0.9, 0.9),
-            next_timestamp: 0.8,
-            next_is_wrapped: false,
-            prev_is_wrapped: false,
-        };
-
-        let expected_1 = ValueFrame {
-            prev: Vec3::new(0.0, 0.0, 0.0),
-            prev_timestamp: 0.2,
-            next: Vec3::new(1.0, 1.0, 1.0),
-            next_timestamp: 0.8,
-            next_is_wrapped: false,
-            prev_is_wrapped: false,
-        };
-
-        assert_eq!(expected_0, interpolated_0);
-        assert_eq!(expected_1, interpolated_1);
-        assert_eq!(expected_half, interpolated_half);
-    }
-
-    #[test]
-    fn test_interpolate_value_frame_nest_2() {
-        let frame_2 = ValueFrame {
-            prev: Vec3::new(0., 0., 0.),
-            prev_timestamp: 0.,
-            next: Vec3::new(1., 1., 1.),
-            next_timestamp: 1.,
-            next_is_wrapped: false,
-            prev_is_wrapped: false,
-        };
-        let frame_1 = ValueFrame {
-            prev: Vec3::new(0., 0., 0.),
-            prev_timestamp: 0.2,
-            next: Vec3::new(1., 1., 1.),
-            next_timestamp: 0.8,
-            next_is_wrapped: false,
-            prev_is_wrapped: false,
-        };
-
-        let interpolated_1 = frame_1.interpolate_linear(&frame_2, 0.);
-        let interpolated_half = frame_1.interpolate_linear(&frame_2, 0.5);
-        let interpolated_0 = frame_1.interpolate_linear(&frame_2, 1.);
-
-        let expected_0 = ValueFrame {
-            prev: Vec3::new(0.2, 0.2, 0.2),
-            prev_timestamp: 0.2,
-            next: Vec3::new(0.8, 0.8, 0.8),
-            next_timestamp: 0.8,
-            next_is_wrapped: false,
-            prev_is_wrapped: false,
-        };
-
-        let expected_half = ValueFrame {
-            prev: Vec3::new(0.1, 0.1, 0.1),
-            prev_timestamp: 0.2,
-            next: Vec3::new(0.9, 0.9, 0.9),
-            next_timestamp: 0.8,
-            next_is_wrapped: false,
-            prev_is_wrapped: false,
-        };
-
-        let expected_1 = ValueFrame {
-            prev: Vec3::new(0.0, 0.0, 0.0),
-            prev_timestamp: 0.2,
-            next: Vec3::new(1.0, 1.0, 1.0),
-            next_timestamp: 0.8,
-            next_is_wrapped: false,
-            prev_is_wrapped: false,
-        };
-
-        assert_eq!(expected_0, interpolated_0);
-        assert_eq!(expected_1, interpolated_1);
-        assert_eq!(expected_half, interpolated_half);
     }
 }

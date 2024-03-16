@@ -7,7 +7,6 @@ pub mod caches;
 pub mod context;
 pub mod duration_data;
 pub mod errors;
-pub mod frame;
 pub mod parameters;
 pub mod plugin;
 pub mod pose;

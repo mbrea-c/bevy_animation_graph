@@ -3,7 +3,7 @@ pub mod config;
 use self::config::FlipConfig;
 use crate::core::{
     animation_clip::EntityPath,
-    frame::{BoneFrame, BonePoseFrame, InnerPoseFrame, ValueFrame},
+    pose::{BonePose, Pose},
 };
 use bevy::math::prelude::*;
 
@@ -11,33 +11,26 @@ pub trait FlipXBySuffix {
     fn flipped(&self, config: &FlipConfig) -> Self;
 }
 
-impl FlipXBySuffix for ValueFrame<Vec3> {
+impl FlipXBySuffix for Vec3 {
     fn flipped(&self, _: &FlipConfig) -> Self {
-        let mut out = self.clone();
-
-        out.prev.x *= -1.;
-        out.next.x *= -1.;
-
+        let mut out = *self;
+        out.x *= -1.;
         out
     }
 }
 
-impl FlipXBySuffix for ValueFrame<Quat> {
+impl FlipXBySuffix for Quat {
     fn flipped(&self, _: &FlipConfig) -> Self {
-        let mut out = self.clone();
-
-        out.prev.x *= -1.;
-        out.prev.w *= -1.;
-        out.next.x *= -1.;
-        out.next.w *= -1.;
-
+        let mut out = *self;
+        out.x *= -1.;
+        out.w *= -1.;
         out
     }
 }
 
-impl FlipXBySuffix for BoneFrame {
+impl FlipXBySuffix for BonePose {
     fn flipped(&self, config: &FlipConfig) -> Self {
-        BoneFrame {
+        BonePose {
             rotation: self.rotation.clone().map(|v| v.flipped(config)),
             translation: self.translation.clone().map(|v| v.flipped(config)),
             scale: self.scale.clone(),
@@ -46,9 +39,9 @@ impl FlipXBySuffix for BoneFrame {
     }
 }
 
-impl FlipXBySuffix for InnerPoseFrame {
+impl FlipXBySuffix for Pose {
     fn flipped(&self, config: &FlipConfig) -> Self {
-        let mut out = InnerPoseFrame::default();
+        let mut out = Pose::default();
         for (path, bone_id) in self.paths.iter() {
             let channel = self.bones[*bone_id].flipped(config);
             let new_path = EntityPath {
@@ -68,11 +61,5 @@ impl FlipXBySuffix for InnerPoseFrame {
             out.add_bone(channel, new_path);
         }
         out
-    }
-}
-
-impl FlipXBySuffix for BonePoseFrame {
-    fn flipped(&self, config: &FlipConfig) -> Self {
-        BonePoseFrame(self.0.flipped(config))
     }
 }

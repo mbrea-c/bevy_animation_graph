@@ -4,12 +4,11 @@ use crate::{
         animation_node::{AnimationNode, NodeLike},
         duration_data::DurationData,
         errors::{GraphError, GraphValidationError},
-        frame::{BonePoseFrame, PoseFrame, PoseSpec},
-        pose::{BoneId, Pose},
+        pose::{BoneId, Pose, PoseSpec},
     },
     prelude::{
         DeferredGizmos, GraphContext, OptParamSpec, ParamSpec, ParamValue, PassContext,
-        SampleLinearAt, SpecContext, SystemResources,
+        SpecContext, SystemResources,
     },
     utils::{ordered_map::OrderedMap, unwrap::Unwrap},
 };
@@ -104,7 +103,7 @@ impl UpdateTime<Option<TimeUpdate>> for TimeState {
 pub struct InputOverlay {
     pub parameters: HashMap<PinId, ParamValue>,
     pub durations: HashMap<PinId, DurationData>,
-    pub poses: HashMap<PinId, PoseFrame>,
+    pub poses: HashMap<PinId, Pose>,
 }
 
 impl InputOverlay {
@@ -742,7 +741,7 @@ impl AnimationGraph {
         time_update: TimeUpdate,
         target_pin: TargetPin,
         mut ctx: PassContext,
-    ) -> Result<PoseFrame, GraphError> {
+    ) -> Result<Pose, GraphError> {
         let Some(source_pin) = self.edges.get(&target_pin) else {
             return Err(GraphError::MissingInputEdge(target_pin));
         };

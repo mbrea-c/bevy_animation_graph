@@ -4,8 +4,7 @@ use crate::{
         animation_node::{AnimationNode, AnimationNodeType, NodeLike},
         duration_data::DurationData,
         errors::GraphError,
-        frame::{PoseFrame, PoseFrameData, PoseSpec},
-        space_conversion::SpaceConversion,
+        pose::{Pose, PoseSpec},
     },
     prelude::{PassContext, SpecContext},
 };
@@ -36,16 +35,17 @@ impl NodeLike for IntoBoneSpaceNode {
         &self,
         time_update: TimeUpdate,
         mut ctx: PassContext,
-    ) -> Result<Option<PoseFrame>, GraphError> {
-        let in_pose = ctx.pose_back(Self::POSE_IN, time_update)?;
-        Ok(Some(PoseFrame {
-            timestamp: in_pose.timestamp,
-            data: PoseFrameData::BoneSpace(match &in_pose.data {
-                PoseFrameData::BoneSpace(data) => data.clone(),
-                PoseFrameData::CharacterSpace(data) => ctx.character_to_bone(data),
-                PoseFrameData::GlobalSpace(data) => ctx.global_to_bone(data),
-            }),
-        }))
+    ) -> Result<Option<Pose>, GraphError> {
+        // let in_pose = ctx.pose_back(Self::POSE_IN, time_update)?;
+        // Ok(Some(PoseFrame {
+        //     timestamp: in_pose.timestamp,
+        //     data: PoseFrameData::BoneSpace(match &in_pose.data {
+        //         PoseFrameData::BoneSpace(data) => data.clone(),
+        //         PoseFrameData::CharacterSpace(data) => ctx.character_to_bone(data),
+        //         PoseFrameData::GlobalSpace(data) => ctx.global_to_bone(data),
+        //     }),
+        // }))
+        todo!()
     }
 
     fn pose_input_spec(&self, _ctx: SpecContext) -> PinMap<PoseSpec> {

@@ -2,11 +2,10 @@ use crate::core::animation_graph::{PinMap, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
 use crate::core::errors::GraphError;
-use crate::core::frame::{BonePoseFrame, PoseFrame, PoseFrameData, PoseSpec};
+use crate::core::pose::{Pose, PoseSpec};
 use crate::flipping::FlipXBySuffix;
 use crate::prelude::config::FlipConfig;
 use crate::prelude::{BoneDebugGizmos, PassContext, SpecContext};
-use crate::utils::unwrap::Unwrap;
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug)]
@@ -43,24 +42,12 @@ impl NodeLike for FlipLRNode {
         &self,
         input: TimeUpdate,
         mut ctx: PassContext,
-    ) -> Result<Option<PoseFrame>, GraphError> {
-        let in_pose_frame = ctx.pose_back(Self::INPUT, input)?;
-        let bone_frame: BonePoseFrame = in_pose_frame.data.unwrap();
-
-        ctx.pose_bone_gizmos(Color::RED, bone_frame.inner_ref(), in_pose_frame.timestamp);
-
-        let flipped_pose_frame = bone_frame.flipped(&self.config);
-
-        ctx.pose_bone_gizmos(
-            Color::BLUE,
-            flipped_pose_frame.inner_ref(),
-            in_pose_frame.timestamp,
-        );
-
-        Ok(Some(PoseFrame {
-            data: PoseFrameData::BoneSpace(flipped_pose_frame),
-            timestamp: in_pose_frame.timestamp,
-        }))
+    ) -> Result<Option<Pose>, GraphError> {
+        let in_pose = ctx.pose_back(Self::INPUT, input)?;
+        ctx.pose_bone_gizmos(Color::RED, &in_pose);
+        let flipped_pose = in_pose.flipped(&self.config);
+        ctx.pose_bone_gizmos(Color::BLUE, &flipped_pose);
+        Ok(Some(flipped_pose))
     }
 
     fn pose_input_spec(&self, _: SpecContext) -> PinMap<PoseSpec> {

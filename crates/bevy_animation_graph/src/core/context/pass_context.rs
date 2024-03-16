@@ -6,7 +6,7 @@ use crate::{
         duration_data::DurationData,
         errors::GraphError,
         frame::PoseFrame,
-        pose::BoneId,
+        pose::{BoneId, Pose},
     },
     prelude::{AnimationGraph, ParamValue},
 };
@@ -158,7 +158,7 @@ impl<'a> PassContext<'a> {
         &mut self,
         pin_id: impl Into<PinId>,
         time_update: TimeUpdate,
-    ) -> Result<PoseFrame, GraphError> {
+    ) -> Result<Pose, GraphError> {
         let node_ctx = self.node_context.unwrap();
         let target_pin = TargetPin::NodePose(node_ctx.node_id.clone(), pin_id.into());
         node_ctx
