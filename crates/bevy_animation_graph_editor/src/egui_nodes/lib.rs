@@ -582,7 +582,18 @@ impl NodesContext {
             .response
             .rect
             .expand2(node.state.layout_style.padding);
-        if response.response.hovered() {
+
+        let rect = response.response.rect;
+        let hovered = rect.is_positive() && {
+            let pointer_pos = ui.ctx().input(|i| i.pointer.interact_pos());
+            if let Some(pointer_pos) = pointer_pos {
+                rect.contains(pointer_pos) //&& ui.ctx().layer_id_at(pointer_pos) == Some(layer_id)
+            } else {
+                false
+            }
+        };
+
+        if hovered {
             self.frame_state
                 .node_indices_overlapping_with_mouse
                 .push(node.spec.id);
