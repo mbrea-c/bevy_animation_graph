@@ -1,10 +1,13 @@
-use crate::core::animation_clip::{GraphClip, Keyframes};
+use std::ops::{Add, Mul};
+
+use crate::core::animation_clip::{GraphClip, Interpolation, Keyframes, VariableCurve};
 use crate::core::animation_graph::TimeUpdate;
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
 use crate::core::errors::GraphError;
 use crate::core::pose::{BonePose, Pose, PoseSpec};
 use crate::core::systems::get_keyframe;
+use crate::interpolation::prelude::InterpolateStep;
 use crate::prelude::{InterpolateLinear, PassContext, SpecContext};
 use bevy::asset::Handle;
 use bevy::reflect::prelude::*;
@@ -14,14 +17,20 @@ use bevy::reflect::prelude::*;
 pub struct ClipNode {
     pub(crate) clip: Handle<GraphClip>,
     pub(crate) override_duration: Option<f32>,
+    pub(crate) override_interpolation: Option<Interpolation>,
 }
 
 impl ClipNode {
     pub const OUTPUT: &'static str = "Pose Out";
-    pub fn new(clip: Handle<GraphClip>, override_duration: Option<f32>) -> Self {
+    pub fn new(
+        clip: Handle<GraphClip>,
+        override_duration: Option<f32>,
+        override_interpolation: Option<Interpolation>,
+    ) -> Self {
         Self {
             clip,
             override_duration,
+            override_interpolation,
         }
     }
 
@@ -131,7 +140,8 @@ impl NodeLike for ClipNode {
                     next_timestamp,
                     time,
                     keyframe_count,
-                    &curve.keyframes,
+                    self.override_interpolation.unwrap_or(curve.interpolation),
+                    &curve,
                     &mut bone_pose,
                 );
             }
@@ -158,7 +168,8 @@ fn sample_two_keyframes(
     next_timestamp: f32,
     time: f32,
     keyframe_count: usize,
-    keyframes: &Keyframes,
+    override_interpolation: Interpolation,
+    curve: &VariableCurve,
     bone_pose: &mut BonePose,
 ) {
     let lerp = if next_timestamp == prev_timestamp {
@@ -166,37 +177,154 @@ fn sample_two_keyframes(
     } else {
         (time - prev_timestamp) / (next_timestamp - prev_timestamp)
     };
+    let duration = next_timestamp - prev_timestamp;
 
     // Apply the keyframe
-    match keyframes {
+    match &curve.keyframes {
         Keyframes::Rotation(keyframes) => {
-            let prev = keyframes[step_start];
-            let mut next = keyframes[step_end];
+            let (prev, mut next, tangent_out_start, tangent_in_end) = match &curve.interpolation {
+                Interpolation::Linear | Interpolation::Step => {
+                    let prev = keyframes[step_start];
+                    let next = keyframes[step_end];
+
+                    (prev, next, Default::default(), Default::default())
+                }
+                Interpolation::CubicSpline => {
+                    let prev = keyframes[step_start * 3 + 1];
+                    let next = keyframes[step_end * 3 + 1];
+                    let tangent_out_start = keyframes[step_start * 3 + 2];
+                    let tangent_in_end = keyframes[step_end * 3];
+                    (prev, next, tangent_out_start, tangent_in_end)
+                }
+            };
+
             // Choose the smallest angle for the rotation
             if next.dot(prev) < 0.0 {
                 next = -next;
             }
 
-            bone_pose.rotation = Some(prev.interpolate_linear(&next, lerp));
+            bone_pose.rotation = Some(match override_interpolation {
+                Interpolation::Linear => prev.interpolate_linear(&next, lerp),
+                Interpolation::Step => prev.interpolate_step(&next, lerp),
+                Interpolation::CubicSpline => cubic_spline_interpolation(
+                    prev,
+                    tangent_out_start,
+                    tangent_in_end,
+                    next,
+                    lerp,
+                    duration,
+                ),
+            });
         }
-        Keyframes::Translation(keyframes) => {
-            let prev = keyframes[step_start];
-            let next = keyframes[step_end];
 
-            bone_pose.translation = Some(prev.interpolate_linear(&next, lerp));
+        Keyframes::Translation(keyframes) => {
+            let (prev, next, tangent_out_start, tangent_in_end) = match &curve.interpolation {
+                Interpolation::Linear | Interpolation::Step => {
+                    let prev = keyframes[step_start];
+                    let next = keyframes[step_end];
+
+                    (prev, next, Default::default(), Default::default())
+                }
+                Interpolation::CubicSpline => {
+                    let prev = keyframes[step_start * 3 + 1];
+                    let next = keyframes[step_end * 3 + 1];
+                    let tangent_out_start = keyframes[step_start * 3 + 2];
+                    let tangent_in_end = keyframes[step_end * 3];
+                    (prev, next, tangent_out_start, tangent_in_end)
+                }
+            };
+
+            bone_pose.translation = Some(match override_interpolation {
+                Interpolation::Linear => prev.interpolate_linear(&next, lerp),
+                Interpolation::Step => prev.interpolate_step(&next, lerp),
+                Interpolation::CubicSpline => cubic_spline_interpolation(
+                    prev,
+                    tangent_out_start,
+                    tangent_in_end,
+                    next,
+                    lerp,
+                    duration,
+                ),
+            });
         }
 
         Keyframes::Scale(keyframes) => {
-            let prev = keyframes[step_start];
-            let next = keyframes[step_end];
-            bone_pose.scale = Some(prev.interpolate_linear(&next, lerp));
+            let (prev, next, tangent_out_start, tangent_in_end) = match &curve.interpolation {
+                Interpolation::Linear | Interpolation::Step => {
+                    let prev = keyframes[step_start];
+                    let next = keyframes[step_end];
+
+                    (prev, next, Default::default(), Default::default())
+                }
+                Interpolation::CubicSpline => {
+                    let prev = keyframes[step_start * 3 + 1];
+                    let next = keyframes[step_end * 3 + 1];
+                    let tangent_out_start = keyframes[step_start * 3 + 2];
+                    let tangent_in_end = keyframes[step_end * 3];
+                    (prev, next, tangent_out_start, tangent_in_end)
+                }
+            };
+
+            bone_pose.scale = Some(match override_interpolation {
+                Interpolation::Linear => prev.interpolate_linear(&next, lerp),
+                Interpolation::Step => prev.interpolate_step(&next, lerp),
+                Interpolation::CubicSpline => cubic_spline_interpolation(
+                    prev,
+                    tangent_out_start,
+                    tangent_in_end,
+                    next,
+                    lerp,
+                    duration,
+                ),
+            });
         }
 
         Keyframes::Weights(keyframes) => {
             let target_count = keyframes.len() / keyframe_count;
-            let morph_start: Vec<f32> = get_keyframe(target_count, keyframes, step_start).into();
-            let morph_end: Vec<f32> = get_keyframe(target_count, keyframes, step_end).into();
-            bone_pose.weights = Some(morph_start.interpolate_linear(&morph_end, lerp));
+            let (prev, next, tangent_out_start, tangent_in_end) = match &curve.interpolation {
+                Interpolation::Linear | Interpolation::Step => {
+                    let prev: Vec<f32> = get_keyframe(target_count, keyframes, step_start).into();
+                    let next: Vec<f32> = get_keyframe(target_count, keyframes, step_end).into();
+
+                    let len = prev.len();
+
+                    (prev, next, vec![0.; len], vec![0.; len])
+                }
+                Interpolation::CubicSpline => {
+                    let prev: Vec<f32> =
+                        get_keyframe(target_count, keyframes, step_start * 3 + 1).into();
+                    let next: Vec<f32> =
+                        get_keyframe(target_count, keyframes, step_end * 3 + 1).into();
+                    let tangent_out_start: Vec<f32> =
+                        get_keyframe(target_count, keyframes, step_start * 3 + 2).into();
+                    let tangent_in_end: Vec<f32> =
+                        get_keyframe(target_count, keyframes, step_end * 3).into();
+                    (prev, next, tangent_out_start, tangent_in_end)
+                }
+            };
+
+            bone_pose.weights = Some(match override_interpolation {
+                Interpolation::Linear => prev.interpolate_linear(&next, lerp),
+                Interpolation::Step => prev.interpolate_step(&next, lerp),
+                Interpolation::CubicSpline => prev
+                    .iter()
+                    .zip(tangent_out_start)
+                    .zip(tangent_in_end)
+                    .zip(next)
+                    .map(
+                        |(((value_start, tangent_out_start), tangent_in_end), value_end)| {
+                            cubic_spline_interpolation(
+                                *value_start,
+                                tangent_out_start,
+                                tangent_in_end,
+                                value_end,
+                                lerp,
+                                duration,
+                            )
+                        },
+                    )
+                    .collect(),
+            });
         }
     }
 }
@@ -229,4 +357,22 @@ fn sample_one_keyframe(
             bone_pose.weights = Some(morph_start);
         }
     }
+}
+
+/// Helper function for cubic spline interpolation.
+fn cubic_spline_interpolation<T>(
+    value_start: T,
+    tangent_out_start: T,
+    tangent_in_end: T,
+    value_end: T,
+    lerp: f32,
+    step_duration: f32,
+) -> T
+where
+    T: Mul<f32, Output = T> + Add<Output = T>,
+{
+    value_start * (2.0 * lerp.powi(3) - 3.0 * lerp.powi(2) + 1.0)
+        + tangent_out_start * (step_duration) * (lerp.powi(3) - 2.0 * lerp.powi(2) + lerp)
+        + value_end * (-2.0 * lerp.powi(3) + 3.0 * lerp.powi(2))
+        + tangent_in_end * step_duration * (lerp.powi(3) - lerp.powi(2))
 }

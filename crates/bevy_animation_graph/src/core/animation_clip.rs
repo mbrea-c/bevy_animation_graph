@@ -1,6 +1,5 @@
 use bevy::{
-    animation::Interpolation, asset::prelude::*, core::prelude::*, math::prelude::*,
-    reflect::prelude::*, utils::HashMap,
+    asset::prelude::*, core::prelude::*, math::prelude::*, reflect::prelude::*, utils::HashMap,
 };
 use serde::{Deserialize, Serialize};
 
@@ -45,6 +44,20 @@ pub struct VariableCurve {
     pub keyframes: Keyframes,
     /// Interpolation method to use between keyframes
     pub interpolation: Interpolation,
+}
+
+/// Interpolation method to use between keyframes.
+#[derive(Reflect, Serialize, Deserialize, Clone, Copy, Debug, Default)]
+#[reflect(Default)]
+pub enum Interpolation {
+    /// Linear interpolation between the two closest keyframes.
+    #[default]
+    Linear,
+    /// Step interpolation, the value of the start keyframe is used.
+    Step,
+    /// Cubic spline interpolation. The value of the two closest keyframes is used, with the out
+    /// tangent of the start keyframe and the in tangent of the end keyframe.
+    CubicSpline,
 }
 
 /// Path to an entity, with [`Name`]s. Each entity in a path must have a name.
