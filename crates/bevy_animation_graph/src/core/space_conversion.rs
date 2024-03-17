@@ -3,7 +3,7 @@ use super::{
     context::PassContext,
     pose::{BoneId, BonePose, Pose},
 };
-use bevy::{ecs::entity::Entity, transform::components::Transform, utils::HashMap};
+use bevy::{ecs::entity::Entity, transform::components::Transform};
 use std::collections::VecDeque;
 
 pub trait SpaceConversion {

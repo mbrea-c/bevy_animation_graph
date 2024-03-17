@@ -31,9 +31,9 @@ impl FlipXBySuffix for Quat {
 impl FlipXBySuffix for BonePose {
     fn flipped(&self, config: &FlipConfig) -> Self {
         BonePose {
-            rotation: self.rotation.clone().map(|v| v.flipped(config)),
-            translation: self.translation.clone().map(|v| v.flipped(config)),
-            scale: self.scale.clone(),
+            rotation: self.rotation.map(|v| v.flipped(config)),
+            translation: self.translation.map(|v| v.flipped(config)),
+            scale: self.scale,
             weights: self.weights.clone(),
         }
     }

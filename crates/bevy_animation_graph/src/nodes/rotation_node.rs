@@ -96,7 +96,6 @@ impl NodeLike for RotationNode {
         let mut target: EntityPath = ctx.parameter_back(Self::TARGET)?.unwrap();
         let rotation: Quat = ctx.parameter_back(Self::ROTATION)?.unwrap();
         let mut pose = ctx.pose_back(Self::INPUT, input)?;
-        let time = pose.timestamp;
 
         if !pose.paths.contains_key(&target) {
             pose.add_bone(BonePose::default(), target.clone());
@@ -142,7 +141,7 @@ impl NodeLike for RotationNode {
                 .and_then(|bone_id| pose.bones.get_mut(*bone_id).cloned())
                 .unwrap_or_default();
 
-            if let Some(mut rot) = bone_pose.rotation {
+            if let Some(rot) = bone_pose.rotation {
                 let rotation = match self.application_mode {
                     RotationMode::Blend => rot.slerp(rotation_bone_space, percent),
                     RotationMode::Compose => {

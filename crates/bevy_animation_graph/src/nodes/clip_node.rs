@@ -62,8 +62,10 @@ impl NodeLike for ClipNode {
         let prev_time = ctx.prev_time_fwd();
         let time = time_update.apply(prev_time);
 
-        let mut out_pose = Pose::default();
-        out_pose.timestamp = time;
+        let mut out_pose = Pose {
+            timestamp: time,
+            ..Pose::default()
+        };
 
         let time = time.clamp(0., clip_duration);
 
@@ -148,6 +150,7 @@ impl NodeLike for ClipNode {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn sample_two_keyframes(
     step_start: usize,
     step_end: usize,

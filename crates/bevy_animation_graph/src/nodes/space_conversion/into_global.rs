@@ -33,8 +33,8 @@ impl NodeLike for IntoGlobalSpaceNode {
 
     fn pose_pass(
         &self,
-        time_update: TimeUpdate,
-        mut ctx: PassContext,
+        _time_update: TimeUpdate,
+        mut _ctx: PassContext,
     ) -> Result<Option<Pose>, GraphError> {
         // let in_pose = ctx.pose_back(Self::POSE_IN, time_update)?;
         // Ok(Some(PoseFrame {

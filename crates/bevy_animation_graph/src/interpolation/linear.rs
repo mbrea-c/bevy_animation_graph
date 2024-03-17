@@ -48,8 +48,8 @@ impl InterpolateLinear for BonePose {
                 result.rotation = Some(a.interpolate_linear(b, f));
             }
             (None, None) => {}
-            (None, Some(b)) => result.rotation = Some(b.clone()),
-            (Some(a), None) => result.rotation = Some(a.clone()),
+            (None, Some(b)) => result.rotation = Some(*b),
+            (Some(a), None) => result.rotation = Some(*a),
         }
 
         match (&self.translation, &other.translation) {
@@ -57,8 +57,8 @@ impl InterpolateLinear for BonePose {
                 result.translation = Some(a.interpolate_linear(b, f));
             }
             (None, None) => {}
-            (None, Some(b)) => result.translation = Some(b.clone()),
-            (Some(a), None) => result.translation = Some(a.clone()),
+            (None, Some(b)) => result.translation = Some(*b),
+            (Some(a), None) => result.translation = Some(*a),
         }
 
         match (&self.scale, &other.scale) {
@@ -66,8 +66,8 @@ impl InterpolateLinear for BonePose {
                 result.scale = Some(a.interpolate_linear(b, f));
             }
             (None, None) => {}
-            (None, Some(b)) => result.scale = Some(b.clone()),
-            (Some(a), None) => result.scale = Some(a.clone()),
+            (None, Some(b)) => result.scale = Some(*b),
+            (Some(a), None) => result.scale = Some(*a),
         }
 
         match (&self.weights, &other.weights) {

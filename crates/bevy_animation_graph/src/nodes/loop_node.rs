@@ -69,7 +69,8 @@ impl NodeLike for LoopNode {
         let mut pose = ctx.pose_back(Self::INPUT, fw_upd)?;
 
         if t > duration && t < full_duration {
-            let start_pose = ctx.uncached_pose_back(Self::INPUT, TimeUpdate::Absolute(0.))?;
+            let start_pose = ctx.temp_pose_back(Self::INPUT, TimeUpdate::Absolute(0.))?;
+            ctx.clear_temp_cache(Self::INPUT);
             let old_time = pose.timestamp;
             pose = pose.interpolate_linear(&start_pose, (t - duration) / self.interpolation_period);
             pose.timestamp = old_time;

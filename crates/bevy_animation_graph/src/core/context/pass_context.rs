@@ -10,7 +10,7 @@ use crate::{
     prelude::{AnimationGraph, ParamValue},
 };
 
-use super::{deferred_gizmos::DeferredGizmoRef, GraphContext, SystemResources};
+use super::{deferred_gizmos::DeferredGizmoRef, GraphContext, SpecContext, SystemResources};
 
 #[derive(Clone, Copy)]
 pub struct NodeContext<'a> {
@@ -28,9 +28,9 @@ pub struct PassContext<'a> {
     pub root_entity: Entity,
     pub entity_map: &'a HashMap<BoneId, Entity>,
     pub deferred_gizmos: DeferredGizmoRef,
-    /// Whether this query should mutate chaches. Useful when getting a pose back but not wanting
-    /// to use the time query to update the times
-    pub cached_query: bool,
+    /// Whether this query should mutate the *permanent* or *temporary* chache. Useful when getting
+    /// a pose back but not wanting to use the time query to update the times
+    pub temp_cache: bool,
     pub should_debug: bool,
 }
 
@@ -53,7 +53,7 @@ impl<'a> PassContext<'a> {
             root_entity,
             entity_map,
             deferred_gizmos: deferred_gizmos.into(),
-            cached_query: true,
+            temp_cache: false,
             should_debug: false,
         }
     }
@@ -70,7 +70,7 @@ impl<'a> PassContext<'a> {
             root_entity: self.root_entity,
             entity_map: self.entity_map,
             deferred_gizmos: self.deferred_gizmos.clone(),
-            cached_query: self.cached_query,
+            temp_cache: self.temp_cache,
             should_debug: self.should_debug,
         }
     }
@@ -87,7 +87,7 @@ impl<'a> PassContext<'a> {
             root_entity: self.root_entity,
             entity_map: self.entity_map,
             deferred_gizmos: self.deferred_gizmos.clone(),
-            cached_query: self.cached_query,
+            temp_cache: self.temp_cache,
             should_debug: self.should_debug,
         }
     }
@@ -103,7 +103,7 @@ impl<'a> PassContext<'a> {
             root_entity: self.root_entity,
             entity_map: self.entity_map,
             deferred_gizmos: self.deferred_gizmos.clone(),
-            cached_query: self.cached_query,
+            temp_cache: self.temp_cache,
             should_debug,
         }
     }
@@ -123,7 +123,7 @@ impl<'a> PassContext<'a> {
             root_entity: self.root_entity,
             entity_map: self.entity_map,
             deferred_gizmos: self.deferred_gizmos.clone(),
-            cached_query: self.cached_query,
+            temp_cache: self.temp_cache,
             should_debug: self.should_debug,
         }
     }
@@ -144,6 +144,14 @@ impl<'a> PassContext<'a> {
         self.context.as_mut()
     }
 
+    pub fn spec_context(&'a self) -> SpecContext<'a> {
+        SpecContext {
+            graph_assets: &self.resources.animation_graph_assets,
+        }
+    }
+}
+
+impl<'a> PassContext<'a> {
     /// Request an input parameter from the graph
     pub fn parameter_back(&mut self, pin_id: impl Into<PinId>) -> Result<ParamValue, GraphError> {
         let node_ctx = self.node_context.unwrap();
@@ -174,7 +182,7 @@ impl<'a> PassContext<'a> {
     }
 
     /// Request an input pose.
-    pub fn uncached_pose_back(
+    pub fn temp_pose_back(
         &mut self,
         pin_id: impl Into<PinId>,
         time_update: TimeUpdate,
@@ -182,7 +190,7 @@ impl<'a> PassContext<'a> {
         let node_ctx = self.node_context.unwrap();
         let target_pin = TargetPin::NodePose(node_ctx.node_id.clone(), pin_id.into());
         let mut ctx = self.without_node();
-        ctx.cached_query = false;
+        ctx.temp_cache = true;
         node_ctx.graph.get_pose(time_update, target_pin, ctx)
     }
 
@@ -203,6 +211,14 @@ impl<'a> PassContext<'a> {
         let node_ctx = self.node_context.unwrap();
         let source_pin = SourcePin::NodePose(node_ctx.node_id.clone());
         self.context.as_mut().get_prev_time(&source_pin)
+    }
+
+    pub fn clear_temp_cache(&self, pin_id: impl Into<PinId>) {
+        let node_ctx = self.node_context.unwrap();
+        let target_pin = TargetPin::NodePose(node_ctx.node_id.clone(), pin_id.into());
+        let _ = node_ctx
+            .graph
+            .clear_temp_cache(target_pin, self.without_node());
     }
 }
 
