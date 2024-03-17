@@ -1,5 +1,6 @@
 use bevy::{
-    asset::prelude::*, core::prelude::*, math::prelude::*, reflect::prelude::*, utils::HashMap,
+    animation::Interpolation, asset::prelude::*, core::prelude::*, math::prelude::*,
+    reflect::prelude::*, utils::HashMap,
 };
 use serde::{Deserialize, Serialize};
 
@@ -35,7 +36,15 @@ pub struct VariableCurve {
     /// Timestamp for each of the keyframes.
     pub keyframe_timestamps: Vec<f32>,
     /// List of the keyframes.
+    ///
+    /// The representation will depend on the interpolation type of this curve:
+    ///
+    /// - for `Interpolation::Step` and `Interpolation::Linear`, each keyframe is a single value
+    /// - for `Interpolation::CubicSpline`, each keyframe is made of three values for `tangent_in`,
+    /// `keyframe_value` and `tangent_out`
     pub keyframes: Keyframes,
+    /// Interpolation method to use between keyframes
+    pub interpolation: Interpolation,
 }
 
 /// Path to an entity, with [`Name`]s. Each entity in a path must have a name.

@@ -10,8 +10,8 @@ keywords = ["bevy", "animation", "gamedev"]
 
 [dependencies]
 bevy = { workspace = true }
-thiserror = "1.0.50"
-ron = "0.8.1"
+thiserror = "1.0.58"
+ron = { workspace = true }
 serde = { version = "1.0.193", features = ["derive"] }
 indexmap = { version = "2.2.1", features = ["serde"] }
 regex = "1.10.3"
