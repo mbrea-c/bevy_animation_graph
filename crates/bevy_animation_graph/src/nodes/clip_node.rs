@@ -141,7 +141,7 @@ impl NodeLike for ClipNode {
                     time,
                     keyframe_count,
                     self.override_interpolation.unwrap_or(curve.interpolation),
-                    &curve,
+                    curve,
                     &mut bone_pose,
                 );
             }
