@@ -39,8 +39,8 @@ fn setup(
 
     // Plane
     commands.spawn(PbrBundle {
-        mesh: meshes.add(shape::Plane::from_size(500000.0).into()),
-        material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
+        mesh: meshes.add(Plane3d::new(Vec3::Y).mesh().size(5., 5.).build()),
+        material: materials.add(Color::rgb(0.3, 0.5, 0.3)),
         ..default()
     });
 
@@ -79,7 +79,7 @@ fn setup(
 }
 
 fn keyboard_animation_control(
-    keyboard_input: Res<Input<KeyCode>>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
     human_character: Query<&AnimatedSceneInstance, With<Human>>,
     mut animation_players: Query<&mut AnimationGraphPlayer>,
     mut velocity: Local<f32>,
@@ -100,14 +100,14 @@ fn keyboard_animation_control(
             player.pause();
         }
     }
-    if keyboard_input.just_pressed(KeyCode::R) {
+    if keyboard_input.just_pressed(KeyCode::KeyR) {
         player.reset();
     }
 
-    if keyboard_input.pressed(KeyCode::Up) {
+    if keyboard_input.pressed(KeyCode::ArrowUp) {
         *velocity += 0.5 * time.delta_seconds();
     }
-    if keyboard_input.pressed(KeyCode::Down) {
+    if keyboard_input.pressed(KeyCode::ArrowDown) {
         *velocity -= 0.5 * time.delta_seconds();
     }
 
