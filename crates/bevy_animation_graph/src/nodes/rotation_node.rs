@@ -3,11 +3,9 @@ use crate::core::animation_graph::{PinMap, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
 use crate::core::errors::GraphError;
-use crate::core::frame::{
-    BoneFrame, BonePoseFrame, PoseFrame, PoseFrameData, PoseSpec, ValueFrame,
-};
+use crate::core::pose::{BonePose, Pose, PoseSpec};
 use crate::core::space_conversion::SpaceConversion;
-use crate::prelude::{OptParamSpec, ParamSpec, PassContext, SampleLinearAt, SpecContext};
+use crate::prelude::{OptParamSpec, ParamSpec, PassContext, SpecContext};
 use crate::utils::unwrap::Unwrap;
 use bevy::math::Quat;
 use bevy::reflect::std_traits::ReflectDefault;
@@ -94,16 +92,13 @@ impl NodeLike for RotationNode {
         &self,
         input: TimeUpdate,
         mut ctx: PassContext,
-    ) -> Result<Option<PoseFrame>, GraphError> {
+    ) -> Result<Option<Pose>, GraphError> {
         let mut target: EntityPath = ctx.parameter_back(Self::TARGET)?.unwrap();
         let rotation: Quat = ctx.parameter_back(Self::ROTATION)?.unwrap();
-        let pose = ctx.pose_back(Self::INPUT, input)?;
-        let time = pose.timestamp;
-        let mut pose: BonePoseFrame = pose.data.unwrap();
-        let inner_pose = pose.inner_mut();
+        let mut pose = ctx.pose_back(Self::INPUT, input)?;
 
-        if !inner_pose.paths.contains_key(&target) {
-            inner_pose.add_bone(BoneFrame::default(), target.clone());
+        if !pose.paths.contains_key(&target) {
+            pose.add_bone(BonePose::default(), target.clone());
         }
 
         // build bone chain
@@ -123,26 +118,16 @@ impl NodeLike for RotationNode {
                 RotationSpace::Local => rotation,
                 RotationSpace::Character => {
                     if let Some(parent) = target.parent() {
-                        ctx.root_to_bone_space(
-                            Transform::from_rotation(rotation),
-                            inner_pose,
-                            parent,
-                            time,
-                        )
-                        .rotation
+                        ctx.root_to_bone_space(Transform::from_rotation(rotation), &pose, parent)
+                            .rotation
                     } else {
                         rotation
                     }
                 }
                 RotationSpace::Global => {
                     if let Some(parent) = target.parent() {
-                        ctx.global_to_bone_space(
-                            Transform::from_rotation(rotation),
-                            inner_pose,
-                            parent,
-                            time,
-                        )
-                        .rotation
+                        ctx.global_to_bone_space(Transform::from_rotation(rotation), &pose, parent)
+                            .rotation
                     } else {
                         ctx.transform_global_to_character(Transform::from_rotation(rotation))
                             .rotation
@@ -150,41 +135,28 @@ impl NodeLike for RotationNode {
                 }
             };
 
-            let mut bone_frame = inner_pose
+            let mut bone_pose = pose
                 .paths
                 .get(&target)
-                .and_then(|bone_id| inner_pose.bones.get_mut(*bone_id).cloned())
+                .and_then(|bone_id| pose.bones.get_mut(*bone_id).cloned())
                 .unwrap_or_default();
 
-            if let Some(mut rot_frame) = bone_frame.rotation {
-                let rot = rot_frame.sample_linear_at(time);
+            if let Some(rot) = bone_pose.rotation {
                 let rotation = match self.application_mode {
                     RotationMode::Blend => rot.slerp(rotation_bone_space, percent),
                     RotationMode::Compose => {
                         Quat::IDENTITY.slerp(rotation_bone_space, percent) * rot
                     }
                 };
-                rot_frame.prev = rotation;
-                rot_frame.next = rotation;
-                bone_frame.rotation = Some(rot_frame);
+                bone_pose.rotation = Some(rotation);
             } else {
-                bone_frame.rotation = Some(ValueFrame {
-                    prev: rotation_bone_space,
-                    prev_timestamp: time - 0.1,
-                    next: rotation_bone_space,
-                    next_timestamp: time + 0.1,
-                    prev_is_wrapped: false,
-                    next_is_wrapped: false,
-                });
+                bone_pose.rotation = Some(rotation_bone_space);
             }
 
-            inner_pose.add_bone(bone_frame, target);
+            pose.add_bone(bone_pose, target);
         }
 
-        Ok(Some(PoseFrame {
-            data: PoseFrameData::BoneSpace(pose),
-            timestamp: time,
-        }))
+        Ok(Some(pose))
     }
 
     fn parameter_input_spec(&self, _ctx: SpecContext) -> PinMap<OptParamSpec> {

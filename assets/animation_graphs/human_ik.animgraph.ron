@@ -1,73 +1,24 @@
 (
     nodes: [
         (
-            name: "Blend",
-            node: Blend,
+            name: "Walk Chain",
+            node: Chain(
+                interpolation_period: 0.5,
+            ),
         ),
         (
-            name: "Rotate",
-            node: Rotation(Compose, Character, Linear, 1, 1.0),
+            name: "Loop",
+            node: Loop(
+                interpolation_period: 0.5,
+            ),
+        ),
+        (
+            name: "Run Clip",
+            node: Clip("animations/human_run.anim.ron", None),
         ),
         (
             name: "Facing rotation",
             node: RotationArc,
-        ),
-        (
-            name: "IK left hand",
-            node: TwoBoneIK,
-        ),
-        (
-            name: "Run Clip",
-            node: Clip("animations/human_run.anim.ron", Some(1.0)),
-        ),
-        (
-            name: "Run Clip 2",
-            node: Clip("animations/human_run.anim.ron", Some(1.0)),
-        ),
-        (
-            name: "Param graph",
-            node: Graph("animation_graphs/velocity_to_params.animgraph.ron"),
-        ),
-        (
-            name: "Walk Chain",
-            node: Chain,
-        ),
-        (
-            name: "Walk Clip 2",
-            node: Clip("animations/human_walk.anim.ron", Some(1.0)),
-        ),
-        (
-            name: "Extend to skeleton",
-            node: ExtendSkeleton,
-        ),
-        (
-            name: "Walk Clip",
-            node: Clip("animations/human_walk.anim.ron", Some(1.0)),
-        ),
-        (
-            name: "Speed",
-            node: Speed,
-        ),
-        (
-            name: "Walk Flip LR",
-            node: FlipLR(
-                config: (
-                    name_mapper: Pattern((
-                        key_1: "L",
-                        key_2: "R",
-                        pattern_before: "^.*",
-                        pattern_after: "$",
-                    )),
-                ),
-            ),
-        ),
-        (
-            name: "Rotate Test",
-            node: Rotation(Blend, Character, Linear, 5, 1.0),
-        ),
-        (
-            name: "Run Chain",
-            node: Chain,
         ),
         (
             name: "Run Flip LR",
@@ -83,37 +34,92 @@
             ),
         ),
         (
-            name: "Loop",
-            node: Loop,
+            name: "Run Clip 2",
+            node: Clip("animations/human_run.anim.ron", None),
+        ),
+        (
+            name: "Extend to skeleton",
+            node: ExtendSkeleton,
+        ),
+        (
+            name: "Rotate Test",
+            node: Rotation(Blend, Character, Linear, 5, 1.0),
+        ),
+        (
+            name: "Walk Clip 2",
+            node: Clip("animations/human_walk.anim.ron", None),
+        ),
+        (
+            name: "IK left hand",
+            node: TwoBoneIK,
+        ),
+        (
+            name: "Run Chain",
+            node: Chain(
+                interpolation_period: 0.5,
+            ),
+        ),
+        (
+            name: "Rotate",
+            node: Rotation(Compose, Character, Linear, 1, 1.0),
+        ),
+        (
+            name: "Walk Flip LR",
+            node: FlipLR(
+                config: (
+                    name_mapper: Pattern((
+                        key_1: "L",
+                        key_2: "R",
+                        pattern_before: "^.*",
+                        pattern_after: "$",
+                    )),
+                ),
+            ),
+        ),
+        (
+            name: "Param graph",
+            node: Graph("animation_graphs/velocity_to_params.animgraph.ron"),
+        ),
+        (
+            name: "Blend",
+            node: Blend,
+        ),
+        (
+            name: "Walk Clip",
+            node: Clip("animations/human_walk.anim.ron", None),
+        ),
+        (
+            name: "Speed",
+            node: Speed,
         ),
     ],
     edges_inverted: {
-        NodeParameter("Rotate", "Rotation"): NodeParameter("Facing rotation", "Quat Out"),
-        NodeParameter("Blend", "Factor"): NodeParameter("Param graph", "blend_fac"),
-        NodeParameter("Facing rotation", "Vec3 In 2"): InputParameter("Target Direction"),
-        NodeParameter("IK left hand", "Target Path"): InputParameter("Target Path"),
-        NodePose("Blend", "Pose In 1"): NodePose("Walk Chain"),
         NodeParameter("IK left hand", "Target Position"): InputParameter("Target Position"),
-        NodePose("Walk Chain", "Pose In 2"): NodePose("Walk Flip LR"),
-        NodeParameter("Facing rotation", "Vec3 In 1"): InputParameter("Z"),
-        NodeParameter("Rotate Test", "Rotation"): InputParameter("Rotate Test Quat"),
-        NodeParameter("Speed", "Speed"): NodeParameter("Param graph", "speed_fac"),
-        NodePose("IK left hand", "Pose In"): NodePose("Rotate Test"),
-        NodePose("Walk Flip LR", "Pose In"): NodePose("Walk Clip 2"),
-        NodePose("Run Chain", "Pose In 2"): NodePose("Run Flip LR"),
-        NodeParameter("Param graph", "Target Speed"): InputParameter("Target Speed"),
-        OutputPose: NodePose("IK left hand"),
         NodeParameter("Rotate Test", "Bone Mask"): InputParameter("Rotate Test Target"),
-        NodePose("Loop", "Pose In"): NodePose("Blend"),
-        NodePose("Rotate", "Pose In"): NodePose("Speed"),
-        NodePose("Run Flip LR", "Pose In"): NodePose("Run Clip 2"),
+        NodePose("Rotate Test", "Pose In"): NodePose("Extend to skeleton"),
+        NodePose("Run Chain", "Pose In 2"): NodePose("Run Flip LR"),
+        NodeParameter("Speed", "Speed"): NodeParameter("Param graph", "speed_fac"),
+        NodeParameter("Facing rotation", "Vec3 In 1"): InputParameter("Z"),
         NodePose("Speed", "Pose In"): NodePose("Loop"),
+        NodeParameter("Param graph", "Target Speed"): InputParameter("Target Speed"),
+        NodeParameter("Rotate", "Rotation"): NodeParameter("Facing rotation", "Quat Out"),
+        NodeParameter("IK left hand", "Target Path"): InputParameter("Target Path"),
+        NodePose("Rotate", "Pose In"): NodePose("Speed"),
+        NodeParameter("Facing rotation", "Vec3 In 2"): InputParameter("Target Direction"),
+        NodePose("Walk Chain", "Pose In 2"): NodePose("Walk Flip LR"),
+        NodeParameter("Rotate Test", "Rotation"): InputParameter("Rotate Test Quat"),
+        NodePose("Blend", "Pose In 1"): NodePose("Walk Chain"),
+        NodePose("Loop", "Pose In"): NodePose("Blend"),
+        NodePose("Run Flip LR", "Pose In"): NodePose("Run Clip 2"),
         NodePose("Blend", "Pose In 2"): NodePose("Run Chain"),
+        OutputPose: NodePose("IK left hand"),
+        NodePose("Walk Flip LR", "Pose In"): NodePose("Walk Clip 2"),
         NodePose("Extend to skeleton", "Pose In"): NodePose("Rotate"),
         NodePose("Walk Chain", "Pose In 1"): NodePose("Walk Clip"),
         NodeParameter("Rotate", "Bone Mask"): InputParameter("Rotation Mask"),
         NodePose("Run Chain", "Pose In 1"): NodePose("Run Clip"),
-        NodePose("Rotate Test", "Pose In"): NodePose("Extend to skeleton"),
+        NodePose("IK left hand", "Pose In"): NodePose("Rotate Test"),
+        NodeParameter("Blend", "Factor"): NodeParameter("Param graph", "blend_fac"),
     },
     default_parameters: {
         "Z": Vec3((0.0, 0.0, 1.0)),
@@ -152,23 +158,23 @@
     output_pose: Some(BoneSpace),
     extra: (
         node_positions: {
-            "Blend": (382.0, -155.0),
-            "Rotate": (810.0, -30.0),
-            "Facing rotation": (635.0, 317.0),
-            "IK left hand": (1230.0, 59.0),
-            "Run Clip": (19.0, -44.0),
-            "Run Clip 2": (-120.0, 52.0),
-            "Param graph": (235.0, 155.0),
             "Walk Chain": (163.0, -191.0),
-            "Walk Clip 2": (-120.0, -144.0),
+            "Loop": (535.0, -26.0),
+            "Run Clip": (19.0, -44.0),
+            "Facing rotation": (635.0, 317.0),
+            "Run Flip LR": (16.0, 47.0),
+            "Run Clip 2": (-120.0, 52.0),
             "Extend to skeleton": (937.0, -3.0),
+            "Rotate Test": (1073.0, 23.0),
+            "Walk Clip 2": (-120.0, -144.0),
+            "IK left hand": (1230.0, 59.0),
+            "Run Chain": (170.0, -4.0),
+            "Rotate": (810.0, -30.0),
+            "Walk Flip LR": (20.0, -150.0),
+            "Param graph": (235.0, 155.0),
+            "Blend": (382.0, -155.0),
             "Walk Clip": (20.0, -239.0),
             "Speed": (670.0, -28.0),
-            "Walk Flip LR": (20.0, -150.0),
-            "Rotate Test": (1073.0, 23.0),
-            "Run Chain": (170.0, -4.0),
-            "Run Flip LR": (16.0, 47.0),
-            "Loop": (535.0, -26.0),
         },
         input_position: (69.0, 330.0),
         output_position: (1270.0, 258.0),

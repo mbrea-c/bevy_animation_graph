@@ -4,7 +4,7 @@ use crate::core::animation_graph::{
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
 use crate::core::errors::GraphError;
-use crate::core::frame::{PoseFrame, PoseSpec};
+use crate::core::pose::{Pose, PoseSpec};
 use crate::prelude::{OptParamSpec, ParamSpec, ParamValue, PassContext, SpecContext};
 use bevy::prelude::*;
 use bevy::utils::HashMap;
@@ -64,11 +64,7 @@ impl NodeLike for GraphNode {
         }
     }
 
-    fn pose_pass(
-        &self,
-        input: TimeUpdate,
-        ctx: PassContext,
-    ) -> Result<Option<PoseFrame>, GraphError> {
+    fn pose_pass(&self, input: TimeUpdate, ctx: PassContext) -> Result<Option<Pose>, GraphError> {
         let graph = ctx
             .resources
             .animation_graph_assets

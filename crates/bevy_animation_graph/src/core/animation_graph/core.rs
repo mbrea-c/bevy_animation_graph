@@ -4,14 +4,13 @@ use crate::{
         animation_node::{AnimationNode, NodeLike},
         duration_data::DurationData,
         errors::{GraphError, GraphValidationError},
-        frame::{BonePoseFrame, PoseFrame, PoseSpec},
-        pose::{BoneId, Pose},
+        pose::{BoneId, Pose, PoseSpec},
     },
     prelude::{
         DeferredGizmos, GraphContext, OptParamSpec, ParamSpec, ParamValue, PassContext,
-        SampleLinearAt, SpecContext, SystemResources,
+        SpecContext, SystemResources,
     },
-    utils::{ordered_map::OrderedMap, unwrap::Unwrap},
+    utils::ordered_map::OrderedMap,
 };
 use bevy::{
     prelude::*,
@@ -104,7 +103,7 @@ impl UpdateTime<Option<TimeUpdate>> for TimeState {
 pub struct InputOverlay {
     pub parameters: HashMap<PinId, ParamValue>,
     pub durations: HashMap<PinId, DurationData>,
-    pub poses: HashMap<PinId, PoseFrame>,
+    pub poses: HashMap<PinId, Pose>,
 }
 
 impl InputOverlay {
@@ -662,8 +661,14 @@ impl AnimationGraph {
                 let outputs =
                     node.parameter_pass(ctx.with_node(node_id, self).with_debugging(should_debug))?;
 
+                let active_cache = if ctx.temp_cache {
+                    ctx.context().caches.get_temp_cache_mut()
+                } else {
+                    ctx.context().caches.get_cache_mut()
+                };
+
                 for (pin_id, value) in outputs.iter() {
-                    ctx.context().set_parameter(
+                    active_cache.set_parameter(
                         SourcePin::NodeParameter(node_id.clone(), pin_id.clone()),
                         value.clone(),
                     );
@@ -719,8 +724,12 @@ impl AnimationGraph {
                     node.duration_pass(ctx.with_node(node_id, self).with_debugging(should_debug))?;
 
                 if let Some(value) = output {
-                    ctx.context()
-                        .set_duration(SourcePin::NodePose(node_id.clone()), value);
+                    let active_cache = if ctx.temp_cache {
+                        ctx.context().caches.get_temp_cache_mut()
+                    } else {
+                        ctx.context().caches.get_cache_mut()
+                    };
+                    active_cache.set_duration(SourcePin::NodePose(node_id.clone()), value);
                 }
 
                 output.unwrap()
@@ -742,13 +751,15 @@ impl AnimationGraph {
         time_update: TimeUpdate,
         target_pin: TargetPin,
         mut ctx: PassContext,
-    ) -> Result<PoseFrame, GraphError> {
+    ) -> Result<Pose, GraphError> {
         let Some(source_pin) = self.edges.get(&target_pin) else {
             return Err(GraphError::MissingInputEdge(target_pin));
         };
 
-        if let Some(val) = ctx.context().get_pose(source_pin) {
-            return Ok(val.clone());
+        if !ctx.temp_cache {
+            if let Some(val) = ctx.context().get_pose(source_pin) {
+                return Ok(val.clone());
+            }
         }
 
         let source_value = match source_pin {
@@ -768,8 +779,14 @@ impl AnimationGraph {
                     )?
                     .unwrap();
 
-                ctx.context().set_pose(source_pin.clone(), output.clone());
-                ctx.context().set_time(source_pin.clone(), output.timestamp);
+                let active_cache = if ctx.temp_cache {
+                    ctx.context().caches.get_temp_cache_mut()
+                } else {
+                    ctx.context().caches.get_cache_mut()
+                };
+
+                active_cache.set_pose(source_pin.clone(), output.clone());
+                active_cache.set_time(source_pin.clone(), output.timestamp);
 
                 output
             }
@@ -783,6 +800,43 @@ impl AnimationGraph {
         };
 
         Ok(source_value)
+    }
+
+    pub fn clear_temp_cache(
+        &self,
+        target_pin: TargetPin,
+        mut ctx: PassContext,
+    ) -> Result<(), GraphError> {
+        let Some(source_pin) = self.edges.get(&target_pin) else {
+            return Err(GraphError::MissingInputEdge(target_pin));
+        };
+
+        ctx.context()
+            .caches
+            .get_temp_cache_mut()
+            .clear_for(source_pin);
+
+        match source_pin {
+            SourcePin::NodeParameter(_, _) => {
+                panic!("Incompatible pins connected: {source_pin:?} --> {target_pin:?}")
+            }
+            SourcePin::InputParameter(_) => {
+                panic!("Incompatible pins connected: {source_pin:?} --> {target_pin:?}")
+            }
+            SourcePin::NodePose(node_id) => {
+                let node = &self.nodes[node_id];
+                let should_debug = node.should_debug;
+                let mut input_spec = node.pose_input_spec(ctx.spec_context());
+                for (pin_id, _) in input_spec.drain(..) {
+                    ctx.with_node(node_id, self)
+                        .with_debugging(should_debug)
+                        .clear_temp_cache(pin_id);
+                }
+            }
+            SourcePin::InputPose(_) => {}
+        }
+
+        Ok(())
     }
 
     pub fn query(
@@ -817,7 +871,7 @@ impl AnimationGraph {
         deferred_gizmos: &mut DeferredGizmos,
     ) -> Result<Pose, GraphError> {
         context.push_caches();
-        let out = self.get_pose(
+        self.get_pose(
             time_update,
             TargetPin::OutputPose,
             PassContext::new(
@@ -828,11 +882,7 @@ impl AnimationGraph {
                 entity_map,
                 deferred_gizmos,
             ),
-        )?;
-        let time = out.timestamp;
-        let bone_frame: BonePoseFrame = out.data.unwrap();
-
-        Ok(bone_frame.sample_linear_at(time))
+        )
     }
     // ----------------------------------------------------------------------------------------
 }

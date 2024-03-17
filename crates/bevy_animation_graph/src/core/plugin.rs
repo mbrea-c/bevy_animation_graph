@@ -3,8 +3,8 @@ use super::{
         process_animated_scenes, spawn_animated_scenes, AnimatedScene, AnimatedSceneLoader,
     },
     animation_graph::loader::{AnimationGraphLoader, GraphClipLoader},
-    frame::PoseSpec,
     parameters::{BoneMask, ParamSpec, ParamValue},
+    pose::PoseSpec,
     systems::{animation_player, animation_player_deferred_gizmos},
 };
 use crate::prelude::{

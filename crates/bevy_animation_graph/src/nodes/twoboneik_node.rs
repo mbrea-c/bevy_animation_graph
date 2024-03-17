@@ -12,10 +12,10 @@ use crate::{
         animation_node::{AnimationNode, AnimationNodeType, NodeLike},
         duration_data::DurationData,
         errors::GraphError,
-        frame::{BonePoseFrame, PoseFrame, PoseFrameData, PoseSpec},
+        pose::{Pose, PoseSpec},
         space_conversion::SpaceConversion,
     },
-    prelude::{BoneDebugGizmos, OptParamSpec, ParamSpec, PassContext, SampleLinearAt, SpecContext},
+    prelude::{BoneDebugGizmos, OptParamSpec, ParamSpec, PassContext, SpecContext},
     utils::unwrap::Unwrap,
 };
 
@@ -46,55 +46,41 @@ impl NodeLike for TwoBoneIKNode {
         &self,
         input: TimeUpdate,
         mut ctx: PassContext,
-    ) -> Result<Option<PoseFrame>, GraphError> {
+    ) -> Result<Option<Pose>, GraphError> {
         let target: EntityPath = ctx.parameter_back(Self::TARGETBONE)?.unwrap();
         let target_pos_char: Vec3 = ctx.parameter_back(Self::TARGETPOS)?.unwrap();
         //let targetrotation: Quat = ctx.parameter_back(Self::TARGETROT).unwrap();
-        let pose = ctx.pose_back(Self::INPUT, input)?;
-        let mut bone_pose_data: BonePoseFrame = pose.data.unwrap();
-        let inner_pose_data = bone_pose_data.inner_mut();
+        let mut pose = ctx.pose_back(Self::INPUT, input)?;
 
         if let (Some(bone_id), Some(parent_path), Some(grandparent_path)) = (
-            inner_pose_data.paths.get(&target),
+            pose.paths.get(&target),
             target.parent(),
             target.parent().and_then(|p| p.parent()),
         ) {
             // Debug render (if enabled)
-            ctx.bone_gizmo(
-                target.clone(),
-                Color::RED,
-                Some((&inner_pose_data, pose.timestamp)),
-            );
-            ctx.bone_gizmo(
-                parent_path.clone(),
-                Color::RED,
-                Some((&inner_pose_data, pose.timestamp)),
-            );
+            ctx.bone_gizmo(target.clone(), Color::RED, Some(&pose));
+            ctx.bone_gizmo(parent_path.clone(), Color::RED, Some(&pose));
 
-            let bone = inner_pose_data.bones[*bone_id].clone();
+            let bone = pose.bones[*bone_id].clone();
             let target_gp = ctx.root_to_bone_space(
                 Transform::from_translation(target_pos_char),
-                inner_pose_data,
+                &pose,
                 grandparent_path.parent().unwrap().clone(),
-                pose.timestamp,
             );
 
             let target_pos_gp = target_gp.translation;
 
-            let parent_id = inner_pose_data.paths.get(&parent_path).unwrap();
-            let parent_frame = {
-                let parent_bone = inner_pose_data.bones.get_mut(*parent_id).unwrap();
-                parent_bone.to_transform_frame_linear()
+            let parent_id = pose.paths.get(&parent_path).unwrap();
+            let parent_transform = {
+                let parent_bone = pose.bones.get_mut(*parent_id).unwrap();
+                parent_bone.to_transform()
             };
-            let parent_transform = parent_frame.sample_linear_at(pose.timestamp);
 
-            let grandparent_id = inner_pose_data.paths.get(&grandparent_path).unwrap();
-            let grandparent_bone = inner_pose_data.bones.get_mut(*grandparent_id).unwrap();
-            let grandparent_frame = grandparent_bone.to_transform_frame_linear();
-            let grandparent_transform = grandparent_frame.sample_linear_at(pose.timestamp);
+            let grandparent_id = pose.paths.get(&grandparent_path).unwrap();
+            let grandparent_bone = pose.bones.get_mut(*grandparent_id).unwrap();
+            let grandparent_transform = grandparent_bone.to_transform();
 
-            let bone_frame = bone.to_transform_frame_linear();
-            let bone_transform = bone_frame.sample_linear_at(pose.timestamp);
+            let bone_transform = bone.to_transform();
 
             let parent_gp_transform = grandparent_transform * parent_transform;
             let bone_gp_transform = parent_gp_transform * bone_transform;
@@ -113,41 +99,16 @@ impl NodeLike for TwoBoneIKNode {
                 Transform::from_matrix(parent_gp_transform.compute_matrix().inverse())
                     * bone_gp_transform;
 
-            inner_pose_data.bones[*grandparent_id]
-                .rotation
-                .as_mut()
-                .unwrap()
-                .map_mut(|_| grandparent_transform.rotation);
-
-            inner_pose_data.bones[*parent_id]
-                .rotation
-                .as_mut()
-                .unwrap()
-                .map_mut(|_| parent_transform.rotation);
-
-            inner_pose_data.bones[*bone_id]
-                .rotation
-                .as_mut()
-                .unwrap()
-                .map_mut(|_| bone_transform.rotation);
+            pose.bones[*grandparent_id].rotation = Some(grandparent_transform.rotation);
+            pose.bones[*parent_id].rotation = Some(parent_transform.rotation);
+            pose.bones[*bone_id].rotation = Some(bone_transform.rotation);
 
             // Debug render (if enabled)
-            ctx.bone_gizmo(
-                target.clone(),
-                Color::BLUE,
-                Some((&inner_pose_data, pose.timestamp)),
-            );
-            ctx.bone_gizmo(
-                parent_path.clone(),
-                Color::BLUE,
-                Some((&inner_pose_data, pose.timestamp)),
-            );
+            ctx.bone_gizmo(target.clone(), Color::BLUE, Some(&pose));
+            ctx.bone_gizmo(parent_path.clone(), Color::BLUE, Some(&pose));
         }
 
-        Ok(Some(PoseFrame {
-            data: PoseFrameData::BoneSpace(bone_pose_data),
-            timestamp: pose.timestamp,
-        }))
+        Ok(Some(pose))
     }
 
     fn parameter_input_spec(&self, _: SpecContext) -> PinMap<OptParamSpec> {

@@ -10,8 +10,8 @@ use bevy_animation_graph::{
     core::{
         animation_clip::{EntityPath, GraphClip},
         animation_graph::{AnimationGraph, PinId},
-        frame::PoseSpec,
         parameters::{BoneMask, ParamSpec, ParamValue},
+        pose::PoseSpec,
     },
     flipping::config::{PatternMapper, PatternMapperSerial},
     prelude::OrderedMap,

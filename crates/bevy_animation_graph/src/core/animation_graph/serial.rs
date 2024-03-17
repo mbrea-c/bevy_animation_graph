@@ -1,6 +1,6 @@
 use super::{pin, AnimationGraph, Extra};
 use crate::{
-    core::frame::PoseSpec,
+    core::pose::PoseSpec,
     prelude::{
         config::FlipConfig, AnimationNode, AnimationNodeType, ChainDecay, ParamSpec, ParamValue,
         RotationMode, RotationSpace,
@@ -57,12 +57,18 @@ pub struct AnimationNodeSerial {
 pub enum AnimationNodeTypeSerial {
     Clip(String, Option<f32>),
     Blend,
-    Chain,
+    Chain {
+        #[serde(default)]
+        interpolation_period: f32,
+    },
     FlipLR {
         #[serde(default)]
         config: FlipConfig,
     },
-    Loop,
+    Loop {
+        #[serde(default)]
+        interpolation_period: f32,
+    },
     Speed,
     Rotation(
         RotationMode,
@@ -135,11 +141,15 @@ impl From<&AnimationNodeType> for AnimationNodeTypeSerial {
                 n.override_duration,
             ),
             AnimationNodeType::Blend(_) => AnimationNodeTypeSerial::Blend,
-            AnimationNodeType::Chain(_) => AnimationNodeTypeSerial::Chain,
+            AnimationNodeType::Chain(n) => AnimationNodeTypeSerial::Chain {
+                interpolation_period: n.interpolation_period,
+            },
             AnimationNodeType::FlipLR(n) => AnimationNodeTypeSerial::FlipLR {
                 config: n.config.clone(),
             },
-            AnimationNodeType::Loop(_) => AnimationNodeTypeSerial::Loop,
+            AnimationNodeType::Loop(n) => AnimationNodeTypeSerial::Loop {
+                interpolation_period: n.interpolation_period,
+            },
             AnimationNodeType::Speed(_) => AnimationNodeTypeSerial::Speed,
             AnimationNodeType::Rotation(n) => AnimationNodeTypeSerial::Rotation(
                 n.application_mode,

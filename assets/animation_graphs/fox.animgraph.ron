@@ -10,7 +10,7 @@
         ),
         (
             name: "Loop Walk",
-            node: Loop,
+            node: Loop(),
         ),
         (
             name: "Run Clip",
@@ -26,7 +26,7 @@
         ),
         (
             name: "Loop Run",
-            node: Loop,
+            node: Loop(),
         ),
     ],
     edges_inverted: {

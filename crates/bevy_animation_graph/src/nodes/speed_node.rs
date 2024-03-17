@@ -2,7 +2,7 @@ use crate::core::animation_graph::{PinMap, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::duration_data::DurationData;
 use crate::core::errors::GraphError;
-use crate::core::frame::{PoseFrame, PoseSpec};
+use crate::core::pose::{Pose, PoseSpec};
 use crate::prelude::{OptParamSpec, ParamSpec, PassContext, SpecContext};
 use bevy::reflect::std_traits::ReflectDefault;
 use bevy::reflect::Reflect;
@@ -43,19 +43,19 @@ impl NodeLike for SpeedNode {
         &self,
         input: TimeUpdate,
         mut ctx: PassContext,
-    ) -> Result<Option<PoseFrame>, GraphError> {
+    ) -> Result<Option<Pose>, GraphError> {
         let speed = ctx.parameter_back(Self::SPEED)?.unwrap_f32();
         let fw_upd = match input {
             TimeUpdate::Delta(dt) => TimeUpdate::Delta(dt * speed),
             TimeUpdate::Absolute(t) => TimeUpdate::Absolute(t * speed),
         };
-        let mut in_pose_frame = ctx.pose_back(Self::INPUT, fw_upd)?;
+        let mut in_pose = ctx.pose_back(Self::INPUT, fw_upd)?;
 
         if speed != 0. {
-            in_pose_frame.map_ts(|t| t / speed.abs());
+            in_pose.timestamp /= speed.abs();
         }
 
-        Ok(Some(in_pose_frame))
+        Ok(Some(in_pose))
     }
 
     fn parameter_input_spec(&self, _: SpecContext) -> PinMap<OptParamSpec> {

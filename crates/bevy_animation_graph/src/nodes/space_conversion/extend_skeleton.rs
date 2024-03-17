@@ -4,11 +4,10 @@ use crate::{
         animation_node::{AnimationNode, AnimationNodeType, NodeLike},
         duration_data::DurationData,
         errors::GraphError,
-        frame::{BonePoseFrame, PoseFrame, PoseFrameData, PoseSpec},
+        pose::{Pose, PoseSpec},
         space_conversion::SpaceConversion,
     },
     prelude::{PassContext, SpecContext},
-    utils::unwrap::Unwrap,
 };
 use bevy::reflect::{std_traits::ReflectDefault, Reflect};
 
@@ -37,14 +36,10 @@ impl NodeLike for ExtendSkeleton {
         &self,
         time_update: TimeUpdate,
         mut ctx: PassContext,
-    ) -> Result<Option<PoseFrame>, GraphError> {
+    ) -> Result<Option<Pose>, GraphError> {
         let in_pose = ctx.pose_back(Self::POSE_IN, time_update)?;
-        let bone_pose_frame: BonePoseFrame = in_pose.data.unwrap();
 
-        Ok(Some(PoseFrame {
-            data: PoseFrameData::BoneSpace(ctx.extend_skeleton_bone(&bone_pose_frame)),
-            ..in_pose
-        }))
+        Ok(Some(ctx.extend_skeleton_bone(&in_pose)))
     }
 
     fn pose_input_spec(&self, _ctx: SpecContext) -> PinMap<PoseSpec> {
