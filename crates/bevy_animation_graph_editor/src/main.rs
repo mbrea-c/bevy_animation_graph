@@ -71,12 +71,13 @@ fn main() {
 fn core_setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
-    mut gizmo_config: ResMut<GizmoConfig>,
+    mut gizmo_config: ResMut<GizmoConfigStore>,
 ) {
     commands.insert_resource(GraphHandles {
         folder: asset_server.load_folder(""),
         unsaved: HashSet::default(),
     });
 
-    gizmo_config.depth_bias = -1.;
+    let config = gizmo_config.config_mut::<DefaultGizmoConfigGroup>().0;
+    config.depth_bias = -1.;
 }

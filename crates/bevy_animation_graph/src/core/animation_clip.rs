@@ -35,7 +35,29 @@ pub struct VariableCurve {
     /// Timestamp for each of the keyframes.
     pub keyframe_timestamps: Vec<f32>,
     /// List of the keyframes.
+    ///
+    /// The representation will depend on the interpolation type of this curve:
+    ///
+    /// - for `Interpolation::Step` and `Interpolation::Linear`, each keyframe is a single value
+    /// - for `Interpolation::CubicSpline`, each keyframe is made of three values for `tangent_in`,
+    /// `keyframe_value` and `tangent_out`
     pub keyframes: Keyframes,
+    /// Interpolation method to use between keyframes
+    pub interpolation: Interpolation,
+}
+
+/// Interpolation method to use between keyframes.
+#[derive(Reflect, Serialize, Deserialize, Clone, Copy, Debug, Default)]
+#[reflect(Default)]
+pub enum Interpolation {
+    /// Linear interpolation between the two closest keyframes.
+    #[default]
+    Linear,
+    /// Step interpolation, the value of the start keyframe is used.
+    Step,
+    /// Cubic spline interpolation. The value of the two closest keyframes is used, with the out
+    /// tangent of the start keyframe and the in tangent of the end keyframe.
+    CubicSpline,
 }
 
 /// Path to an entity, with [`Name`]s. Each entity in a path must have a name.

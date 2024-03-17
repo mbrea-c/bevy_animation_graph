@@ -123,10 +123,16 @@ impl AssetLoader for AnimationGraphLoader {
             // ------------------------------------------------------------------------------------
             for serial_node in &serial.nodes {
                 let node = match &serial_node.node {
-                    AnimationNodeTypeSerial::Clip(clip_name, override_duration) => {
-                        ClipNode::new(load_context.load(clip_name), *override_duration)
-                            .wrapped(&serial_node.name)
-                    }
+                    AnimationNodeTypeSerial::Clip(
+                        clip_name,
+                        override_duration,
+                        override_interpolation,
+                    ) => ClipNode::new(
+                        load_context.load(clip_name),
+                        *override_duration,
+                        *override_interpolation,
+                    )
+                    .wrapped(&serial_node.name),
                     AnimationNodeTypeSerial::Blend => BlendNode::new().wrapped(&serial_node.name),
                     AnimationNodeTypeSerial::Chain {
                         interpolation_period,

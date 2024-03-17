@@ -7,7 +7,6 @@ use crate::graph_show::{make_graph_indices, GraphIndices, GraphReprSpec};
 use crate::graph_update::{convert_graph_change, update_graph, Change, GraphChange};
 use crate::tree::{Tree, TreeInternal, TreeResult};
 use crate::GraphHandles;
-use bevy::core_pipeline::clear_color::ClearColorConfig;
 use bevy::ecs::system::CommandQueue;
 use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
@@ -399,8 +398,8 @@ impl TabViewer<'_> {
 
         // --- Initiate graph saving if Ctrl+S pressed
         // ----------------------------------------------------------------
-        world.resource_scope::<Input<KeyCode>, ()>(|_, input| {
-            if input.pressed(KeyCode::ControlLeft) && input.just_pressed(KeyCode::S) {
+        world.resource_scope::<ButtonInput<KeyCode>, ()>(|_, input| {
+            if input.pressed(KeyCode::ControlLeft) && input.just_pressed(KeyCode::KeyS) {
                 save_requests.push(RequestSave {
                     graph: graph_selection.graph,
                 });
@@ -920,13 +919,10 @@ pub fn setup_system(
     });
 
     commands.spawn(Camera3dBundle {
-        camera_3d: Camera3d {
-            clear_color: ClearColorConfig::Custom(Color::rgba(1.0, 1.0, 1.0, 0.0)),
-            ..default()
-        },
         camera: Camera {
             // render before the "main pass" camera
             order: -1,
+            clear_color: ClearColorConfig::Custom(Color::rgba(1.0, 1.0, 1.0, 0.0)),
             target: RenderTarget::Image(image_handle),
             ..default()
         },

@@ -14,7 +14,6 @@ use crate::{
 };
 use bevy::{
     prelude::*,
-    reflect::TypeUuid,
     utils::{HashMap, HashSet},
 };
 use serde::{Deserialize, Serialize};
@@ -168,8 +167,7 @@ impl Extra {
 
 pub type PinMap<V> = OrderedMap<PinId, V>;
 
-#[derive(Debug, Clone, Asset, TypeUuid, Reflect)]
-#[uuid = "92411396-01ae-4528-9839-709a7a321263"]
+#[derive(Debug, Clone, Asset, Reflect)]
 pub struct AnimationGraph {
     #[reflect(ignore)]
     pub nodes: HashMap<String, AnimationNode>,

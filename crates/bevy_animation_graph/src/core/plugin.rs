@@ -1,3 +1,4 @@
+use super::animation_clip::Interpolation;
 use super::{
     animated_scene::{
         process_animated_scenes, spawn_animated_scenes, AnimatedScene, AnimatedSceneLoader,
@@ -50,6 +51,7 @@ impl AnimationGraphPlugin {
             .register_asset_reflect::<GraphClip>()
             .register_type::<AnimatedScene>()
             .register_asset_reflect::<AnimatedScene>()
+            .register_type::<Interpolation>()
             .register_type::<AnimationGraphPlayer>()
             .register_type::<EntityPath>()
             .register_type::<BoneMask>()

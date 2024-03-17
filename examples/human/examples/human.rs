@@ -55,8 +55,8 @@ fn setup(
 
     // Plane
     commands.spawn(PbrBundle {
-        mesh: meshes.add(shape::Plane::from_size(500000.0).into()),
-        material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
+        mesh: meshes.add(Plane3d::new(Vec3::Y)),
+        material: materials.add(Color::rgb(0.3, 0.5, 0.3)),
         ..default()
     });
 
@@ -96,7 +96,7 @@ fn setup(
 }
 
 fn keyboard_animation_control(
-    keyboard_input: Res<Input<KeyCode>>,
+    keyboard_input: Res<ButtonInput<KeyCode>>,
     human_character: Query<&AnimatedSceneInstance, With<Human>>,
     mut animation_players: Query<&mut AnimationGraphPlayer>,
     mut params: ResMut<Params>,
@@ -117,14 +117,14 @@ fn keyboard_animation_control(
             player.pause();
         }
     }
-    if keyboard_input.just_pressed(KeyCode::R) {
+    if keyboard_input.just_pressed(KeyCode::KeyR) {
         player.reset();
     }
 
-    if keyboard_input.pressed(KeyCode::Up) {
+    if keyboard_input.pressed(KeyCode::ArrowUp) {
         params.speed += 0.5 * time.delta_seconds();
     }
-    if keyboard_input.pressed(KeyCode::Down) {
+    if keyboard_input.pressed(KeyCode::ArrowDown) {
         params.speed -= 0.5 * time.delta_seconds();
     }
 
@@ -132,11 +132,11 @@ fn keyboard_animation_control(
         params.direction = Vec3::Z;
     }
 
-    if keyboard_input.pressed(KeyCode::Right) {
+    if keyboard_input.pressed(KeyCode::ArrowRight) {
         params.direction =
             (Quat::from_rotation_y(1. * time.delta_seconds()) * params.direction).normalize();
     }
-    if keyboard_input.pressed(KeyCode::Left) {
+    if keyboard_input.pressed(KeyCode::ArrowLeft) {
         params.direction =
             (Quat::from_rotation_y(-1. * time.delta_seconds()) * params.direction).normalize();
     }

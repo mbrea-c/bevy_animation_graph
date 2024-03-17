@@ -1,6 +1,6 @@
 use super::{pin, AnimationGraph, Extra};
 use crate::{
-    core::pose::PoseSpec,
+    core::{animation_clip::Interpolation, pose::PoseSpec},
     prelude::{
         config::FlipConfig, AnimationNode, AnimationNodeType, ChainDecay, ParamSpec, ParamValue,
         RotationMode, RotationSpace,
@@ -55,7 +55,7 @@ pub struct AnimationNodeSerial {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub enum AnimationNodeTypeSerial {
-    Clip(String, Option<f32>),
+    Clip(String, Option<f32>, #[serde(default)] Option<Interpolation>),
     Blend,
     Chain {
         #[serde(default)]
@@ -139,6 +139,7 @@ impl From<&AnimationNodeType> for AnimationNodeTypeSerial {
             AnimationNodeType::Clip(n) => AnimationNodeTypeSerial::Clip(
                 n.clip.path().unwrap().to_string(),
                 n.override_duration,
+                n.override_interpolation,
             ),
             AnimationNodeType::Blend(_) => AnimationNodeTypeSerial::Blend,
             AnimationNodeType::Chain(n) => AnimationNodeTypeSerial::Chain {
