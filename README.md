@@ -88,6 +88,13 @@ This project is divided in two crates:
   # use the --force flag to force reinstall
   ```
 
+## Version table
+
+| `bevy` | `bevy_animation_graph` | `bevy_animation_graph_editor` |
+| ------ | ---------------------- | ----------------------------- |
+| 0.13   | 0.3                    | 0.3                           |
+| 0.12   | 0.2                    | 0.2                           |
+
 ## Usage and examples
 
 The documentation in [docs.rs](https://docs.rs/bevy_animation_graph) contains an
