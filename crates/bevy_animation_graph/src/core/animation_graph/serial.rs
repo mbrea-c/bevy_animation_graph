@@ -1,10 +1,9 @@
 use super::{pin, AnimationGraph, Extra};
 use crate::{
-    core::{animation_clip::Interpolation, pose::PoseSpec},
-    prelude::{
-        config::FlipConfig, AnimationNode, AnimationNodeType, ChainDecay, ParamSpec, ParamValue,
-        RotationMode, RotationSpace,
-    },
+    core::{animation_clip::Interpolation, edge_data::AnimationEvent},
+    flipping::config::FlipConfig,
+    nodes::{ChainDecay, CompareOp, RotationMode, RotationSpace},
+    prelude::{AnimationNode, AnimationNodeType, DataSpec, DataValue},
     utils::ordered_map::OrderedMap,
 };
 use bevy::utils::HashMap;
@@ -34,13 +33,13 @@ pub struct AnimationGraphSerial {
     pub edges_inverted: HashMap<TargetPinSerial, SourcePinSerial>,
 
     #[serde(default)]
-    pub default_parameters: OrderedMap<PinIdSerial, ParamValue>,
+    pub default_parameters: OrderedMap<PinIdSerial, DataValue>,
     #[serde(default)]
-    pub input_poses: OrderedMap<PinIdSerial, PoseSpec>,
+    pub input_times: OrderedMap<PinIdSerial, ()>,
     #[serde(default)]
-    pub output_parameters: OrderedMap<PinIdSerial, ParamSpec>,
+    pub output_parameters: OrderedMap<PinIdSerial, DataSpec>,
     #[serde(default)]
-    pub output_pose: Option<PoseSpec>,
+    pub output_time: Option<()>,
 
     // for editor
     #[serde(default)]
@@ -56,11 +55,11 @@ pub struct AnimationNodeSerial {
 #[derive(Serialize, Deserialize, Clone)]
 pub enum AnimationNodeTypeSerial {
     Clip(String, Option<f32>, #[serde(default)] Option<Interpolation>),
-    Blend,
     Chain {
         #[serde(default)]
         interpolation_period: f32,
     },
+    Blend,
     FlipLR {
         #[serde(default)]
         config: FlipConfig,
@@ -82,14 +81,17 @@ pub enum AnimationNodeTypeSerial {
     MulF32,
     DivF32,
     ClampF32,
+    CompareF32(CompareOp),
     AbsF32,
     RotationArc,
-    IntoBoneSpace,
-    IntoCharacterSpace,
-    IntoGlobalSpace,
-    ExtendSkeleton,
+    FireEvent(AnimationEvent),
+    // IntoBoneSpace,
+    // IntoCharacterSpace,
+    // IntoGlobalSpace,
+    // ExtendSkeleton,
     TwoBoneIK,
     Dummy,
+    Fsm(String),
     Graph(String),
 }
 
@@ -108,8 +110,8 @@ impl From<&AnimationGraph> for AnimationGraphSerial {
                 .iter()
                 .map(|(k, v)| (k.into(), v.clone()))
                 .collect(),
-            input_poses: value
-                .input_poses
+            input_times: value
+                .input_times
                 .iter()
                 .map(|(k, v)| (k.into(), *v))
                 .collect(),
@@ -118,7 +120,7 @@ impl From<&AnimationGraph> for AnimationGraphSerial {
                 .iter()
                 .map(|(k, v)| (k.into(), *v))
                 .collect(),
-            output_pose: value.output_pose,
+            output_time: value.output_time,
             extra: value.extra.clone(),
         }
     }
@@ -141,10 +143,11 @@ impl From<&AnimationNodeType> for AnimationNodeTypeSerial {
                 n.override_duration,
                 n.override_interpolation,
             ),
-            AnimationNodeType::Blend(_) => AnimationNodeTypeSerial::Blend,
+            AnimationNodeType::Dummy(_) => AnimationNodeTypeSerial::Dummy,
             AnimationNodeType::Chain(n) => AnimationNodeTypeSerial::Chain {
                 interpolation_period: n.interpolation_period,
             },
+            AnimationNodeType::Blend(_) => AnimationNodeTypeSerial::Blend,
             AnimationNodeType::FlipLR(n) => AnimationNodeTypeSerial::FlipLR {
                 config: n.config.clone(),
             },
@@ -159,19 +162,23 @@ impl From<&AnimationNodeType> for AnimationNodeTypeSerial {
                 n.chain_length,
                 n.base_weight,
             ),
-            AnimationNodeType::IntoBoneSpace(_) => AnimationNodeTypeSerial::IntoBoneSpace,
-            AnimationNodeType::IntoCharacterSpace(_) => AnimationNodeTypeSerial::IntoCharacterSpace,
-            AnimationNodeType::IntoGlobalSpace(_) => AnimationNodeTypeSerial::IntoGlobalSpace,
-            AnimationNodeType::ExtendSkeleton(_) => AnimationNodeTypeSerial::ExtendSkeleton,
+            // AnimationNodeType::IntoBoneSpace(_) => AnimationNodeTypeSerial::IntoBoneSpace,
+            // AnimationNodeType::IntoCharacterSpace(_) => AnimationNodeTypeSerial::IntoCharacterSpace,
+            // AnimationNodeType::IntoGlobalSpace(_) => AnimationNodeTypeSerial::IntoGlobalSpace,
+            // AnimationNodeType::ExtendSkeleton(_) => AnimationNodeTypeSerial::ExtendSkeleton,
             AnimationNodeType::TwoBoneIK(_) => AnimationNodeTypeSerial::TwoBoneIK,
             AnimationNodeType::AddF32(_) => AnimationNodeTypeSerial::AddF32,
             AnimationNodeType::MulF32(_) => AnimationNodeTypeSerial::MulF32,
             AnimationNodeType::DivF32(_) => AnimationNodeTypeSerial::DivF32,
             AnimationNodeType::SubF32(_) => AnimationNodeTypeSerial::SubF32,
             AnimationNodeType::ClampF32(_) => AnimationNodeTypeSerial::ClampF32,
+            AnimationNodeType::CompareF32(n) => AnimationNodeTypeSerial::CompareF32(n.op),
             AnimationNodeType::AbsF32(_) => AnimationNodeTypeSerial::AbsF32,
             AnimationNodeType::RotationArc(_) => AnimationNodeTypeSerial::RotationArc,
-            AnimationNodeType::Dummy(_) => AnimationNodeTypeSerial::Dummy,
+            AnimationNodeType::Fsm(n) => {
+                AnimationNodeTypeSerial::Fsm(n.fsm.path().unwrap().to_string())
+            }
+            AnimationNodeType::FireEvent(n) => AnimationNodeTypeSerial::FireEvent(n.event.clone()),
             AnimationNodeType::Graph(n) => {
                 AnimationNodeTypeSerial::Graph(n.graph.path().unwrap().to_string())
             }

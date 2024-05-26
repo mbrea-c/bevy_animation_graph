@@ -10,7 +10,7 @@ use super::pin::*;
 
 pub use {
     super::node::NodeArgs,
-    super::pin::{AttributeFlags, PinArgs, PinShape},
+    super::pin::{AttributeFlags, PinShape, PinStyleArgs},
     super::style::{ColorStyle, Style, StyleFlags},
 };
 
@@ -566,9 +566,51 @@ impl NodesContext {
                 title_info.replace((titlebar_shape, title_bar_content_rect));
                 ui.add_space(title_space);
                 let outline_shape = ui.painter().add(egui::Shape::Noop);
-                for pin_spec in node.spec.attributes.clone().iter() {
-                    self.add_pin(pin_spec.clone(), &mut node, ui);
+                // TODO: Layouting is wrong
+                egui::Grid::new(format!("node pins {}", node.spec.name))
+                    .min_col_width(ui.available_width() / 2.)
+                    .striped(true)
+                    .show(ui, |ui| {
+                        ui.vertical(|ui| {
+                            for pin_spec in node
+                                .spec
+                                .attributes
+                                .clone()
+                                .iter()
+                                .filter(|n| n.kind == PinType::Input)
+                            {
+                                self.add_pin(pin_spec.clone(), &mut node, ui);
+                            }
+                        });
+                        ui.vertical(|ui| {
+                            for pin_spec in node
+                                .spec
+                                .attributes
+                                .clone()
+                                .iter()
+                                .filter(|n| n.kind == PinType::Output)
+                            {
+                                self.add_pin(pin_spec.clone(), &mut node, ui);
+                            }
+                        });
+                        ui.end_row();
+                    });
+                if let (Some(time), Some(duration)) = (node.spec.time, node.spec.duration) {
+                    egui::Frame::default()
+                        .outer_margin(egui::vec2(0.5, 0.5))
+                        .inner_margin(egui::vec2(1.5, 1.5))
+                        .rounding(3.0)
+                        .stroke(egui::Stroke::new(
+                            1.0,
+                            self.settings.style.colors[ColorStyle::NodeOutline as usize],
+                        ))
+                        .show(ui, |ui| {
+                            ui.label("Runtime data");
+                            ui.label(format!("Time: {:.2} / {:.2}", time, duration));
+                            ui.add(egui::ProgressBar::new(time / duration).desired_height(5.));
+                        });
                 }
+
                 (title_info, outline_shape)
             },
         );
@@ -605,10 +647,15 @@ impl NodesContext {
     fn add_pin(&mut self, pin_spec: PinSpec, node: &mut Node, ui: &mut egui::Ui) {
         let response = ui.allocate_ui(ui.available_size(), {
             let pin_name = pin_spec.name.clone();
-            |ui| ui.label(pin_name)
+            let align = if pin_spec.kind == PinType::Input {
+                egui::Align::LEFT
+            } else {
+                egui::Align::RIGHT
+            };
+            move |ui| ui.with_layout(egui::Layout::top_down(align), |ui| ui.label(pin_name))
         });
         let shape = ui.painter().add(egui::Shape::Noop);
-        let response = response.response.union(response.inner);
+        let response = response.response.union(response.inner.inner);
 
         let mut pin_state = if let Some(pin) = self.pins.get(&pin_spec.id) {
             pin.state.clone()
@@ -641,10 +688,7 @@ impl NodesContext {
     fn add_link(&mut self, link_spec: LinkSpec, ui: &mut egui::Ui) {
         let link_state = LinkState {
             shape: Some(ui.painter().add(egui::Shape::Noop)),
-            color_style: self
-                .settings
-                .style
-                .format_link(link_spec.color_style.clone()),
+            style: self.settings.style.format_link(link_spec.style.clone()),
         };
         self.links.insert(
             link_spec.id,
@@ -853,21 +897,16 @@ impl NodesContext {
             return;
         }
 
-        let mut link_color = link.state.color_style.base;
+        let mut link_color = link.state.style.base;
         if self.state.selected_link_indices.contains(&link_idx) {
-            link_color = link.state.color_style.selected;
+            link_color = link.state.style.selected;
         } else if link_hovered {
-            link_color = link.state.color_style.hovered;
+            link_color = link.state.style.hovered;
         }
 
         ui.painter().set(
             link_shape,
-            link_data.draw((
-                link.spec
-                    .thickness
-                    .unwrap_or(self.settings.style.link_thickness),
-                link_color,
-            )),
+            link_data.draw((link.state.style.thickness, link_color)),
         );
     }
 
@@ -948,7 +987,7 @@ impl NodesContext {
 
         let pin_hovered = self.frame_state.hovered_pin_index == Some(pin_idx)
             && self.state.click_interaction_type != ClickInteractionType::BoxSelection;
-        let pin_shape = pin.spec.shape;
+        let pin_shape = pin.state.color_style.shape;
         let pin_pos = pin.state.pos;
         let pin_shape_gui = pin
             .state

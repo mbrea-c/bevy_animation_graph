@@ -1,0 +1,77 @@
+(
+    nodes: [
+        (
+            name: "flip run",
+            node: FlipLR(
+                config: (
+                    name_mapper: Pattern((
+                        key_1: "L",
+                        key_2: "R",
+                        pattern_before: "^.*",
+                        pattern_after: "$",
+                    )),
+                ),
+            ),
+        ),
+        (
+            name: "chain run",
+            node: Chain(
+                interpolation_period: 0.5,
+            ),
+        ),
+        (
+            name: "speed",
+            node: Speed,
+        ),
+        (
+            name: "run clip 1",
+            node: Clip("animations/human_run.anim.ron", None, None),
+        ),
+        (
+            name: "loop",
+            node: Loop(
+                interpolation_period: 0.5,
+            ),
+        ),
+        (
+            name: "run clip 2",
+            node: Clip("animations/human_run.anim.ron", None, None),
+        ),
+    ],
+    edges_inverted: {
+        NodeData("speed", "pose"): NodeData("loop", "pose"),
+        NodeTime("flip run", "time"): NodeTime("run clip 2"),
+        NodeTime("loop", "time"): NodeTime("chain run"),
+        NodeTime("chain run", "time B"): NodeTime("flip run"),
+        OutputTime: NodeTime("speed"),
+        NodeData("flip run", "pose"): NodeData("run clip 2", "pose"),
+        NodeData("chain run", "pose B"): NodeData("flip run", "pose"),
+        OutputData("pose"): NodeData("speed", "pose"),
+        NodeTime("speed", "time"): NodeTime("loop"),
+        NodeData("loop", "pose"): NodeData("chain run", "pose"),
+        NodeData("speed", "Speed"): InputData("speed"),
+        NodeTime("chain run", "time A"): NodeTime("run clip 1"),
+        NodeData("chain run", "pose A"): NodeData("run clip 1", "pose"),
+    },
+    default_parameters: {
+        "blend": F32(0.2),
+        "speed": F32(1.0),
+    },
+    input_times: {},
+    output_parameters: {
+        "pose": Pose,
+    },
+    output_time: Some(()),
+    extra: (
+        node_positions: {
+            "flip run": (325.0, 549.0),
+            "chain run": (483.0, 436.0),
+            "speed": (777.0, 428.0),
+            "run clip 1": (327.0, 394.0),
+            "loop": (640.0, 443.0),
+            "run clip 2": (182.0, 548.0),
+        },
+        input_position: (414.0, 193.0),
+        output_position: (914.0, 431.0),
+    ),
+)

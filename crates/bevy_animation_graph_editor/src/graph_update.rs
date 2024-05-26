@@ -118,7 +118,7 @@ pub fn update_graph(
             }
             Change::LinkRemoved(target_pin) => {
                 info!("Removing edge with target {:?}", target_pin);
-                graph.remove_edge(&target_pin);
+                graph.remove_edge_by_target(&target_pin);
                 changes.push(GraphChange {
                     graph: change.graph,
                     change: Change::GraphValidate,
@@ -146,7 +146,7 @@ pub fn update_graph(
                 while let Err(deletable) = graph.validate_edges(ctx) {
                     for Edge { target, .. } in deletable {
                         info!("Removing edge with target {:?}", target);
-                        graph.remove_edge(&target);
+                        graph.remove_edge_by_target(&target);
                     }
                 }
             }

@@ -1,9 +1,10 @@
 use crate::core::animation_graph::{PinMap, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
-use crate::core::duration_data::DurationData;
 use crate::core::errors::GraphError;
-use crate::core::pose::{Pose, PoseSpec};
-use crate::prelude::{OptParamSpec, ParamSpec, PassContext, SpecContext};
+use crate::core::pose::Pose;
+use crate::core::prelude::DataSpec;
+use crate::prelude::{PassContext, SpecContext};
+use crate::utils::unwrap::UnwrapVal;
 use bevy::reflect::std_traits::ReflectDefault;
 use bevy::reflect::Reflect;
 
@@ -12,8 +13,9 @@ use bevy::reflect::Reflect;
 pub struct SpeedNode;
 
 impl SpeedNode {
-    pub const INPUT: &'static str = "Pose In";
-    pub const OUTPUT: &'static str = "Pose Out";
+    pub const IN_POSE: &'static str = "pose";
+    pub const IN_TIME: &'static str = "time";
+    pub const OUT_POSE: &'static str = "pose";
     pub const SPEED: &'static str = "Speed";
 
     pub fn new() -> Self {
@@ -26,48 +28,56 @@ impl SpeedNode {
 }
 
 impl NodeLike for SpeedNode {
-    fn duration_pass(&self, mut ctx: PassContext) -> Result<Option<DurationData>, GraphError> {
-        let speed = ctx.parameter_back(Self::SPEED)?.unwrap_f32();
-
+    fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+        let speed = ctx.data_back(Self::SPEED)?.unwrap_f32();
         let out_duration = if speed == 0. {
             None
         } else {
-            let duration = ctx.duration_back(Self::INPUT)?;
+            let duration = ctx.duration_back(Self::IN_TIME)?;
             duration.as_ref().map(|duration| duration / speed)
         };
-
-        Ok(Some(out_duration))
+        ctx.set_duration_fwd(out_duration);
+        Ok(())
     }
 
-    fn pose_pass(
-        &self,
-        input: TimeUpdate,
-        mut ctx: PassContext,
-    ) -> Result<Option<Pose>, GraphError> {
-        let speed = ctx.parameter_back(Self::SPEED)?.unwrap_f32();
+    fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+        let speed = ctx.data_back(Self::SPEED)?.unwrap_f32();
+        let input = ctx.time_update_fwd()?;
         let fw_upd = match input {
             TimeUpdate::Delta(dt) => TimeUpdate::Delta(dt * speed),
             TimeUpdate::Absolute(t) => TimeUpdate::Absolute(t * speed),
         };
-        let mut in_pose = ctx.pose_back(Self::INPUT, fw_upd)?;
+        ctx.set_time_update_back(Self::IN_TIME, fw_upd);
+        let mut in_pose: Pose = ctx.data_back(Self::IN_POSE)?.val();
 
         if speed != 0. {
             in_pose.timestamp /= speed.abs();
         }
 
-        Ok(Some(in_pose))
+        ctx.set_time(in_pose.timestamp);
+        ctx.set_data_fwd(Self::OUT_POSE, in_pose);
+
+        Ok(())
     }
 
-    fn parameter_input_spec(&self, _: SpecContext) -> PinMap<OptParamSpec> {
-        [(Self::SPEED.into(), ParamSpec::F32.into())].into()
+    fn time_input_spec(&self, _: SpecContext) -> PinMap<()> {
+        [(Self::IN_TIME.into(), ())].into()
     }
 
-    fn pose_input_spec(&self, _: SpecContext) -> PinMap<PoseSpec> {
-        [(Self::INPUT.into(), PoseSpec::Any)].into()
+    fn time_output_spec(&self, _ctx: SpecContext) -> Option<()> {
+        Some(())
     }
 
-    fn pose_output_spec(&self, _: SpecContext) -> Option<PoseSpec> {
-        Some(PoseSpec::Any)
+    fn data_input_spec(&self, _: SpecContext) -> PinMap<DataSpec> {
+        [
+            (Self::SPEED.into(), DataSpec::F32),
+            (Self::IN_POSE.into(), DataSpec::Pose),
+        ]
+        .into()
+    }
+
+    fn data_output_spec(&self, _: SpecContext) -> PinMap<DataSpec> {
+        [(Self::OUT_POSE.into(), DataSpec::Pose)].into()
     }
 
     fn display_name(&self) -> String {

@@ -6,9 +6,10 @@ use derivative::Derivative;
 /// The Visual Style of a Link.
 /// If feilds are None then the Context style is used.
 /// shape defualts to CircleFilled
-pub struct PinArgs {
+pub struct PinStyleArgs {
     pub background: Option<egui::Color32>,
     pub hovered: Option<egui::Color32>,
+    pub shape: Option<PinShape>,
 }
 
 #[derive(PartialEq, Clone, Copy, Debug)]
@@ -55,9 +56,10 @@ pub enum AttributeFlags {
 }
 
 #[derive(Default, Debug, Clone)]
-pub(crate) struct PinDataColorStyle {
+pub(crate) struct PinStyle {
     pub background: egui::Color32,
     pub hovered: egui::Color32,
+    pub shape: PinShape,
 }
 
 #[derive(Derivative, Clone)]
@@ -65,9 +67,8 @@ pub(crate) struct PinDataColorStyle {
 pub struct PinSpec {
     pub id: usize,
     pub kind: PinType,
-    pub shape: PinShape,
     pub name: String,
-    pub style_args: PinArgs,
+    pub style_args: PinStyleArgs,
     pub flags: usize,
 }
 
@@ -78,7 +79,7 @@ pub(crate) struct PinState {
     pub attribute_rect: egui::Rect,
     pub pos: egui::Pos2,
     #[derivative(Debug = "ignore")]
-    pub color_style: PinDataColorStyle,
+    pub color_style: PinStyle,
     #[derivative(Debug = "ignore")]
     pub shape_gui: Option<egui::layers::ShapeIdx>,
 }

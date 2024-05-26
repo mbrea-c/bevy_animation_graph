@@ -10,8 +10,8 @@ use bevy_animation_graph::{
     core::{
         animation_clip::{EntityPath, GraphClip},
         animation_graph::{AnimationGraph, PinId},
-        parameters::{BoneMask, ParamSpec, ParamValue},
-        pose::PoseSpec,
+        edge_data::{BoneMask, DataSpec, DataValue},
+        state_machine::high_level::StateMachine,
     },
     flipping::config::{PatternMapper, PatternMapperSerial},
     prelude::OrderedMap,
@@ -34,23 +34,23 @@ impl Plugin for BetterInspectorPlugin {
             Vec<(EntityPath, f32)>,
         >::default());
         app.insert_resource(EguiInspectorBuffers::<
-            OrderedMap<PinId, ParamValue>,
-            Vec<(PinId, ParamValue)>,
+            OrderedMap<PinId, DataValue>,
+            Vec<(PinId, DataValue)>,
         >::default());
         app.insert_resource(EguiInspectorBuffers::<
-            OrderedMap<PinId, ParamSpec>,
-            Vec<(PinId, ParamSpec)>,
+            OrderedMap<PinId, DataSpec>,
+            Vec<(PinId, DataSpec)>,
         >::default());
         app.insert_resource(EguiInspectorBuffers::<
-            OrderedMap<PinId, PoseSpec>,
-            Vec<(PinId, PoseSpec)>,
+            OrderedMap<PinId, ()>,
+            Vec<(PinId, ())>,
         >::default());
         app.insert_resource(EguiInspectorBuffers::<String>::default());
         app.insert_resource(EguiInspectorBuffers::<EntityPath, String>::default());
         app.register_type::<HashMap<EntityPath, f32>>();
-        app.register_type::<OrderedMap<PinId, ParamValue>>();
-        app.register_type::<OrderedMap<PinId, ParamSpec>>();
-        app.register_type::<OrderedMap<PinId, PoseSpec>>();
+        app.register_type::<OrderedMap<PinId, DataValue>>();
+        app.register_type::<OrderedMap<PinId, DataSpec>>();
+        app.register_type::<OrderedMap<PinId, ()>>();
 
         PatternMapperInspector::register(app);
 
@@ -62,6 +62,11 @@ impl Plugin for BetterInspectorPlugin {
         add_no_many::<Handle<AnimationGraph>>(
             type_registry,
             asset_picker_ui::<AnimationGraph>,
+            todo_readonly_ui,
+        );
+        add_no_many::<Handle<StateMachine>>(
+            type_registry,
+            asset_picker_ui::<StateMachine>,
             todo_readonly_ui,
         );
         add_no_many::<Handle<GraphClip>>(
@@ -77,19 +82,19 @@ impl Plugin for BetterInspectorPlugin {
             better_hashmap::<EntityPath, f32>,
             todo_readonly_ui,
         );
-        add_no_many::<OrderedMap<PinId, ParamValue>>(
+        add_no_many::<OrderedMap<PinId, DataValue>>(
             type_registry,
-            better_ordered_map::<PinId, ParamValue>,
+            better_ordered_map::<PinId, DataValue>,
             todo_readonly_ui,
         );
-        add_no_many::<OrderedMap<PinId, ParamSpec>>(
+        add_no_many::<OrderedMap<PinId, DataSpec>>(
             type_registry,
-            better_ordered_map::<PinId, ParamSpec>,
+            better_ordered_map::<PinId, DataSpec>,
             todo_readonly_ui,
         );
-        add_no_many::<OrderedMap<PinId, PoseSpec>>(
+        add_no_many::<OrderedMap<PinId, ()>>(
             type_registry,
-            better_ordered_map::<PinId, PoseSpec>,
+            better_ordered_map::<PinId, ()>,
             todo_readonly_ui,
         );
     }
@@ -324,11 +329,11 @@ pub fn animation_graph_mut(
     });
     ui.collapsing("Input poses", |ui| {
         input_poses_changed =
-            env.ui_for_reflect_with_options(&mut value.input_poses, ui, input_poses_id, &());
+            env.ui_for_reflect_with_options(&mut value.input_times, ui, input_poses_id, &());
     });
     ui.collapsing("Output pose", |ui| {
         output_pose_changed =
-            env.ui_for_reflect_with_options(&mut value.output_pose, ui, output_pose_id, &());
+            env.ui_for_reflect_with_options(&mut value.output_time, ui, output_pose_id, &());
     });
 
     default_params_changed || output_params_changed || input_poses_changed || output_pose_changed

@@ -1,0 +1,29 @@
+(
+    start_state: "walk",
+    states: [
+        (
+            id: "walk",
+            graph: "animation_graphs/human_new.animgraph.ron",
+        ),
+        (
+            id: "run",
+            graph: "animation_graphs/run.animgraph.ron",
+        ),
+    ],
+    transitions: [
+        (
+            id: "walk_to_run",
+            source: "walk",
+            target: "run",
+            duration: 1.0,
+            graph: "animation_graphs/walk_to_run.animgraph.ron",
+        ),
+        (
+            id: "run_to_walk",
+            source: "run",
+            target: "walk",
+            duration: 1.0,
+            graph: "animation_graphs/walk_to_run.animgraph.ron",
+        ),
+    ],
+)

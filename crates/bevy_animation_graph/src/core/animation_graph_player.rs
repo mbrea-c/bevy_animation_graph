@@ -1,11 +1,12 @@
 use super::{
     animation_graph::{AnimationGraph, InputOverlay, TimeState, TimeUpdate},
     context::{BoneDebugGizmos, DeferredGizmos, PassContext},
+    edge_data::DataValue,
     errors::GraphError,
-    parameters::ParamValue,
     pose::{BoneId, Pose},
+    prelude::GraphContextArena,
 };
-use crate::prelude::{GraphContext, SystemResources};
+use crate::prelude::SystemResources;
 use bevy::{
     asset::prelude::*, ecs::prelude::*, reflect::prelude::*, render::color::Color, utils::HashMap,
 };
@@ -16,9 +17,9 @@ use bevy::{
 pub struct AnimationGraphPlayer {
     pub(crate) paused: bool,
     pub(crate) animation: Option<Handle<AnimationGraph>>,
+    pub(crate) context_arena: Option<GraphContextArena>,
     pub(crate) elapsed: TimeState,
     pub(crate) pending_update: Option<TimeUpdate>,
-    pub(crate) context: GraphContext,
     pub(crate) deferred_gizmos: DeferredGizmos,
     pub(crate) debug_draw_bones: Vec<BoneId>,
     pub(crate) entity_map: HashMap<BoneId, Entity>,
@@ -37,8 +38,13 @@ impl AnimationGraphPlayer {
         }
     }
 
+    pub fn get_context_arena(&self) -> Option<&GraphContextArena> {
+        self.context_arena.as_ref()
+    }
+
     /// Set the animation graph to play
     pub fn with_graph(mut self, animation: Handle<AnimationGraph>) -> Self {
+        self.context_arena = Some(GraphContextArena::new(animation.id()));
         self.animation = Some(animation);
         self
     }
@@ -49,20 +55,21 @@ impl AnimationGraphPlayer {
     }
 
     /// Configure an input parameter for the animation graph
-    pub fn set_input_parameter(&mut self, parameter_name: impl Into<String>, value: ParamValue) {
+    pub fn set_input_parameter(&mut self, parameter_name: impl Into<String>, value: DataValue) {
         self.input_overlay
             .parameters
             .insert(parameter_name.into(), value);
     }
 
     /// Return an input parameter for the animation graph
-    pub fn get_input_parameter(&self, parameter_name: &str) -> Option<ParamValue> {
+    pub fn get_input_parameter(&self, parameter_name: &str) -> Option<DataValue> {
         self.input_overlay.parameters.get(parameter_name).cloned()
     }
 
     /// Start playing an animation, resetting state of the player.
     /// This will use a linear blending between the previous and the new animation to make a smooth transition.
     pub fn start(&mut self, handle: Handle<AnimationGraph>) -> &mut Self {
+        self.context_arena = Some(GraphContextArena::new(handle.id()));
         self.animation = Some(handle);
         self.elapsed = TimeState::default();
         self.paused = false;
@@ -85,7 +92,7 @@ impl AnimationGraphPlayer {
 
         let pose = match graph.query_with_overlay(
             self.elapsed.update,
-            &mut self.context,
+            self.context_arena.as_mut().unwrap(),
             system_resources,
             &self.input_overlay,
             root_entity,
@@ -110,8 +117,11 @@ impl AnimationGraphPlayer {
         system_resources: &'a SystemResources,
         root_entity: Entity,
     ) -> PassContext<'a> {
+        let context_arena = self.context_arena.as_mut().unwrap();
+
         PassContext::new(
-            &mut self.context,
+            context_arena.get_toplevel_id(),
+            context_arena,
             system_resources,
             &self.input_overlay,
             root_entity,

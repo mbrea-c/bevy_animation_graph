@@ -1,10 +1,10 @@
-use crate::core::animation_graph::{PinId, PinMap};
+use crate::core::animation_graph::PinMap;
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::errors::GraphError;
-use crate::prelude::{OptParamSpec, ParamSpec, ParamValue, PassContext, SpecContext};
-use crate::utils::unwrap::Unwrap;
+use crate::core::prelude::DataSpec;
+use crate::prelude::{PassContext, SpecContext};
+use crate::utils::unwrap::UnwrapVal;
 use bevy::prelude::*;
-use bevy::utils::HashMap;
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default)]
@@ -25,30 +25,25 @@ impl RotationArcNode {
 }
 
 impl NodeLike for RotationArcNode {
-    fn parameter_pass(
-        &self,
-        mut ctx: PassContext,
-    ) -> Result<HashMap<PinId, ParamValue>, GraphError> {
-        let input_1: Vec3 = ctx.parameter_back(Self::INPUT_1)?.unwrap();
-        let input_2: Vec3 = ctx.parameter_back(Self::INPUT_2)?.unwrap();
+    fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+        let input_1: Vec3 = ctx.data_back(Self::INPUT_1)?.val();
+        let input_2: Vec3 = ctx.data_back(Self::INPUT_2)?.val();
 
-        Ok([(
-            Self::OUTPUT.into(),
-            ParamValue::Quat(Quat::from_rotation_arc(input_1, input_2)),
-        )]
-        .into())
+        ctx.set_data_fwd(Self::OUTPUT, Quat::from_rotation_arc(input_1, input_2));
+
+        Ok(())
     }
 
-    fn parameter_input_spec(&self, _: SpecContext) -> PinMap<OptParamSpec> {
+    fn data_input_spec(&self, _: SpecContext) -> PinMap<DataSpec> {
         [
-            (Self::INPUT_1.into(), ParamSpec::Vec3.into()),
-            (Self::INPUT_2.into(), ParamSpec::Vec3.into()),
+            (Self::INPUT_1.into(), DataSpec::Vec3),
+            (Self::INPUT_2.into(), DataSpec::Vec3),
         ]
         .into()
     }
 
-    fn parameter_output_spec(&self, _: SpecContext) -> PinMap<ParamSpec> {
-        [(Self::OUTPUT.into(), ParamSpec::Quat)].into()
+    fn data_output_spec(&self, _: SpecContext) -> PinMap<DataSpec> {
+        [(Self::OUTPUT.into(), DataSpec::Quat)].into()
     }
 
     fn display_name(&self) -> String {

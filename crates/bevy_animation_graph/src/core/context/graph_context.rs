@@ -1,49 +1,117 @@
-use super::pass_context::GraphContextRef;
 use crate::{
     core::{
-        animation_graph::{SourcePin, TimeUpdate},
+        animation_graph::{NodeId, SourcePin, TargetPin, TimeUpdate},
         duration_data::DurationData,
         pose::Pose,
+        prelude::AnimationGraph,
+        state_machine::FSMState,
     },
-    prelude::ParamValue,
+    prelude::DataValue,
 };
-use bevy::{reflect::prelude::*, utils::HashMap};
+use bevy::{
+    asset::AssetId,
+    reflect::prelude::*,
+    utils::{HashMap, HashSet},
+};
 
-#[derive(Reflect, Debug, Default)]
-pub struct OutputCache {
-    pub parameters: HashMap<SourcePin, ParamValue>,
-    pub durations: HashMap<SourcePin, DurationData>,
-    pub time_updates: HashMap<SourcePin, TimeUpdate>,
-    pub poses: HashMap<SourcePin, Pose>,
-    pub times: HashMap<SourcePin, f32>,
+#[derive(Reflect, Debug, Default, Clone)]
+pub struct CacheReadFilter {
+    pub allow_primary: bool,
+    pub allow_temp: bool,
 }
 
-impl OutputCache {
-    pub fn clear(&mut self, current_times: HashMap<SourcePin, f32>) {
+#[derive(Clone, Copy, Debug, Reflect, PartialEq, Eq, Hash)]
+pub enum CacheWriteFilter {
+    Primary,
+    Temp,
+}
+
+impl CacheReadFilter {
+    pub const TEMP: Self = Self {
+        allow_primary: false,
+        allow_temp: true,
+    };
+    pub const PRIMARY: Self = Self {
+        allow_primary: true,
+        allow_temp: false,
+    };
+    pub const FULL: Self = Self {
+        allow_primary: true,
+        allow_temp: true,
+    };
+
+    pub fn for_temp(is_temp: bool) -> Self {
+        if is_temp {
+            Self::TEMP
+        } else {
+            Self::PRIMARY
+        }
+    }
+}
+
+impl CacheWriteFilter {
+    pub fn for_temp(is_temp: bool) -> Self {
+        if is_temp {
+            Self::Temp
+        } else {
+            Self::Primary
+        }
+    }
+}
+
+#[derive(Reflect, Debug, Default, Clone)]
+pub struct TimeCache {
+    current: HashMap<SourcePin, f32>,
+    previous: HashMap<SourcePin, f32>,
+}
+
+impl TimeCache {
+    pub fn next_frame(&mut self) {
+        self.previous = self.current.clone();
+    }
+
+    pub fn get(&self, source_pin: &SourcePin) -> Option<f32> {
+        self.current.get(source_pin).copied()
+    }
+
+    pub fn get_prev(&self, source_pin: &SourcePin) -> Option<f32> {
+        self.previous.get(source_pin).copied()
+    }
+
+    pub fn save(&mut self, source_pin: SourcePin, time: f32) -> Option<f32> {
+        self.current.insert(source_pin, time)
+    }
+}
+
+#[derive(Reflect, Debug, Default)]
+pub struct GraphState {
+    pub parameters: HashMap<SourcePin, DataValue>,
+    pub durations: HashMap<SourcePin, DurationData>,
+    pub time_updates: HashMap<SourcePin, TimeUpdate>,
+    pub time_updates_back: HashMap<TargetPin, TimeUpdate>,
+    pub poses: HashMap<SourcePin, Pose>,
+    pub times: TimeCache,
+    pub updated: HashSet<NodeId>,
+    pub fsm_state: HashMap<NodeId, FSMState>,
+}
+
+impl GraphState {
+    pub fn next_frame(&mut self) {
+        self.times.next_frame();
+
         self.parameters.clear();
         self.durations.clear();
         self.time_updates.clear();
+        self.time_updates_back.clear();
         self.poses.clear();
-        self.times = current_times;
+        self.updated.clear();
     }
 
-    pub fn clear_for(&mut self, source_pin: &SourcePin) {
-        self.parameters.remove(source_pin);
-        self.durations.remove(source_pin);
-        self.time_updates.remove(source_pin);
-        self.poses.remove(source_pin);
-        self.times.remove(source_pin);
-    }
-
-    pub fn get_parameter(&self, source_pin: &SourcePin) -> Option<&ParamValue> {
+    pub fn get_parameter(&self, source_pin: &SourcePin) -> Option<&DataValue> {
         self.parameters.get(source_pin)
     }
 
-    pub fn set_parameter(
-        &mut self,
-        source_pin: SourcePin,
-        value: ParamValue,
-    ) -> Option<ParamValue> {
+    pub fn set_parameter(&mut self, source_pin: SourcePin, value: DataValue) -> Option<DataValue> {
         self.parameters.insert(source_pin, value)
     }
 
@@ -71,6 +139,18 @@ impl OutputCache {
         self.time_updates.insert(source_pin, value)
     }
 
+    pub fn get_time_update_back(&self, target_pin: &TargetPin) -> Option<&TimeUpdate> {
+        self.time_updates_back.get(target_pin)
+    }
+
+    pub fn set_time_update_back(
+        &mut self,
+        target_pin: TargetPin,
+        value: TimeUpdate,
+    ) -> Option<TimeUpdate> {
+        self.time_updates_back.insert(target_pin, value)
+    }
+
     pub fn get_pose(&self, source_pin: &SourcePin) -> Option<&Pose> {
         self.poses.get(source_pin)
     }
@@ -80,128 +160,83 @@ impl OutputCache {
     }
 
     pub fn get_time(&self, source_pin: &SourcePin) -> Option<f32> {
-        self.times.get(source_pin).copied()
+        self.times.get(source_pin)
+    }
+
+    pub fn get_prev_time(&self, source_pin: &SourcePin) -> Option<f32> {
+        self.times.get_prev(source_pin)
     }
 
     pub fn set_time(&mut self, source_pin: SourcePin, value: f32) -> Option<f32> {
-        self.times.insert(source_pin, value)
+        self.times.save(source_pin, value)
+    }
+
+    pub fn is_updated(&self, node_id: &NodeId) -> bool {
+        self.updated.contains(node_id)
+    }
+
+    pub fn set_updated(&mut self, node_id: NodeId) {
+        self.updated.insert(node_id);
+    }
+
+    pub fn get_fsm_state(&self, node_id: &NodeId) -> Option<&FSMState> {
+        self.fsm_state.get(node_id)
+    }
+
+    pub fn set_fsm_state(&mut self, node_id: NodeId, state: FSMState) -> Option<FSMState> {
+        self.fsm_state.insert(node_id, state)
     }
 }
 
+// TODO: Maybe we should consider the multiple caches to be a stack of overlays?
+// Might reduce the amount of cloning between frames.
 #[derive(Reflect, Debug, Default)]
-pub struct OutputCaches {
+pub struct GraphStateStack {
     /// Caches are double buffered
-    primary_caches: [OutputCache; 2],
-    temp_cache: OutputCache,
-    current_cache: usize,
+    primary_cache: GraphState,
+    temp_cache: GraphState,
 }
 
-impl OutputCaches {
-    pub fn flip(&mut self) {
-        self.current_cache = self.other_cache();
+impl GraphStateStack {
+    pub fn next_frame(&mut self) {
+        self.primary_cache.next_frame();
+        self.temp_cache = GraphState::default();
     }
 
-    pub fn other_cache(&self) -> usize {
-        (self.current_cache + 1) % 2
+    pub fn get<T>(&self, f: impl Fn(&GraphState) -> Option<T>, opts: CacheReadFilter) -> Option<T> {
+        opts.allow_temp
+            .then(|| f(&self.temp_cache))
+            .flatten()
+            .or_else(|| opts.allow_primary.then(|| f(&self.primary_cache)).flatten())
     }
 
-    pub fn get_cache(&self) -> &OutputCache {
-        &self.primary_caches[self.current_cache]
-    }
-
-    pub fn get_other_cache(&self) -> &OutputCache {
-        &self.primary_caches[self.other_cache()]
-    }
-
-    pub fn get_cache_mut(&mut self) -> &mut OutputCache {
-        &mut self.primary_caches[self.current_cache]
-    }
-
-    pub fn get_temp_cache(&self) -> &OutputCache {
-        &self.temp_cache
-    }
-
-    pub fn get_temp_cache_mut(&mut self) -> &mut OutputCache {
-        &mut self.temp_cache
-    }
-
-    pub fn push(&mut self) {
-        let current_times = self.primary_caches[self.current_cache].times.clone();
-        self.primary_caches[self.other_cache()].clear(current_times);
-        self.temp_cache.clear(HashMap::default());
-        self.flip();
+    pub fn set<T>(&mut self, f: impl FnOnce(&mut GraphState) -> T, opts: CacheWriteFilter) -> T {
+        match opts {
+            CacheWriteFilter::Primary => f(&mut self.primary_cache),
+            CacheWriteFilter::Temp => f(&mut self.temp_cache),
+        }
     }
 }
 
-#[derive(Debug, Default, Reflect)]
+#[derive(Debug, Reflect)]
 pub struct GraphContext {
-    pub caches: OutputCaches,
-    #[reflect(ignore)]
-    subgraph_contexts: HashMap<String, GraphContext>,
+    pub caches: GraphStateStack,
+    graph_id: AssetId<AnimationGraph>,
 }
 
 impl GraphContext {
-    pub fn push_caches(&mut self) {
-        self.caches.push();
-
-        for (_, sub_ctx) in self.subgraph_contexts.iter_mut() {
-            sub_ctx.push_caches();
+    pub fn new(graph_id: AssetId<AnimationGraph>) -> Self {
+        Self {
+            caches: GraphStateStack::default(),
+            graph_id,
         }
     }
 
-    pub fn get_parameter(&self, source_pin: &SourcePin) -> Option<&ParamValue> {
-        self.caches
-            .get_temp_cache()
-            .get_parameter(source_pin)
-            .or_else(|| self.caches.get_cache().get_parameter(source_pin))
+    pub fn next_frame(&mut self) {
+        self.caches.next_frame();
     }
 
-    pub fn get_duration(&self, source_pin: &SourcePin) -> Option<DurationData> {
-        self.caches
-            .get_temp_cache()
-            .get_duration(source_pin)
-            .or_else(|| self.caches.get_cache().get_duration(source_pin))
-    }
-
-    pub fn get_time_update(&self, source_pin: &SourcePin) -> Option<&TimeUpdate> {
-        self.caches
-            .get_temp_cache()
-            .get_time_update(source_pin)
-            .or_else(|| self.caches.get_cache().get_time_update(source_pin))
-    }
-
-    pub fn get_prev_time(&self, source_pin: &SourcePin) -> f32 {
-        self.caches
-            .get_other_cache()
-            .get_time(source_pin)
-            .unwrap_or(0.)
-    }
-
-    pub fn get_time(&self, source_pin: &SourcePin) -> f32 {
-        self.caches
-            .get_temp_cache()
-            .get_time(source_pin)
-            .or_else(|| self.caches.get_cache().get_time(source_pin))
-            .unwrap_or(0.)
-    }
-
-    pub fn get_pose(&self, source_pin: &SourcePin) -> Option<&Pose> {
-        self.caches
-            .get_temp_cache()
-            .get_pose(source_pin)
-            .or_else(|| self.caches.get_cache().get_pose(source_pin))
-    }
-
-    pub fn clear_temp_cache_for(&mut self, source_pin: &SourcePin) {
-        self.caches.get_temp_cache_mut().clear_for(source_pin);
-    }
-
-    pub(super) fn context_for_subgraph_or_insert_default(&mut self, node: &str) -> GraphContextRef {
-        if !self.subgraph_contexts.contains_key(node) {
-            self.subgraph_contexts
-                .insert(node.to_string(), GraphContext::default());
-        }
-
-        self.subgraph_contexts.get_mut(node).unwrap().into()
+    pub fn get_graph_id(&self) -> AssetId<AnimationGraph> {
+        self.graph_id
     }
 }

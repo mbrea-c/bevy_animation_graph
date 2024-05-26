@@ -45,12 +45,14 @@ pub struct NodeSpec {
     pub(crate) origin: egui::Pos2,
     pub(crate) attributes: Vec<PinSpec>,
     pub(crate) args: NodeArgs,
+    pub(crate) time: Option<f32>,
+    pub(crate) duration: Option<f32>,
 }
 
 #[derive(Derivative, Clone)]
 #[derivative(Debug, Default)]
 pub(crate) struct NodeState {
-    #[derivative(Default(value = "[100.;2].into()"))]
+    #[derivative(Default(value = "egui::vec2(100., 100.)"))]
     pub size: egui::Vec2,
     #[derivative(Default(value = "egui::Rect::ZERO"))]
     pub title_bar_content_rect: egui::Rect,

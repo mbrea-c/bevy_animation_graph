@@ -1,18 +1,15 @@
 use super::{
-    animation_graph::{PinId, PinMap, TimeUpdate},
-    duration_data::DurationData,
+    animation_graph::{PinId, PinMap},
+    edge_data::DataSpec,
     errors::GraphError,
-    parameters::{OptParamSpec, ParamSpec, ParamValue},
-    pose::{Pose, PoseSpec},
 };
 use crate::{
     nodes::{
-        blend_node::BlendNode, chain_node::ChainNode, clip_node::ClipNode, dummy_node::DummyNode,
-        flip_lr_node::FlipLRNode, loop_node::LoopNode, speed_node::SpeedNode, AbsF32, AddF32,
-        ClampF32, DivF32, ExtendSkeleton, GraphNode, IntoCharacterSpaceNode, MulF32,
-        RotationArcNode, RotationNode, SubF32,
+        AbsF32, AddF32, BlendNode, ChainNode, ClampF32, ClipNode, CompareF32, DivF32, DummyNode,
+        FSMNode, FireEventNode, FlipLRNode, GraphNode, LoopNode, MulF32, RotationArcNode,
+        RotationNode, SpeedNode, SubF32, TwoBoneIKNode,
     },
-    prelude::{IntoBoneSpaceNode, IntoGlobalSpaceNode, PassContext, SpecContext, TwoBoneIKNode},
+    prelude::{PassContext, SpecContext},
 };
 use bevy::{reflect::prelude::*, utils::HashMap};
 use std::{
@@ -21,41 +18,58 @@ use std::{
 };
 
 pub trait NodeLike: Send + Sync + Reflect {
-    fn parameter_pass(&self, _ctx: PassContext) -> Result<HashMap<PinId, ParamValue>, GraphError> {
-        Ok(HashMap::new())
+    fn duration(&self, _ctx: PassContext) -> Result<(), GraphError> {
+        Ok(())
     }
 
-    fn duration_pass(&self, _ctx: PassContext) -> Result<Option<DurationData>, GraphError> {
-        Ok(None)
+    fn update(&self, _ctx: PassContext) -> Result<(), GraphError> {
+        Ok(())
     }
 
-    fn pose_pass(
-        &self,
-        _time_update: TimeUpdate,
-        _ctx: PassContext,
-    ) -> Result<Option<Pose>, GraphError> {
-        Ok(None)
-    }
-
-    fn parameter_input_spec(&self, _ctx: SpecContext) -> PinMap<OptParamSpec> {
+    fn data_input_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {
         PinMap::new()
     }
 
-    fn parameter_output_spec(&self, _ctx: SpecContext) -> PinMap<ParamSpec> {
+    fn data_output_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {
         PinMap::new()
     }
 
-    fn pose_input_spec(&self, _ctx: SpecContext) -> PinMap<PoseSpec> {
+    fn time_input_spec(&self, _ctx: SpecContext) -> PinMap<()> {
         PinMap::new()
     }
 
     /// Specify whether or not a node outputs a pose, and which space the pose is in
-    fn pose_output_spec(&self, _ctx: SpecContext) -> Option<PoseSpec> {
+    fn time_output_spec(&self, _ctx: SpecContext) -> Option<()> {
         None
     }
 
     /// The name of this node.
     fn display_name(&self) -> String;
+
+    /// The order of the input pins. This way, you can mix time and data pins in the UI.
+    fn input_pin_ordering(&self) -> PinOrdering {
+        PinOrdering::default()
+    }
+
+    /// The order of the output pins. This way, you can mix time and data pins in the UI.
+    fn output_pin_ordering(&self) -> PinOrdering {
+        PinOrdering::default()
+    }
+}
+
+#[derive(Clone, Reflect, Debug, Default)]
+pub struct PinOrdering {
+    keys: HashMap<PinId, usize>,
+}
+
+impl PinOrdering {
+    pub fn new(keys: impl Into<HashMap<PinId, usize>>) -> Self {
+        Self { keys: keys.into() }
+    }
+
+    pub fn pin_key(&self, pin_id: &PinId) -> usize {
+        self.keys.get(pin_id).copied().unwrap_or(0)
+    }
 }
 
 #[derive(Clone)]
@@ -104,32 +118,28 @@ impl AnimationNode {
 }
 
 impl NodeLike for AnimationNode {
-    fn parameter_pass(&self, ctx: PassContext) -> Result<HashMap<PinId, ParamValue>, GraphError> {
-        self.node.map(|n| n.parameter_pass(ctx))
+    fn duration(&self, ctx: PassContext) -> Result<(), GraphError> {
+        self.node.map(|n| n.duration(ctx))
     }
 
-    fn duration_pass(&self, ctx: PassContext) -> Result<Option<DurationData>, GraphError> {
-        self.node.map(|n| n.duration_pass(ctx))
+    fn update(&self, ctx: PassContext) -> Result<(), GraphError> {
+        self.node.map(|n| n.update(ctx))
     }
 
-    fn pose_pass(&self, input: TimeUpdate, ctx: PassContext) -> Result<Option<Pose>, GraphError> {
-        self.node.map(|n| n.pose_pass(input, ctx))
+    fn data_input_spec(&self, ctx: SpecContext) -> PinMap<DataSpec> {
+        self.node.map(|n| n.data_input_spec(ctx))
     }
 
-    fn parameter_input_spec(&self, ctx: SpecContext) -> PinMap<OptParamSpec> {
-        self.node.map(|n| n.parameter_input_spec(ctx))
+    fn data_output_spec(&self, ctx: SpecContext) -> PinMap<DataSpec> {
+        self.node.map(|n| n.data_output_spec(ctx))
     }
 
-    fn parameter_output_spec(&self, ctx: SpecContext) -> PinMap<ParamSpec> {
-        self.node.map(|n| n.parameter_output_spec(ctx))
+    fn time_input_spec(&self, ctx: SpecContext) -> PinMap<()> {
+        self.node.map(|n| n.time_input_spec(ctx))
     }
 
-    fn pose_input_spec(&self, ctx: SpecContext) -> PinMap<PoseSpec> {
-        self.node.map(|n| n.pose_input_spec(ctx))
-    }
-
-    fn pose_output_spec(&self, ctx: SpecContext) -> Option<PoseSpec> {
-        self.node.map(|n| n.pose_output_spec(ctx))
+    fn time_output_spec(&self, ctx: SpecContext) -> Option<()> {
+        self.node.map(|n| n.time_output_spec(ctx))
     }
 
     fn display_name(&self) -> String {
@@ -148,8 +158,8 @@ pub enum AnimationNodeType {
     // --- Pose Nodes
     // ------------------------------------------------
     Clip(ClipNode),
-    Blend(BlendNode),
     Chain(ChainNode),
+    Blend(BlendNode),
     FlipLR(FlipLRNode),
     Loop(LoopNode),
     Speed(SpeedNode),
@@ -158,10 +168,10 @@ pub enum AnimationNodeType {
 
     // --- Pose space conversion
     // ------------------------------------------------
-    IntoBoneSpace(IntoBoneSpaceNode),
-    IntoCharacterSpace(IntoCharacterSpaceNode),
-    IntoGlobalSpace(IntoGlobalSpaceNode),
-    ExtendSkeleton(ExtendSkeleton),
+    // IntoBoneSpace(IntoBoneSpaceNode),
+    // IntoCharacterSpace(IntoCharacterSpaceNode),
+    // IntoGlobalSpace(IntoGlobalSpaceNode),
+    // ExtendSkeleton(ExtendSkeleton),
     // ------------------------------------------------
 
     // --- IK space conversion
@@ -177,12 +187,19 @@ pub enum AnimationNodeType {
     SubF32(SubF32),
     ClampF32(ClampF32),
     AbsF32(AbsF32),
+    CompareF32(CompareF32),
+    // ------------------------------------------------
+
+    // --- EventQueue nodes
+    // ------------------------------------------------
+    FireEvent(FireEventNode),
     // ------------------------------------------------
 
     // --- Vec3 arithmetic nodes
     // ------------------------------------------------
     RotationArc(RotationArcNode),
     // ------------------------------------------------
+    Fsm(#[reflect(ignore)] FSMNode),
     // HACK: needs to be ignored for now due to:
     // https://github.com/bevyengine/bevy/issues/8965
     // Recursive reference causes reflection to fail
@@ -203,8 +220,8 @@ impl AnimationNodeType {
     {
         match self {
             AnimationNodeType::Clip(n) => f(n),
-            AnimationNodeType::Blend(n) => f(n),
             AnimationNodeType::Chain(n) => f(n),
+            AnimationNodeType::Blend(n) => f(n),
             AnimationNodeType::FlipLR(n) => f(n),
             AnimationNodeType::Loop(n) => f(n),
             AnimationNodeType::Speed(n) => f(n),
@@ -214,14 +231,17 @@ impl AnimationNodeType {
             AnimationNodeType::DivF32(n) => f(n),
             AnimationNodeType::SubF32(n) => f(n),
             AnimationNodeType::ClampF32(n) => f(n),
+            AnimationNodeType::CompareF32(n) => f(n),
             AnimationNodeType::AbsF32(n) => f(n),
             AnimationNodeType::RotationArc(n) => f(n),
+            AnimationNodeType::Fsm(n) => f(n),
             AnimationNodeType::Graph(n) => f(n),
-            AnimationNodeType::IntoBoneSpace(n) => f(n),
-            AnimationNodeType::IntoCharacterSpace(n) => f(n),
-            AnimationNodeType::IntoGlobalSpace(n) => f(n),
-            AnimationNodeType::ExtendSkeleton(n) => f(n),
+            // AnimationNodeType::IntoBoneSpace(n) => f(n),
+            // AnimationNodeType::IntoCharacterSpace(n) => f(n),
+            // AnimationNodeType::IntoGlobalSpace(n) => f(n),
+            // AnimationNodeType::ExtendSkeleton(n) => f(n),
             AnimationNodeType::TwoBoneIK(n) => f(n),
+            AnimationNodeType::FireEvent(n) => f(n),
             AnimationNodeType::Dummy(n) => f(n),
             AnimationNodeType::Custom(n) => f(n.node.lock().unwrap().deref()),
         }
@@ -233,8 +253,8 @@ impl AnimationNodeType {
     {
         match self {
             AnimationNodeType::Clip(n) => f(n),
-            AnimationNodeType::Blend(n) => f(n),
             AnimationNodeType::Chain(n) => f(n),
+            AnimationNodeType::Blend(n) => f(n),
             AnimationNodeType::FlipLR(n) => f(n),
             AnimationNodeType::Loop(n) => f(n),
             AnimationNodeType::Speed(n) => f(n),
@@ -244,14 +264,17 @@ impl AnimationNodeType {
             AnimationNodeType::DivF32(n) => f(n),
             AnimationNodeType::SubF32(n) => f(n),
             AnimationNodeType::ClampF32(n) => f(n),
+            AnimationNodeType::CompareF32(n) => f(n),
             AnimationNodeType::AbsF32(n) => f(n),
             AnimationNodeType::RotationArc(n) => f(n),
+            AnimationNodeType::Fsm(n) => f(n),
             AnimationNodeType::Graph(n) => f(n),
-            AnimationNodeType::IntoBoneSpace(n) => f(n),
-            AnimationNodeType::IntoCharacterSpace(n) => f(n),
-            AnimationNodeType::IntoGlobalSpace(n) => f(n),
-            AnimationNodeType::ExtendSkeleton(n) => f(n),
+            // AnimationNodeType::IntoBoneSpace(n) => f(n),
+            // AnimationNodeType::IntoCharacterSpace(n) => f(n),
+            // AnimationNodeType::IntoGlobalSpace(n) => f(n),
+            // AnimationNodeType::ExtendSkeleton(n) => f(n),
             AnimationNodeType::TwoBoneIK(n) => f(n),
+            AnimationNodeType::FireEvent(n) => f(n),
             AnimationNodeType::Dummy(n) => f(n),
             AnimationNodeType::Custom(n) => {
                 let mut nod = n.node.lock().unwrap();
@@ -263,24 +286,27 @@ impl AnimationNodeType {
     pub fn inner_reflect(&mut self) -> &mut dyn Reflect {
         match self {
             AnimationNodeType::Clip(n) => n,
-            AnimationNodeType::Blend(n) => n,
             AnimationNodeType::Chain(n) => n,
+            AnimationNodeType::Blend(n) => n,
             AnimationNodeType::FlipLR(n) => n,
             AnimationNodeType::Loop(n) => n,
             AnimationNodeType::Speed(n) => n,
             AnimationNodeType::Rotation(n) => n,
-            AnimationNodeType::IntoBoneSpace(n) => n,
-            AnimationNodeType::IntoCharacterSpace(n) => n,
-            AnimationNodeType::IntoGlobalSpace(n) => n,
-            AnimationNodeType::ExtendSkeleton(n) => n,
+            // AnimationNodeType::IntoBoneSpace(n) => n,
+            // AnimationNodeType::IntoCharacterSpace(n) => n,
+            // AnimationNodeType::IntoGlobalSpace(n) => n,
+            // AnimationNodeType::ExtendSkeleton(n) => n,
             AnimationNodeType::TwoBoneIK(n) => n,
+            AnimationNodeType::FireEvent(n) => n,
             AnimationNodeType::AddF32(n) => n,
             AnimationNodeType::MulF32(n) => n,
             AnimationNodeType::DivF32(n) => n,
             AnimationNodeType::SubF32(n) => n,
             AnimationNodeType::ClampF32(n) => n,
+            AnimationNodeType::CompareF32(n) => n,
             AnimationNodeType::AbsF32(n) => n,
             AnimationNodeType::RotationArc(n) => n,
+            AnimationNodeType::Fsm(n) => n,
             AnimationNodeType::Graph(n) => n,
             AnimationNodeType::Dummy(n) => n,
             AnimationNodeType::Custom(_) => todo!(),

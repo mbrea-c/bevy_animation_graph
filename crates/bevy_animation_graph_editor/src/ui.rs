@@ -13,6 +13,7 @@ use bevy::render::camera::RenderTarget;
 use bevy::render::render_resource::{
     Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
 };
+use bevy::utils::HashMap;
 use bevy::window::PrimaryWindow;
 use bevy_animation_graph::core::animated_scene::{
     AnimatedScene, AnimatedSceneBundle, AnimatedSceneInstance,
@@ -21,7 +22,7 @@ use bevy_animation_graph::core::animation_clip::EntityPath;
 use bevy_animation_graph::core::animation_graph::{AnimationGraph, NodeId};
 use bevy_animation_graph::core::animation_graph_player::AnimationGraphPlayer;
 use bevy_animation_graph::core::animation_node::AnimationNode;
-use bevy_animation_graph::core::context::SpecContext;
+use bevy_animation_graph::core::context::{GraphContext, GraphContextId, SpecContext};
 use bevy_egui::EguiContext;
 use bevy_inspector_egui::bevy_egui::EguiUserTextures;
 use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
@@ -61,6 +62,8 @@ pub struct NodeSelection {
 pub struct SceneSelection {
     scene: Handle<AnimatedScene>,
     respawn: bool,
+    // TODO: Use context ids
+    active_context: HashMap<AssetId<AnimationGraph>, GraphContextId>,
 }
 
 #[derive(Default)]
@@ -331,7 +334,7 @@ impl TabViewer<'_> {
             return;
         };
 
-        world.resource_scope::<Assets<AnimationGraph>, ()>(|_, mut graph_assets| {
+        world.resource_scope::<Assets<AnimationGraph>, ()>(|world, mut graph_assets| {
             if !graph_assets.contains(graph_selection.graph) {
                 return;
             }
@@ -341,8 +344,38 @@ impl TabViewer<'_> {
                 let spec_context = SpecContext {
                     graph_assets: &graph_assets,
                 };
-                let nodes =
-                    GraphReprSpec::from_graph(graph, &graph_selection.graph_indices, spec_context);
+
+                // Autoselect context if none selected and some available
+                if let (Some(scene), Some(available_contexts)) = (
+                    &mut selection.scene,
+                    list_graph_contexts(world, |ctx| ctx.get_graph_id() == graph_selection.graph),
+                ) {
+                    if scene.active_context.get(&graph_selection.graph).is_none()
+                        && !available_contexts.is_empty()
+                    {
+                        scene
+                            .active_context
+                            .insert(graph_selection.graph, available_contexts[0]);
+                    }
+                }
+
+                let graph_player = get_animation_graph_player(world);
+
+                let maybe_graph_context = selection
+                    .scene
+                    .as_ref()
+                    .and_then(|s| s.active_context.get(&graph_selection.graph))
+                    .zip(graph_player)
+                    .and_then(|(id, p)| Some(id).zip(p.get_context_arena()))
+                    .and_then(|(id, ca)| ca.get_context(*id));
+
+                let nodes = GraphReprSpec::from_graph(
+                    graph,
+                    &graph_selection.graph_indices,
+                    spec_context,
+                    maybe_graph_context,
+                );
+
                 graph_selection
                     .nodes_context
                     .show(nodes.nodes, nodes.edges, ui);
@@ -418,7 +451,6 @@ impl TabViewer<'_> {
         let mut chosen_id: Option<AssetId<AnimationGraph>> = None;
 
         world.resource_scope::<AssetServer, ()>(|world, asset_server| {
-            // create a context with access to the world except for the `R` resource
             world.resource_scope::<Assets<AnimationGraph>, ()>(|world, mut graph_assets| {
                 let mut assets: Vec<_> = graph_assets.ids().collect();
                 assets.sort();
@@ -479,10 +511,14 @@ impl TabViewer<'_> {
         });
         queue.apply(world);
 
+        // TODO: Make sure to clear out all places that hold a graph context id
+        //       when changing scene selection.
+
         if let Some(chosen_handle) = chosen_handle {
             selection.scene = Some(SceneSelection {
                 scene: chosen_handle,
                 respawn: true,
+                active_context: HashMap::default(),
             });
         }
     }
@@ -494,6 +530,8 @@ impl TabViewer<'_> {
         graph_changes: &mut Vec<GraphChange>,
     ) {
         let mut changes = Vec::new();
+
+        select_graph_context(world, ui, selection);
 
         let Some(graph_selection) = &mut selection.graph_editor else {
             return;
@@ -809,6 +847,59 @@ impl TabViewer<'_> {
     }
 }
 
+fn list_graph_contexts(
+    world: &mut World,
+    filter: impl Fn(&GraphContext) -> bool,
+) -> Option<Vec<GraphContextId>> {
+    let Some(player) = get_animation_graph_player(world) else {
+        return None;
+    };
+    let Some(arena) = player.get_context_arena() else {
+        return None;
+    };
+
+    Some(
+        arena
+            .iter_context_ids()
+            .filter(|id| {
+                let context = arena.get_context(*id).unwrap();
+                filter(context)
+            })
+            .collect(),
+    )
+}
+
+fn select_graph_context(world: &mut World, ui: &mut egui::Ui, selection: &mut InspectorSelection) {
+    let Some(graph) = &selection.graph_editor else {
+        return;
+    };
+
+    let Some(available) = list_graph_contexts(world, |ctx| ctx.get_graph_id() == graph.graph)
+    else {
+        return;
+    };
+
+    let Some(scene) = &mut selection.scene else {
+        return;
+    };
+
+    let mut selected = scene.active_context.get(&graph.graph).copied();
+    egui::ComboBox::from_label("Active context")
+        .selected_text(format!("{:?}", selected))
+        .show_ui(ui, |ui| {
+            ui.selectable_value(&mut selected, None, format!("{:?}", None::<GraphContextId>));
+            for id in available {
+                ui.selectable_value(&mut selected, Some(id), format!("{:?}", Some(id)));
+            }
+        });
+
+    if let Some(selected) = selected {
+        scene.active_context.insert(graph.graph, selected);
+    } else {
+        scene.active_context.remove(&graph.graph);
+    }
+}
+
 #[derive(Component)]
 pub struct PreviewScene;
 
@@ -930,4 +1021,14 @@ pub fn setup_system(
             .looking_at(Vec3::Y, Vec3::Y),
         ..default()
     });
+}
+
+fn get_animation_graph_player(world: &mut World) -> Option<&AnimationGraphPlayer> {
+    let mut query = world.query::<(&AnimatedSceneInstance, &PreviewScene)>();
+    let Ok((instance, _)) = query.get_single(world) else {
+        return None;
+    };
+    let entity = instance.player_entity;
+    let mut query = world.query::<&AnimationGraphPlayer>();
+    query.get(world, entity).ok()
 }

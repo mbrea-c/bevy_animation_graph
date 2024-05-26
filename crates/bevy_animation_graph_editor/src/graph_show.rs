@@ -1,56 +1,194 @@
 use crate::egui_nodes::{
-    lib::{PinArgs, PinShape},
-    link::{LinkColorArgs, LinkSpec},
+    lib::{PinShape, PinStyleArgs},
+    link::{LinkSpec, LinkStyleArgs},
     node::{NodeArgs, NodeSpec},
     pin::{PinSpec, PinType},
 };
 use bevy::utils::HashMap;
 use bevy_animation_graph::core::{
     animation_graph::{AnimationGraph, SourcePin, TargetPin},
-    animation_node::NodeLike,
-    context::SpecContext,
-    parameters::ParamSpec,
-    pose::PoseSpec,
+    animation_node::{AnimationNode, NodeLike},
+    context::{CacheReadFilter, GraphContext, SpecContext},
+    edge_data::DataSpec,
 };
 use bevy_inspector_egui::egui::Color32;
 
 /// returns (base, hovered, selected)
-fn param_spec_to_colors(spec: ParamSpec) -> (Color32, Color32, Color32) {
+fn param_spec_to_colors(spec: DataSpec) -> (PinStyleArgs, LinkStyleArgs) {
     match spec {
-        ParamSpec::F32 => (
-            Color32::from_rgb(140, 28, 3),
-            Color32::from_rgb(184, 99, 74),
-            Color32::from_rgb(184, 99, 74),
-        ),
-        ParamSpec::Vec3 => (
-            Color32::from_rgb(50, 103, 29),
-            Color32::from_rgb(111, 147, 93),
-            Color32::from_rgb(111, 147, 93),
-        ),
-        ParamSpec::EntityPath => (
-            Color32::from_rgb(222, 109, 0),
-            Color32::from_rgb(241, 153, 89),
-            Color32::from_rgb(241, 153, 89),
-        ),
-        ParamSpec::Quat => (
-            Color32::from_rgb(13, 72, 160),
-            Color32::from_rgb(108, 122, 189),
-            Color32::from_rgb(108, 122, 189),
-        ),
-        ParamSpec::BoneMask => (
-            Color32::from_rgb(113, 59, 40),
-            Color32::from_rgb(158, 114, 98),
-            Color32::from_rgb(158, 114, 98),
-        ),
+        DataSpec::F32 => {
+            let base = Color32::from_rgb(140, 28, 3);
+            let hovered = Color32::from_rgb(184, 99, 74);
+            let selected = Color32::from_rgb(184, 99, 74);
+
+            (
+                PinStyleArgs {
+                    background: Some(base),
+                    hovered: Some(hovered),
+                    shape: Some(PinShape::CircleFilled),
+                },
+                LinkStyleArgs {
+                    base: Some(base),
+                    hovered: Some(hovered),
+                    selected: Some(selected),
+                    thickness: None,
+                },
+            )
+        }
+        DataSpec::Vec3 => {
+            let base = Color32::from_rgb(50, 103, 29);
+            let hovered = Color32::from_rgb(111, 147, 93);
+            let selected = Color32::from_rgb(111, 147, 93);
+
+            (
+                PinStyleArgs {
+                    background: Some(base),
+                    hovered: Some(hovered),
+                    shape: Some(PinShape::CircleFilled),
+                },
+                LinkStyleArgs {
+                    base: Some(base),
+                    hovered: Some(hovered),
+                    selected: Some(selected),
+                    thickness: None,
+                },
+            )
+        }
+        DataSpec::EntityPath => {
+            let base = Color32::from_rgb(222, 109, 0);
+            let hovered = Color32::from_rgb(241, 153, 89);
+            let selected = Color32::from_rgb(241, 153, 89);
+
+            (
+                PinStyleArgs {
+                    background: Some(base),
+                    hovered: Some(hovered),
+                    shape: Some(PinShape::CircleFilled),
+                },
+                LinkStyleArgs {
+                    base: Some(base),
+                    hovered: Some(hovered),
+                    selected: Some(selected),
+                    thickness: None,
+                },
+            )
+        }
+        DataSpec::Quat => {
+            let base = Color32::from_rgb(13, 72, 160);
+            let hovered = Color32::from_rgb(108, 122, 189);
+            let selected = Color32::from_rgb(108, 122, 189);
+
+            (
+                PinStyleArgs {
+                    background: Some(base),
+                    hovered: Some(hovered),
+                    shape: Some(PinShape::CircleFilled),
+                },
+                LinkStyleArgs {
+                    base: Some(base),
+                    hovered: Some(hovered),
+                    selected: Some(selected),
+                    thickness: None,
+                },
+            )
+        }
+        DataSpec::BoneMask => {
+            let base = Color32::from_rgb(113, 59, 40);
+            let hovered = Color32::from_rgb(158, 114, 98);
+            let selected = Color32::from_rgb(158, 114, 98);
+
+            (
+                PinStyleArgs {
+                    background: Some(base),
+                    hovered: Some(hovered),
+                    shape: Some(PinShape::CircleFilled),
+                },
+                LinkStyleArgs {
+                    base: Some(base),
+                    hovered: Some(hovered),
+                    selected: Some(selected),
+                    thickness: None,
+                },
+            )
+        }
+        DataSpec::Pose => {
+            let base = Color32::from_rgb(180, 180, 180);
+            let hovered = Color32::from_rgb(220, 220, 220);
+            let selected = Color32::from_rgb(220, 220, 220);
+
+            (
+                PinStyleArgs {
+                    background: Some(base),
+                    hovered: Some(hovered),
+                    shape: Some(PinShape::CircleFilled),
+                },
+                LinkStyleArgs {
+                    base: Some(base),
+                    hovered: Some(hovered),
+                    selected: Some(selected),
+                    thickness: Some(6.),
+                },
+            )
+        }
+        DataSpec::EventQueue => {
+            let base = Color32::from_rgb(102, 14, 96);
+            let hovered = Color32::from_rgb(165, 113, 168);
+            let selected = Color32::from_rgb(165, 113, 168);
+
+            (
+                PinStyleArgs {
+                    background: Some(base),
+                    hovered: Some(hovered),
+                    shape: Some(PinShape::CircleFilled),
+                },
+                LinkStyleArgs {
+                    base: Some(base),
+                    hovered: Some(hovered),
+                    selected: Some(selected),
+                    thickness: Some(3.),
+                },
+            )
+        }
+        DataSpec::Bool => {
+            let base = Color32::from_rgb(140, 28, 3);
+            let hovered = Color32::from_rgb(184, 99, 74);
+            let selected = Color32::from_rgb(184, 99, 74);
+
+            (
+                PinStyleArgs {
+                    background: Some(base),
+                    hovered: Some(hovered),
+                    shape: Some(PinShape::CircleFilled),
+                },
+                LinkStyleArgs {
+                    base: Some(base),
+                    hovered: Some(hovered),
+                    selected: Some(selected),
+                    thickness: None,
+                },
+            )
+        }
     }
 }
 
 /// returns (base, hovered, selected)
-fn pose_spec_to_colors(_spec: PoseSpec) -> (Color32, Color32, Color32) {
+fn time_colors() -> (PinStyleArgs, LinkStyleArgs) {
+    let base = Color32::from_rgba_unmultiplied(150, 150, 150, 127);
+    let hovered = Color32::from_rgb(200, 200, 200);
+    let selected = Color32::from_rgb(200, 200, 200);
+
     (
-        Color32::from_rgb(180, 180, 180),
-        Color32::from_rgb(220, 220, 220),
-        Color32::from_rgb(220, 220, 220),
+        PinStyleArgs {
+            background: Some(base),
+            hovered: Some(hovered),
+            shape: Some(PinShape::TriangleFilled),
+        },
+        LinkStyleArgs {
+            base: Some(base),
+            hovered: Some(hovered),
+            selected: Some(selected),
+            thickness: Some(6.),
+        },
     )
 }
 
@@ -177,56 +315,56 @@ pub fn make_graph_indices(
         graph_indices.node_indices.add_mapping(node.name.clone());
 
         // add pins
-        for (name, _) in node.parameter_input_spec(ctx).iter() {
+        for (name, _) in node.data_input_spec(ctx).iter() {
             graph_indices
                 .pin_indices
-                .add_mapping(Pin::Target(TargetPin::NodeParameter(
+                .add_mapping(Pin::Target(TargetPin::NodeData(
                     node.name.clone(),
                     name.clone(),
                 )));
         }
-        for (name, _) in node.parameter_output_spec(ctx).iter() {
+        for (name, _) in node.data_output_spec(ctx).iter() {
             graph_indices
                 .pin_indices
-                .add_mapping(Pin::Source(SourcePin::NodeParameter(
+                .add_mapping(Pin::Source(SourcePin::NodeData(
                     node.name.clone(),
                     name.clone(),
                 )));
         }
-        for (name, _) in node.pose_input_spec(ctx).iter() {
+        for (name, _) in node.time_input_spec(ctx).iter() {
             graph_indices
                 .pin_indices
-                .add_mapping(Pin::Target(TargetPin::NodePose(
+                .add_mapping(Pin::Target(TargetPin::NodeTime(
                     node.name.clone(),
                     name.clone(),
                 )));
         }
-        if node.pose_output_spec(ctx).is_some() {
+        if node.time_output_spec(ctx).is_some() {
             graph_indices
                 .pin_indices
-                .add_mapping(Pin::Source(SourcePin::NodePose(node.name.clone())));
+                .add_mapping(Pin::Source(SourcePin::NodeTime(node.name.clone())));
         }
     }
     // add input/output pins
     for (name, _) in graph.default_parameters.iter() {
         graph_indices
             .pin_indices
-            .add_mapping(Pin::Source(SourcePin::InputParameter(name.clone())));
+            .add_mapping(Pin::Source(SourcePin::InputData(name.clone())));
     }
-    for (name, _) in graph.input_poses.iter() {
+    for (name, _) in graph.input_times.iter() {
         graph_indices
             .pin_indices
-            .add_mapping(Pin::Source(SourcePin::InputPose(name.clone())));
+            .add_mapping(Pin::Source(SourcePin::InputTime(name.clone())));
     }
     for (name, _) in graph.output_parameters.iter() {
         graph_indices
             .pin_indices
-            .add_mapping(Pin::Target(TargetPin::OutputParameter(name.clone())));
+            .add_mapping(Pin::Target(TargetPin::OutputData(name.clone())));
     }
-    if graph.output_pose.is_some() {
+    if graph.output_time.is_some() {
         graph_indices
             .pin_indices
-            .add_mapping(Pin::Target(TargetPin::OutputPose));
+            .add_mapping(Pin::Target(TargetPin::OutputTime));
     }
 
     let mut remove_edges = vec![];
@@ -264,18 +402,50 @@ pub struct GraphReprSpec {
 }
 
 impl GraphReprSpec {
-    pub fn from_graph(graph: &AnimationGraph, indices: &GraphIndices, ctx: SpecContext) -> Self {
+    pub fn from_graph(
+        graph: &AnimationGraph,
+        indices: &GraphIndices,
+        ctx: SpecContext,
+        graph_context: Option<&GraphContext>,
+    ) -> Self {
         let mut repr_spec = GraphReprSpec::default();
 
-        repr_spec.add_nodes(graph, indices, ctx);
+        repr_spec.add_nodes(graph, indices, ctx, graph_context);
         repr_spec.add_input_output_nodes(graph, indices);
         repr_spec.add_edges(graph, indices, ctx);
 
         repr_spec
     }
 
-    fn add_nodes(&mut self, graph: &AnimationGraph, indices: &GraphIndices, ctx: SpecContext) {
+    fn node_debug_info(
+        node: &AnimationNode,
+        graph_context: Option<&GraphContext>,
+    ) -> (Option<f32>, Option<f32>) {
+        let Some(graph_context) = graph_context else {
+            return (None, None);
+        };
+
+        let source_pin = SourcePin::NodeTime(node.name.clone());
+        let time = graph_context
+            .caches
+            .get(|c| c.get_time(&source_pin), CacheReadFilter::PRIMARY);
+        let duration = graph_context
+            .caches
+            .get(|c| c.get_duration(&source_pin), CacheReadFilter::PRIMARY);
+
+        (time, duration.flatten())
+    }
+
+    fn add_nodes(
+        &mut self,
+        graph: &AnimationGraph,
+        indices: &GraphIndices,
+        ctx: SpecContext,
+        graph_context: Option<&GraphContext>,
+    ) {
         for node in graph.nodes.values() {
+            let (time, duration) = Self::node_debug_info(node, graph_context);
+
             let mut constructor = NodeSpec {
                 id: indices.node_indices.id(&node.name).unwrap(),
                 name: node.name.clone(),
@@ -287,76 +457,63 @@ impl GraphReprSpec {
                     .unwrap()
                     .to_array()
                     .into(),
+                time,
+                duration,
                 ..Default::default()
             };
 
             // parameter input pins
-            for (name, spec) in node.parameter_input_spec(ctx).iter() {
-                let spec = spec.spec;
-                let (base, hovered, _) = param_spec_to_colors(spec);
-                let pin = Pin::Target(TargetPin::NodeParameter(node.name.clone(), name.clone()));
+            for (name, spec) in node.data_input_spec(ctx).iter() {
+                let (pin_style, _) = param_spec_to_colors(*spec);
+                let pin = Pin::Target(TargetPin::NodeData(node.name.clone(), name.clone()));
                 let pin_id = indices.pin_indices.id(&pin).unwrap();
                 let name = name.clone();
                 constructor.attributes.push(PinSpec {
                     id: pin_id,
                     kind: PinType::Input,
                     name,
-                    style_args: PinArgs {
-                        background: Some(base),
-                        hovered: Some(hovered),
-                    },
+                    style_args: pin_style,
                     ..Default::default()
                 });
             }
             // parameter output pins
-            for (name, spec) in node.parameter_output_spec(ctx).iter() {
-                let (base, hovered, _) = param_spec_to_colors(*spec);
-                let pin = Pin::Source(SourcePin::NodeParameter(node.name.clone(), name.clone()));
+            for (name, spec) in node.data_output_spec(ctx).iter() {
+                let (pin_style, _) = param_spec_to_colors(*spec);
+                let pin = Pin::Source(SourcePin::NodeData(node.name.clone(), name.clone()));
                 let pin_id = indices.pin_indices.id(&pin).unwrap();
                 let name = name.clone();
                 constructor.attributes.push(PinSpec {
                     id: pin_id,
                     kind: PinType::Output,
                     name,
-                    style_args: PinArgs {
-                        background: Some(base),
-                        hovered: Some(hovered),
-                    },
+                    style_args: pin_style,
                     ..Default::default()
                 });
             }
-            // pose input pins
-            for (name, spec) in node.pose_input_spec(ctx).iter() {
-                let (base, hovered, _) = pose_spec_to_colors(*spec);
-                let pin = Pin::Target(TargetPin::NodePose(node.name.clone(), name.clone()));
+            // time input pins
+            for (name, _) in node.time_input_spec(ctx).iter() {
+                let (pin_style, _) = time_colors();
+                let pin = Pin::Target(TargetPin::NodeTime(node.name.clone(), name.clone()));
                 let pin_id = indices.pin_indices.id(&pin).unwrap();
                 let name = name.clone();
                 constructor.attributes.push(PinSpec {
                     id: pin_id,
                     kind: PinType::Input,
-                    shape: PinShape::TriangleFilled,
                     name,
-                    style_args: PinArgs {
-                        background: Some(base),
-                        hovered: Some(hovered),
-                    },
+                    style_args: pin_style,
                     ..Default::default()
                 });
             }
-            // pose input pin
-            if let Some(spec) = node.pose_output_spec(ctx) {
-                let (base, hovered, _) = pose_spec_to_colors(spec);
-                let pin = Pin::Source(SourcePin::NodePose(node.name.clone()));
+            // time input pin
+            if let Some(_) = node.time_output_spec(ctx) {
+                let (pin_style, _) = time_colors();
+                let pin = Pin::Source(SourcePin::NodeTime(node.name.clone()));
                 let pin_id = indices.pin_indices.id(&pin).unwrap();
                 constructor.attributes.push(PinSpec {
                     id: pin_id,
                     kind: PinType::Output,
-                    shape: PinShape::TriangleFilled,
-                    name: "Pose".into(),
-                    style_args: PinArgs {
-                        background: Some(base),
-                        hovered: Some(hovered),
-                    },
+                    name: "time".into(),
+                    style_args: pin_style,
                     ..Default::default()
                 });
             }
@@ -381,9 +538,9 @@ impl GraphReprSpec {
             ..Default::default()
         };
         for (name, p) in graph.default_parameters.iter() {
-            let spec = ParamSpec::from(p);
-            let (base, hovered, _) = param_spec_to_colors(spec);
-            let pin = Pin::Source(SourcePin::InputParameter(name.clone()));
+            let spec = DataSpec::from(p);
+            let (pin_style, _) = param_spec_to_colors(spec);
+            let pin = Pin::Source(SourcePin::InputData(name.clone()));
             let pin_id = indices.pin_indices.id(&pin).unwrap();
             let name = name.clone();
 
@@ -391,28 +548,21 @@ impl GraphReprSpec {
                 id: pin_id,
                 kind: PinType::Output,
                 name,
-                style_args: PinArgs {
-                    background: Some(base),
-                    hovered: Some(hovered),
-                },
+                style_args: pin_style,
                 ..Default::default()
             });
         }
 
-        for (name, spec) in graph.input_poses.iter() {
-            let (base, hovered, _) = pose_spec_to_colors(*spec);
-            let pin = Pin::Source(SourcePin::InputPose(name.clone()));
+        for (name, _) in graph.input_times.iter() {
+            let (pin_style, _) = time_colors();
+            let pin = Pin::Source(SourcePin::InputTime(name.clone()));
             let pin_id = indices.pin_indices.id(&pin).unwrap();
             let name = name.clone();
             input_node_contructor.attributes.push(PinSpec {
                 id: pin_id,
                 kind: PinType::Output,
-                shape: PinShape::TriangleFilled,
                 name,
-                style_args: PinArgs {
-                    background: Some(base),
-                    hovered: Some(hovered),
-                },
+                style_args: pin_style,
                 ..Default::default()
             });
         }
@@ -435,35 +585,28 @@ impl GraphReprSpec {
             ..Default::default()
         };
         for (name, spec) in graph.output_parameters.iter() {
-            let (base, hovered, _) = param_spec_to_colors(*spec);
-            let pin = Pin::Target(TargetPin::OutputParameter(name.clone()));
+            let (pin_style, _) = param_spec_to_colors(*spec);
+            let pin = Pin::Target(TargetPin::OutputData(name.clone()));
             let pin_id = indices.pin_indices.id(&pin).unwrap();
             let name = name.clone();
             output_node_contructor.attributes.push(PinSpec {
                 id: pin_id,
                 kind: PinType::Input,
                 name,
-                style_args: PinArgs {
-                    background: Some(base),
-                    hovered: Some(hovered),
-                },
+                style_args: pin_style,
                 ..Default::default()
             });
         }
 
-        if let Some(spec) = graph.output_pose {
-            let (base, hovered, _) = pose_spec_to_colors(spec);
-            let pin = Pin::Target(TargetPin::OutputPose);
+        if let Some(_) = graph.output_time {
+            let (pin_style, _) = time_colors();
+            let pin = Pin::Target(TargetPin::OutputTime);
             let pin_id = indices.pin_indices.id(&pin).unwrap();
             output_node_contructor.attributes.push(PinSpec {
                 id: pin_id,
                 kind: PinType::Input,
-                shape: PinShape::TriangleFilled,
                 name: "Pose".into(),
-                style_args: PinArgs {
-                    background: Some(base),
-                    hovered: Some(hovered),
-                },
+                style_args: pin_style,
                 ..Default::default()
             });
         }
@@ -478,65 +621,25 @@ impl GraphReprSpec {
                 .edge_ids(source_pin.clone(), target_pin.clone())
                 .unwrap();
 
-            let (color, thickness) = match target_pin {
-                TargetPin::NodeParameter(nid, pid) => {
-                    let params = graph.nodes.get(nid).unwrap().parameter_input_spec(ctx);
-                    let spec = params.get(pid).unwrap().spec;
-                    let (base, hovered, selected) = param_spec_to_colors(spec);
-                    (
-                        LinkColorArgs {
-                            base: Some(base),
-                            hovered: Some(hovered),
-                            selected: Some(selected),
-                        },
-                        3.,
-                    )
+            let link_style = match target_pin {
+                TargetPin::NodeData(nid, pid) => {
+                    let params = graph.nodes.get(nid).unwrap().data_input_spec(ctx);
+                    let spec = *params.get(pid).unwrap();
+                    param_spec_to_colors(spec).1
                 }
-                TargetPin::OutputParameter(pid) => {
+                TargetPin::OutputData(pid) => {
                     let spec = graph.output_parameters.get(pid).unwrap();
-                    let (base, hovered, selected) = param_spec_to_colors(*spec);
-                    (
-                        LinkColorArgs {
-                            base: Some(base),
-                            hovered: Some(hovered),
-                            selected: Some(selected),
-                        },
-                        3.,
-                    )
+                    param_spec_to_colors(*spec).1
                 }
-                TargetPin::NodePose(nid, pid) => {
-                    let poses = graph.nodes.get(nid).unwrap().pose_input_spec(ctx);
-                    let spec = poses.get(pid).unwrap();
-                    let (base, hovered, selected) = pose_spec_to_colors(*spec);
-                    (
-                        LinkColorArgs {
-                            base: Some(base),
-                            hovered: Some(hovered),
-                            selected: Some(selected),
-                        },
-                        5.,
-                    )
-                }
-                TargetPin::OutputPose => {
-                    let spec = graph.output_pose.as_ref().unwrap();
-                    let (base, hovered, selected) = pose_spec_to_colors(*spec);
-                    (
-                        LinkColorArgs {
-                            base: Some(base),
-                            hovered: Some(hovered),
-                            selected: Some(selected),
-                        },
-                        5.,
-                    )
-                }
+                TargetPin::NodeTime(_, _) => time_colors().1,
+                TargetPin::OutputTime => time_colors().1,
             };
 
             self.edges.push(LinkSpec {
                 id: edge_id,
                 start_pin_index: source_id,
                 end_pin_index: target_id,
-                thickness: Some(thickness),
-                color_style: color,
+                style: link_style,
             });
         }
     }

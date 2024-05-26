@@ -1,0 +1,124 @@
+(
+    nodes: [
+        (
+            name: "chain walk",
+            node: Chain(
+                interpolation_period: 0.5,
+            ),
+        ),
+        (
+            name: "chain run",
+            node: Chain(
+                interpolation_period: 0.5,
+            ),
+        ),
+        (
+            name: "blend",
+            node: Blend,
+        ),
+        (
+            name: "speed",
+            node: Speed,
+        ),
+        (
+            name: "flip walk",
+            node: FlipLR(
+                config: (
+                    name_mapper: Pattern((
+                        key_1: "L",
+                        key_2: "R",
+                        pattern_before: "^.*",
+                        pattern_after: "$",
+                    )),
+                ),
+            ),
+        ),
+        (
+            name: "loop",
+            node: Loop(
+                interpolation_period: 0.5,
+            ),
+        ),
+        (
+            name: "run clip 2",
+            node: Clip("animations/human_run.anim.ron", None, None),
+        ),
+        (
+            name: "flip run",
+            node: FlipLR(
+                config: (
+                    name_mapper: Pattern((
+                        key_1: "L",
+                        key_2: "R",
+                        pattern_before: "^.*",
+                        pattern_after: "$",
+                    )),
+                ),
+            ),
+        ),
+        (
+            name: "run clip 1",
+            node: Clip("animations/human_run.anim.ron", None, None),
+        ),
+        (
+            name: "walk clip 1",
+            node: Clip("animations/human_walk.anim.ron", None, None),
+        ),
+        (
+            name: "walk clip 2",
+            node: Clip("animations/human_walk.anim.ron", None, None),
+        ),
+    ],
+    edges_inverted: {
+        NodeTime("blend", "time B"): NodeTime("chain run"),
+        NodeData("blend", "pose B"): NodeData("chain run", "pose"),
+        OutputData("pose"): NodeData("speed", "pose"),
+        NodeData("speed", "pose"): NodeData("loop", "pose"),
+        NodeTime("loop", "time"): NodeTime("blend"),
+        NodeData("blend", "factor"): InputData("blend"),
+        NodeData("loop", "pose"): NodeData("blend", "pose"),
+        NodeData("chain run", "pose A"): NodeData("run clip 1", "pose"),
+        NodeTime("blend", "time A"): NodeTime("chain walk"),
+        OutputTime: NodeTime("speed"),
+        NodeData("flip walk", "pose"): NodeData("walk clip 2", "pose"),
+        NodeTime("flip walk", "time"): NodeTime("walk clip 2"),
+        NodeTime("flip run", "time"): NodeTime("run clip 2"),
+        NodeData("chain walk", "pose B"): NodeData("flip walk", "pose"),
+        NodeTime("chain run", "time A"): NodeTime("run clip 1"),
+        NodeData("blend", "pose A"): NodeData("chain walk", "pose"),
+        NodeTime("chain walk", "time B"): NodeTime("flip walk"),
+        NodeData("chain walk", "pose A"): NodeData("walk clip 1", "pose"),
+        NodeData("flip run", "pose"): NodeData("run clip 2", "pose"),
+        NodeData("chain run", "pose B"): NodeData("flip run", "pose"),
+        NodeTime("chain run", "time B"): NodeTime("flip run"),
+        NodeTime("chain walk", "time A"): NodeTime("walk clip 1"),
+        NodeData("speed", "Speed"): InputData("speed"),
+        NodeTime("speed", "time"): NodeTime("loop"),
+    },
+    default_parameters: {
+        "blend": F32(0.2),
+        "speed": F32(1.0),
+    },
+    input_times: {},
+    output_parameters: {
+        "pose": Pose,
+    },
+    output_time: Some(()),
+    extra: (
+        node_positions: {
+            "chain walk": (335.0, 320.0),
+            "chain run": (328.0, 600.0),
+            "blend": (501.0, 441.0),
+            "speed": (777.0, 428.0),
+            "flip walk": (167.0, 401.0),
+            "loop": (640.0, 443.0),
+            "run clip 2": (27.0, 712.0),
+            "flip run": (170.0, 713.0),
+            "run clip 1": (172.0, 558.0),
+            "walk clip 1": (169.0, 247.0),
+            "walk clip 2": (21.0, 401.0),
+        },
+        input_position: (414.0, 193.0),
+        output_position: (914.0, 431.0),
+    ),
+)

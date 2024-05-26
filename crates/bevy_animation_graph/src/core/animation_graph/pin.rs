@@ -3,16 +3,16 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Reflect, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum TargetPin<NodeId, PinId> {
-    NodeParameter(NodeId, PinId),
-    OutputParameter(PinId),
-    NodePose(NodeId, PinId),
-    OutputPose,
+    NodeData(NodeId, PinId),
+    OutputData(PinId),
+    NodeTime(NodeId, PinId),
+    OutputTime,
 }
 
 impl<NodeId: Eq, PinId> TargetPin<NodeId, PinId> {
     pub fn node_rename(&mut self, old_id: NodeId, new_id: NodeId) {
         match self {
-            Self::NodeParameter(id, _) | Self::NodePose(id, _) => {
+            Self::NodeData(id, _) | Self::NodeTime(id, _) => {
                 if *id == old_id {
                     *id = new_id;
                 }
@@ -29,16 +29,16 @@ impl<NodeId: Eq, PinId> TargetPin<NodeId, PinId> {
 
 #[derive(Reflect, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SourcePin<NodeId, PinId> {
-    NodeParameter(NodeId, PinId),
-    InputParameter(PinId),
-    NodePose(NodeId),
-    InputPose(PinId),
+    NodeData(NodeId, PinId),
+    InputData(PinId),
+    NodeTime(NodeId),
+    InputTime(PinId),
 }
 
 impl<NodeId: Eq, PinId> SourcePin<NodeId, PinId> {
     pub fn node_rename(&mut self, old_id: NodeId, new_id: NodeId) {
         match self {
-            Self::NodeParameter(id, _) | Self::NodePose(id) => {
+            Self::NodeData(id, _) | Self::NodeTime(id) => {
                 if *id == old_id {
                     *id = new_id;
                 }
@@ -64,10 +64,10 @@ impl<N2, P2> TargetPin<N2, P2> {
         P2: From<P1>,
     {
         match value {
-            TargetPin::NodeParameter(n, p) => Self::NodeParameter(N2::from(n), P2::from(p)),
-            TargetPin::OutputParameter(p) => Self::OutputParameter(P2::from(p)),
-            TargetPin::NodePose(n, p) => Self::NodePose(N2::from(n), P2::from(p)),
-            TargetPin::OutputPose => Self::OutputPose,
+            TargetPin::NodeData(n, p) => Self::NodeData(N2::from(n), P2::from(p)),
+            TargetPin::OutputData(p) => Self::OutputData(P2::from(p)),
+            TargetPin::NodeTime(n, p) => Self::NodeTime(N2::from(n), P2::from(p)),
+            TargetPin::OutputTime => Self::OutputTime,
         }
     }
 
@@ -87,10 +87,10 @@ impl<N2, P2> SourcePin<N2, P2> {
         P2: From<P1>,
     {
         match value {
-            SourcePin::NodeParameter(n, p) => Self::NodeParameter(N2::from(n), P2::from(p)),
-            SourcePin::InputParameter(p) => Self::InputParameter(P2::from(p)),
-            SourcePin::NodePose(n) => Self::NodePose(N2::from(n)),
-            SourcePin::InputPose(p) => Self::InputPose(P2::from(p)),
+            SourcePin::NodeData(n, p) => Self::NodeData(N2::from(n), P2::from(p)),
+            SourcePin::InputData(p) => Self::InputData(P2::from(p)),
+            SourcePin::NodeTime(n) => Self::NodeTime(N2::from(n)),
+            SourcePin::InputTime(p) => Self::InputTime(P2::from(p)),
         }
     }
 

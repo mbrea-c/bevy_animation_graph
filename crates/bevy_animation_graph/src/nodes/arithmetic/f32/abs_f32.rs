@@ -1,9 +1,9 @@
-use crate::core::animation_graph::{PinId, PinMap};
+use crate::core::animation_graph::PinMap;
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::errors::GraphError;
-use crate::prelude::{OptParamSpec, ParamSpec, ParamValue, PassContext, SpecContext};
+use crate::core::prelude::DataSpec;
+use crate::prelude::{PassContext, SpecContext};
 use bevy::prelude::*;
-use bevy::utils::HashMap;
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default)]
@@ -23,24 +23,21 @@ impl AbsF32 {
 }
 
 impl NodeLike for AbsF32 {
-    fn parameter_pass(
-        &self,
-        mut ctx: PassContext,
-    ) -> Result<HashMap<PinId, ParamValue>, GraphError> {
-        let input = ctx.parameter_back(Self::INPUT)?.unwrap_f32();
-
-        Ok([(Self::OUTPUT.into(), ParamValue::F32(input.abs()))].into())
-    }
-
-    fn parameter_input_spec(&self, _: SpecContext) -> PinMap<OptParamSpec> {
-        [(Self::INPUT.into(), ParamSpec::F32.into())].into()
-    }
-
-    fn parameter_output_spec(&self, _: SpecContext) -> PinMap<ParamSpec> {
-        [(Self::OUTPUT.into(), ParamSpec::F32)].into()
-    }
-
     fn display_name(&self) -> String {
         "|_| Absolute val".into()
+    }
+
+    fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+        let input = ctx.data_back(Self::INPUT)?.unwrap_f32();
+        ctx.set_data_fwd(Self::OUTPUT, input.abs());
+        Ok(())
+    }
+
+    fn data_input_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {
+        [(Self::INPUT.into(), DataSpec::F32)].into()
+    }
+
+    fn data_output_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {
+        [(Self::OUTPUT.into(), DataSpec::F32)].into()
     }
 }

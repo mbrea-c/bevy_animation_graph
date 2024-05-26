@@ -1,0 +1,65 @@
+(
+    nodes: [
+        (
+            name: "Done",
+            node: FireEvent((
+                id: "end_transition",
+            )),
+        ),
+        (
+            name: "Blend",
+            node: Blend,
+        ),
+        (
+            name: "Is it done?",
+            node: CompareF32(MoreEqual),
+        ),
+    ],
+    edges_inverted: {
+        NodeData("Is it done?", "F32 In 2"): InputData("1"),
+        NodeTime("Blend", "time A"): InputTime("source time"),
+        OutputData("pose"): NodeData("Blend", "pose"),
+        NodeData("Done", "condition"): NodeData("Is it done?", "Bool Out"),
+        NodeData("Is it done?", "F32 In 1"): InputData("elapsed percent"),
+        NodeTime("Blend", "time B"): InputTime("target time"),
+        OutputTime: NodeTime("Blend"),
+        NodeData("Blend", "pose B"): InputData("target pose"),
+        NodeData("Blend", "factor"): InputData("elapsed percent"),
+        NodeData("Blend", "pose A"): InputData("source pose"),
+        OutputData("driver events"): NodeData("Done", "event"),
+    },
+    default_parameters: {
+        "blend": F32(0.2),
+        "speed": F32(5.0),
+        "elapsed percent": F32(0.0),
+        "1": F32(1.0),
+        "source pose": Pose((
+            bones: [],
+            paths: {},
+            timestamp: 0.0,
+        )),
+        "target pose": Pose((
+            bones: [],
+            paths: {},
+            timestamp: 0.0,
+        )),
+    },
+    input_times: {
+        "source time": (),
+        "target time": (),
+    },
+    output_parameters: {
+        "driver events": EventQueue,
+        "pose": Pose,
+    },
+    output_time: Some(()),
+    extra: (
+        node_positions: {
+            "Blend": (553.0, 308.0),
+            "Done": (592.0, 167.0),
+            "Is it done?": (382.0, 156.0),
+        },
+        input_position: (167.0, 156.0),
+        output_position: (877.0, 329.0),
+    ),
+)

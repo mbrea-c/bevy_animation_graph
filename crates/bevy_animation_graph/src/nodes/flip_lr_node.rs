@@ -1,11 +1,12 @@
-use crate::core::animation_graph::{PinMap, TimeUpdate};
+use crate::core::animation_graph::PinMap;
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
-use crate::core::duration_data::DurationData;
 use crate::core::errors::GraphError;
-use crate::core::pose::{Pose, PoseSpec};
+use crate::core::pose::Pose;
+use crate::core::prelude::DataSpec;
 use crate::flipping::FlipXBySuffix;
 use crate::prelude::config::FlipConfig;
 use crate::prelude::{BoneDebugGizmos, PassContext, SpecContext};
+use crate::utils::unwrap::UnwrapVal;
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug)]
@@ -21,8 +22,9 @@ impl Default for FlipLRNode {
 }
 
 impl FlipLRNode {
-    pub const INPUT: &'static str = "Pose In";
-    pub const OUTPUT: &'static str = "Pose Out";
+    pub const IN_POSE: &'static str = "pose";
+    pub const IN_TIME: &'static str = "time";
+    pub const OUT_POSE: &'static str = "pose";
 
     pub fn new(config: FlipConfig) -> Self {
         Self { config }
@@ -34,28 +36,39 @@ impl FlipLRNode {
 }
 
 impl NodeLike for FlipLRNode {
-    fn duration_pass(&self, mut ctx: PassContext) -> Result<Option<DurationData>, GraphError> {
-        Ok(Some(ctx.duration_back(Self::INPUT)?))
+    fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+        let duration = ctx.duration_back(Self::IN_TIME)?;
+        ctx.set_duration_fwd(duration);
+        Ok(())
     }
 
-    fn pose_pass(
-        &self,
-        input: TimeUpdate,
-        mut ctx: PassContext,
-    ) -> Result<Option<Pose>, GraphError> {
-        let in_pose = ctx.pose_back(Self::INPUT, input)?;
+    fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+        let input = ctx.time_update_fwd()?;
+        ctx.set_time_update_back(Self::IN_TIME, input);
+        let in_pose: Pose = ctx.data_back(Self::IN_POSE)?.val();
+        ctx.set_time(in_pose.timestamp);
         ctx.pose_bone_gizmos(Color::RED, &in_pose);
         let flipped_pose = in_pose.flipped(&self.config);
         ctx.pose_bone_gizmos(Color::BLUE, &flipped_pose);
-        Ok(Some(flipped_pose))
+        ctx.set_data_fwd(Self::OUT_POSE, flipped_pose);
+
+        Ok(())
     }
 
-    fn pose_input_spec(&self, _: SpecContext) -> PinMap<PoseSpec> {
-        [(Self::INPUT.into(), PoseSpec::BoneSpace)].into()
+    fn data_input_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {
+        [(Self::IN_POSE.into(), DataSpec::Pose)].into()
     }
 
-    fn pose_output_spec(&self, _: SpecContext) -> Option<PoseSpec> {
-        Some(PoseSpec::BoneSpace)
+    fn data_output_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {
+        [(Self::OUT_POSE.into(), DataSpec::Pose)].into()
+    }
+
+    fn time_input_spec(&self, _: SpecContext) -> PinMap<()> {
+        [(Self::IN_TIME.into(), ())].into()
+    }
+
+    fn time_output_spec(&self, _: SpecContext) -> Option<()> {
+        Some(())
     }
 
     fn display_name(&self) -> String {

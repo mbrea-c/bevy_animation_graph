@@ -7,10 +7,11 @@ pub mod flip_lr_node;
 pub mod graph_node;
 pub mod loop_node;
 pub mod rotation_node;
-pub mod space_conversion;
+// pub mod space_conversion;
+pub mod fsm_node;
 pub mod speed_node;
 pub mod twoboneik_node;
-
+//
 pub use arithmetic::*;
 pub use blend_node::*;
 pub use chain_node::*;
@@ -20,6 +21,7 @@ pub use flip_lr_node::*;
 pub use graph_node::*;
 pub use loop_node::*;
 pub use rotation_node::*;
-pub use space_conversion::*;
+// pub use space_conversion::*;
+pub use fsm_node::*;
 pub use speed_node::*;
 pub use twoboneik_node::*;

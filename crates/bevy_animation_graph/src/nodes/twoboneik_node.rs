@@ -1,3 +1,16 @@
+use crate::{
+    core::{
+        animation_clip::EntityPath,
+        animation_graph::PinMap,
+        animation_node::{AnimationNode, AnimationNodeType, NodeLike},
+        errors::GraphError,
+        pose::Pose,
+        prelude::DataSpec,
+        space_conversion::SpaceConversion,
+    },
+    prelude::{BoneDebugGizmos, PassContext, SpecContext},
+    utils::unwrap::UnwrapVal,
+};
 use bevy::{
     math::{Quat, Vec3},
     reflect::{std_traits::ReflectDefault, Reflect},
@@ -5,26 +18,14 @@ use bevy::{
     transform::components::Transform,
 };
 
-use crate::{
-    core::{
-        animation_clip::EntityPath,
-        animation_graph::{PinMap, TimeUpdate},
-        animation_node::{AnimationNode, AnimationNodeType, NodeLike},
-        duration_data::DurationData,
-        errors::GraphError,
-        pose::{Pose, PoseSpec},
-        space_conversion::SpaceConversion,
-    },
-    prelude::{BoneDebugGizmos, OptParamSpec, ParamSpec, PassContext, SpecContext},
-    utils::unwrap::Unwrap,
-};
-
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default)]
 pub struct TwoBoneIKNode {}
 
 impl TwoBoneIKNode {
-    pub const INPUT: &'static str = "Pose In";
+    pub const IN_TIME: &'static str = "time";
+    pub const IN_POSE: &'static str = "pose";
+    pub const OUT_POSE: &'static str = "pose";
     pub const TARGETBONE: &'static str = "Target Path";
     pub const TARGETPOS: &'static str = "Target Position";
 
@@ -38,19 +39,19 @@ impl TwoBoneIKNode {
 }
 
 impl NodeLike for TwoBoneIKNode {
-    fn duration_pass(&self, mut ctx: PassContext) -> Result<Option<DurationData>, GraphError> {
-        Ok(Some(ctx.duration_back(Self::INPUT)?))
+    fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+        let duration = ctx.duration_back(Self::IN_TIME)?;
+        ctx.set_duration_fwd(duration);
+        Ok(())
     }
 
-    fn pose_pass(
-        &self,
-        input: TimeUpdate,
-        mut ctx: PassContext,
-    ) -> Result<Option<Pose>, GraphError> {
-        let target: EntityPath = ctx.parameter_back(Self::TARGETBONE)?.unwrap();
-        let target_pos_char: Vec3 = ctx.parameter_back(Self::TARGETPOS)?.unwrap();
+    fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+        let input = ctx.time_update_fwd()?;
+        ctx.set_time_update_back(Self::IN_TIME, input);
+        let target: EntityPath = ctx.data_back(Self::TARGETBONE)?.val();
+        let target_pos_char: Vec3 = ctx.data_back(Self::TARGETPOS)?.val();
         //let targetrotation: Quat = ctx.parameter_back(Self::TARGETROT).unwrap();
-        let mut pose = ctx.pose_back(Self::INPUT, input)?;
+        let mut pose: Pose = ctx.data_back(Self::IN_POSE)?.val();
 
         if let (Some(bone_id), Some(parent_path), Some(grandparent_path)) = (
             pose.paths.get(&target),
@@ -107,28 +108,34 @@ impl NodeLike for TwoBoneIKNode {
             ctx.bone_gizmo(target.clone(), Color::BLUE, Some(&pose));
             ctx.bone_gizmo(parent_path.clone(), Color::BLUE, Some(&pose));
         }
-
-        Ok(Some(pose))
+        ctx.set_time(pose.timestamp);
+        ctx.set_data_fwd(Self::OUT_POSE, pose);
+        Ok(())
     }
 
-    fn parameter_input_spec(&self, _: SpecContext) -> PinMap<OptParamSpec> {
+    fn data_input_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {
         [
-            (Self::TARGETBONE.into(), ParamSpec::EntityPath.into()),
-            (Self::TARGETPOS.into(), ParamSpec::Vec3.into()),
+            (Self::TARGETBONE.into(), DataSpec::EntityPath),
+            (Self::TARGETPOS.into(), DataSpec::Vec3),
+            (Self::IN_POSE.into(), DataSpec::Pose),
         ]
         .into()
     }
 
-    fn pose_input_spec(&self, _: SpecContext) -> PinMap<PoseSpec> {
-        [(Self::INPUT.into(), PoseSpec::BoneSpace)].into()
-    }
-
-    fn pose_output_spec(&self, _: SpecContext) -> Option<PoseSpec> {
-        Some(PoseSpec::BoneSpace)
-    }
-
     fn display_name(&self) -> String {
         "Two Bone IK".into()
+    }
+
+    fn data_output_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {
+        [(Self::OUT_POSE.into(), DataSpec::Pose)].into()
+    }
+
+    fn time_input_spec(&self, _ctx: SpecContext) -> PinMap<()> {
+        [(Self::IN_TIME.into(), ())].into()
+    }
+
+    fn time_output_spec(&self, _ctx: SpecContext) -> Option<()> {
+        Some(())
     }
 }
 
