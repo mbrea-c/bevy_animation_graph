@@ -210,6 +210,10 @@ impl GraphStateStack {
             .or_else(|| opts.allow_primary.then(|| f(&self.primary_cache)).flatten())
     }
 
+    pub fn get_primary<T>(&self, f: impl Fn(&GraphState) -> Option<T>) -> Option<T> {
+        self.get(f, CacheReadFilter::PRIMARY)
+    }
+
     pub fn set<T>(&mut self, f: impl FnOnce(&mut GraphState) -> T, opts: CacheWriteFilter) -> T {
         match opts {
             CacheWriteFilter::Primary => f(&mut self.primary_cache),

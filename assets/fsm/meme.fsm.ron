@@ -3,7 +3,7 @@
     states: [
         (
             id: "walk",
-            graph: "animation_graphs/human_new.animgraph.ron",
+            graph: "animation_graphs/walk.animgraph.ron",
         ),
         (
             id: "run",

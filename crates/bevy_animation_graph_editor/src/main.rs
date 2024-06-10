@@ -1,5 +1,7 @@
+mod egui_fsm;
 mod egui_inspector_impls;
 mod egui_nodes;
+mod fsm_show;
 mod graph_saving;
 mod graph_show;
 mod graph_update;

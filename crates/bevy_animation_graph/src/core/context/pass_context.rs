@@ -312,11 +312,6 @@ impl<'a> PassContext<'a> {
     pub fn parent_data_back(&mut self, pin_id: impl Into<PinId>) -> Result<DataValue, GraphError> {
         if let Some(fsm_ctx) = &self.fsm_context {
             let pin_id = pin_id.into();
-            println!(
-                "Trying to get data '{}' back from fsm at:\n{}",
-                pin_id,
-                self.str_ctx_stack()
-            );
             fsm_ctx.fsm.get_data(
                 fsm_ctx.state_stack.clone(),
                 TargetPin::OutputData(pin_id.into()),
@@ -400,20 +395,12 @@ impl<'a> PassContext<'a> {
 
     pub fn parent_time_update_fwd(&self) -> Result<TimeUpdate, GraphError> {
         if let Some(fsm_ctx) = &self.fsm_context {
-            println!(
-                "Propagating time update fwd to fsm: {}",
-                self.str_ctx_stack()
-            );
             fsm_ctx.fsm.get_time_update(
                 fsm_ctx.state_stack.clone(),
                 TargetPin::OutputTime,
                 self.parent(),
             )
         } else {
-            println!(
-                "Propagating time update fwd to parent graph: {}",
-                self.str_ctx_stack()
-            );
             if self.has_parent() {
                 self.parent().time_update_fwd()
             } else {

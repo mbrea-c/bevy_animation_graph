@@ -4,8 +4,7 @@ use bevy_inspector_egui::bevy_egui;
 use super::{
     lib::*,
     link::{LinkStyle, LinkStyleArgs},
-    node::{NodeDataColorStyle, NodeDataLayoutStyle},
-    pin::{PinStyle, PinType},
+    node::{StateDataColorStyle, StateDataLayoutStyle},
 };
 
 /// Represents different color style values used by a Context
@@ -15,7 +14,7 @@ pub enum ColorStyle {
     NodeBackgroundHovered,
     NodeBackgroundSelected,
     NodeOutline,
-    NodeOutlineActive,
+    ActiveNodeOutline,
     TitleBar,
     TitleBarHovered,
     TitleBarSelected,
@@ -52,7 +51,7 @@ impl ColorStyle {
             egui::Color32::from_rgba_unmultiplied(75, 75, 75, 255);
         colors[ColorStyle::NodeOutline as usize] =
             egui::Color32::from_rgba_unmultiplied(100, 100, 100, 255);
-        colors[ColorStyle::NodeOutlineActive as usize] =
+        colors[ColorStyle::ActiveNodeOutline as usize] =
             egui::Color32::from_rgba_unmultiplied(100, 100, 200, 255);
         colors[ColorStyle::TitleBar as usize] =
             egui::Color32::from_rgba_unmultiplied(41, 74, 122, 255);
@@ -177,7 +176,6 @@ pub struct Style {
     pub link_line_segments_per_length: f32,
     pub link_hover_distance: f32,
 
-    pub pin_shape: PinShape,
     pub pin_circle_radius: f32,
     pub pin_quad_side_length: f32,
     pub pin_triangle_side_length: f32,
@@ -208,110 +206,17 @@ impl Default for Style {
             pin_offset: 0.0,
             flags: StyleFlags::NodeOutline as usize | StyleFlags::GridLines as usize,
             colors: ColorStyle::colors_dark(),
-            pin_shape: PinShape::CircleFilled,
         }
     }
 }
 
 impl Style {
-    pub(crate) fn get_screen_space_pin_coordinates(
+    pub(crate) fn format_node(
         &self,
-        node_rect: &egui::Rect,
-        attribute_rect: &egui::Rect,
-        kind: PinType,
-    ) -> egui::Pos2 {
-        let x = match kind {
-            PinType::Input => node_rect.min.x - self.pin_offset,
-            _ => node_rect.max.x + self.pin_offset,
-        };
-        egui::pos2(x, 0.5 * (attribute_rect.min.y + attribute_rect.max.y))
-    }
-
-    pub(crate) fn draw_pin_shape(
-        &self,
-        pin_pos: egui::Pos2,
-        pin_shape: PinShape,
-        pin_color: egui::Color32,
-        shape: egui::layers::ShapeIdx,
-        ui: &mut egui::Ui,
-    ) {
-        let painter = ui.painter();
-        match pin_shape {
-            PinShape::Circle => painter.set(
-                shape,
-                egui::Shape::circle_stroke(
-                    pin_pos,
-                    self.pin_circle_radius,
-                    (self.pin_line_thickness, pin_color),
-                ),
-            ),
-            PinShape::CircleFilled => painter.set(
-                shape,
-                egui::Shape::circle_filled(pin_pos, self.pin_circle_radius, pin_color),
-            ),
-            PinShape::Quad => painter.set(
-                shape,
-                egui::Shape::rect_stroke(
-                    egui::Rect::from_center_size(
-                        pin_pos,
-                        [self.pin_quad_side_length / 2.0; 2].into(),
-                    ),
-                    0.0,
-                    (self.pin_line_thickness, pin_color),
-                ),
-            ),
-            PinShape::QuadFilled => painter.set(
-                shape,
-                egui::Shape::rect_filled(
-                    egui::Rect::from_center_size(
-                        pin_pos,
-                        [self.pin_quad_side_length / 2.0; 2].into(),
-                    ),
-                    0.0,
-                    pin_color,
-                ),
-            ),
-            PinShape::Triangle => {
-                let sqrt_3 = 3f32.sqrt();
-                let left_offset = -0.166_666_7 * sqrt_3 * self.pin_triangle_side_length;
-                let right_offset = 0.333_333_3 * sqrt_3 * self.pin_triangle_side_length;
-                let verticacl_offset = 0.5 * self.pin_triangle_side_length;
-                painter.set(
-                    shape,
-                    egui::Shape::closed_line(
-                        vec![
-                            pin_pos + (left_offset, verticacl_offset).into(),
-                            pin_pos + (right_offset, 0.0).into(),
-                            pin_pos + (left_offset, -verticacl_offset).into(),
-                        ],
-                        (self.pin_line_thickness, pin_color),
-                    ),
-                )
-            }
-            PinShape::TriangleFilled => {
-                let sqrt_3 = 3f32.sqrt();
-                let left_offset = -0.166_666_7 * sqrt_3 * self.pin_triangle_side_length;
-                let right_offset = 0.333_333_3 * sqrt_3 * self.pin_triangle_side_length;
-                let verticacl_offset = 0.5 * self.pin_triangle_side_length;
-                painter.set(
-                    shape,
-                    egui::Shape::convex_polygon(
-                        vec![
-                            pin_pos + (left_offset, verticacl_offset).into(),
-                            pin_pos + (right_offset, 0.0).into(),
-                            pin_pos + (left_offset, -verticacl_offset).into(),
-                        ],
-                        pin_color,
-                        egui::Stroke::NONE,
-                    ),
-                )
-            }
-        }
-    }
-
-    pub(crate) fn format_node(&self, args: NodeArgs) -> (NodeDataColorStyle, NodeDataLayoutStyle) {
-        let mut color = NodeDataColorStyle::default();
-        let mut layout = NodeDataLayoutStyle::default();
+        args: StateArgs,
+    ) -> (StateDataColorStyle, StateDataLayoutStyle) {
+        let mut color = StateDataColorStyle::default();
+        let mut layout = StateDataLayoutStyle::default();
 
         color.background = args
             .background
@@ -343,18 +248,6 @@ impl Style {
         (color, layout)
     }
 
-    pub(crate) fn format_pin(&self, args: PinStyleArgs) -> PinStyle {
-        PinStyle {
-            background: args
-                .background
-                .unwrap_or(self.colors[ColorStyle::Pin as usize]),
-            hovered: args
-                .hovered
-                .unwrap_or(self.colors[ColorStyle::PinHovered as usize]),
-            shape: args.shape.unwrap_or(self.pin_shape),
-        }
-    }
-
     pub(crate) fn format_link(&self, args: LinkStyleArgs) -> LinkStyle {
         LinkStyle {
             base: args.base.unwrap_or(self.colors[ColorStyle::Link as usize]),
@@ -365,6 +258,7 @@ impl Style {
                 .selected
                 .unwrap_or(self.colors[ColorStyle::LinkSelected as usize]),
             thickness: args.thickness.unwrap_or(self.link_thickness),
+            ..Default::default()
         }
     }
 }

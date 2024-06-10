@@ -1,12 +1,18 @@
 use std::path::PathBuf;
 
+use crate::egui_fsm::lib::FsmUiContext;
 use crate::egui_inspector_impls::handle_path;
 use crate::egui_nodes::lib::NodesContext;
+use crate::fsm_show::{make_fsm_indices, FsmIndices, FsmReprSpec};
 use crate::graph_saving::SaveGraph;
 use crate::graph_show::{make_graph_indices, GraphIndices, GraphReprSpec};
-use crate::graph_update::{convert_graph_change, update_graph, Change, GraphChange};
+use crate::graph_update::{
+    apply_global_changes, convert_fsm_change, convert_graph_change, update_graph, Change,
+    FsmChange, GlobalChange, GraphChange,
+};
 use crate::tree::{Tree, TreeInternal, TreeResult};
 use crate::GraphHandles;
+use bevy::asset::UntypedAssetId;
 use bevy::ecs::system::CommandQueue;
 use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
@@ -23,6 +29,8 @@ use bevy_animation_graph::core::animation_graph::{AnimationGraph, NodeId};
 use bevy_animation_graph::core::animation_graph_player::AnimationGraphPlayer;
 use bevy_animation_graph::core::animation_node::AnimationNode;
 use bevy_animation_graph::core::context::{GraphContext, GraphContextId, SpecContext};
+use bevy_animation_graph::core::state_machine::high_level::StateMachine;
+use bevy_animation_graph::core::state_machine::{StateId, TransitionId};
 use bevy_egui::EguiContext;
 use bevy_inspector_egui::bevy_egui::EguiUserTextures;
 use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
@@ -53,6 +61,30 @@ pub struct GraphSelection {
     pub nodes_context: NodesContext,
 }
 
+pub struct FsmSelection {
+    pub fsm: AssetId<StateMachine>,
+    pub graph_indices: FsmIndices,
+    pub nodes_context: FsmUiContext,
+}
+
+#[derive(Default)]
+pub enum InspectorSelection {
+    FsmTransition(FsmTransitionSelection),
+    FsmState(FsmStateSelection),
+    #[default]
+    Nothing,
+}
+
+pub struct FsmTransitionSelection {
+    fsm: AssetId<StateMachine>,
+    state: TransitionId,
+}
+
+pub struct FsmStateSelection {
+    fsm: AssetId<StateMachine>,
+    state: StateId,
+}
+
 pub struct NodeSelection {
     graph: AssetId<AnimationGraph>,
     node: NodeId,
@@ -63,7 +95,7 @@ pub struct SceneSelection {
     scene: Handle<AnimatedScene>,
     respawn: bool,
     // TODO: Use context ids
-    active_context: HashMap<AssetId<AnimationGraph>, GraphContextId>,
+    active_context: HashMap<UntypedAssetId, GraphContextId>,
 }
 
 #[derive(Default)]
@@ -72,23 +104,27 @@ pub struct NodeCreation {
 }
 
 #[derive(Default)]
-pub struct InspectorSelection {
+pub struct EditorSelection {
     pub graph_editor: Option<GraphSelection>,
+    pub fsm_editor: Option<FsmSelection>,
+    pub inspector_selection: InspectorSelection,
     node: Option<NodeSelection>,
     scene: Option<SceneSelection>,
     node_creation: NodeCreation,
     entity_path: Option<EntityPath>,
 }
 
-pub struct RequestSave {
-    graph: AssetId<AnimationGraph>,
+pub enum RequestSave {
+    Graph(AssetId<AnimationGraph>),
+    Fsm(AssetId<StateMachine>),
 }
 
 #[derive(Resource)]
 pub struct UiState {
     state: DockState<EguiWindow>,
-    pub selection: InspectorSelection,
+    pub selection: EditorSelection,
     graph_changes: Vec<GraphChange>,
+    global_changes: Vec<GlobalChange>,
     /// Requests to save a graph. These still need confirmation from the user,
     /// and specification of path where graph should be saved.
     save_requests: Vec<RequestSave>,
@@ -100,21 +136,25 @@ pub struct UiState {
 
 impl UiState {
     pub fn new() -> Self {
-        let mut state = DockState::new(vec![EguiWindow::GraphEditor]);
+        let mut state = DockState::new(vec![EguiWindow::GraphEditor, EguiWindow::FsmEditor]);
         let tree = state.main_surface_mut();
         let [graph_editor, inspectors] = tree.split_right(
             NodeIndex::root(),
             0.75,
             vec![
                 EguiWindow::NodeInspector,
+                EguiWindow::StateInspector,
                 EguiWindow::GraphInspector,
                 EguiWindow::NodeCreate,
+                EguiWindow::Inspector,
             ],
         );
         let [_graph_editor, graph_selector] =
             tree.split_left(graph_editor, 0.2, vec![EguiWindow::GraphSelector]);
-        let [_graph_selector, _scene_selector] =
+        let [_graph_selector, scene_selector] =
             tree.split_below(graph_selector, 0.5, vec![EguiWindow::SceneSelector]);
+        let [_scene_selector, _fsm_selector] =
+            tree.split_below(scene_selector, 0.5, vec![EguiWindow::FsmSelector]);
         let [_node_inspector, preview] = tree.split_above(
             inspectors,
             0.5,
@@ -125,8 +165,9 @@ impl UiState {
 
         Self {
             state,
-            selection: InspectorSelection::default(),
+            selection: EditorSelection::default(),
             graph_changes: vec![],
+            global_changes: vec![],
             save_requests: vec![],
             save_events: vec![],
             preview_image: Handle::default(),
@@ -139,12 +180,13 @@ impl UiState {
     fn ui(&mut self, world: &mut World, ctx: &mut egui::Context) {
         for save_request in self.save_requests.drain(..) {
             self.state
-                .add_window(vec![TabViewer::create_graph_saver_tab(world, save_request)]);
+                .add_window(vec![TabViewer::create_saver_window(world, save_request)]);
         }
         let mut tab_viewer = TabViewer {
             world,
             selection: &mut self.selection,
             graph_changes: &mut self.graph_changes,
+            global_changes: &mut self.global_changes,
             save_requests: &mut self.save_requests,
             save_events: &mut self.save_events,
             preview_image: &self.preview_image,
@@ -161,15 +203,18 @@ impl UiState {
 #[derive(Debug)]
 enum EguiWindow {
     GraphEditor,
+    FsmEditor,
     NodeCreate,
     Preview,
     PreviewHierarchy,
     PreviewErrors,
     GraphSelector,
     SceneSelector,
+    FsmSelector,
     NodeInspector,
+    StateInspector,
     GraphInspector,
-
+    Inspector,
     GraphSaver(AssetId<AnimationGraph>, String, bool),
 }
 
@@ -183,17 +228,22 @@ impl EguiWindow {
             EguiWindow::PreviewErrors => "Errors".into(),
             EguiWindow::GraphSelector => "Select Graph".into(),
             EguiWindow::SceneSelector => "Select Scene".into(),
+            EguiWindow::FsmSelector => "Select FSM".into(),
             EguiWindow::NodeInspector => "Inspect Node".into(),
             EguiWindow::GraphInspector => "Inspect Graph IO".into(),
             EguiWindow::GraphSaver(_, _, _) => "Save Graph".into(),
+            EguiWindow::FsmEditor => "FSM Editor".into(),
+            EguiWindow::StateInspector => "Inspect State".into(),
+            EguiWindow::Inspector => "Inspector (Fsm Transition)".into(),
         }
     }
 }
 
 struct TabViewer<'a> {
     world: &'a mut World,
-    selection: &'a mut InspectorSelection,
+    selection: &'a mut EditorSelection,
     graph_changes: &'a mut Vec<GraphChange>,
+    global_changes: &'a mut Vec<GlobalChange>,
     save_requests: &'a mut Vec<RequestSave>,
     save_events: &'a mut Vec<SaveGraph>,
     preview_image: &'a Handle<Image>,
@@ -207,6 +257,7 @@ impl egui_dock::TabViewer for TabViewer<'_> {
         match window {
             EguiWindow::GraphSelector => Self::graph_selector(self.world, ui, self.selection),
             EguiWindow::SceneSelector => Self::scene_selector(self.world, ui, self.selection),
+            EguiWindow::FsmSelector => Self::fsm_selector(self.world, ui, self.selection),
             EguiWindow::GraphEditor => {
                 Self::graph_editor(
                     self.world,
@@ -237,6 +288,25 @@ impl egui_dock::TabViewer for TabViewer<'_> {
             EguiWindow::PreviewHierarchy => {
                 Self::scene_preview_entity_tree(self.world, ui, self.selection, self.notifications)
             }
+            EguiWindow::FsmEditor => {
+                Self::fsm_editor(
+                    self.world,
+                    ui,
+                    self.selection,
+                    self.global_changes,
+                    self.save_requests,
+                );
+            }
+            EguiWindow::StateInspector => {}
+            EguiWindow::Inspector => match &self.selection.inspector_selection {
+                InspectorSelection::FsmTransition(_) => {
+                    Self::transition_inspector(self.world, ui, self.selection, self.global_changes)
+                }
+                InspectorSelection::FsmState(_) => {
+                    Self::state_inspector(self.world, ui, self.selection, self.global_changes)
+                }
+                InspectorSelection::Nothing => todo!(),
+            },
         }
 
         while !self.graph_changes.is_empty() {
@@ -253,6 +323,19 @@ impl egui_dock::TabViewer for TabViewer<'_> {
                 }
             }
         }
+
+        let must_regen_indices = apply_global_changes(&mut self.world, self.global_changes.clone());
+        if must_regen_indices {
+            if let Some(graph_selection) = self.selection.graph_editor.as_mut() {
+                graph_selection.graph_indices =
+                    Self::update_graph_indices(self.world, graph_selection.graph);
+            }
+            if let Some(fsm_selection) = self.selection.fsm_editor.as_mut() {
+                fsm_selection.graph_indices =
+                    Self::update_fsm_indices(self.world, fsm_selection.fsm);
+            }
+        }
+        self.global_changes.clear();
     }
 
     fn force_close(&mut self, tab: &mut Self::Tab) -> bool {
@@ -293,7 +376,7 @@ impl TabViewer<'_> {
     fn scene_preview_entity_tree(
         world: &mut World,
         ui: &mut egui::Ui,
-        selection: &mut InspectorSelection,
+        selection: &mut EditorSelection,
         notifications: &mut Toasts,
     ) {
         if selection.scene.is_none() {
@@ -325,7 +408,7 @@ impl TabViewer<'_> {
     fn graph_editor(
         world: &mut World,
         ui: &mut egui::Ui,
-        selection: &mut InspectorSelection,
+        selection: &mut EditorSelection,
         graph_changes: &mut Vec<GraphChange>,
         save_requests: &mut Vec<RequestSave>,
     ) {
@@ -350,12 +433,15 @@ impl TabViewer<'_> {
                     &mut selection.scene,
                     list_graph_contexts(world, |ctx| ctx.get_graph_id() == graph_selection.graph),
                 ) {
-                    if scene.active_context.get(&graph_selection.graph).is_none()
+                    if scene
+                        .active_context
+                        .get(&graph_selection.graph.untyped())
+                        .is_none()
                         && !available_contexts.is_empty()
                     {
                         scene
                             .active_context
-                            .insert(graph_selection.graph, available_contexts[0]);
+                            .insert(graph_selection.graph.untyped(), available_contexts[0]);
                     }
                 }
 
@@ -364,7 +450,7 @@ impl TabViewer<'_> {
                 let maybe_graph_context = selection
                     .scene
                     .as_ref()
-                    .and_then(|s| s.active_context.get(&graph_selection.graph))
+                    .and_then(|s| s.active_context.get(&graph_selection.graph.untyped()))
                     .zip(graph_player)
                     .and_then(|(id, p)| Some(id).zip(p.get_context_arena()))
                     .and_then(|(id, ca)| ca.get_context(*id));
@@ -433,20 +519,147 @@ impl TabViewer<'_> {
         // ----------------------------------------------------------------
         world.resource_scope::<ButtonInput<KeyCode>, ()>(|_, input| {
             if input.pressed(KeyCode::ControlLeft) && input.just_pressed(KeyCode::KeyS) {
-                save_requests.push(RequestSave {
-                    graph: graph_selection.graph,
-                });
+                save_requests.push(RequestSave::Graph(graph_selection.graph));
             }
         });
         // ----------------------------------------------------------------
     }
 
-    /// Display all assets of the specified asset type `A`
-    pub fn graph_selector(
+    fn fsm_editor(
         world: &mut World,
         ui: &mut egui::Ui,
-        selection: &mut InspectorSelection,
+        selection: &mut EditorSelection,
+        global_changes: &mut Vec<GlobalChange>,
+        save_requests: &mut Vec<RequestSave>,
     ) {
+        let Some(fsm_selection) = &mut selection.fsm_editor else {
+            ui.centered_and_justified(|ui| ui.label("Select a state machine to edit!"));
+            return;
+        };
+
+        world.resource_scope::<Assets<StateMachine>, ()>(|world, mut fsm_assets| {
+            world.resource_scope::<Assets<AnimationGraph>, ()>(|world, mut graph_assets| {
+                if !fsm_assets.contains(fsm_selection.fsm) {
+                    return;
+                }
+
+                let changes = {
+                    let fsm = fsm_assets.get(fsm_selection.fsm).unwrap();
+
+                    // Autoselect context if none selected and some available
+                    if let (Some(scene), Some(available_contexts)) = (
+                        &mut selection.scene,
+                        list_graph_contexts(world, |ctx| {
+                            let graph_id = ctx.get_graph_id();
+                            let graph = graph_assets.get(graph_id).unwrap();
+                            graph.contains_state_machine(fsm_selection.fsm).is_some()
+                        }),
+                    ) {
+                        if scene
+                            .active_context
+                            .get(&fsm_selection.fsm.untyped())
+                            .is_none()
+                            && !available_contexts.is_empty()
+                        {
+                            scene
+                                .active_context
+                                .insert(fsm_selection.fsm.untyped(), available_contexts[0]);
+                        }
+                    }
+
+                    let graph_player = get_animation_graph_player(world);
+
+                    let maybe_fsm_state = selection
+                        .scene
+                        .as_ref()
+                        .and_then(|s| s.active_context.get(&fsm_selection.fsm.untyped()))
+                        .zip(graph_player)
+                        .and_then(|(id, p)| Some(id).zip(p.get_context_arena()))
+                        .and_then(|(id, ca)| ca.get_context(*id))
+                        .and_then(|ctx| {
+                            let graph_id = ctx.get_graph_id();
+                            let graph = graph_assets.get(graph_id).unwrap();
+                            let node_id = graph.contains_state_machine(fsm_selection.fsm).unwrap();
+                            ctx.caches
+                                .get_primary(|c| c.get_fsm_state(&node_id).cloned())
+                        });
+
+                    let fsm_repr_spec = FsmReprSpec::from_fsm(
+                        fsm,
+                        &fsm_selection.graph_indices,
+                        &fsm_assets,
+                        maybe_fsm_state,
+                    );
+
+                    fsm_selection.nodes_context.show(
+                        fsm_repr_spec.states,
+                        fsm_repr_spec.transitions,
+                        ui,
+                    );
+                    fsm_selection.nodes_context.get_changes().clone()
+                }
+                .into_iter()
+                .map(|c| convert_fsm_change(c, &fsm_selection.graph_indices, fsm_selection.fsm));
+                global_changes.extend(changes);
+
+                // --- Update selection for state inspector.
+                // ----------------------------------------------------------------
+
+                if let Some(selected_node) = fsm_selection
+                    .nodes_context
+                    .get_selected_states()
+                    .iter()
+                    .rev()
+                    .find(|id| **id > 1)
+                {
+                    let state_name = fsm_selection
+                        .graph_indices
+                        .state_indices
+                        .name(*selected_node)
+                        .unwrap();
+                    selection.inspector_selection =
+                        InspectorSelection::FsmState(FsmStateSelection {
+                            fsm: fsm_selection.fsm,
+                            state: state_name.clone(),
+                        });
+                }
+
+                if let Some(selected_transition) = fsm_selection
+                    .nodes_context
+                    .get_selected_transitions()
+                    .iter()
+                    .rev()
+                    .next()
+                {
+                    let (_, transition_id, _) = fsm_selection
+                        .graph_indices
+                        .transition_indices
+                        .edge(*selected_transition)
+                        .unwrap();
+                    selection.inspector_selection =
+                        InspectorSelection::FsmTransition(FsmTransitionSelection {
+                            fsm: fsm_selection.fsm,
+                            state: transition_id.clone(),
+                        });
+                }
+                // ----------------------------------------------------------------
+            });
+        });
+
+        // --- Initiate graph saving if Ctrl+S pressed
+        // ----------------------------------------------------------------
+        // world.resource_scope::<ButtonInput<KeyCode>, ()>(|_, input| {
+        //     if input.pressed(KeyCode::ControlLeft) && input.just_pressed(KeyCode::KeyS) {
+        //         save_requests.push(RequestSave {
+        //             graph: fsm_selection.fsm,
+        //         });
+        //     }
+        // });
+        // ----------------------------------------------------------------
+    }
+
+    /// Display all assets of the specified asset type `A`
+    pub fn graph_selector(world: &mut World, ui: &mut egui::Ui, selection: &mut EditorSelection) {
         let mut queue = CommandQueue::default();
         let mut chosen_id: Option<AssetId<AnimationGraph>> = None;
 
@@ -481,11 +694,7 @@ impl TabViewer<'_> {
         }
     }
 
-    pub fn scene_selector(
-        world: &mut World,
-        ui: &mut egui::Ui,
-        selection: &mut InspectorSelection,
-    ) {
+    pub fn scene_selector(world: &mut World, ui: &mut egui::Ui, selection: &mut EditorSelection) {
         let mut queue = CommandQueue::default();
 
         let mut chosen_handle: Option<Handle<AnimatedScene>> = None;
@@ -523,10 +732,41 @@ impl TabViewer<'_> {
         }
     }
 
+    pub fn fsm_selector(world: &mut World, ui: &mut egui::Ui, selection: &mut EditorSelection) {
+        let mut queue = CommandQueue::default();
+        let mut chosen_id: Option<AssetId<StateMachine>> = None;
+
+        world.resource_scope::<AssetServer, ()>(|world, asset_server| {
+            world.resource_scope::<Assets<StateMachine>, ()>(|world, mut graph_assets| {
+                let mut assets: Vec<_> = graph_assets.ids().collect();
+                assets.sort();
+                let paths = assets
+                    .into_iter()
+                    .map(|id| (handle_path(id.untyped(), &asset_server), id))
+                    .collect();
+                if let TreeResult::Leaf(id) = Self::path_selector(ui, paths) {
+                    chosen_id = Some(id);
+                }
+                // ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
+                //     let mut graph_handles = world.get_resource_mut::<GraphHandles>().unwrap();
+                //     CREATE NEW FSM & STUFF
+                // });
+            });
+        });
+        queue.apply(world);
+        if let Some(chosen_id) = chosen_id {
+            selection.fsm_editor = Some(FsmSelection {
+                fsm: chosen_id,
+                graph_indices: Self::update_fsm_indices(world, chosen_id),
+                nodes_context: FsmUiContext::default(),
+            });
+        }
+    }
+
     fn graph_inspector(
         world: &mut World,
         ui: &mut egui::Ui,
-        selection: &mut InspectorSelection,
+        selection: &mut EditorSelection,
         graph_changes: &mut Vec<GraphChange>,
     ) {
         let mut changes = Vec::new();
@@ -578,7 +818,7 @@ impl TabViewer<'_> {
     fn node_creator(
         world: &mut World,
         ui: &mut egui::Ui,
-        selection: &mut InspectorSelection,
+        selection: &mut EditorSelection,
         graph_changes: &mut Vec<GraphChange>,
     ) {
         let unsafe_world = world.as_unsafe_world_cell();
@@ -615,7 +855,7 @@ impl TabViewer<'_> {
     fn node_inspector(
         world: &mut World,
         ui: &mut egui::Ui,
-        selection: &mut InspectorSelection,
+        selection: &mut EditorSelection,
         graph_changes: &mut Vec<GraphChange>,
     ) {
         let mut changes = Vec::new();
@@ -677,11 +917,135 @@ impl TabViewer<'_> {
         queue.apply(world);
     }
 
+    fn state_inspector(
+        world: &mut World,
+        ui: &mut egui::Ui,
+        selection: &mut EditorSelection,
+        graph_changes: &mut Vec<GlobalChange>,
+    ) {
+        ui.label("FSM State");
+
+        let mut changes = Vec::new();
+
+        let Some(fsm_selection) = &mut selection.fsm_editor else {
+            return;
+        };
+
+        let InspectorSelection::FsmState(state_selection) = &mut selection.inspector_selection
+        else {
+            return;
+        };
+
+        let unsafe_world = world.as_unsafe_world_cell();
+        let type_registry = unsafe {
+            unsafe_world
+                .get_resource::<AppTypeRegistry>()
+                .unwrap()
+                .0
+                .clone()
+        };
+        let mut fsm_assets = unsafe {
+            unsafe_world
+                .get_resource_mut::<Assets<StateMachine>>()
+                .unwrap()
+        };
+        let fsm = fsm_assets.get_mut(state_selection.fsm).unwrap();
+        let Some(state) = fsm.states.get_mut(&state_selection.state) else {
+            selection.inspector_selection = InspectorSelection::Nothing;
+            return;
+        };
+
+        let type_registry = type_registry.read();
+        let mut queue = CommandQueue::default();
+        let mut cx = Context {
+            world: Some(unsafe { unsafe_world.world_mut() }.into()),
+            queue: Some(&mut queue),
+        };
+        let mut env = InspectorUi::for_bevy(&type_registry, &mut cx);
+
+        let mut copy = state.clone();
+
+        let changed = env.ui_for_reflect(&mut copy, ui);
+
+        if changed {
+            changes.push(GlobalChange::FsmChange {
+                asset_id: state_selection.fsm,
+                change: FsmChange::StateChanged(state_selection.state.clone(), copy),
+            });
+        }
+
+        graph_changes.extend(changes);
+
+        queue.apply(world);
+    }
+
+    fn transition_inspector(
+        world: &mut World,
+        ui: &mut egui::Ui,
+        selection: &mut EditorSelection,
+        graph_changes: &mut Vec<GlobalChange>,
+    ) {
+        ui.label("FSM Transition");
+        let mut changes = Vec::new();
+
+        let Some(fsm_selection) = &mut selection.fsm_editor else {
+            return;
+        };
+
+        let InspectorSelection::FsmTransition(transition_selection) =
+            &mut selection.inspector_selection
+        else {
+            return;
+        };
+
+        let unsafe_world = world.as_unsafe_world_cell();
+        let type_registry = unsafe {
+            unsafe_world
+                .get_resource::<AppTypeRegistry>()
+                .unwrap()
+                .0
+                .clone()
+        };
+        let mut fsm_assets = unsafe {
+            unsafe_world
+                .get_resource_mut::<Assets<StateMachine>>()
+                .unwrap()
+        };
+        let fsm = fsm_assets.get_mut(fsm_selection.fsm).unwrap();
+        let Some(transition) = fsm.transitions.get_mut(&transition_selection.state) else {
+            selection.inspector_selection = InspectorSelection::Nothing;
+            return;
+        };
+
+        let type_registry = type_registry.read();
+        let mut queue = CommandQueue::default();
+        let mut cx = Context {
+            world: Some(unsafe { unsafe_world.world_mut() }.into()),
+            queue: Some(&mut queue),
+        };
+        let mut env = InspectorUi::for_bevy(&type_registry, &mut cx);
+
+        let mut copy = transition.clone();
+
+        let changed = env.ui_for_reflect(&mut copy, ui);
+
+        if changed {
+            changes.push(GlobalChange::FsmChange {
+                asset_id: transition_selection.fsm,
+                change: todo!(),
+            });
+        }
+
+        graph_changes.extend(changes);
+
+        queue.apply(world);
+    }
+
     fn animated_scene_preview(
         world: &mut World,
         ui: &mut egui::Ui,
         preview_image: &Handle<Image>,
-        selection: &mut InspectorSelection,
+        selection: &mut EditorSelection,
     ) {
         if ui.button("Close Preview").clicked() {
             selection.scene = None;
@@ -709,11 +1073,7 @@ impl TabViewer<'_> {
         ));
     }
 
-    fn scene_preview_errors(
-        world: &mut World,
-        ui: &mut egui::Ui,
-        selection: &mut InspectorSelection,
-    ) {
+    fn scene_preview_errors(world: &mut World, ui: &mut egui::Ui, selection: &mut EditorSelection) {
         if selection.scene.is_none() {
             return;
         };
@@ -741,12 +1101,15 @@ impl TabViewer<'_> {
 
 /// Helper functions
 impl TabViewer<'_> {
-    fn create_graph_saver_tab(world: &mut World, save_request: RequestSave) -> EguiWindow {
-        world.resource_scope::<AssetServer, EguiWindow>(|_, asset_server| {
-            let path = asset_server
-                .get_path(save_request.graph)
-                .map_or("".into(), |p| p.path().to_string_lossy().into());
-            EguiWindow::GraphSaver(save_request.graph, path, false)
+    fn create_saver_window(world: &mut World, save_request: RequestSave) -> EguiWindow {
+        world.resource_scope::<AssetServer, EguiWindow>(|_, asset_server| match save_request {
+            RequestSave::Graph(graph) => {
+                let path = asset_server
+                    .get_path(graph)
+                    .map_or("".into(), |p| p.path().to_string_lossy().into());
+                EguiWindow::GraphSaver(graph, path, false)
+            }
+            RequestSave::Fsm(_) => todo!(),
         })
     }
 
@@ -821,6 +1184,14 @@ impl TabViewer<'_> {
         res.unwrap()
     }
 
+    fn update_fsm_indices(world: &mut World, fsm_id: AssetId<StateMachine>) -> FsmIndices {
+        world.resource_scope::<Assets<StateMachine>, FsmIndices>(|_, fsm_assets| {
+            let fsm = fsm_assets.get(fsm_id).unwrap();
+
+            make_fsm_indices(fsm, &fsm_assets).unwrap()
+        })
+    }
+
     fn indices_one_step(
         world: &mut World,
         graph_id: AssetId<AnimationGraph>,
@@ -869,7 +1240,7 @@ fn list_graph_contexts(
     )
 }
 
-fn select_graph_context(world: &mut World, ui: &mut egui::Ui, selection: &mut InspectorSelection) {
+fn select_graph_context(world: &mut World, ui: &mut egui::Ui, selection: &mut EditorSelection) {
     let Some(graph) = &selection.graph_editor else {
         return;
     };
@@ -883,7 +1254,7 @@ fn select_graph_context(world: &mut World, ui: &mut egui::Ui, selection: &mut In
         return;
     };
 
-    let mut selected = scene.active_context.get(&graph.graph).copied();
+    let mut selected = scene.active_context.get(&graph.graph.untyped()).copied();
     egui::ComboBox::from_label("Active context")
         .selected_text(format!("{:?}", selected))
         .show_ui(ui, |ui| {
@@ -894,9 +1265,47 @@ fn select_graph_context(world: &mut World, ui: &mut egui::Ui, selection: &mut In
         });
 
     if let Some(selected) = selected {
-        scene.active_context.insert(graph.graph, selected);
+        scene.active_context.insert(graph.graph.untyped(), selected);
     } else {
-        scene.active_context.remove(&graph.graph);
+        scene.active_context.remove(&graph.graph.untyped());
+    }
+}
+
+fn select_graph_context_fsm(world: &mut World, ui: &mut egui::Ui, selection: &mut EditorSelection) {
+    let Some(fsm) = &selection.fsm_editor else {
+        return;
+    };
+
+    let Some(available) =
+        world.resource_scope::<Assets<AnimationGraph>, _>(|world, graph_assets| {
+            list_graph_contexts(world, |ctx| {
+                let graph_id = ctx.get_graph_id();
+                let graph = graph_assets.get(graph_id).unwrap();
+                graph.contains_state_machine(fsm.fsm).is_some()
+            })
+        })
+    else {
+        return;
+    };
+
+    let Some(scene) = &mut selection.scene else {
+        return;
+    };
+
+    let mut selected = scene.active_context.get(&fsm.fsm.untyped()).copied();
+    egui::ComboBox::from_label("Active context")
+        .selected_text(format!("{:?}", selected))
+        .show_ui(ui, |ui| {
+            ui.selectable_value(&mut selected, None, format!("{:?}", None::<GraphContextId>));
+            for id in available {
+                ui.selectable_value(&mut selected, Some(id), format!("{:?}", Some(id)));
+            }
+        });
+
+    if let Some(selected) = selected {
+        scene.active_context.insert(fsm.fsm.untyped(), selected);
+    } else {
+        scene.active_context.remove(&fsm.fsm.untyped());
     }
 }
 

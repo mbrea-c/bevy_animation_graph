@@ -25,6 +25,8 @@ impl AssetLoader for StateMachineLoader {
             let serial: StateMachineSerial = ron::de::from_bytes(&bytes)?;
             let mut fsm = StateMachine::default();
 
+            fsm.extra = serial.extra;
+
             for state_serial in serial.states {
                 fsm.add_state(State {
                     id: state_serial.id,

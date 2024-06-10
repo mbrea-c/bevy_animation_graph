@@ -1,11 +1,10 @@
-use super::pin::PinSpec;
 use bevy_egui::egui;
 use bevy_inspector_egui::bevy_egui;
 use derivative::Derivative;
 
 #[derive(Default, Debug, Clone)]
 /// The Style of a Node. If feilds are None then the Context style is used
-pub struct NodeArgs {
+pub struct StateArgs {
     pub background: Option<egui::Color32>,
     pub background_hovered: Option<egui::Color32>,
     pub background_selected: Option<egui::Color32>,
@@ -19,7 +18,7 @@ pub struct NodeArgs {
 }
 
 #[derive(Default, Debug, Clone)]
-pub(crate) struct NodeDataColorStyle {
+pub(crate) struct StateDataColorStyle {
     pub background: egui::Color32,
     pub background_hovered: egui::Color32,
     pub background_selected: egui::Color32,
@@ -30,7 +29,7 @@ pub(crate) struct NodeDataColorStyle {
 }
 
 #[derive(Default, Debug, Clone)]
-pub struct NodeDataLayoutStyle {
+pub struct StateDataLayoutStyle {
     pub corner_rounding: f32,
     pub padding: egui::Vec2,
     pub border_thickness: f32,
@@ -38,13 +37,12 @@ pub struct NodeDataLayoutStyle {
 
 #[derive(Derivative, Default)]
 #[derivative(Debug)]
-pub struct NodeSpec {
+pub struct StateSpec {
     pub(crate) id: usize,
     pub(crate) name: String,
     pub(crate) subtitle: String,
     pub(crate) origin: egui::Pos2,
-    pub(crate) attributes: Vec<PinSpec>,
-    pub(crate) args: NodeArgs,
+    pub(crate) args: StateArgs,
     pub(crate) time: Option<f32>,
     pub(crate) duration: Option<f32>,
     pub(crate) active: bool,
@@ -52,7 +50,7 @@ pub struct NodeSpec {
 
 #[derive(Derivative, Clone)]
 #[derivative(Debug, Default)]
-pub(crate) struct NodeState {
+pub(crate) struct StateState {
     #[derivative(Default(value = "egui::vec2(100., 100.)"))]
     pub size: egui::Vec2,
     #[derivative(Default(value = "egui::Rect::ZERO"))]
@@ -60,8 +58,8 @@ pub(crate) struct NodeState {
     #[derivative(Default(value = "egui::Rect::ZERO"))]
     pub rect: egui::Rect,
     #[derivative(Debug = "ignore")]
-    pub color_style: NodeDataColorStyle,
-    pub layout_style: NodeDataLayoutStyle,
+    pub color_style: StateDataColorStyle,
+    pub layout_style: StateDataLayoutStyle,
     pub pin_indices: Vec<usize>,
     #[derivative(Default(value = "true"))]
     pub draggable: bool,
@@ -72,7 +70,8 @@ pub(crate) struct NodeState {
     #[derivative(Debug = "ignore")]
     pub outline_shape: Option<egui::layers::ShapeIdx>,
 }
-impl NodeState {
+
+impl StateState {
     #[inline]
     pub fn get_node_title_rect(&self) -> egui::Rect {
         let expanded_title_rect = self
@@ -88,6 +87,12 @@ impl NodeState {
 #[derive(Derivative)]
 #[derivative(Debug)]
 pub struct Node {
-    pub spec: NodeSpec,
-    pub state: NodeState,
+    pub spec: StateSpec,
+    pub state: StateState,
+}
+
+impl Node {
+    pub fn center(&self) -> egui::Pos2 {
+        self.spec.origin + 0.5 * self.state.size
+    }
 }

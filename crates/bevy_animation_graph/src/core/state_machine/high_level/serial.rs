@@ -1,5 +1,6 @@
-use bevy::utils::HashMap;
 use serde::{Deserialize, Serialize};
+
+use super::Extra;
 
 pub type StateIdSerial = String;
 pub type TransitionIdSerial = String;
@@ -24,4 +25,6 @@ pub struct StateMachineSerial {
     pub states: Vec<StateSerial>,
     pub transitions: Vec<TransitionSerial>,
     pub start_state: String,
+    #[serde(default)]
+    pub extra: Extra,
 }

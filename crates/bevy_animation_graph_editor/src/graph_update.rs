@@ -1,9 +1,11 @@
 use crate::{
     egui_nodes::lib::GraphChange as EguiGraphChange,
+    fsm_show::FsmIndices,
     graph_show::{GraphIndices, Pin},
 };
 use bevy::{
     asset::{AssetId, Assets},
+    ecs::world::World,
     log::info,
     math::Vec2,
 };
@@ -11,7 +13,30 @@ use bevy_animation_graph::core::{
     animation_graph::{AnimationGraph, Edge, NodeId, SourcePin, TargetPin},
     animation_node::AnimationNode,
     context::SpecContext,
+    state_machine::{
+        high_level::{State, StateMachine},
+        StateId,
+    },
 };
+
+use super::egui_fsm::lib::EguiFsmChange;
+
+#[derive(Debug, Clone)]
+pub enum GlobalChange {
+    FsmChange {
+        asset_id: AssetId<StateMachine>,
+        change: FsmChange,
+    },
+    Noop,
+}
+
+#[derive(Debug, Clone)]
+pub enum FsmChange {
+    StateMoved(StateId, Vec2),
+    /// Some of the properties of a state are changed
+    /// (original state id, new state)
+    StateChanged(StateId, State),
+}
 
 #[derive(Debug, Clone)]
 pub struct GraphChange {
@@ -172,4 +197,56 @@ pub fn update_graph(
         }
     }
     must_regen_indices
+}
+
+pub fn apply_global_changes(world: &mut World, changes: Vec<GlobalChange>) -> bool {
+    let mut needs_regen_indices = false;
+
+    for change in changes {
+        needs_regen_indices = needs_regen_indices
+            || match change {
+                GlobalChange::FsmChange { asset_id, change } => {
+                    apply_fsm_change(world, asset_id, change)
+                }
+                GlobalChange::Noop => false,
+            };
+    }
+
+    needs_regen_indices
+}
+
+fn apply_fsm_change(world: &mut World, asset_id: AssetId<StateMachine>, change: FsmChange) -> bool {
+    let mut fsm_assets = world.resource_mut::<Assets<StateMachine>>();
+    let fsm = fsm_assets.get_mut(asset_id).unwrap();
+
+    match change {
+        FsmChange::StateMoved(state_id, pos) => {
+            fsm.extra.set_node_position(state_id, pos);
+            false
+        }
+        FsmChange::StateChanged(old_state_name, new_state) => {
+            let _ = fsm.update_state(old_state_name, new_state);
+
+            true
+        }
+    }
+}
+
+pub fn convert_fsm_change(
+    fsm_change: EguiFsmChange,
+    graph_indices: &FsmIndices,
+    graph_id: AssetId<StateMachine>,
+) -> GlobalChange {
+    let change = match fsm_change {
+        EguiFsmChange::StateMoved(state_id, delta) => {
+            let node_id = graph_indices.state_indices.name(state_id).unwrap();
+            GlobalChange::FsmChange {
+                asset_id: graph_id,
+                change: FsmChange::StateMoved(node_id.into(), delta),
+            }
+        }
+        _ => GlobalChange::Noop,
+    };
+
+    change
 }

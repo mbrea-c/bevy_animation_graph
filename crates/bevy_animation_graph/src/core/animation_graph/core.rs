@@ -6,7 +6,8 @@ use crate::{
         duration_data::DurationData,
         errors::{GraphError, GraphValidationError},
         pose::{BoneId, Pose},
-        prelude::GraphContextArena,
+        prelude::{AnimationNodeType, GraphContextArena},
+        state_machine::high_level::StateMachine,
     },
     prelude::{
         DataSpec, DataValue, DeferredGizmos, OptDataSpec, PassContext, SpecContext, SystemResources,
@@ -483,6 +484,25 @@ impl AnimationGraph {
         } else {
             Err(illegal_edges)
         }
+    }
+
+    /// Check whether a given state machine AssetId is present as a node in the graph.
+    /// If true, returns name of node containing the state machine.
+    pub fn contains_state_machine(&self, fsm: impl Into<AssetId<StateMachine>>) -> Option<NodeId> {
+        let fsm_id = fsm.into();
+        self.nodes
+            .values()
+            .filter_map(|n| match &n.node {
+                AnimationNodeType::Fsm(m) => Some((n.name.clone(), m)),
+                _ => None,
+            })
+            .fold(None, |acc, (name, m)| {
+                acc.or(if m.fsm.id() == fsm_id {
+                    Some(name)
+                } else {
+                    None
+                })
+            })
     }
 
     fn extract_target_param_spec(

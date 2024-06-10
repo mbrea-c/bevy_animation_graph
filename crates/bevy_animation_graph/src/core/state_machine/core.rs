@@ -33,6 +33,7 @@ pub struct FSMState {
 pub struct TransitionData {
     pub source: StateId,
     pub target: StateId,
+    pub hl_transition_id: TransitionId,
     pub duration: f32,
 }
 

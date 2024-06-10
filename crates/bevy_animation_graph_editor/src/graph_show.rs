@@ -420,20 +420,23 @@ impl GraphReprSpec {
     fn node_debug_info(
         node: &AnimationNode,
         graph_context: Option<&GraphContext>,
-    ) -> (Option<f32>, Option<f32>) {
+    ) -> (Option<f32>, Option<f32>, bool) {
         let Some(graph_context) = graph_context else {
-            return (None, None);
+            return (None, None, false);
         };
 
         let source_pin = SourcePin::NodeTime(node.name.clone());
         let time = graph_context
             .caches
-            .get(|c| c.get_time(&source_pin), CacheReadFilter::PRIMARY);
+            .get_primary(|c| c.get_time(&source_pin));
         let duration = graph_context
             .caches
-            .get(|c| c.get_duration(&source_pin), CacheReadFilter::PRIMARY);
+            .get_primary(|c| c.get_duration(&source_pin));
+        let active = graph_context
+            .caches
+            .get_primary(|c| Some(c.is_updated(&node.name)));
 
-        (time, duration.flatten())
+        (time, duration.flatten(), active.unwrap_or(false))
     }
 
     fn add_nodes(
@@ -444,7 +447,7 @@ impl GraphReprSpec {
         graph_context: Option<&GraphContext>,
     ) {
         for node in graph.nodes.values() {
-            let (time, duration) = Self::node_debug_info(node, graph_context);
+            let (time, duration, active) = Self::node_debug_info(node, graph_context);
 
             let mut constructor = NodeSpec {
                 id: indices.node_indices.id(&node.name).unwrap(),
@@ -459,6 +462,7 @@ impl GraphReprSpec {
                     .into(),
                 time,
                 duration,
+                active,
                 ..Default::default()
             };
 
