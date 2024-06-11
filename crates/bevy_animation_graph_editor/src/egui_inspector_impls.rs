@@ -577,7 +577,7 @@ pub fn asset_picker_ui<T: Asset>(
     value: &mut dyn Any,
     ui: &mut egui::Ui,
     _options: &dyn Any,
-    _id: egui::Id,
+    id: egui::Id,
     env: InspectorUi<'_, '_>,
 ) -> bool {
     let value = value.downcast_mut::<Handle<T>>().unwrap();
@@ -593,7 +593,7 @@ pub fn asset_picker_ui<T: Asset>(
     let (asset_server, _) = world.split_off_resource_typed::<AssetServer>().unwrap();
 
     let mut selected = value_id;
-    egui::ComboBox::from_id_source(&value)
+    egui::ComboBox::from_id_source(id)
         .selected_text(if t_assets.contains(selected) {
             asset_server
                 .get_path(selected)

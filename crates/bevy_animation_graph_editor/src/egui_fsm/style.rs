@@ -18,6 +18,9 @@ pub enum ColorStyle {
     TitleBar,
     TitleBarHovered,
     TitleBarSelected,
+    StartTitleBar,
+    StartTitleBarHovered,
+    StartTitleBarSelected,
     Link,
     LinkHovered,
     LinkSelected,
@@ -59,6 +62,12 @@ impl ColorStyle {
             egui::Color32::from_rgba_unmultiplied(66, 150, 250, 255);
         colors[ColorStyle::TitleBarSelected as usize] =
             egui::Color32::from_rgba_unmultiplied(66, 150, 250, 255);
+        colors[ColorStyle::StartTitleBar as usize] =
+            egui::Color32::from_rgba_unmultiplied(122, 74, 41, 255);
+        colors[ColorStyle::StartTitleBarHovered as usize] =
+            egui::Color32::from_rgba_unmultiplied(250, 150, 66, 255);
+        colors[ColorStyle::StartTitleBarSelected as usize] =
+            egui::Color32::from_rgba_unmultiplied(250, 150, 66, 255);
         colors[ColorStyle::Link as usize] =
             egui::Color32::from_rgba_unmultiplied(61, 133, 224, 200);
         colors[ColorStyle::LinkHovered as usize] =
@@ -239,6 +248,15 @@ impl Style {
         color.titlebar_selected = args
             .titlebar_selected
             .unwrap_or(self.colors[ColorStyle::TitleBarSelected as usize]);
+        color.start_titlebar = args
+            .start_titlebar
+            .unwrap_or(self.colors[ColorStyle::StartTitleBar as usize]);
+        color.start_titlebar_hovered = args
+            .start_titlebar_hovered
+            .unwrap_or(self.colors[ColorStyle::StartTitleBarHovered as usize]);
+        color.start_titlebar_selected = args
+            .start_titlebar_selected
+            .unwrap_or(self.colors[ColorStyle::StartTitleBarSelected as usize]);
         layout.corner_rounding = args.corner_rounding.unwrap_or(self.node_corner_rounding);
         layout.padding = args.padding.unwrap_or_else(|| {
             egui::vec2(self.node_padding_horizontal, self.node_padding_vertical)

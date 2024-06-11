@@ -30,7 +30,7 @@
     output_time: Some(()),
     extra: (
         node_positions: {
-            "Le big fsm": (468.0, 440.0),
+            "Le big fsm": (467.3684, 642.7369),
         },
         input_position: (192.0, 475.0),
         output_position: (727.0, 463.0),

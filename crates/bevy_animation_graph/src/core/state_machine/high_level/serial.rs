@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::Extra;
+use super::{Extra, State, StateMachine, Transition};
 
 pub type StateIdSerial = String;
 pub type TransitionIdSerial = String;
@@ -27,4 +27,44 @@ pub struct StateMachineSerial {
     pub start_state: String,
     #[serde(default)]
     pub extra: Extra,
+}
+
+impl From<&Transition> for TransitionSerial {
+    fn from(value: &Transition) -> Self {
+        Self {
+            id: value.id.clone(),
+            source: value.source.clone(),
+            target: value.target.clone(),
+            duration: value.duration.clone(),
+            graph: value.graph.path().unwrap().to_string(),
+        }
+    }
+}
+
+impl From<&State> for StateSerial {
+    fn from(value: &State) -> Self {
+        Self {
+            id: value.id.clone(),
+            graph: value.graph.path().unwrap().to_string(),
+        }
+    }
+}
+
+impl From<&StateMachine> for StateMachineSerial {
+    fn from(value: &StateMachine) -> Self {
+        Self {
+            states: value
+                .states
+                .values()
+                .map(|s| StateSerial::from(s))
+                .collect(),
+            transitions: value
+                .transitions
+                .values()
+                .map(|t| TransitionSerial::from(t))
+                .collect(),
+            start_state: value.start_state.clone(),
+            extra: value.extra.clone(),
+        }
+    }
 }

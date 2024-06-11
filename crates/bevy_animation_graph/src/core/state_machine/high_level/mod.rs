@@ -12,7 +12,7 @@ use bevy::{
 use serde::{Deserialize, Serialize};
 
 /// Specification of a state node in the low-level FSM
-#[derive(Reflect, Debug, Clone)]
+#[derive(Reflect, Debug, Clone, Default)]
 pub struct State {
     pub id: StateId,
     pub graph: Handle<AnimationGraph>,
@@ -31,7 +31,7 @@ impl Extra {
     }
 
     /// Add default position for new node if not already there
-    pub fn node_added(&mut self, node_id: impl Into<StateId>) {
+    pub fn state_added(&mut self, node_id: impl Into<StateId>) {
         let node_id = node_id.into();
         if !self.states.contains_key(&node_id) {
             self.states.insert(node_id, Vec2::ZERO);
@@ -39,7 +39,7 @@ impl Extra {
     }
 
     /// Rename node if node exists and new name is available, otherwise return false.
-    pub fn rename_node(&mut self, old_id: impl Into<StateId>, new_id: impl Into<StateId>) -> bool {
+    pub fn rename_state(&mut self, old_id: impl Into<StateId>, new_id: impl Into<StateId>) -> bool {
         let old_id = old_id.into();
         let new_id = new_id.into();
 
@@ -54,12 +54,10 @@ impl Extra {
     }
 }
 
-#[derive(Reflect, Debug, Clone)]
+#[derive(Reflect, Debug, Clone, Default)]
 pub struct Transition {
     pub id: TransitionId,
-    #[reflect(ignore)]
     pub source: StateId,
-    #[reflect(ignore)]
     pub target: StateId,
     pub duration: f32,
     pub graph: Handle<AnimationGraph>,
@@ -77,12 +75,31 @@ pub struct StateMachine {
 
 impl StateMachine {
     pub fn add_state(&mut self, state: State) {
-        self.extra.node_added(&state.id);
+        self.extra.state_added(&state.id);
         self.states.insert(state.id.clone(), state);
     }
 
     pub fn add_transition(&mut self, transition: Transition) {
         self.transitions.insert(transition.id.clone(), transition);
+    }
+
+    // TODO: REMOVE THIS AND UPDATE `add_transition`
+    pub fn add_transition_from_ui(
+        &mut self,
+        transition: Transition,
+    ) -> Result<(), GraphValidationError> {
+        if !self.states.contains_key(&transition.source)
+            || !self.states.contains_key(&transition.target)
+        {
+            return Err(GraphValidationError::UnknownError(
+                "Transition connects states that don't exist!".into(),
+            ));
+        }
+
+        self.transitions.insert(transition.id.clone(), transition);
+        self.update_low_level_fsm();
+
+        Ok(())
     }
 
     pub fn set_start_state(&mut self, start_state: StateId) {
@@ -108,7 +125,7 @@ impl StateMachine {
                 ));
             }
 
-            self.extra.rename_node(&old_state_name, &new_state.id);
+            self.extra.rename_state(&old_state_name, &new_state.id);
 
             // If old node exists, perform rename
             for transition in self.transitions.values_mut() {
@@ -126,6 +143,67 @@ impl StateMachine {
 
         self.update_low_level_fsm();
 
+        Ok(())
+    }
+
+    pub fn delete_state(&mut self, state_name: StateId) -> Result<(), GraphValidationError> {
+        if !self.states.contains_key(&state_name) {
+            return Err(GraphValidationError::UnknownError(
+                "State id to be delted does not exist!".into(),
+            ));
+        }
+
+        self.transitions
+            .retain(|_, v| v.source != state_name && v.target != state_name);
+
+        self.states.remove(&state_name);
+        self.update_low_level_fsm();
+
+        Ok(())
+    }
+
+    pub fn update_transition(
+        &mut self,
+        old_transition_name: TransitionId,
+        new_transition: Transition,
+    ) -> Result<(), GraphValidationError> {
+        if !self.transitions.contains_key(&old_transition_name) {
+            return Err(GraphValidationError::UnknownError(
+                "Old transition id does not exist!".into(),
+            ));
+        }
+        if old_transition_name != new_transition.id {
+            if self.transitions.contains_key(&new_transition.id) {
+                return Err(GraphValidationError::UnknownError(
+                    "Transition id already exists!".into(),
+                ));
+            }
+        }
+        if !self.states.contains_key(&new_transition.source)
+            || !self.states.contains_key(&new_transition.target)
+        {
+            return Err(GraphValidationError::UnknownError(
+                "Transition connects states that don't exist!".into(),
+            ));
+        }
+        self.transitions.remove(&old_transition_name);
+        self.transitions
+            .insert(new_transition.id.clone(), new_transition);
+        self.update_low_level_fsm();
+        Ok(())
+    }
+
+    pub fn delete_transition(
+        &mut self,
+        transition_name: TransitionId,
+    ) -> Result<(), GraphValidationError> {
+        if !self.transitions.contains_key(&transition_name) {
+            return Err(GraphValidationError::UnknownError(
+                "Transition id to be deleted does not exist!".into(),
+            ));
+        }
+        self.transitions.remove(&transition_name);
+        self.update_low_level_fsm();
         Ok(())
     }
 

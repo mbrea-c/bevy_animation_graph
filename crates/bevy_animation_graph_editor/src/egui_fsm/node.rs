@@ -12,6 +12,9 @@ pub struct StateArgs {
     pub titlebar: Option<egui::Color32>,
     pub titlebar_hovered: Option<egui::Color32>,
     pub titlebar_selected: Option<egui::Color32>,
+    pub start_titlebar: Option<egui::Color32>,
+    pub start_titlebar_hovered: Option<egui::Color32>,
+    pub start_titlebar_selected: Option<egui::Color32>,
     pub corner_rounding: Option<f32>,
     pub padding: Option<egui::Vec2>,
     pub border_thickness: Option<f32>,
@@ -26,6 +29,9 @@ pub(crate) struct StateDataColorStyle {
     pub titlebar: egui::Color32,
     pub titlebar_hovered: egui::Color32,
     pub titlebar_selected: egui::Color32,
+    pub start_titlebar: egui::Color32,
+    pub start_titlebar_hovered: egui::Color32,
+    pub start_titlebar_selected: egui::Color32,
 }
 
 #[derive(Default, Debug, Clone)]
@@ -46,6 +52,7 @@ pub struct StateSpec {
     pub(crate) time: Option<f32>,
     pub(crate) duration: Option<f32>,
     pub(crate) active: bool,
+    pub(crate) is_start_state: bool,
 }
 
 #[derive(Derivative, Clone)]

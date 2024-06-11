@@ -1,7 +1,7 @@
 use crate::{
     core::{
         animation_graph::PinMap,
-        animation_node::{AnimationNode, AnimationNodeType, CustomNode, NodeLike},
+        animation_node::{AnimationNode, AnimationNodeType, NodeLike},
         context::{PassContext, SpecContext},
         edge_data::{AnimationEvent, DataSpec, EventQueue, SampledEvent},
         errors::GraphError,

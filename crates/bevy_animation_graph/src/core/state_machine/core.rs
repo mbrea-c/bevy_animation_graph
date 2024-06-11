@@ -1,5 +1,3 @@
-use std::time::Instant;
-
 use super::{StateId, TransitionId};
 use crate::{
     core::{
@@ -12,7 +10,6 @@ use crate::{
         duration_data::DurationData,
         edge_data::{DataValue, EventQueue},
         errors::GraphError,
-        pose::Pose,
     },
     utils::unwrap::UnwrapVal,
 };

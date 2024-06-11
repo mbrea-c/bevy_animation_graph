@@ -643,14 +643,26 @@ impl FsmUiContext {
             && self.state.click_interaction_type != ClickInteractionType::BoxSelection;
 
         let mut node_background = node.state.color_style.background;
-        let mut titlebar_background = node.state.color_style.titlebar;
+        let mut titlebar_background = if node.spec.is_start_state {
+            node.state.color_style.start_titlebar
+        } else {
+            node.state.color_style.titlebar
+        };
 
         if self.state.selected_node_indices.contains(&node_idx) {
             node_background = node.state.color_style.background_selected;
-            titlebar_background = node.state.color_style.titlebar_selected;
+            titlebar_background = if node.spec.is_start_state {
+                node.state.color_style.start_titlebar_selected
+            } else {
+                node.state.color_style.titlebar_selected
+            };
         } else if node_hovered {
             node_background = node.state.color_style.background_hovered;
-            titlebar_background = node.state.color_style.titlebar_hovered;
+            titlebar_background = if node.spec.is_start_state {
+                node.state.color_style.start_titlebar_hovered
+            } else {
+                node.state.color_style.titlebar_hovered
+            };
         }
 
         let painter = ui.painter();

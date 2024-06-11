@@ -210,6 +210,7 @@ impl FsmReprSpec {
                 time: None,
                 duration: None,
                 active,
+                is_start_state: state.id == fsm.start_state,
                 ..Default::default()
             };
 

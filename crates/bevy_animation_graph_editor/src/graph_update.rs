@@ -8,14 +8,15 @@ use bevy::{
     ecs::world::World,
     log::info,
     math::Vec2,
+    reflect::Reflect,
 };
 use bevy_animation_graph::core::{
     animation_graph::{AnimationGraph, Edge, NodeId, SourcePin, TargetPin},
     animation_node::AnimationNode,
     context::SpecContext,
     state_machine::{
-        high_level::{State, StateMachine},
-        StateId,
+        high_level::{State, StateMachine, Transition},
+        StateId, TransitionId,
     },
 };
 
@@ -33,9 +34,27 @@ pub enum GlobalChange {
 #[derive(Debug, Clone)]
 pub enum FsmChange {
     StateMoved(StateId, Vec2),
-    /// Some of the properties of a state are changed
+    /// Some of the properties of a state are changed.
+    /// This includes the state name.
     /// (original state id, new state)
     StateChanged(StateId, State),
+    /// (original transition id, new transition)
+    TransitionChanged(TransitionId, Transition),
+    /// Add a new state.
+    StateAdded(State),
+    /// Add a new transition.
+    TransitionAdded(Transition),
+    /// Delete a state.
+    StateDeleted(StateId),
+    /// Delete a transition
+    TransitionDeleted(TransitionId),
+    /// Inspectable properties of the FSM must change.
+    PropertiesChanged(FsmPropertiesChange),
+}
+
+#[derive(Debug, Clone, Reflect)]
+pub struct FsmPropertiesChange {
+    pub start_state: StateId,
 }
 
 #[derive(Debug, Clone)]
@@ -57,6 +76,14 @@ pub enum Change {
     NodeRemoved(NodeId),
     Noop,
     GraphValidate,
+}
+
+impl From<&StateMachine> for FsmPropertiesChange {
+    fn from(value: &StateMachine) -> Self {
+        Self {
+            start_state: value.start_state.clone(),
+        }
+    }
 }
 
 pub fn convert_graph_change(
@@ -215,6 +242,7 @@ pub fn apply_global_changes(world: &mut World, changes: Vec<GlobalChange>) -> bo
     needs_regen_indices
 }
 
+/// Apply a change to a state machine. Returns true if it requires recomputing the UI context, false otherwise.
 fn apply_fsm_change(world: &mut World, asset_id: AssetId<StateMachine>, change: FsmChange) -> bool {
     let mut fsm_assets = world.resource_mut::<Assets<StateMachine>>();
     let fsm = fsm_assets.get_mut(asset_id).unwrap();
@@ -226,7 +254,30 @@ fn apply_fsm_change(world: &mut World, asset_id: AssetId<StateMachine>, change: 
         }
         FsmChange::StateChanged(old_state_name, new_state) => {
             let _ = fsm.update_state(old_state_name, new_state);
-
+            true
+        }
+        FsmChange::TransitionChanged(old_transition_name, new_transition) => {
+            let _ = fsm.update_transition(old_transition_name, new_transition);
+            true
+        }
+        FsmChange::StateAdded(new_state) => {
+            let _ = fsm.add_state(new_state);
+            true
+        }
+        FsmChange::PropertiesChanged(new_props) => {
+            fsm.set_start_state(new_props.start_state);
+            true
+        }
+        FsmChange::TransitionAdded(new_transition) => {
+            let _ = fsm.add_transition_from_ui(new_transition);
+            true
+        }
+        FsmChange::StateDeleted(state_to_delete) => {
+            let _ = fsm.delete_state(state_to_delete);
+            true
+        }
+        FsmChange::TransitionDeleted(transition_to_delete) => {
+            let _ = fsm.delete_transition(transition_to_delete);
             true
         }
     }
@@ -245,7 +296,24 @@ pub fn convert_fsm_change(
                 change: FsmChange::StateMoved(node_id.into(), delta),
             }
         }
-        _ => GlobalChange::Noop,
+        EguiFsmChange::TransitionRemoved(transition_id) => {
+            let (_, transition_name, _) = graph_indices
+                .transition_indices
+                .edge(transition_id)
+                .unwrap();
+            GlobalChange::FsmChange {
+                asset_id: graph_id,
+                change: FsmChange::TransitionDeleted(transition_name.to_string()),
+            }
+        }
+        EguiFsmChange::StateRemoved(state_id) => {
+            let state_name = graph_indices.state_indices.name(state_id).unwrap().clone();
+            GlobalChange::FsmChange {
+                asset_id: graph_id,
+                change: FsmChange::StateDeleted(state_name),
+            }
+        }
+        EguiFsmChange::TransitionCreated(_, _) => GlobalChange::Noop,
     };
 
     change
