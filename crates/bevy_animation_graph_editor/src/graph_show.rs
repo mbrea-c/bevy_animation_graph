@@ -8,7 +8,7 @@ use bevy::utils::HashMap;
 use bevy_animation_graph::core::{
     animation_graph::{AnimationGraph, SourcePin, TargetPin},
     animation_node::{AnimationNode, NodeLike},
-    context::{CacheReadFilter, GraphContext, SpecContext},
+    context::{GraphContext, SpecContext},
     edge_data::DataSpec,
 };
 use bevy_inspector_egui::egui::Color32;
@@ -509,7 +509,7 @@ impl GraphReprSpec {
                 });
             }
             // time input pin
-            if let Some(_) = node.time_output_spec(ctx) {
+            if node.time_output_spec(ctx).is_some() {
                 let (pin_style, _) = time_colors();
                 let pin = Pin::Source(SourcePin::NodeTime(node.name.clone()));
                 let pin_id = indices.pin_indices.id(&pin).unwrap();
@@ -602,7 +602,7 @@ impl GraphReprSpec {
             });
         }
 
-        if let Some(_) = graph.output_time {
+        if graph.output_time.is_some() {
             let (pin_style, _) = time_colors();
             let pin = Pin::Target(TargetPin::OutputTime);
             let pin_id = indices.pin_indices.id(&pin).unwrap();

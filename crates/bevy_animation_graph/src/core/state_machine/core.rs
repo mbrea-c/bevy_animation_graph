@@ -170,7 +170,7 @@ impl LowLevelStateMachine {
             state_stack: StateStack {
                 stack: vec![(fsm_state.state.clone(), StateRole::Root)],
             },
-            fsm: &self,
+            fsm: self,
         };
 
         if graph.output_time.is_some() {
@@ -272,7 +272,7 @@ impl LowLevelStateMachine {
                         ctx.child_with_state(
                             Some(FsmContext {
                                 state_stack,
-                                fsm: &self,
+                                fsm: self,
                             }),
                             &i,
                         ),
@@ -310,7 +310,7 @@ impl LowLevelStateMachine {
                             ctx.child_with_state(
                                 Some(FsmContext {
                                     state_stack,
-                                    fsm: &self,
+                                    fsm: self,
                                 }),
                                 &overlay,
                             ),
@@ -330,7 +330,7 @@ impl LowLevelStateMachine {
                             ctx.child_with_state(
                                 Some(FsmContext {
                                     state_stack,
-                                    fsm: &self,
+                                    fsm: self,
                                 }),
                                 &overlay,
                             ),
@@ -407,7 +407,7 @@ impl LowLevelStateMachine {
                     ctx.child_with_state(
                         Some(FsmContext {
                             state_stack,
-                            fsm: &self,
+                            fsm: self,
                         }),
                         &i,
                     ),

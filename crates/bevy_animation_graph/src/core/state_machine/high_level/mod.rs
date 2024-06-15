@@ -172,12 +172,10 @@ impl StateMachine {
                 "Old transition id does not exist!".into(),
             ));
         }
-        if old_transition_name != new_transition.id {
-            if self.transitions.contains_key(&new_transition.id) {
-                return Err(GraphValidationError::UnknownError(
-                    "Transition id already exists!".into(),
-                ));
-            }
+        if old_transition_name != new_transition.id && self.transitions.contains_key(&new_transition.id) {
+            return Err(GraphValidationError::UnknownError(
+                "Transition id already exists!".into(),
+            ));
         }
         if !self.states.contains_key(&new_transition.source)
             || !self.states.contains_key(&new_transition.target)

@@ -195,7 +195,7 @@ impl Default for AnimationGraph {
     }
 }
 
-pub const DEFAULT_OUTPUT_POSE: &'static str = "pose";
+pub const DEFAULT_OUTPUT_POSE: &str = "pose";
 
 impl AnimationGraph {
     pub fn new() -> Self {
@@ -671,13 +671,13 @@ impl AnimationGraph {
 
         let source_value = match source_pin {
             SourcePin::NodeData(node_id, _) => {
-                if !ctx
+                if ctx
                     .caches()
                     .get(
                         |c| c.is_updated(node_id).then_some(()),
                         CacheReadFilter::for_temp(ctx.temp_cache),
                     )
-                    .is_some()
+                    .is_none()
                 {
                     let node = &self.nodes[node_id];
                     let should_debug = node.should_debug;
@@ -792,7 +792,7 @@ impl AnimationGraph {
                     return Err(GraphError::TimeUpdateMissing(target_pin.clone()));
                 };
 
-                Ok(time_update.clone())
+                Ok(time_update)
             }
             TargetPin::OutputTime => {
                 let Some(time_update) = ctx
@@ -806,7 +806,7 @@ impl AnimationGraph {
                     return Err(GraphError::TimeUpdateMissing(target_pin.clone()));
                 };
 
-                Ok(time_update.clone())
+                Ok(time_update)
             }
         }
     }

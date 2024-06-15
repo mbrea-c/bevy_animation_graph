@@ -8,7 +8,7 @@ mod graph_update;
 mod tree;
 mod ui;
 
-use asset_saving::{save_graph_system, AssetSavingPlugin, SaveGraph};
+use asset_saving::AssetSavingPlugin;
 use bevy::{asset::LoadedFolder, prelude::*, utils::HashSet};
 use bevy_animation_graph::core::{
     animation_graph::AnimationGraph, plugin::AnimationGraphPlugin,

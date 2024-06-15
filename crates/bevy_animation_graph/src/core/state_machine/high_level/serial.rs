@@ -35,7 +35,7 @@ impl From<&Transition> for TransitionSerial {
             id: value.id.clone(),
             source: value.source.clone(),
             target: value.target.clone(),
-            duration: value.duration.clone(),
+            duration: value.duration,
             graph: value.graph.path().unwrap().to_string(),
         }
     }
@@ -56,12 +56,12 @@ impl From<&StateMachine> for StateMachineSerial {
             states: value
                 .states
                 .values()
-                .map(|s| StateSerial::from(s))
+                .map(StateSerial::from)
                 .collect(),
             transitions: value
                 .transitions
                 .values()
-                .map(|t| TransitionSerial::from(t))
+                .map(TransitionSerial::from)
                 .collect(),
             start_state: value.start_state.clone(),
             extra: value.extra.clone(),

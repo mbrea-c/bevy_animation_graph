@@ -29,7 +29,7 @@ impl GraphContextArena {
     }
 
     pub fn iter_context_ids(&self) -> impl Iterator<Item = GraphContextId> {
-        (0..self.contexts.len()).map(|i| GraphContextId(i))
+        (0..self.contexts.len()).map(GraphContextId)
     }
 
     fn new_context(&mut self, graph_id: AssetId<AnimationGraph>) -> GraphContextId {

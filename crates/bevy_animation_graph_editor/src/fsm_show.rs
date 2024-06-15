@@ -3,17 +3,12 @@ use crate::egui_fsm::{
     node::StateSpec,
 };
 use bevy::{asset::Assets, math::Vec2, utils::HashMap};
-use bevy_animation_graph::core::{
-    animation_graph::SourcePin,
-    animation_node::AnimationNode,
-    context::{CacheReadFilter, GraphContext, SpecContext},
-    state_machine::{
+use bevy_animation_graph::core::state_machine::{
         high_level::{State, StateMachine, Transition},
         FSMState, StateId, TransitionId,
-    },
-};
+    };
 use bevy_inspector_egui::egui::Color32;
-use egui_dock::egui::Pos2;
+
 
 pub struct StateIndices {
     name_to_idx: HashMap<String, usize>,
@@ -106,7 +101,7 @@ impl FsmIndices {
 
 pub fn make_fsm_indices(
     graph: &StateMachine,
-    ctx: &Assets<StateMachine>,
+    _ctx: &Assets<StateMachine>,
 ) -> Result<FsmIndices, Vec<TransitionId>> {
     let mut fsm_indices = FsmIndices::default();
 
@@ -189,7 +184,7 @@ impl FsmReprSpec {
         &mut self,
         fsm: &StateMachine,
         indices: &FsmIndices,
-        fsm_assets: &Assets<StateMachine>,
+        _fsm_assets: &Assets<StateMachine>,
         fsm_state: Option<FSMState>,
     ) {
         for state in fsm.states.values() {
@@ -222,7 +217,7 @@ impl FsmReprSpec {
         &mut self,
         fsm: &StateMachine,
         indices: &FsmIndices,
-        fsm_assets: &Assets<StateMachine>,
+        _fsm_assets: &Assets<StateMachine>,
         fsm_state: Option<FSMState>,
     ) {
         for transition in fsm.transitions.values() {

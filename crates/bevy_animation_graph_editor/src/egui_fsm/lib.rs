@@ -276,9 +276,7 @@ impl FsmUiContext {
             let snd = link.spec.start_pin_index.max(link.spec.end_pin_index);
             let k = (fst, snd);
 
-            if !links_by_src_tgt.contains_key(&k) {
-                links_by_src_tgt.insert(k, vec![]);
-            }
+            links_by_src_tgt.entry(k).or_default();
 
             links_by_src_tgt.get_mut(&k).unwrap().push(*link_id);
         }
@@ -595,7 +593,7 @@ impl FsmUiContext {
         if link_hovered && self.state.interaction_state.left_mouse_clicked {
             self.begin_link_interaction(link_idx);
         }
-        let mut link = self.links.get(&link_idx).cloned().unwrap();
+        let link = self.links.get(&link_idx).cloned().unwrap();
         let start_state = &self.nodes[&link.spec.start_pin_index];
         let end_state = &self.nodes[&link.spec.end_pin_index];
         let start_pos = self.grid_space_to_screen_space(start_state.center());
@@ -618,12 +616,10 @@ impl FsmUiContext {
             } else {
                 link.state.style.hovered
             }
+        } else if link.spec.active {
+            link.state.style.active_base
         } else {
-            if link.spec.active {
-                link.state.style.active_base
-            } else {
-                link.state.style.base
-            }
+            link.state.style.base    
         };
 
         link_data.draw(
@@ -783,7 +779,7 @@ impl FsmUiContext {
 
         self.state.selected_link_indices.clear();
 
-        for (idx, link) in self.links.iter() {
+        for (idx, _link) in self.links.iter() {
             if self.rectangle_overlaps_link(&box_rect, *idx) {
                 self.state.selected_link_indices.push(*idx);
             }
@@ -1003,6 +999,7 @@ impl FsmUiContext {
         self.begin_link_selection(idx);
     }
 
+    #[allow(dead_code)]
     fn begin_link_creation(&mut self, hovered_pin_idx: usize) {
         self.state.click_interaction_type = ClickInteractionType::LinkCreation;
         self.state
@@ -1086,6 +1083,7 @@ enum ClickInteractionType {
     None,
 }
 
+#[allow(dead_code)]
 #[derive(PartialEq, Debug)]
 enum LinkCreationType {
     Standard,

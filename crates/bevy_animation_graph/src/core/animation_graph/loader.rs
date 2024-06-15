@@ -198,7 +198,7 @@ impl AssetLoader for AnimationGraphLoader {
             for (param_name, param_spec) in &serial.output_parameters {
                 graph.add_output_parameter(param_name, *param_spec);
             }
-            if let Some(_) = serial.output_time {
+            if serial.output_time.is_some() {
                 graph.add_output_time();
             }
             // ------------------------------------------------------------------------------------

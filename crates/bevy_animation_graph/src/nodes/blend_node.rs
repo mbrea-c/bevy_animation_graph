@@ -70,7 +70,7 @@ impl NodeLike for BlendNode {
     }
 
     fn data_output_spec(&self, _: SpecContext) -> PinMap<DataSpec> {
-        [(Self::OUT_POSE.into(), DataSpec::Pose.into())].into()
+        [(Self::OUT_POSE.into(), DataSpec::Pose)].into()
     }
 
     fn time_input_spec(&self, _: SpecContext) -> PinMap<()> {

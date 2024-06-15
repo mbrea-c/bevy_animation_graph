@@ -23,9 +23,7 @@ impl AssetLoader for StateMachineLoader {
             let mut bytes = vec![];
             reader.read_to_end(&mut bytes).await?;
             let serial: StateMachineSerial = ron::de::from_bytes(&bytes)?;
-            let mut fsm = StateMachine::default();
-
-            fsm.extra = serial.extra;
+            let mut fsm = StateMachine{extra: serial.extra, ..Default::default()};
 
             for state_serial in serial.states {
                 fsm.add_state(State {

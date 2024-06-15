@@ -71,7 +71,7 @@ pub struct Transition {
 impl Transition {
     pub fn perpendicular_offset(&self) -> f32 {
         if self.state.links_for_node_pair == 1 {
-            return 0.;
+            0.
         } else {
             let total_offset = 60.;
             (self.state.index_in_node_pair as f32 * total_offset
@@ -121,7 +121,7 @@ pub struct Line(egui::Pos2, egui::Pos2);
 
 impl Line {
     pub fn eval(&self, t: f32) -> egui::Pos2 {
-        (self.0 * (1. - t) + (self.1 * t).to_vec2()).into()
+        self.0 * (1. - t) + (self.1 * t).to_vec2()
     }
 
     pub fn get_containing_rect(&self, hover_distance: f32) -> egui::Rect {
@@ -206,7 +206,7 @@ impl LinkGraphicsData {
             points,
             closed: false,
             fill: egui::Color32::TRANSPARENT,
-            stroke: stroke.into(),
+            stroke,
         };
         ui.painter().set(shape, egui::Shape::Path(path_shape));
         self.draw_arrow(arrow_shape, stroke, ui);

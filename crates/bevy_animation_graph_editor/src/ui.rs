@@ -341,7 +341,7 @@ impl egui_dock::TabViewer for TabViewer<'_> {
             }
         }
 
-        let must_regen_indices = apply_global_changes(&mut self.world, self.global_changes.clone());
+        let must_regen_indices = apply_global_changes(self.world, self.global_changes.clone());
         if must_regen_indices {
             if let Some(graph_selection) = self.selection.graph_editor.as_mut() {
                 graph_selection.graph_indices =
@@ -356,10 +356,7 @@ impl egui_dock::TabViewer for TabViewer<'_> {
     }
 
     fn force_close(&mut self, tab: &mut Self::Tab) -> bool {
-        match tab {
-            EguiWindow::GraphSaver(_, _, true) | EguiWindow::FsmSaver(_, _, true) => true,
-            _ => false,
-        }
+        matches!(tab, EguiWindow::GraphSaver(_, _, true) | EguiWindow::FsmSaver(_, _, true))
     }
 
     fn title(&mut self, window: &mut Self::Tab) -> egui_dock::egui::WidgetText {
@@ -367,10 +364,7 @@ impl egui_dock::TabViewer for TabViewer<'_> {
     }
 
     fn closeable(&mut self, tab: &mut Self::Tab) -> bool {
-        match tab {
-            EguiWindow::GraphSaver(_, _, _) | EguiWindow::FsmSaver(_, _, _) => true,
-            _ => false,
-        }
+        matches!(tab, EguiWindow::GraphSaver(_, _, _) | EguiWindow::FsmSaver(_, _, _))
     }
 }
 
@@ -580,8 +574,8 @@ impl TabViewer<'_> {
             return;
         };
 
-        world.resource_scope::<Assets<StateMachine>, ()>(|world, mut fsm_assets| {
-            world.resource_scope::<Assets<AnimationGraph>, ()>(|world, mut graph_assets| {
+        world.resource_scope::<Assets<StateMachine>, ()>(|world, fsm_assets| {
+            world.resource_scope::<Assets<AnimationGraph>, ()>(|world, graph_assets| {
                 if !fsm_assets.contains(fsm_selection.fsm) {
                     return;
                 }
@@ -671,8 +665,7 @@ impl TabViewer<'_> {
                     .nodes_context
                     .get_selected_transitions()
                     .iter()
-                    .rev()
-                    .next()
+                    .next_back()
                 {
                     let (_, transition_id, _) = fsm_selection
                         .graph_indices
@@ -779,7 +772,7 @@ impl TabViewer<'_> {
         let mut chosen_id: Option<AssetId<StateMachine>> = None;
 
         world.resource_scope::<AssetServer, ()>(|world, asset_server| {
-            world.resource_scope::<Assets<StateMachine>, ()>(|world, mut graph_assets| {
+            world.resource_scope::<Assets<StateMachine>, ()>(|_world, graph_assets| {
                 let mut assets: Vec<_> = graph_assets.ids().collect();
                 assets.sort();
                 let paths = assets
@@ -1077,7 +1070,7 @@ impl TabViewer<'_> {
 
         let mut changes = Vec::new();
 
-        let Some(fsm_selection) = &mut selection.fsm_editor else {
+        let Some(_fsm_selection) = &mut selection.fsm_editor else {
             return;
         };
 

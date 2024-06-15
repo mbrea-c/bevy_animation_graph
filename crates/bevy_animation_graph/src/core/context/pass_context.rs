@@ -171,7 +171,7 @@ impl<'a> PassContext<'a> {
                 let cur_state_id = self
                     .caches()
                     .get(
-                        |c| c.get_fsm_state(&node_ctx.node_id).cloned(),
+                        |c| c.get_fsm_state(node_ctx.node_id).cloned(),
                         CacheReadFilter::FULL,
                     )
                     .unwrap()
@@ -288,7 +288,7 @@ impl<'a> PassContext<'a> {
         } else if let Some(node_ctx) = &self.node_context {
             format!("- [Node] {}: {}", "node_id", node_ctx.node_id)
         } else {
-            format!("- [Graph]")
+            "- [Graph]".to_string()
         };
 
         if self.has_parent() {
@@ -314,16 +314,15 @@ impl<'a> PassContext<'a> {
             let pin_id = pin_id.into();
             fsm_ctx.fsm.get_data(
                 fsm_ctx.state_stack.clone(),
-                TargetPin::OutputData(pin_id.into()),
+                TargetPin::OutputData(pin_id),
                 self.parent(),
             )
+        } else if self.has_parent() {
+            self.parent().data_back(pin_id)
         } else {
-            if self.has_parent() {
-                self.parent().data_back(pin_id)
-            } else {
-                Err(GraphError::MissingParentGraph)
-            }
+            Err(GraphError::MissingParentGraph)
         }
+        
     }
 
     /// Sets the output value at the given pin for the current node. It's up to the caller to
@@ -400,12 +399,10 @@ impl<'a> PassContext<'a> {
                 TargetPin::OutputTime,
                 self.parent(),
             )
+        } else if self.has_parent() {
+            self.parent().time_update_fwd()
         } else {
-            if self.has_parent() {
-                self.parent().time_update_fwd()
-            } else {
-                Err(GraphError::MissingParentGraph)
-            }
+            Err(GraphError::MissingParentGraph)
         }
     }
 
