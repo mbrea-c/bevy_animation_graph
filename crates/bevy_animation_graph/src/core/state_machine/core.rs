@@ -2,7 +2,8 @@ use super::{StateId, TransitionId};
 use crate::{
     core::{
         animation_graph::{
-            AnimationGraph, InputOverlay, SourcePin, TargetPin, TimeUpdate, DEFAULT_OUTPUT_POSE,
+            AnimationGraph, InputOverlay, PinMap, SourcePin, TargetPin, TimeUpdate,
+            DEFAULT_OUTPUT_POSE,
         },
         context::{
             CacheReadFilter, CacheWriteFilter, FsmContext, PassContext, StateRole, StateStack,
@@ -48,6 +49,7 @@ pub struct LowLevelStateMachine {
     pub states: HashMap<StateId, LowLevelState>,
     pub transitions: HashMap<(StateId, TransitionId), StateId>,
     pub start_state: Option<StateId>,
+    pub input_data: PinMap<DataValue>,
 }
 
 impl LowLevelStateMachine {
@@ -68,6 +70,7 @@ impl LowLevelStateMachine {
             states: HashMap::new(),
             transitions: HashMap::new(),
             start_state: None,
+            input_data: PinMap::new(),
         }
     }
 
@@ -216,7 +219,7 @@ impl LowLevelStateMachine {
         &self,
         mut state_stack: StateStack,
         target_pin: TargetPin,
-        ctx: PassContext,
+        mut ctx: PassContext,
     ) -> Result<DataValue, GraphError> {
         let state_id = state_stack.last_state();
         let state = self
@@ -225,62 +228,67 @@ impl LowLevelStateMachine {
             .expect("TODO: replace this crash with a GraphError");
         let out = match &target_pin {
             TargetPin::OutputData(s) => {
-                let (queried_state, queried_role) = if s == Self::SOURCE_POSE {
-                    (
-                        state
-                            .transition
-                            .as_ref()
-                            .expect("TODO: replace this crash with a GraphError")
-                            .source
-                            .clone(),
-                        StateRole::Source,
-                    )
-                } else if s == Self::TARGET_POSE {
-                    (
-                        state
-                            .transition
-                            .as_ref()
-                            .expect("TODO: replace this crash with a GraphError")
-                            .target
-                            .clone(),
-                        StateRole::Target,
-                    )
+                if self.input_data.contains_key(s) {
+                    ctx.data_back(s)
+                        .or_else(|_| Ok(self.input_data.get(s).unwrap().clone()))
                 } else {
-                    // TODO: Replace with correct GraphError
-                    return Err(GraphError::MissingParentGraph);
-                };
+                    let (queried_state, queried_role) = if s == Self::SOURCE_POSE {
+                        (
+                            state
+                                .transition
+                                .as_ref()
+                                .expect("TODO: replace this crash with a GraphError")
+                                .source
+                                .clone(),
+                            StateRole::Source,
+                        )
+                    } else if s == Self::TARGET_POSE {
+                        (
+                            state
+                                .transition
+                                .as_ref()
+                                .expect("TODO: replace this crash with a GraphError")
+                                .target
+                                .clone(),
+                            StateRole::Target,
+                        )
+                    } else {
+                        // TODO: replace with correct error
+                        return Err(GraphError::MissingParentGraph);
+                    };
 
-                let queried_graph = &self
-                    .states
-                    .get(&queried_state)
-                    .expect("TODO: Replace this crash with a GraphError")
-                    .graph;
+                    let queried_graph = &self
+                        .states
+                        .get(&queried_state)
+                        .expect("TODO: Replace this crash with a GraphError")
+                        .graph;
 
-                let graph = ctx
-                    .resources
-                    .animation_graph_assets
-                    .get(queried_graph)
-                    .unwrap();
+                    let graph = ctx
+                        .resources
+                        .animation_graph_assets
+                        .get(queried_graph)
+                        .unwrap();
 
-                let target_pin = TargetPin::OutputData(DEFAULT_OUTPUT_POSE.to_string());
+                    let target_pin = TargetPin::OutputData(DEFAULT_OUTPUT_POSE.to_string());
 
-                let i = InputOverlay::default();
-                state_stack.stack.push((queried_state, queried_role));
-                graph
-                    .get_data(
-                        target_pin,
-                        ctx.child_with_state(
-                            Some(FsmContext {
-                                state_stack,
-                                fsm: self,
-                            }),
-                            &i,
-                        ),
-                    )
-                    .map_err(|e| {
-                        println!("Error: {:?}", e);
-                        e
-                    })
+                    let i = InputOverlay::default();
+                    state_stack.stack.push((queried_state, queried_role));
+                    graph
+                        .get_data(
+                            target_pin,
+                            ctx.child_with_state(
+                                Some(FsmContext {
+                                    state_stack,
+                                    fsm: self,
+                                }),
+                                &i,
+                            ),
+                        )
+                        .map_err(|e| {
+                            println!("Error: {:?}", e);
+                            e
+                        })
+                }
             }
             _ => panic!("State machine received data query without `OutputData` target"),
         };

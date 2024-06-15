@@ -2,7 +2,11 @@ pub mod loader;
 pub mod serial;
 
 use super::{LowLevelStateMachine, StateId, TransitionId};
-use crate::core::{animation_graph::AnimationGraph, errors::GraphValidationError};
+use crate::core::{
+    animation_graph::{AnimationGraph, PinMap},
+    edge_data::DataValue,
+    errors::GraphValidationError,
+};
 use bevy::{
     asset::{Asset, Handle},
     math::Vec2,
@@ -67,10 +71,18 @@ pub struct Transition {
 #[derive(Asset, Reflect, Debug, Default, Clone)]
 pub struct StateMachine {
     pub start_state: StateId,
+
+    #[reflect(ignore)]
     pub states: HashMap<StateId, State>,
+    #[reflect(ignore)]
     pub transitions: HashMap<TransitionId, Transition>,
-    low_level_fsm: LowLevelStateMachine,
+
+    pub input_data: PinMap<DataValue>,
+
+    #[reflect(ignore)]
     pub extra: Extra,
+    #[reflect(ignore)]
+    low_level_fsm: LowLevelStateMachine,
 }
 
 impl StateMachine {
@@ -104,6 +116,11 @@ impl StateMachine {
 
     pub fn set_start_state(&mut self, start_state: StateId) {
         self.start_state = start_state;
+    }
+
+    pub fn set_input_data(&mut self, input_data: PinMap<DataValue>) {
+        self.input_data = input_data;
+        self.update_low_level_fsm();
     }
 
     pub fn update_state(
@@ -213,6 +230,7 @@ impl StateMachine {
         let mut llfsm = LowLevelStateMachine::new();
 
         llfsm.start_state = Some(self.start_state.clone());
+        llfsm.input_data = self.input_data.clone();
 
         for state in self.states.values() {
             llfsm.add_state(super::core::LowLevelState {

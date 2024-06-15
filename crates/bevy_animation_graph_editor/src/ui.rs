@@ -324,11 +324,13 @@ impl egui_dock::TabViewer for TabViewer<'_> {
         }
 
         while !self.graph_changes.is_empty() {
-            let must_regen_indices =
-                self.world
-                    .resource_scope::<Assets<AnimationGraph>, bool>(|_, mut graph_assets| {
-                        update_graph(self.graph_changes.clone(), &mut graph_assets)
-                    });
+            let must_regen_indices = self.world.resource_scope::<Assets<AnimationGraph>, bool>(
+                |world, mut graph_assets| {
+                    world.resource_scope::<Assets<StateMachine>, bool>(|_, fsm_assets| {
+                        update_graph(self.graph_changes.clone(), &mut graph_assets, &fsm_assets)
+                    })
+                },
+            );
             self.graph_changes.clear();
             if must_regen_indices {
                 if let Some(graph_selection) = self.selection.graph_editor.as_mut() {
@@ -458,101 +460,106 @@ impl TabViewer<'_> {
         };
 
         world.resource_scope::<Assets<AnimationGraph>, ()>(|world, mut graph_assets| {
-            if !graph_assets.contains(graph_selection.graph) {
-                return;
-            }
+            world.resource_scope::<Assets<StateMachine>, ()>(|world, fsm_assets| {
+                if !graph_assets.contains(graph_selection.graph) {
+                    return;
+                }
 
-            let changes = {
-                let graph = graph_assets.get(graph_selection.graph).unwrap();
-                let spec_context = SpecContext {
-                    graph_assets: &graph_assets,
-                };
+                let changes = {
+                    let graph = graph_assets.get(graph_selection.graph).unwrap();
+                    let spec_context = SpecContext {
+                        graph_assets: &graph_assets,
+                        fsm_assets: &fsm_assets,
+                    };
 
-                // Autoselect context if none selected and some available
-                if let (Some(scene), Some(available_contexts)) = (
-                    &mut selection.scene,
-                    list_graph_contexts(world, |ctx| ctx.get_graph_id() == graph_selection.graph),
-                ) {
-                    if scene
-                        .active_context
-                        .get(&graph_selection.graph.untyped())
-                        .is_none()
-                        && !available_contexts.is_empty()
-                    {
-                        scene
+                    // Autoselect context if none selected and some available
+                    if let (Some(scene), Some(available_contexts)) = (
+                        &mut selection.scene,
+                        list_graph_contexts(world, |ctx| {
+                            ctx.get_graph_id() == graph_selection.graph
+                        }),
+                    ) {
+                        if scene
                             .active_context
-                            .insert(graph_selection.graph.untyped(), available_contexts[0]);
-                    }
-                }
-
-                let graph_player = get_animation_graph_player(world);
-
-                let maybe_graph_context = selection
-                    .scene
-                    .as_ref()
-                    .and_then(|s| s.active_context.get(&graph_selection.graph.untyped()))
-                    .zip(graph_player)
-                    .and_then(|(id, p)| Some(id).zip(p.get_context_arena()))
-                    .and_then(|(id, ca)| ca.get_context(*id));
-
-                let nodes = GraphReprSpec::from_graph(
-                    graph,
-                    &graph_selection.graph_indices,
-                    spec_context,
-                    maybe_graph_context,
-                );
-
-                graph_selection
-                    .nodes_context
-                    .show(nodes.nodes, nodes.edges, ui);
-                graph_selection.nodes_context.get_changes().clone()
-            }
-            .into_iter()
-            .map(|c| {
-                convert_graph_change(c, &graph_selection.graph_indices, graph_selection.graph)
-            });
-            graph_changes.extend(changes);
-
-            // --- Update selection for node inspector.
-            // --- And enable debug render for latest node selected only
-            // ----------------------------------------------------------------
-
-            let graph = graph_assets.get_mut(graph_selection.graph).unwrap();
-            for (_, node) in graph.nodes.iter_mut() {
-                node.should_debug = false;
-            }
-            if let Some(selected_node) = graph_selection
-                .nodes_context
-                .get_selected_nodes()
-                .iter()
-                .rev()
-                .find(|id| **id > 1)
-            {
-                if *selected_node > 1 {
-                    let node_name = graph_selection
-                        .graph_indices
-                        .node_indices
-                        .name(*selected_node)
-                        .unwrap();
-                    graph.nodes.get_mut(node_name).unwrap().should_debug = true;
-                    if let Some(node_selection) = &mut selection.node {
-                        if &node_selection.node != node_name
-                            || node_selection.graph != graph_selection.graph
+                            .get(&graph_selection.graph.untyped())
+                            .is_none()
+                            && !available_contexts.is_empty()
                         {
-                            node_selection.node.clone_from(node_name);
-                            node_selection.name_buf.clone_from(node_name);
-                            node_selection.graph = graph_selection.graph;
+                            scene
+                                .active_context
+                                .insert(graph_selection.graph.untyped(), available_contexts[0]);
                         }
-                    } else {
-                        selection.node = Some(NodeSelection {
-                            graph: graph_selection.graph,
-                            node: node_name.clone(),
-                            name_buf: node_name.clone(),
-                        });
+                    }
+
+                    let graph_player = get_animation_graph_player(world);
+
+                    let maybe_graph_context = selection
+                        .scene
+                        .as_ref()
+                        .and_then(|s| s.active_context.get(&graph_selection.graph.untyped()))
+                        .zip(graph_player)
+                        .and_then(|(id, p)| Some(id).zip(p.get_context_arena()))
+                        .and_then(|(id, ca)| ca.get_context(*id));
+
+                    let nodes = GraphReprSpec::from_graph(
+                        graph,
+                        &graph_selection.graph_indices,
+                        spec_context,
+                        maybe_graph_context,
+                    );
+
+                    graph_selection
+                        .nodes_context
+                        .show(nodes.nodes, nodes.edges, ui);
+                    graph_selection.nodes_context.get_changes().clone()
+                }
+                .into_iter()
+                .map(|c| {
+                    convert_graph_change(c, &graph_selection.graph_indices, graph_selection.graph)
+                });
+                graph_changes.extend(changes);
+
+                // --- Update selection for node inspector.
+                // --- And enable debug render for latest node selected only
+                // ----------------------------------------------------------------
+
+                let graph = graph_assets.get_mut(graph_selection.graph).unwrap();
+                for (_, node) in graph.nodes.iter_mut() {
+                    node.should_debug = false;
+                }
+                if let Some(selected_node) = graph_selection
+                    .nodes_context
+                    .get_selected_nodes()
+                    .iter()
+                    .rev()
+                    .find(|id| **id > 1)
+                {
+                    if *selected_node > 1 {
+                        let node_name = graph_selection
+                            .graph_indices
+                            .node_indices
+                            .name(*selected_node)
+                            .unwrap();
+                        graph.nodes.get_mut(node_name).unwrap().should_debug = true;
+                        if let Some(node_selection) = &mut selection.node {
+                            if &node_selection.node != node_name
+                                || node_selection.graph != graph_selection.graph
+                            {
+                                node_selection.node.clone_from(node_name);
+                                node_selection.name_buf.clone_from(node_name);
+                                node_selection.graph = graph_selection.graph;
+                            }
+                        } else {
+                            selection.node = Some(NodeSelection {
+                                graph: graph_selection.graph,
+                                node: node_name.clone(),
+                                name_buf: node_name.clone(),
+                            });
+                        }
                     }
                 }
-            }
-            // ----------------------------------------------------------------
+                // ----------------------------------------------------------------
+            });
         });
 
         // --- Initiate graph saving if Ctrl+S pressed
@@ -1320,8 +1327,10 @@ impl TabViewer<'_> {
     }
 
     fn update_graph(world: &mut World, changes: Vec<GraphChange>) -> bool {
-        world.resource_scope::<Assets<AnimationGraph>, bool>(|_, mut graph_assets| {
-            update_graph(changes, &mut graph_assets)
+        world.resource_scope::<Assets<AnimationGraph>, bool>(|world, mut graph_assets| {
+            world.resource_scope::<Assets<StateMachine>, bool>(|_, fsm_assets| {
+                update_graph(changes, &mut graph_assets, &fsm_assets)
+            })
         })
     }
 
@@ -1349,22 +1358,28 @@ impl TabViewer<'_> {
         graph_id: AssetId<AnimationGraph>,
     ) -> Result<GraphIndices, Vec<GraphChange>> {
         world.resource_scope::<Assets<AnimationGraph>, Result<GraphIndices, Vec<GraphChange>>>(
-            |_, graph_assets| {
-                let graph = graph_assets.get(graph_id).unwrap();
-                let spec_context = SpecContext {
-                    graph_assets: &graph_assets,
-                };
+            |world, graph_assets| {
+                world
+                    .resource_scope::<Assets<StateMachine>, Result<GraphIndices, Vec<GraphChange>>>(
+                        |_, fsm_assets| {
+                            let graph = graph_assets.get(graph_id).unwrap();
+                            let spec_context = SpecContext {
+                                graph_assets: &graph_assets,
+                                fsm_assets: &fsm_assets,
+                            };
 
-                match make_graph_indices(graph, spec_context) {
-                    Err(targets) => Err(targets
-                        .into_iter()
-                        .map(|t| GraphChange {
-                            graph: graph_id,
-                            change: Change::LinkRemoved(t),
-                        })
-                        .collect()),
-                    Ok(indices) => Ok(indices),
-                }
+                            match make_graph_indices(graph, spec_context) {
+                                Err(targets) => Err(targets
+                                    .into_iter()
+                                    .map(|t| GraphChange {
+                                        graph: graph_id,
+                                        change: Change::LinkRemoved(t),
+                                    })
+                                    .collect()),
+                                Ok(indices) => Ok(indices),
+                            }
+                        },
+                    )
             },
         )
     }

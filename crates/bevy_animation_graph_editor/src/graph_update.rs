@@ -11,9 +11,10 @@ use bevy::{
     reflect::Reflect,
 };
 use bevy_animation_graph::core::{
-    animation_graph::{AnimationGraph, Edge, NodeId, SourcePin, TargetPin},
+    animation_graph::{AnimationGraph, Edge, NodeId, PinMap, SourcePin, TargetPin},
     animation_node::AnimationNode,
     context::SpecContext,
+    edge_data::DataValue,
     state_machine::{
         high_level::{State, StateMachine, Transition},
         StateId, TransitionId,
@@ -55,6 +56,7 @@ pub enum FsmChange {
 #[derive(Debug, Clone, Reflect)]
 pub struct FsmPropertiesChange {
     pub start_state: StateId,
+    pub input_data: PinMap<DataValue>,
 }
 
 #[derive(Debug, Clone)]
@@ -82,6 +84,7 @@ impl From<&StateMachine> for FsmPropertiesChange {
     fn from(value: &StateMachine) -> Self {
         Self {
             start_state: value.start_state.clone(),
+            input_data: value.input_data.clone(),
         }
     }
 }
@@ -143,10 +146,12 @@ pub fn convert_graph_change(
 pub fn update_graph(
     mut changes: Vec<GraphChange>,
     graph_assets: &mut Assets<AnimationGraph>,
+    fsm_assets: &Assets<StateMachine>,
 ) -> bool {
     let graph_assets_copy = unsafe { &*(graph_assets as *const Assets<AnimationGraph>) };
     let ctx = SpecContext {
         graph_assets: graph_assets_copy,
+        fsm_assets: fsm_assets,
     };
     let mut must_regen_indices = false;
     while let Some(change) = changes.pop() {
@@ -266,6 +271,7 @@ fn apply_fsm_change(world: &mut World, asset_id: AssetId<StateMachine>, change: 
         }
         FsmChange::PropertiesChanged(new_props) => {
             fsm.set_start_state(new_props.start_state);
+            fsm.set_input_data(new_props.input_data);
             true
         }
         FsmChange::TransitionAdded(new_transition) => {

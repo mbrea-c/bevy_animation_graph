@@ -39,12 +39,20 @@ impl NodeLike for FSMNode {
         Ok(())
     }
 
-    fn data_input_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {
-        [(
+    fn data_input_spec(&self, ctx: SpecContext) -> PinMap<DataSpec> {
+        let fsm = ctx.fsm_assets.get(&self.fsm).unwrap();
+        let fsm_args = fsm
+            .input_data
+            .iter()
+            .map(|(pin_id, default_val)| (pin_id.clone(), DataSpec::from(default_val)));
+
+        let mut input_map = PinMap::from([(
             LowLevelStateMachine::DRIVER_EVENT_QUEUE.into(),
             DataSpec::EventQueue,
-        )]
-        .into()
+        )]);
+        input_map.extend(fsm_args);
+
+        input_map
     }
 
     fn data_output_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {

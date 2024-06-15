@@ -267,6 +267,7 @@ impl<'a> PassContext<'a> {
     pub fn spec_context(&'a self) -> SpecContext<'a> {
         SpecContext {
             graph_assets: &self.resources.animation_graph_assets,
+            fsm_assets: &self.resources.state_machine_assets,
         }
     }
 
