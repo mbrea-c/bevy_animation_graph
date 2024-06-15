@@ -38,9 +38,6 @@ use bevy_inspector_egui::{bevy_egui, egui};
 use egui_dock::{DockArea, DockState, NodeIndex, Style};
 use egui_notify::{Anchor, Toasts};
 
-#[derive(Component)]
-struct MainCamera;
-
 pub fn show_ui_system(world: &mut World) {
     let Ok(egui_context) = world
         .query_filtered::<&mut EguiContext, With<PrimaryWindow>>()
@@ -356,7 +353,10 @@ impl egui_dock::TabViewer for TabViewer<'_> {
     }
 
     fn force_close(&mut self, tab: &mut Self::Tab) -> bool {
-        matches!(tab, EguiWindow::GraphSaver(_, _, true) | EguiWindow::FsmSaver(_, _, true))
+        matches!(
+            tab,
+            EguiWindow::GraphSaver(_, _, true) | EguiWindow::FsmSaver(_, _, true)
+        )
     }
 
     fn title(&mut self, window: &mut Self::Tab) -> egui_dock::egui::WidgetText {
@@ -364,7 +364,10 @@ impl egui_dock::TabViewer for TabViewer<'_> {
     }
 
     fn closeable(&mut self, tab: &mut Self::Tab) -> bool {
-        matches!(tab, EguiWindow::GraphSaver(_, _, _) | EguiWindow::FsmSaver(_, _, _))
+        matches!(
+            tab,
+            EguiWindow::GraphSaver(_, _, _) | EguiWindow::FsmSaver(_, _, _)
+        )
     }
 }
 
@@ -536,8 +539,8 @@ impl TabViewer<'_> {
                         if &node_selection.node != node_name
                             || node_selection.graph != graph_selection.graph
                         {
-                            node_selection.node = node_name.clone();
-                            node_selection.name_buf = node_name.clone();
+                            node_selection.node.clone_from(node_name);
+                            node_selection.name_buf.clone_from(node_name);
                             node_selection.graph = graph_selection.graph;
                         }
                     } else {
@@ -1371,12 +1374,8 @@ fn list_graph_contexts(
     world: &mut World,
     filter: impl Fn(&GraphContext) -> bool,
 ) -> Option<Vec<GraphContextId>> {
-    let Some(player) = get_animation_graph_player(world) else {
-        return None;
-    };
-    let Some(arena) = player.get_context_arena() else {
-        return None;
-    };
+    let player = get_animation_graph_player(world)?;
+    let arena = player.get_context_arena()?;
 
     Some(
         arena

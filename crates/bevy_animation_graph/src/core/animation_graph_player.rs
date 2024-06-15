@@ -82,13 +82,8 @@ impl AnimationGraphPlayer {
         system_resources: &SystemResources,
         root_entity: Entity,
     ) -> Option<Pose> {
-        let Some(graph_handle) = &self.animation else {
-            return None;
-        };
-
-        let Some(graph) = system_resources.animation_graph_assets.get(graph_handle) else {
-            return None;
-        };
+        let graph_handle = self.animation.as_ref()?;
+        let graph = system_resources.animation_graph_assets.get(graph_handle)?;
 
         let pose = match graph.query_with_overlay(
             self.elapsed.update,

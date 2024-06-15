@@ -260,7 +260,7 @@ impl AnimationGraph {
         }
 
         let mut node = self.nodes.remove(&old_id).unwrap();
-        node.name = new_id.clone();
+        node.name.clone_from(&new_id);
         self.nodes.insert(new_id.clone(), node);
         let _ = self.extra.rename_node(&old_id, &new_id);
 

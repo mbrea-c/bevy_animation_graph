@@ -67,7 +67,7 @@ pub struct TimeCache {
 
 impl TimeCache {
     pub fn next_frame(&mut self) {
-        self.previous = self.current.clone();
+        self.previous.clone_from(&self.current);
     }
 
     pub fn get(&self, source_pin: &SourcePin) -> Option<f32> {

@@ -261,7 +261,7 @@ fn apply_fsm_change(world: &mut World, asset_id: AssetId<StateMachine>, change: 
             true
         }
         FsmChange::StateAdded(new_state) => {
-            let _ = fsm.add_state(new_state);
+            fsm.add_state(new_state);
             true
         }
         FsmChange::PropertiesChanged(new_props) => {

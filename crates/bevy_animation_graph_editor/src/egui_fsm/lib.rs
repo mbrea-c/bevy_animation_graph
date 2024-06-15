@@ -619,7 +619,7 @@ impl FsmUiContext {
         } else if link.spec.active {
             link.state.style.active_base
         } else {
-            link.state.style.base    
+            link.state.style.base
         };
 
         link_data.draw(
@@ -1145,9 +1145,4 @@ impl Modifier {
             Modifier::None => false,
         }
     }
-}
-
-pub trait Id {
-    fn id(&self) -> usize;
-    fn new(id: usize) -> Self;
 }

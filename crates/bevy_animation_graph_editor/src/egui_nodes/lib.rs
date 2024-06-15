@@ -1523,8 +1523,3 @@ impl Modifier {
         }
     }
 }
-
-pub trait Id {
-    fn id(&self) -> usize;
-    fn new(id: usize) -> Self;
-}

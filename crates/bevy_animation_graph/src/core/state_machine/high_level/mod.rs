@@ -130,10 +130,10 @@ impl StateMachine {
             // If old node exists, perform rename
             for transition in self.transitions.values_mut() {
                 if transition.source == old_state_name {
-                    transition.source = new_state.id.clone();
+                    transition.source.clone_from(&new_state.id);
                 }
                 if transition.target == old_state_name {
-                    transition.target = new_state.id.clone();
+                    transition.target.clone_from(&new_state.id);
                 }
             }
         }

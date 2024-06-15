@@ -175,10 +175,10 @@ fn string_mut(
     let response = ui.text_edit_singleline(buffered);
 
     if response.lost_focus() {
-        *value = buffered.clone();
+        value.clone_from(buffered);
         true
     } else if !response.has_focus() {
-        *buffered = value.clone();
+        buffered.clone_from(value);
         false
     } else {
         false
