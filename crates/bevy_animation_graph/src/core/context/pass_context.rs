@@ -322,7 +322,6 @@ impl<'a> PassContext<'a> {
         } else {
             Err(GraphError::MissingParentGraph)
         }
-        
     }
 
     /// Sets the output value at the given pin for the current node. It's up to the caller to

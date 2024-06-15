@@ -5,9 +5,9 @@ use super::{
 use crate::{
     core::{animation_clip::GraphClip, errors::AssetLoaderError},
     nodes::{
-        AbsF32, AddF32, BlendNode, ChainNode, ClampF32, ClipNode, CompareF32, DivF32, FSMNode,
-        FireEventNode, FlipLRNode, GraphNode, LoopNode, MulF32, RotationArcNode, RotationNode,
-        SpeedNode, SubF32, TwoBoneIKNode,
+        AbsF32, AddF32, BlendNode, ChainNode, ClampF32, ClipNode, CompareF32, ConstBool, DivF32,
+        FSMNode, FireEventNode, FlipLRNode, GraphNode, LoopNode, MulF32, RotationArcNode,
+        RotationNode, SpeedNode, SubF32, TwoBoneIKNode,
     },
     prelude::DummyNode,
 };
@@ -157,6 +157,9 @@ impl AssetLoader for AnimationGraphLoader {
                         CompareF32::new(*op).wrapped(&serial_node.name)
                     }
                     AnimationNodeTypeSerial::AbsF32 => AbsF32::new().wrapped(&serial_node.name),
+                    AnimationNodeTypeSerial::ConstBool(b) => {
+                        ConstBool::new(*b).wrapped(&serial_node.name)
+                    }
                     AnimationNodeTypeSerial::RotationArc => {
                         RotationArcNode::new().wrapped(&serial_node.name)
                     }

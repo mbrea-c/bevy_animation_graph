@@ -5,9 +5,9 @@ use super::{
 };
 use crate::{
     nodes::{
-        AbsF32, AddF32, BlendNode, ChainNode, ClampF32, ClipNode, CompareF32, DivF32, DummyNode,
-        FSMNode, FireEventNode, FlipLRNode, GraphNode, LoopNode, MulF32, RotationArcNode,
-        RotationNode, SpeedNode, SubF32, TwoBoneIKNode,
+        AbsF32, AddF32, BlendNode, ChainNode, ClampF32, ClipNode, CompareF32, ConstBool, DivF32,
+        DummyNode, FSMNode, FireEventNode, FlipLRNode, GraphNode, LoopNode, MulF32,
+        RotationArcNode, RotationNode, SpeedNode, SubF32, TwoBoneIKNode,
     },
     prelude::{PassContext, SpecContext},
 };
@@ -190,6 +190,11 @@ pub enum AnimationNodeType {
     CompareF32(CompareF32),
     // ------------------------------------------------
 
+    // --- Bool nodes
+    // ------------------------------------------------
+    ConstBool(ConstBool),
+    // ------------------------------------------------
+
     // --- EventQueue nodes
     // ------------------------------------------------
     FireEvent(FireEventNode),
@@ -233,6 +238,7 @@ impl AnimationNodeType {
             AnimationNodeType::ClampF32(n) => f(n),
             AnimationNodeType::CompareF32(n) => f(n),
             AnimationNodeType::AbsF32(n) => f(n),
+            AnimationNodeType::ConstBool(n) => f(n),
             AnimationNodeType::RotationArc(n) => f(n),
             AnimationNodeType::Fsm(n) => f(n),
             AnimationNodeType::Graph(n) => f(n),
@@ -266,6 +272,7 @@ impl AnimationNodeType {
             AnimationNodeType::ClampF32(n) => f(n),
             AnimationNodeType::CompareF32(n) => f(n),
             AnimationNodeType::AbsF32(n) => f(n),
+            AnimationNodeType::ConstBool(n) => f(n),
             AnimationNodeType::RotationArc(n) => f(n),
             AnimationNodeType::Fsm(n) => f(n),
             AnimationNodeType::Graph(n) => f(n),
@@ -305,6 +312,7 @@ impl AnimationNodeType {
             AnimationNodeType::ClampF32(n) => n,
             AnimationNodeType::CompareF32(n) => n,
             AnimationNodeType::AbsF32(n) => n,
+            AnimationNodeType::ConstBool(n) => n,
             AnimationNodeType::RotationArc(n) => n,
             AnimationNodeType::Fsm(n) => n,
             AnimationNodeType::Graph(n) => n,

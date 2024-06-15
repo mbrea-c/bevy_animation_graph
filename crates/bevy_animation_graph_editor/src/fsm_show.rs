@@ -4,11 +4,10 @@ use crate::egui_fsm::{
 };
 use bevy::{asset::Assets, math::Vec2, utils::HashMap};
 use bevy_animation_graph::core::state_machine::{
-        high_level::{State, StateMachine, Transition},
-        FSMState, StateId, TransitionId,
-    };
+    high_level::{State, StateMachine, Transition},
+    FSMState, StateId, TransitionId,
+};
 use bevy_inspector_egui::egui::Color32;
-
 
 pub struct StateIndices {
     name_to_idx: HashMap<String, usize>,

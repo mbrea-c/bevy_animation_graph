@@ -53,11 +53,7 @@ impl From<&State> for StateSerial {
 impl From<&StateMachine> for StateMachineSerial {
     fn from(value: &StateMachine) -> Self {
         Self {
-            states: value
-                .states
-                .values()
-                .map(StateSerial::from)
-                .collect(),
+            states: value.states.values().map(StateSerial::from).collect(),
             transitions: value
                 .transitions
                 .values()
