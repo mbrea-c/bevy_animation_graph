@@ -151,7 +151,7 @@ pub fn update_graph(
     let graph_assets_copy = unsafe { &*(graph_assets as *const Assets<AnimationGraph>) };
     let ctx = SpecContext {
         graph_assets: graph_assets_copy,
-        fsm_assets: fsm_assets,
+        fsm_assets,
     };
     let mut must_regen_indices = false;
     while let Some(change) = changes.pop() {

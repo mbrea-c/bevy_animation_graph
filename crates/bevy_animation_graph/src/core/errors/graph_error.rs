@@ -16,4 +16,12 @@ pub enum GraphError {
     TimeUpdateMissing(TargetPin),
     #[error("A parent graph was requested but none is present")]
     MissingParentGraph,
+    #[error("Graph requested data from FSM transition, but it is assigned to a state")]
+    FSMExpectedTransitionFoundState,
+    #[error("FSM sub-graph requested data that isn't available")]
+    FSMRequestedMissingData,
+    #[error("The current state id does not match any known states, perhaps you deleted a state while the state machine was running?")]
+    FSMCurrentStateMissing,
+    #[error("The asset for a state's graph is missing.")]
+    FSMGraphAssetMissing,
 }

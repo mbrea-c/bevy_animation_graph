@@ -14,6 +14,7 @@ pub use {
 
 #[derive(Debug, Clone)]
 pub enum EguiFsmChange {
+    #[allow(dead_code)] // We will want to enable transition creation with the editor UI
     TransitionCreated(usize, usize),
     TransitionRemoved(usize),
     StateMoved(usize, Vec2),

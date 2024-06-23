@@ -185,13 +185,6 @@ pub struct Style {
     pub link_line_segments_per_length: f32,
     pub link_hover_distance: f32,
 
-    pub pin_circle_radius: f32,
-    pub pin_quad_side_length: f32,
-    pub pin_triangle_side_length: f32,
-    pub pin_line_thickness: f32,
-    pub pin_hover_radius: f32,
-    pub pin_offset: f32,
-
     pub flags: usize,
     pub colors: [egui::Color32; ColorStyle::Count as usize],
 }
@@ -207,12 +200,6 @@ impl Default for Style {
             link_thickness: 3.0,
             link_line_segments_per_length: 0.1,
             link_hover_distance: 10.0,
-            pin_circle_radius: 4.0,
-            pin_quad_side_length: 7.0,
-            pin_triangle_side_length: 9.5,
-            pin_line_thickness: 1.0,
-            pin_hover_radius: 10.0,
-            pin_offset: 0.0,
             flags: StyleFlags::NodeOutline as usize | StyleFlags::GridLines as usize,
             colors: ColorStyle::colors_dark(),
         }
