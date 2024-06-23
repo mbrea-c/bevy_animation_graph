@@ -1,19 +1,23 @@
 use super::animation_clip::Interpolation;
+use super::edge_data::{AnimationEvent, EventQueue, SampledEvent};
+use super::pose::Pose;
+use super::prelude::GraphClip;
 use super::{
     animated_scene::{
         process_animated_scenes, spawn_animated_scenes, AnimatedScene, AnimatedSceneLoader,
     },
     animation_graph::loader::{AnimationGraphLoader, GraphClipLoader},
-    parameters::{BoneMask, ParamSpec, ParamValue},
-    pose::PoseSpec,
+    edge_data::{BoneMask, DataSpec, DataValue},
+    state_machine::high_level::{loader::StateMachineLoader, StateMachine},
     systems::{animation_player, animation_player_deferred_gizmos},
+};
+use crate::nodes::{
+    AbsF32, AddF32, BlendNode, ChainNode, ClampF32, ClipNode, CompareF32, DivF32, DummyNode,
+    FireEventNode, FlipLRNode, LoopNode, MulF32, RotationArcNode, SpeedNode, SubF32,
 };
 use crate::prelude::{
     config::{FlipConfig, FlipNameMapper, PatternMapper, PatternMapperSerial},
-    AbsF32, AddF32, AnimationGraph, AnimationGraphPlayer, AnimationNodeType, BlendNode, ChainNode,
-    ClampF32, ClipNode, DivF32, DummyNode, ExtendSkeleton, FlipLRNode, GraphClip, GraphNode,
-    IntoBoneSpaceNode, IntoCharacterSpaceNode, IntoGlobalSpaceNode, LoopNode, MulF32,
-    RotationArcNode, RotationNode, SpeedNode, SubF32, TwoBoneIKNode,
+    AnimationGraph, AnimationGraphPlayer, AnimationNodeType,
 };
 use crate::{core::animation_clip::EntityPath, prelude::AnimationNode};
 use bevy::{prelude::*, transform::TransformSystem};
@@ -32,6 +36,8 @@ impl Plugin for AnimationGraphPlugin {
             .init_asset_loader::<AnimationGraphLoader>()
             .init_asset::<AnimatedScene>()
             .init_asset_loader::<AnimatedSceneLoader>()
+            .init_asset::<StateMachine>()
+            .init_asset_loader::<StateMachineLoader>()
             .add_systems(PreUpdate, (spawn_animated_scenes, process_animated_scenes))
             .add_systems(
                 PostUpdate,
@@ -47,6 +53,8 @@ impl AnimationGraphPlugin {
         app //
             .register_type::<AnimationGraph>()
             .register_asset_reflect::<AnimationGraph>()
+            .register_type::<StateMachine>()
+            .register_asset_reflect::<StateMachine>()
             .register_type::<GraphClip>()
             .register_asset_reflect::<GraphClip>()
             .register_type::<AnimatedScene>()
@@ -55,38 +63,47 @@ impl AnimationGraphPlugin {
             .register_type::<AnimationGraphPlayer>()
             .register_type::<EntityPath>()
             .register_type::<BoneMask>()
-            .register_type::<ParamValue>()
-            .register_type::<ParamSpec>()
-            .register_type::<PoseSpec>()
+            .register_type::<Pose>()
+            .register_type::<AnimationEvent>()
+            .register_type::<SampledEvent>()
+            .register_type::<EventQueue>()
+            .register_type::<AnimationEvent>()
+            .register_type::<SampledEvent>()
+            .register_type::<DataValue>()
+            .register_type::<DataSpec>()
             .register_type::<AnimationNode>()
             .register_type::<AnimationNodeType>()
             .register_type::<FlipConfig>()
             .register_type::<FlipNameMapper>()
             .register_type::<PatternMapper>()
             .register_type::<PatternMapperSerial>()
+            .register_type::<()>()
+            .register_type_data::<(), ReflectDefault>()
         // --- Node registrations
         // ------------------------------------------
-            .register_type::<BlendNode>()
-            .register_type::<ChainNode>()
             .register_type::<ClipNode>()
             .register_type::<DummyNode>()
+            .register_type::<ChainNode>()
+            .register_type::<BlendNode>()
             .register_type::<FlipLRNode>()
-            .register_type::<GraphNode>()
+            // .register_type::<GraphNode>()
             .register_type::<LoopNode>()
-            .register_type::<RotationNode>()
+            // .register_type::<RotationNode>()
             .register_type::<SpeedNode>()
-            .register_type::<TwoBoneIKNode>()
+            // .register_type::<TwoBoneIKNode>()
             .register_type::<AbsF32>()
             .register_type::<AddF32>()
             .register_type::<ClampF32>()
             .register_type::<DivF32>()
             .register_type::<MulF32>()
             .register_type::<SubF32>()
+            .register_type::<CompareF32>()
+            .register_type::<FireEventNode>()
             .register_type::<RotationArcNode>()
-            .register_type::<ExtendSkeleton>()
-            .register_type::<IntoBoneSpaceNode>()
-            .register_type::<IntoGlobalSpaceNode>()
-            .register_type::<IntoCharacterSpaceNode>()
+            // .register_type::<ExtendSkeleton>()
+            // .register_type::<IntoBoneSpaceNode>()
+            // .register_type::<IntoGlobalSpaceNode>()
+            // .register_type::<IntoCharacterSpaceNode>()
         // ------------------------------------------
         ;
     }

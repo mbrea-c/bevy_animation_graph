@@ -1,9 +1,10 @@
 use crate::core::animation_graph::{PinMap, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
-use crate::core::duration_data::DurationData;
 use crate::core::errors::GraphError;
-use crate::core::pose::{Pose, PoseSpec};
+use crate::core::pose::Pose;
+use crate::core::prelude::DataSpec;
 use crate::prelude::{InterpolateLinear, PassContext, SpecContext};
+use crate::utils::unwrap::UnwrapVal;
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
@@ -15,9 +16,11 @@ pub struct ChainNode {
 }
 
 impl ChainNode {
-    pub const INPUT_1: &'static str = "Pose In 1";
-    pub const INPUT_2: &'static str = "Pose In 2";
-    pub const OUTPUT: &'static str = "Pose Out";
+    pub const IN_POSE_A: &'static str = "pose A";
+    pub const IN_TIME_A: &'static str = "time A";
+    pub const IN_POSE_B: &'static str = "pose B";
+    pub const IN_TIME_B: &'static str = "time B";
+    pub const OUT_POSE: &'static str = "pose";
 
     pub fn new(interpolation_period: f32) -> Self {
         Self {
@@ -31,9 +34,9 @@ impl ChainNode {
 }
 
 impl NodeLike for ChainNode {
-    fn duration_pass(&self, mut ctx: PassContext) -> Result<Option<DurationData>, GraphError> {
-        let source_duration_1 = ctx.duration_back(Self::INPUT_1)?;
-        let source_duration_2 = ctx.duration_back(Self::INPUT_2)?;
+    fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+        let source_duration_1 = ctx.duration_back(Self::IN_TIME_A)?;
+        let source_duration_2 = ctx.duration_back(Self::IN_TIME_B)?;
 
         let out_duration = match (source_duration_1, source_duration_2) {
             (Some(duration_1), Some(duration_2)) => {
@@ -44,52 +47,68 @@ impl NodeLike for ChainNode {
             (None, None) => None,
         };
 
-        Ok(Some(out_duration))
+        ctx.set_duration_fwd(out_duration);
+        Ok(())
     }
 
-    fn pose_pass(
-        &self,
-        input: TimeUpdate,
-        mut ctx: PassContext,
-    ) -> Result<Option<Pose>, GraphError> {
-        let duration_1 = ctx.duration_back(Self::INPUT_1)?;
+    fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+        let input = ctx.time_update_fwd()?;
+        let duration_1 = ctx.duration_back(Self::IN_TIME_A)?;
         let Some(duration_1) = duration_1 else {
             // First input is infinite, forward time update without change
-            return Ok(Some(ctx.pose_back(Self::INPUT_1, input)?));
+            ctx.set_time_update_back(Self::IN_TIME_A, input);
+            let pose_a: Pose = ctx.data_back(Self::IN_POSE_A)?.val();
+            ctx.set_time(pose_a.timestamp);
+            ctx.set_data_fwd(Self::OUT_POSE, pose_a);
+            return Ok(());
         };
-        let pose_1 = ctx.pose_back(Self::INPUT_1, input)?;
-        let curr_time = pose_1.timestamp;
+        ctx.set_time_update_back(Self::IN_TIME_A, input);
+        let pose_a: Pose = ctx.data_back(Self::IN_POSE_A)?.val();
+        let curr_time = pose_a.timestamp;
+        ctx.set_time(curr_time);
 
         if curr_time < duration_1 {
-            Ok(Some(pose_1))
+            ctx.set_data_fwd(Self::OUT_POSE, pose_a);
         } else if curr_time - duration_1 - self.interpolation_period >= 0. {
-            let mut pose_2 = ctx.pose_back(
-                Self::INPUT_2,
+            ctx.set_time_update_back(
+                Self::IN_TIME_B,
                 TimeUpdate::Absolute(curr_time - duration_1 - self.interpolation_period),
-            )?;
-            pose_2.timestamp = curr_time;
-            Ok(Some(pose_2))
+            );
+            let mut pose_b: Pose = ctx.data_back(Self::IN_POSE_B)?.val();
+            pose_b.timestamp = curr_time;
+            ctx.set_data_fwd(Self::OUT_POSE, pose_b);
         } else {
-            let pose_2 = ctx.pose_back(Self::INPUT_2, TimeUpdate::Absolute(0.0))?;
-            let mut out_pose = pose_1.interpolate_linear(
+            ctx.set_time_update_back(Self::IN_TIME_B, TimeUpdate::Absolute(0.0));
+            let pose_2: Pose = ctx.data_back(Self::IN_POSE_B)?.val();
+            let mut out_pose = pose_a.interpolate_linear(
                 &pose_2,
                 (curr_time - duration_1) / self.interpolation_period,
             );
             out_pose.timestamp = curr_time;
-            Ok(Some(out_pose))
+            ctx.set_data_fwd(Self::OUT_POSE, out_pose);
         }
+
+        Ok(())
     }
 
-    fn pose_input_spec(&self, _: SpecContext) -> PinMap<PoseSpec> {
+    fn data_input_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {
         [
-            (Self::INPUT_1.into(), PoseSpec::Any),
-            (Self::INPUT_2.into(), PoseSpec::Any),
+            (Self::IN_POSE_A.into(), DataSpec::Pose),
+            (Self::IN_POSE_B.into(), DataSpec::Pose),
         ]
         .into()
     }
 
-    fn pose_output_spec(&self, _: SpecContext) -> Option<PoseSpec> {
-        Some(PoseSpec::BoneSpace)
+    fn data_output_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {
+        [(Self::OUT_POSE.into(), DataSpec::Pose)].into()
+    }
+
+    fn time_input_spec(&self, _ctx: SpecContext) -> PinMap<()> {
+        [(Self::IN_TIME_A.into(), ()), (Self::IN_TIME_B.into(), ())].into()
+    }
+
+    fn time_output_spec(&self, _: SpecContext) -> Option<()> {
+        Some(())
     }
 
     fn display_name(&self) -> String {

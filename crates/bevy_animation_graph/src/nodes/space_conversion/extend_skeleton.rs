@@ -28,7 +28,7 @@ impl ExtendSkeleton {
 }
 
 impl NodeLike for ExtendSkeleton {
-    fn duration_pass(&self, mut ctx: PassContext) -> Result<Option<DurationData>, GraphError> {
+    fn duration(&self, mut ctx: PassContext) -> Result<Option<DurationData>, GraphError> {
         Ok(Some(ctx.duration_back(Self::POSE_IN)?))
     }
 

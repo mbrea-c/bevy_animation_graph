@@ -2,15 +2,17 @@ use super::pin;
 use crate::{
     core::{
         animation_node::{AnimationNode, NodeLike},
+        context::{CacheReadFilter, CacheWriteFilter},
         duration_data::DurationData,
         errors::{GraphError, GraphValidationError},
-        pose::{BoneId, Pose, PoseSpec},
+        pose::{BoneId, Pose},
+        prelude::{AnimationNodeType, GraphContextArena},
+        state_machine::high_level::StateMachine,
     },
     prelude::{
-        DeferredGizmos, GraphContext, OptParamSpec, ParamSpec, ParamValue, PassContext,
-        SpecContext, SystemResources,
+        DataSpec, DataValue, DeferredGizmos, OptDataSpec, PassContext, SpecContext, SystemResources,
     },
-    utils::ordered_map::OrderedMap,
+    utils::{ordered_map::OrderedMap, unwrap::UnwrapVal},
 };
 use bevy::{
     prelude::*,
@@ -100,7 +102,7 @@ impl UpdateTime<Option<TimeUpdate>> for TimeState {
 
 #[derive(Debug, Clone, Reflect, Default)]
 pub struct InputOverlay {
-    pub parameters: HashMap<PinId, ParamValue>,
+    pub parameters: HashMap<PinId, DataValue>,
     pub durations: HashMap<PinId, DurationData>,
     pub poses: HashMap<PinId, Pose>,
 }
@@ -174,11 +176,14 @@ pub struct AnimationGraph {
     /// Inverted, indexed by end pin.
     #[reflect(ignore)]
     pub edges: HashMap<TargetPin, SourcePin>,
+    /// Inverted from the inverted state (inverted squared), indexed by start pin.
+    #[reflect(ignore)]
+    pub edges_inverted: HashMap<SourcePin, TargetPin>,
 
-    pub default_parameters: PinMap<ParamValue>,
-    pub input_poses: PinMap<PoseSpec>,
-    pub output_parameters: PinMap<ParamSpec>,
-    pub output_pose: Option<PoseSpec>,
+    pub default_parameters: PinMap<DataValue>,
+    pub input_times: PinMap<()>,
+    pub output_parameters: PinMap<DataSpec>,
+    pub output_time: Option<()>,
 
     #[reflect(ignore)]
     pub extra: Extra,
@@ -190,16 +195,19 @@ impl Default for AnimationGraph {
     }
 }
 
+pub const DEFAULT_OUTPUT_POSE: &str = "pose";
+
 impl AnimationGraph {
     pub fn new() -> Self {
         Self {
             nodes: HashMap::new(),
             edges: HashMap::new(),
+            edges_inverted: HashMap::new(),
 
             default_parameters: PinMap::new(),
-            input_poses: PinMap::new(),
+            input_times: PinMap::new(),
             output_parameters: PinMap::new(),
-            output_pose: None,
+            output_time: None,
 
             extra: Extra::default(),
         }
@@ -222,12 +230,19 @@ impl AnimationGraph {
 
     /// Add a new edge to the graph
     pub fn add_edge(&mut self, source_pin: SourcePin, target_pin: TargetPin) {
-        self.edges.insert(target_pin, source_pin);
+        self.edges.insert(target_pin.clone(), source_pin.clone());
+        self.edges_inverted.insert(source_pin, target_pin);
     }
 
     /// Remove an edge from the graph.
-    pub fn remove_edge(&mut self, target_pin: &TargetPin) -> Option<SourcePin> {
-        self.edges.remove(target_pin)
+    pub fn remove_edge_by_target(&mut self, target_pin: &TargetPin) -> Option<SourcePin> {
+        let source_pin = self.edges.remove(target_pin);
+
+        if let Some(source_pin) = &source_pin {
+            self.edges_inverted.remove(source_pin);
+        }
+
+        source_pin
     }
 
     /// Rename node if node exists and new name is available, otherwise return false.
@@ -245,17 +260,17 @@ impl AnimationGraph {
         }
 
         let mut node = self.nodes.remove(&old_id).unwrap();
-        node.name = new_id.clone();
+        node.name.clone_from(&new_id);
         self.nodes.insert(new_id.clone(), node);
         let _ = self.extra.rename_node(&old_id, &new_id);
 
         let keys = self.edges.keys().cloned().collect::<Vec<_>>();
         for target_pin in keys.into_iter() {
-            let source_pin = self.edges.remove(&target_pin).unwrap();
+            let source_pin = self.remove_edge_by_target(&target_pin).unwrap();
             let new_target_pin = target_pin.node_renamed(old_id.clone(), new_id.clone());
             let new_source_pin = source_pin.node_renamed(old_id.clone(), new_id.clone());
 
-            self.edges.insert(new_target_pin, new_source_pin);
+            self.add_edge(new_source_pin, new_target_pin);
         }
 
         true
@@ -265,32 +280,32 @@ impl AnimationGraph {
     // --- Setting graph inputs and outputs
     // ----------------------------------------------------------------------------------------
     /// Sets the value for a default parameter, registering it if it wasn't yet done
-    pub fn set_default_parameter(&mut self, parameter_name: impl Into<String>, value: ParamValue) {
+    pub fn set_default_parameter(&mut self, parameter_name: impl Into<String>, value: DataValue) {
         let parameter_name = parameter_name.into();
-        let mut spec = OptParamSpec::from(&value);
+        let mut spec = OptDataSpec::from(&value);
         spec.optional = true;
         self.default_parameters
             .insert(parameter_name.clone(), value);
     }
 
     /// Get the default value of an input parameter, if it exists
-    pub fn get_default_parameter(&mut self, parameter_name: &str) -> Option<ParamValue> {
+    pub fn get_default_parameter(&mut self, parameter_name: &str) -> Option<DataValue> {
         self.default_parameters.get(parameter_name).cloned()
     }
 
     /// Register an input pose pin for the graph
-    pub fn add_input_pose(&mut self, pin_id: impl Into<PinId>, spec: PoseSpec) {
-        self.input_poses.insert(pin_id.into(), spec);
+    pub fn add_input_time(&mut self, pin_id: impl Into<PinId>) {
+        self.input_times.insert(pin_id.into(), ());
     }
 
     /// Register an output parameter for the graph
-    pub fn add_output_parameter(&mut self, pin_id: impl Into<PinId>, spec: ParamSpec) {
+    pub fn add_output_parameter(&mut self, pin_id: impl Into<PinId>, spec: DataSpec) {
         self.output_parameters.insert(pin_id.into(), spec);
     }
 
     /// Enables pose output for this graph
-    pub fn add_output_pose(&mut self, frame_type: PoseSpec) {
-        self.output_pose = Some(frame_type);
+    pub fn add_output_time(&mut self) {
+        self.output_time = Some(());
     }
     // ----------------------------------------------------------------------------------------
 
@@ -303,8 +318,8 @@ impl AnimationGraph {
         target_edge: impl Into<PinId>,
     ) {
         self.add_edge(
-            SourcePin::InputParameter(parameter_name.into()),
-            TargetPin::NodeParameter(target_node.into(), target_edge.into()),
+            SourcePin::InputData(parameter_name.into()),
+            TargetPin::NodeData(target_node.into(), target_edge.into()),
         )
     }
 
@@ -315,8 +330,8 @@ impl AnimationGraph {
         output_name: impl Into<PinId>,
     ) {
         self.add_edge(
-            SourcePin::NodeParameter(source_node.into(), source_edge.into()),
-            TargetPin::OutputParameter(output_name.into()),
+            SourcePin::NodeData(source_node.into(), source_edge.into()),
+            TargetPin::OutputData(output_name.into()),
         )
     }
 
@@ -327,15 +342,15 @@ impl AnimationGraph {
         target_edge: impl Into<PinId>,
     ) {
         self.add_edge(
-            SourcePin::InputPose(input_name.into()),
-            TargetPin::NodePose(target_node.into(), target_edge.into()),
+            SourcePin::InputTime(input_name.into()),
+            TargetPin::NodeTime(target_node.into(), target_edge.into()),
         )
     }
 
     pub fn add_output_pose_edge(&mut self, source_node: impl Into<NodeId>) {
         self.add_edge(
-            SourcePin::NodePose(source_node.into()),
-            TargetPin::OutputPose,
+            SourcePin::NodeTime(source_node.into()),
+            TargetPin::OutputTime,
         )
     }
 
@@ -348,8 +363,8 @@ impl AnimationGraph {
         target_pin: impl Into<PinId>,
     ) {
         self.add_edge(
-            SourcePin::NodeParameter(source_node.into(), source_pin.into()),
-            TargetPin::NodeParameter(target_node.into(), target_pin.into()),
+            SourcePin::NodeData(source_node.into(), source_pin.into()),
+            TargetPin::NodeData(target_node.into(), target_pin.into()),
         );
     }
 
@@ -361,8 +376,8 @@ impl AnimationGraph {
         target_pin: impl Into<PinId>,
     ) {
         self.add_edge(
-            SourcePin::NodePose(source_node.into()),
-            TargetPin::NodePose(target_node.into(), target_pin.into()),
+            SourcePin::NodeTime(source_node.into()),
+            TargetPin::NodeTime(target_node.into(), target_pin.into()),
         );
     }
     // ----------------------------------------------------------------------------------------
@@ -379,10 +394,10 @@ impl AnimationGraph {
 
         for (_, source_pin) in self.edges.iter() {
             let source_type = match source_pin {
-                SourcePin::NodeParameter(_, _) => SourceType::Parameter,
-                SourcePin::InputParameter(_) => SourceType::Parameter,
-                SourcePin::NodePose(_) => SourceType::Pose,
-                SourcePin::InputPose(_) => SourceType::Pose,
+                SourcePin::NodeData(_, _) => SourceType::Parameter,
+                SourcePin::InputData(_) => SourceType::Parameter,
+                SourcePin::NodeTime(_) => SourceType::Pose,
+                SourcePin::InputTime(_) => SourceType::Pose,
             };
 
             if counters.contains_key(source_pin) {
@@ -471,18 +486,37 @@ impl AnimationGraph {
         }
     }
 
+    /// Check whether a given state machine AssetId is present as a node in the graph.
+    /// If true, returns name of node containing the state machine.
+    pub fn contains_state_machine(&self, fsm: impl Into<AssetId<StateMachine>>) -> Option<NodeId> {
+        let fsm_id = fsm.into();
+        self.nodes
+            .values()
+            .filter_map(|n| match &n.node {
+                AnimationNodeType::Fsm(m) => Some((n.name.clone(), m)),
+                _ => None,
+            })
+            .fold(None, |acc, (name, m)| {
+                acc.or(if m.fsm.id() == fsm_id {
+                    Some(name)
+                } else {
+                    None
+                })
+            })
+    }
+
     fn extract_target_param_spec(
         &self,
         target_pin: &TargetPin,
         ctx: SpecContext,
-    ) -> Option<ParamSpec> {
+    ) -> Option<DataSpec> {
         match target_pin {
-            TargetPin::NodeParameter(tn, tp) => {
+            TargetPin::NodeData(tn, tp) => {
                 let node = self.nodes.get(tn)?;
-                let p_spec = node.parameter_input_spec(ctx);
-                p_spec.get(tp).map(|op| op.spec)
+                let p_spec = node.data_input_spec(ctx);
+                p_spec.get(tp).copied()
             }
-            TargetPin::OutputParameter(op) => self.output_parameters.get(op).copied(),
+            TargetPin::OutputData(op) => self.output_parameters.get(op).copied(),
             _ => None,
         }
     }
@@ -491,44 +525,36 @@ impl AnimationGraph {
         &self,
         source_pin: &SourcePin,
         ctx: SpecContext,
-    ) -> Option<ParamSpec> {
+    ) -> Option<DataSpec> {
         match source_pin {
-            SourcePin::NodeParameter(tn, tp) => {
+            SourcePin::NodeData(tn, tp) => {
                 let node = self.nodes.get(tn)?;
-                let p_spec = node.parameter_output_spec(ctx);
+                let p_spec = node.data_output_spec(ctx);
                 p_spec.get(tp).copied()
             }
-            SourcePin::InputParameter(ip) => self.default_parameters.get(ip).map(|ip| ip.into()),
+            SourcePin::InputData(ip) => self.default_parameters.get(ip).map(|ip| ip.into()),
             _ => None,
         }
     }
 
-    fn extract_source_pose_spec(
-        &self,
-        source_pin: &SourcePin,
-        ctx: SpecContext,
-    ) -> Option<PoseSpec> {
+    fn extract_source_pose_spec(&self, source_pin: &SourcePin, ctx: SpecContext) -> Option<()> {
         match source_pin {
-            SourcePin::NodePose(sn) => {
+            SourcePin::NodeTime(sn) => {
                 let node = self.nodes.get(sn)?;
-                node.pose_output_spec(ctx)
+                node.time_output_spec(ctx)
             }
-            SourcePin::InputPose(ip) => self.input_poses.get(ip).copied(),
+            SourcePin::InputTime(ip) => self.input_times.get(ip).copied(),
             _ => None,
         }
     }
 
-    fn extract_target_pose_spec(
-        &self,
-        target_pin: &TargetPin,
-        ctx: SpecContext,
-    ) -> Option<PoseSpec> {
+    fn extract_target_pose_spec(&self, target_pin: &TargetPin, ctx: SpecContext) -> Option<()> {
         match target_pin {
-            TargetPin::NodePose(tn, tp) => {
+            TargetPin::NodeTime(tn, tp) => {
                 let node = self.nodes.get(tn)?;
-                node.pose_input_spec(ctx).get(tp).copied()
+                node.time_input_spec(ctx).get(tp).copied()
             }
-            TargetPin::OutputPose => self.output_pose,
+            TargetPin::OutputTime => self.output_time,
             _ => None,
         }
     }
@@ -559,7 +585,7 @@ impl AnimationGraph {
 
         for (target_pin, source_pin) in self.edges.iter() {
             match source_pin {
-                SourcePin::NodePose(_) | SourcePin::InputPose(_) => {
+                SourcePin::NodeTime(_) | SourcePin::InputTime(_) => {
                     if used_sources.contains(source_pin) {
                         illegal_edges.insert(Edge {
                             source: source_pin.clone(),
@@ -598,11 +624,7 @@ impl AnimationGraph {
                 .is_some()
         } else {
             self.extract_source_pose_spec(source_pin, ctx)
-                .and_then(|source_spec| {
-                    self.extract_target_pose_spec(target_pin, ctx)
-                        .map(|target_spec| (source_spec, target_spec))
-                })
-                .and_then(|(s, t)| (s.compatible(&t)).then_some(()))
+                .zip(self.extract_target_pose_spec(target_pin, ctx))
                 .is_some()
         }
     }
@@ -637,57 +659,60 @@ impl AnimationGraph {
 
     // --- Computations
     // ----------------------------------------------------------------------------------------
-    pub fn get_parameter(
+    pub fn get_data(
         &self,
         target_pin: TargetPin,
         mut ctx: PassContext,
-    ) -> Result<ParamValue, GraphError> {
-        let source_pin = self.edges.get(&target_pin);
-
-        let Some(source_pin) = source_pin else {
-            return Err(GraphError::MissingInputEdge(target_pin));
+    ) -> Result<DataValue, GraphError> {
+        // Get source pin
+        let Some(source_pin) = self.edges.get(&target_pin) else {
+            return Err(GraphError::MissingEdgeToTarget(target_pin));
         };
 
-        if let Some(val) = ctx.context().get_parameter(source_pin) {
-            return Ok(val.clone());
-        }
-
         let source_value = match source_pin {
-            SourcePin::NodeParameter(node_id, pin_id) => {
-                let node = &self.nodes[node_id];
-                let should_debug = node.should_debug;
-                let outputs =
-                    node.parameter_pass(ctx.with_node(node_id, self).with_debugging(should_debug))?;
+            SourcePin::NodeData(node_id, _) => {
+                if ctx
+                    .caches()
+                    .get(
+                        |c| c.is_updated(node_id).then_some(()),
+                        CacheReadFilter::for_temp(ctx.temp_cache),
+                    )
+                    .is_none()
+                {
+                    let node = &self.nodes[node_id];
+                    let should_debug = node.should_debug;
 
-                let active_cache = if ctx.temp_cache {
-                    ctx.context().caches.get_temp_cache_mut()
-                } else {
-                    ctx.context().caches.get_cache_mut()
-                };
+                    node.update(ctx.with_node(node_id, self).with_debugging(should_debug))?;
 
-                for (pin_id, value) in outputs.iter() {
-                    active_cache.set_parameter(
-                        SourcePin::NodeParameter(node_id.clone(), pin_id.clone()),
-                        value.clone(),
+                    let is_temp = ctx.temp_cache;
+
+                    ctx.caches_mut().set(
+                        |c| c.set_updated(node_id.clone()),
+                        CacheWriteFilter::for_temp(is_temp),
                     );
                 }
 
-                outputs[pin_id].clone()
+                let Some(value) = ctx.caches().get(
+                    |c| c.get_parameter(source_pin).cloned(),
+                    CacheReadFilter::for_temp(ctx.temp_cache),
+                ) else {
+                    return Err(GraphError::OutputMissing(source_pin.clone()));
+                };
+
+                value
             }
-            SourcePin::InputParameter(pin_id) => {
-                let out = if ctx.has_parent() {
-                    ctx.parent().parameter_back(pin_id).ok()
-                } else {
-                    None
-                }
+            SourcePin::InputData(pin_id) => ctx
+                .parent_data_back(pin_id)
+                .ok()
                 .or_else(|| ctx.overlay.parameters.get(pin_id).cloned())
-                .or_else(|| self.default_parameters.get(pin_id).cloned());
-                out.unwrap()
-            }
-            SourcePin::NodePose(_) => {
+                .or_else(|| self.default_parameters.get(pin_id).cloned())
+                .unwrap(),
+            SourcePin::NodeTime(_) => {
+                // TODO: Make a graph error
                 panic!("Incompatible pins connected: {source_pin:?} --> {target_pin:?}")
             }
-            SourcePin::InputPose(_) => {
+            SourcePin::InputTime(_) => {
+                // TODO: Make a graph error
                 panic!("Incompatible pins connected: {source_pin:?} --> {target_pin:?}")
             }
         };
@@ -698,41 +723,40 @@ impl AnimationGraph {
     pub fn get_duration(
         &self,
         target_pin: TargetPin,
-        mut ctx: PassContext,
+        ctx: PassContext,
     ) -> Result<DurationData, GraphError> {
         let Some(source_pin) = self.edges.get(&target_pin) else {
-            return Err(GraphError::MissingInputEdge(target_pin));
+            return Err(GraphError::MissingEdgeToTarget(target_pin));
         };
 
-        if let Some(val) = ctx.context().get_duration(source_pin) {
-            return Ok(val);
-        }
-
         let source_value = match source_pin {
-            SourcePin::NodeParameter(_, _) => {
+            SourcePin::NodeData(_, _) => {
                 panic!("Incompatible pins connected: {source_pin:?} --> {target_pin:?}")
             }
-            SourcePin::InputParameter(_) => {
+            SourcePin::InputData(_) => {
                 panic!("Incompatible pins connected: {source_pin:?} --> {target_pin:?}")
             }
-            SourcePin::NodePose(node_id) => {
-                let node = &self.nodes[node_id];
-                let should_debug = node.should_debug;
-                let output =
-                    node.duration_pass(ctx.with_node(node_id, self).with_debugging(should_debug))?;
-
-                if let Some(value) = output {
-                    let active_cache = if ctx.temp_cache {
-                        ctx.context().caches.get_temp_cache_mut()
-                    } else {
-                        ctx.context().caches.get_cache_mut()
+            SourcePin::NodeTime(node_id) => {
+                if let Some(dur) = ctx.caches().get(
+                    |c| c.get_duration(source_pin),
+                    CacheReadFilter::for_temp(ctx.temp_cache),
+                ) {
+                    dur
+                } else {
+                    let node = &self.nodes[node_id];
+                    let should_debug = node.should_debug;
+                    node.duration(ctx.with_node(node_id, self).with_debugging(should_debug))?;
+                    let Some(dur) = ctx.caches().get(
+                        |c| c.get_duration(source_pin),
+                        CacheReadFilter::for_temp(ctx.temp_cache),
+                    ) else {
+                        // TODO: Make a graph error for duration missing
+                        return Err(GraphError::OutputMissing(source_pin.clone()));
                     };
-                    active_cache.set_duration(SourcePin::NodePose(node_id.clone()), value);
+                    dur
                 }
-
-                output.unwrap()
             }
-            SourcePin::InputPose(pin_id) => {
+            SourcePin::InputTime(pin_id) => {
                 if let Some(v) = ctx.overlay.durations.get(pin_id) {
                     *v
                 } else {
@@ -744,103 +768,53 @@ impl AnimationGraph {
         Ok(source_value)
     }
 
-    pub fn get_pose(
+    pub fn get_time_update(
         &self,
-        time_update: TimeUpdate,
-        target_pin: TargetPin,
-        mut ctx: PassContext,
-    ) -> Result<Pose, GraphError> {
-        let Some(source_pin) = self.edges.get(&target_pin) else {
-            return Err(GraphError::MissingInputEdge(target_pin));
+        source_pin: SourcePin,
+        ctx: PassContext,
+    ) -> Result<TimeUpdate, GraphError> {
+        let Some(target_pin) = self.edges_inverted.get(&source_pin) else {
+            return Err(GraphError::MissingEdgeToSource(source_pin));
         };
 
-        if !ctx.temp_cache {
-            if let Some(val) = ctx.context().get_pose(source_pin) {
-                return Ok(val.clone());
-            }
-        }
-
-        let source_value = match source_pin {
-            SourcePin::NodeParameter(_, _) => {
+        match target_pin {
+            TargetPin::NodeData(_, _) => {
                 panic!("Incompatible pins connected: {source_pin:?} --> {target_pin:?}")
             }
-            SourcePin::InputParameter(_) => {
+            TargetPin::OutputData(_) => {
                 panic!("Incompatible pins connected: {source_pin:?} --> {target_pin:?}")
             }
-            SourcePin::NodePose(node_id) => {
-                let node = &self.nodes[node_id];
-                let should_debug = node.should_debug;
-                let output = node
-                    .pose_pass(
-                        time_update,
-                        ctx.with_node(node_id, self).with_debugging(should_debug),
-                    )?
-                    .unwrap();
-
-                let active_cache = if ctx.temp_cache {
-                    ctx.context().caches.get_temp_cache_mut()
-                } else {
-                    ctx.context().caches.get_cache_mut()
+            TargetPin::NodeTime(_, _) => {
+                let Some(time_update) = ctx.caches().get(
+                    |c| c.get_time_update_back(target_pin).cloned(),
+                    CacheReadFilter::for_temp(ctx.temp_cache),
+                ) else {
+                    return Err(GraphError::TimeUpdateMissing(target_pin.clone()));
                 };
 
-                active_cache.set_pose(source_pin.clone(), output.clone());
-                active_cache.set_time(source_pin.clone(), output.timestamp);
-
-                output
+                Ok(time_update)
             }
-            SourcePin::InputPose(pin_id) => {
-                if let Some(v) = ctx.overlay.poses.get(pin_id) {
-                    v.clone()
-                } else {
-                    ctx.parent().pose_back(pin_id, time_update)?
-                }
-            }
-        };
+            TargetPin::OutputTime => {
+                let Some(time_update) = ctx
+                    .caches()
+                    .get(
+                        |c| c.get_time_update_back(target_pin).cloned(),
+                        CacheReadFilter::for_temp(ctx.temp_cache),
+                    )
+                    .or_else(|| ctx.parent_time_update_fwd().ok())
+                else {
+                    return Err(GraphError::TimeUpdateMissing(target_pin.clone()));
+                };
 
-        Ok(source_value)
-    }
-
-    pub fn clear_temp_cache(
-        &self,
-        target_pin: TargetPin,
-        mut ctx: PassContext,
-    ) -> Result<(), GraphError> {
-        let Some(source_pin) = self.edges.get(&target_pin) else {
-            return Err(GraphError::MissingInputEdge(target_pin));
-        };
-
-        ctx.context()
-            .caches
-            .get_temp_cache_mut()
-            .clear_for(source_pin);
-
-        match source_pin {
-            SourcePin::NodeParameter(_, _) => {
-                panic!("Incompatible pins connected: {source_pin:?} --> {target_pin:?}")
+                Ok(time_update)
             }
-            SourcePin::InputParameter(_) => {
-                panic!("Incompatible pins connected: {source_pin:?} --> {target_pin:?}")
-            }
-            SourcePin::NodePose(node_id) => {
-                let node = &self.nodes[node_id];
-                let should_debug = node.should_debug;
-                let mut input_spec = node.pose_input_spec(ctx.spec_context());
-                for (pin_id, _) in input_spec.drain(..) {
-                    ctx.with_node(node_id, self)
-                        .with_debugging(should_debug)
-                        .clear_temp_cache(pin_id);
-                }
-            }
-            SourcePin::InputPose(_) => {}
         }
-
-        Ok(())
     }
 
     pub fn query(
         &self,
         time_update: TimeUpdate,
-        context: &mut GraphContext,
+        context_arena: &mut GraphContextArena,
         resources: &SystemResources,
         root_entity: Entity,
         entity_map: &HashMap<BoneId, Entity>,
@@ -848,7 +822,7 @@ impl AnimationGraph {
     ) -> Result<Pose, GraphError> {
         self.query_with_overlay(
             time_update,
-            context,
+            context_arena,
             resources,
             &InputOverlay::default(),
             root_entity,
@@ -861,26 +835,29 @@ impl AnimationGraph {
     pub fn query_with_overlay(
         &self,
         time_update: TimeUpdate,
-        context: &mut GraphContext,
+        context_arena: &mut GraphContextArena,
         resources: &SystemResources,
         overlay: &InputOverlay,
         root_entity: Entity,
         entity_map: &HashMap<BoneId, Entity>,
         deferred_gizmos: &mut DeferredGizmos,
     ) -> Result<Pose, GraphError> {
-        context.push_caches();
-        self.get_pose(
-            time_update,
-            TargetPin::OutputPose,
-            PassContext::new(
-                context,
-                resources,
-                overlay,
-                root_entity,
-                entity_map,
-                deferred_gizmos,
-            ),
-        )
+        context_arena.next_frame();
+        let mut ctx = PassContext::new(
+            context_arena.get_toplevel_id(),
+            context_arena,
+            resources,
+            overlay,
+            root_entity,
+            entity_map,
+            deferred_gizmos,
+        );
+        ctx.caches_mut().set(
+            |c| c.set_time_update_back(TargetPin::OutputTime, time_update),
+            CacheWriteFilter::Primary,
+        );
+        self.get_data(TargetPin::OutputData(DEFAULT_OUTPUT_POSE.into()), ctx)
+            .map(|d| d.val())
     }
     // ----------------------------------------------------------------------------------------
 }

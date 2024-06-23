@@ -5,25 +5,28 @@ use derivative::Derivative;
 use egui::epaint::PathShape;
 
 #[derive(Debug, Default, Clone)]
-pub struct LinkColorArgs {
+pub struct LinkStyleArgs {
     pub base: Option<egui::Color32>,
     pub hovered: Option<egui::Color32>,
     pub selected: Option<egui::Color32>,
+    pub thickness: Option<f32>,
 }
 
-#[derive(Debug)]
-pub struct LinkDataColorStyle {
+#[derive(Debug, Clone)]
+pub struct LinkStyle {
     pub base: egui::Color32,
     pub hovered: egui::Color32,
     pub selected: egui::Color32,
+    pub thickness: f32,
 }
 
-impl Default for LinkDataColorStyle {
+impl Default for LinkStyle {
     fn default() -> Self {
         Self {
             base: egui::Color32::BLUE,
             hovered: egui::Color32::LIGHT_BLUE,
             selected: egui::Color32::LIGHT_BLUE,
+            thickness: 3.,
         }
     }
 }
@@ -35,15 +38,14 @@ pub struct LinkSpec {
     pub start_pin_index: usize,
     pub end_pin_index: usize,
     #[derivative(Debug = "ignore")]
-    pub color_style: LinkColorArgs,
-    pub thickness: Option<f32>,
+    pub style: LinkStyleArgs,
 }
 
 #[derive(Derivative, Default)]
 #[derivative(Debug)]
 pub struct LinkState {
     #[derivative(Debug = "ignore")]
-    pub color_style: LinkDataColorStyle,
+    pub style: LinkStyle,
     #[derivative(Debug = "ignore")]
     pub shape: Option<egui::layers::ShapeIdx>,
 }
@@ -78,7 +80,6 @@ impl PartialEq for Link {
 pub struct BezierCurve(egui::Pos2, egui::Pos2, egui::Pos2, egui::Pos2);
 
 impl BezierCurve {
-    #[inline]
     pub fn eval(&self, t: f32) -> egui::Pos2 {
         <[f32; 2]>::from(
             (1.0 - t).powi(3) * self.0.to_vec2()
@@ -89,7 +90,6 @@ impl BezierCurve {
         .into()
     }
 
-    #[inline]
     pub fn get_containing_rect_for_bezier_curve(&self, hover_distance: f32) -> egui::Rect {
         let min = self.0.min(self.3);
         let max = self.0.max(self.3);
@@ -108,7 +108,6 @@ pub(crate) struct LinkBezierData {
 }
 
 impl LinkBezierData {
-    #[inline]
     pub(crate) fn get_link_renderable(
         start: egui::Pos2,
         end: egui::Pos2,
@@ -146,13 +145,11 @@ impl LinkBezierData {
         p_closest
     }
 
-    #[inline]
     pub(crate) fn get_distance_to_cubic_bezier(&self, pos: &egui::Pos2) -> f32 {
         let point_on_curve = self.get_closest_point_on_cubic_bezier(pos);
         pos.distance(point_on_curve)
     }
 
-    #[inline]
     pub(crate) fn rectangle_overlaps_bezier(&self, rect: &egui::Rect) -> bool {
         let mut current = self.bezier.eval(0.0);
         let dt = 1.0 / self.num_segments as f32;
@@ -184,7 +181,6 @@ impl LinkBezierData {
     }
 }
 
-#[inline]
 pub fn line_closest_point(a: &egui::Pos2, b: &egui::Pos2, p: &egui::Pos2) -> egui::Pos2 {
     let ap = *p - *a;
     let ab_dir = *b - *a;
@@ -199,12 +195,10 @@ pub fn line_closest_point(a: &egui::Pos2, b: &egui::Pos2, p: &egui::Pos2) -> egu
     *a + ab_dir * dot / ab_len_sqr
 }
 
-#[inline]
 fn eval_inplicit_line_eq(p1: &egui::Pos2, p2: &egui::Pos2, p: &egui::Pos2) -> f32 {
     (p2.y * p1.y) * p.x + (p1.x * p2.x) * p.y * (p2.x * p1.y - p1.x * p2.y)
 }
 
-#[inline]
 fn rectangle_overlaps_line_segment(rect: &egui::Rect, p1: &egui::Pos2, p2: &egui::Pos2) -> bool {
     if rect.contains(*p1) || rect.contains(*p2) {
         return true;

@@ -1,0 +1,38 @@
+(
+    nodes: [
+        (
+            name: "Le big fsm",
+            node: Fsm("fsm/meme.fsm.ron"),
+        ),
+    ],
+    edges_inverted: {
+        OutputTime: NodeTime("Le big fsm"),
+        NodeData("Le big fsm", "driver events"): InputData("les eventos"),
+        OutputData("pose"): NodeData("Le big fsm", "pose"),
+    },
+    default_parameters: {
+        "les eventos": EventQueue((
+            events: [
+                (
+                    event: (
+                        id: "",
+                    ),
+                    weight: 1.0,
+                    percentage: 1.0,
+                ),
+            ],
+        )),
+    },
+    input_times: {},
+    output_parameters: {
+        "pose": Pose,
+    },
+    output_time: Some(()),
+    extra: (
+        node_positions: {
+            "Le big fsm": (467.3684, 642.7369),
+        },
+        input_position: (192.0, 475.0),
+        output_position: (727.0, 463.0),
+    ),
+)

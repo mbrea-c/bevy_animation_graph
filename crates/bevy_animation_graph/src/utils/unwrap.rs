@@ -1,3 +1,3 @@
-pub trait Unwrap<T> {
-    fn unwrap(self) -> T;
+pub trait UnwrapVal<T> {
+    fn val(self) -> T;
 }

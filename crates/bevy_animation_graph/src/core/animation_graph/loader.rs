@@ -5,14 +5,11 @@ use super::{
 use crate::{
     core::{animation_clip::GraphClip, errors::AssetLoaderError},
     nodes::{
-        blend_node::BlendNode, chain_node::ChainNode, clip_node::ClipNode,
-        flip_lr_node::FlipLRNode, loop_node::LoopNode, speed_node::SpeedNode, AbsF32, AddF32,
-        ClampF32, DivF32, GraphNode, MulF32,
+        AbsF32, AddF32, BlendNode, ChainNode, ClampF32, ClipNode, CompareF32, ConstBool, DivF32,
+        FSMNode, FireEventNode, FlipLRNode, GraphNode, LoopNode, MulF32, RotationArcNode,
+        RotationNode, SpeedNode, SubF32, TwoBoneIKNode,
     },
-    prelude::{
-        DummyNode, ExtendSkeleton, IntoBoneSpaceNode, IntoCharacterSpaceNode, IntoGlobalSpaceNode,
-        RotationArcNode, RotationNode, SubF32, TwoBoneIKNode,
-    },
+    prelude::DummyNode,
 };
 use bevy::{
     asset::{io::Reader, AssetLoader, AsyncReadExt, LoadContext},
@@ -148,33 +145,45 @@ impl AssetLoader for AnimationGraphLoader {
                         RotationNode::new(*mode, *space, *decay, *length, *base_weight)
                             .wrapped(&serial_node.name)
                     }
+                    AnimationNodeTypeSerial::FireEvent(ev) => {
+                        FireEventNode::new(ev.clone()).wrapped(&serial_node.name)
+                    }
                     AnimationNodeTypeSerial::AddF32 => AddF32::new().wrapped(&serial_node.name),
                     AnimationNodeTypeSerial::SubF32 => SubF32::new().wrapped(&serial_node.name),
                     AnimationNodeTypeSerial::MulF32 => MulF32::new().wrapped(&serial_node.name),
                     AnimationNodeTypeSerial::DivF32 => DivF32::new().wrapped(&serial_node.name),
                     AnimationNodeTypeSerial::ClampF32 => ClampF32::new().wrapped(&serial_node.name),
+                    AnimationNodeTypeSerial::CompareF32(op) => {
+                        CompareF32::new(*op).wrapped(&serial_node.name)
+                    }
                     AnimationNodeTypeSerial::AbsF32 => AbsF32::new().wrapped(&serial_node.name),
+                    AnimationNodeTypeSerial::ConstBool(b) => {
+                        ConstBool::new(*b).wrapped(&serial_node.name)
+                    }
                     AnimationNodeTypeSerial::RotationArc => {
                         RotationArcNode::new().wrapped(&serial_node.name)
+                    }
+                    AnimationNodeTypeSerial::Fsm(fsm_name) => {
+                        FSMNode::new(load_context.load(fsm_name)).wrapped(&serial_node.name)
                     }
                     AnimationNodeTypeSerial::Graph(graph_name) => {
                         GraphNode::new(load_context.load(graph_name)).wrapped(&serial_node.name)
                     }
-                    AnimationNodeTypeSerial::IntoBoneSpace => {
-                        IntoBoneSpaceNode::new().wrapped(&serial_node.name)
-                    }
-                    AnimationNodeTypeSerial::IntoCharacterSpace => {
-                        IntoCharacterSpaceNode::new().wrapped(&serial_node.name)
-                    }
-                    AnimationNodeTypeSerial::ExtendSkeleton => {
-                        ExtendSkeleton::new().wrapped(&serial_node.name)
-                    }
+                    // AnimationNodeTypeSerial::IntoBoneSpace => {
+                    //     IntoBoneSpaceNode::new().wrapped(&serial_node.name)
+                    // }
+                    // AnimationNodeTypeSerial::IntoCharacterSpace => {
+                    //     IntoCharacterSpaceNode::new().wrapped(&serial_node.name)
+                    // }
+                    // AnimationNodeTypeSerial::ExtendSkeleton => {
+                    //     ExtendSkeleton::new().wrapped(&serial_node.name)
+                    // }
                     AnimationNodeTypeSerial::TwoBoneIK => {
                         TwoBoneIKNode::new().wrapped(&serial_node.name)
                     }
-                    AnimationNodeTypeSerial::IntoGlobalSpace => {
-                        IntoGlobalSpaceNode::new().wrapped(&serial_node.name)
-                    }
+                    // AnimationNodeTypeSerial::IntoGlobalSpace => {
+                    //     IntoGlobalSpaceNode::new().wrapped(&serial_node.name)
+                    // }
                     AnimationNodeTypeSerial::Dummy => DummyNode::new().wrapped(&serial_node.name),
                 };
                 graph.add_node(node);
@@ -186,14 +195,14 @@ impl AssetLoader for AnimationGraphLoader {
             for (param_name, param_value) in &serial.default_parameters {
                 graph.set_default_parameter(param_name, param_value.clone());
             }
-            for (pose_name, pose_spec) in &serial.input_poses {
-                graph.add_input_pose(pose_name, *pose_spec);
+            for (pose_name, _) in &serial.input_times {
+                graph.add_input_time(pose_name);
             }
             for (param_name, param_spec) in &serial.output_parameters {
                 graph.add_output_parameter(param_name, *param_spec);
             }
-            if let Some(output_pose_spec) = serial.output_pose {
-                graph.add_output_pose(output_pose_spec);
+            if serial.output_time.is_some() {
+                graph.add_output_time();
             }
             // ------------------------------------------------------------------------------------
 

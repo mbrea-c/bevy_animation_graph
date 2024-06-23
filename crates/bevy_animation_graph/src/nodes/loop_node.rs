@@ -1,12 +1,12 @@
-use crate::core::animation_graph::{PinId, PinMap, TimeUpdate};
+use crate::core::animation_graph::{PinMap, TimeUpdate};
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
-use crate::core::duration_data::DurationData;
 use crate::core::errors::GraphError;
-use crate::core::pose::{Pose, PoseSpec};
+use crate::core::pose::Pose;
+use crate::core::prelude::DataSpec;
 use crate::interpolation::prelude::InterpolateLinear;
-use crate::prelude::{ParamValue, PassContext, SpecContext};
+use crate::prelude::{PassContext, SpecContext};
+use crate::utils::unwrap::UnwrapVal;
 use bevy::prelude::*;
-use bevy::utils::HashMap;
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default)]
@@ -15,8 +15,9 @@ pub struct LoopNode {
 }
 
 impl LoopNode {
-    pub const INPUT: &'static str = "Pose In";
-    pub const OUTPUT: &'static str = "Pose Out";
+    pub const IN_POSE: &'static str = "pose";
+    pub const IN_TIME: &'static str = "time";
+    pub const OUT_POSE: &'static str = "pose";
 
     pub fn new(interpolation_period: f32) -> Self {
         Self {
@@ -30,28 +31,27 @@ impl LoopNode {
 }
 
 impl NodeLike for LoopNode {
-    fn parameter_pass(&self, _: PassContext) -> Result<HashMap<PinId, ParamValue>, GraphError> {
-        Ok(HashMap::new())
+    fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+        ctx.set_duration_fwd(None);
+        Ok(())
     }
 
-    fn duration_pass(&self, _: PassContext) -> Result<Option<DurationData>, GraphError> {
-        Ok(Some(None))
-    }
-
-    fn pose_pass(
-        &self,
-        input: TimeUpdate,
-        mut ctx: PassContext,
-    ) -> Result<Option<Pose>, GraphError> {
-        let duration = ctx.duration_back(Self::INPUT)?;
+    fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+        let input = ctx.time_update_fwd()?;
+        let duration = ctx.duration_back(Self::IN_TIME)?;
 
         let Some(duration) = duration else {
-            return Ok(Some(ctx.pose_back(Self::INPUT, input)?));
+            ctx.set_time_update_back(Self::IN_TIME, input);
+            let pose_back: Pose = ctx.data_back(Self::IN_POSE)?.val();
+            ctx.set_time(pose_back.timestamp);
+            ctx.set_data_fwd(Self::OUT_POSE, pose_back);
+
+            return Ok(());
         };
 
         let full_duration = duration + self.interpolation_period;
 
-        let prev_time = ctx.prev_time_fwd();
+        let prev_time = ctx.prev_time();
         let curr_time = input.apply(prev_time);
         let t = curr_time.rem_euclid(full_duration);
 
@@ -66,28 +66,43 @@ impl NodeLike for LoopNode {
             TimeUpdate::Absolute(_) => TimeUpdate::Absolute(t),
         };
 
-        let mut pose = ctx.pose_back(Self::INPUT, fw_upd)?;
+        ctx.set_time_update_back(Self::IN_TIME, fw_upd);
+        let mut pose: Pose = ctx.data_back(Self::IN_POSE)?.val();
 
         if t > duration && t < full_duration {
-            let start_pose = ctx.temp_pose_back(Self::INPUT, TimeUpdate::Absolute(0.))?;
-            ctx.clear_temp_cache(Self::INPUT);
+            let mut ctx_temp = ctx.with_temp(true);
+            ctx_temp.set_time_update_back(Self::IN_TIME, TimeUpdate::Absolute(0.));
+            let start_pose: Pose = ctx_temp.data_back(Self::IN_POSE)?.val();
+            // TODO: How to clear cache? time? pose?
+            // ctx.clear_temp_cache(Self::IN_POSE);
             let old_time = pose.timestamp;
-            pose = pose.interpolate_linear(&start_pose, (t - duration) / self.interpolation_period);
+            let alpha = (t - duration) / self.interpolation_period;
+            pose = pose.interpolate_linear(&start_pose, alpha);
             pose.timestamp = old_time;
         }
 
         let t_extra = curr_time.div_euclid(full_duration) * full_duration;
         pose.timestamp += t_extra;
+        ctx.set_time(pose.timestamp);
+        ctx.set_data_fwd(Self::OUT_POSE, pose);
 
-        Ok(Some(pose))
+        Ok(())
     }
 
-    fn pose_input_spec(&self, _: SpecContext) -> PinMap<PoseSpec> {
-        [(Self::INPUT.into(), PoseSpec::Any)].into()
+    fn data_input_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {
+        [(Self::IN_POSE.into(), DataSpec::Pose)].into()
     }
 
-    fn pose_output_spec(&self, _: SpecContext) -> Option<PoseSpec> {
-        Some(PoseSpec::Any)
+    fn data_output_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {
+        [(Self::OUT_POSE.into(), DataSpec::Pose)].into()
+    }
+
+    fn time_input_spec(&self, _: SpecContext) -> PinMap<()> {
+        [(Self::IN_TIME.into(), ())].into()
+    }
+
+    fn time_output_spec(&self, _: SpecContext) -> Option<()> {
+        Some(())
     }
 
     fn display_name(&self) -> String {

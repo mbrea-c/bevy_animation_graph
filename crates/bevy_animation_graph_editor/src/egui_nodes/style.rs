@@ -3,9 +3,9 @@ use bevy_inspector_egui::bevy_egui;
 
 use super::{
     lib::*,
-    link::{LinkColorArgs, LinkDataColorStyle},
+    link::{LinkStyle, LinkStyleArgs},
     node::{NodeDataColorStyle, NodeDataLayoutStyle},
-    pin::{PinDataColorStyle, PinType},
+    pin::{PinStyle, PinType},
 };
 
 /// Represents different color style values used by a Context
@@ -15,6 +15,7 @@ pub enum ColorStyle {
     NodeBackgroundHovered,
     NodeBackgroundSelected,
     NodeOutline,
+    NodeOutlineActive,
     TitleBar,
     TitleBarHovered,
     TitleBarSelected,
@@ -51,6 +52,8 @@ impl ColorStyle {
             egui::Color32::from_rgba_unmultiplied(75, 75, 75, 255);
         colors[ColorStyle::NodeOutline as usize] =
             egui::Color32::from_rgba_unmultiplied(100, 100, 100, 255);
+        colors[ColorStyle::NodeOutlineActive as usize] =
+            egui::Color32::from_rgba_unmultiplied(100, 100, 200, 255);
         colors[ColorStyle::TitleBar as usize] =
             egui::Color32::from_rgba_unmultiplied(41, 74, 122, 255);
         colors[ColorStyle::TitleBarHovered as usize] =
@@ -174,6 +177,7 @@ pub struct Style {
     pub link_line_segments_per_length: f32,
     pub link_hover_distance: f32,
 
+    pub pin_shape: PinShape,
     pub pin_circle_radius: f32,
     pub pin_quad_side_length: f32,
     pub pin_triangle_side_length: f32,
@@ -204,6 +208,7 @@ impl Default for Style {
             pin_offset: 0.0,
             flags: StyleFlags::NodeOutline as usize | StyleFlags::GridLines as usize,
             colors: ColorStyle::colors_dark(),
+            pin_shape: PinShape::CircleFilled,
         }
     }
 }
@@ -338,19 +343,20 @@ impl Style {
         (color, layout)
     }
 
-    pub(crate) fn format_pin(&self, args: PinArgs) -> PinDataColorStyle {
-        PinDataColorStyle {
+    pub(crate) fn format_pin(&self, args: PinStyleArgs) -> PinStyle {
+        PinStyle {
             background: args
                 .background
                 .unwrap_or(self.colors[ColorStyle::Pin as usize]),
             hovered: args
                 .hovered
                 .unwrap_or(self.colors[ColorStyle::PinHovered as usize]),
+            shape: args.shape.unwrap_or(self.pin_shape),
         }
     }
 
-    pub(crate) fn format_link(&self, args: LinkColorArgs) -> LinkDataColorStyle {
-        LinkDataColorStyle {
+    pub(crate) fn format_link(&self, args: LinkStyleArgs) -> LinkStyle {
+        LinkStyle {
             base: args.base.unwrap_or(self.colors[ColorStyle::Link as usize]),
             hovered: args
                 .hovered
@@ -358,6 +364,7 @@ impl Style {
             selected: args
                 .selected
                 .unwrap_or(self.colors[ColorStyle::LinkSelected as usize]),
+            thickness: args.thickness.unwrap_or(self.link_thickness),
         }
     }
 }

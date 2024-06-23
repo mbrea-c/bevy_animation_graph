@@ -1,11 +1,11 @@
 use std::ops::{Add, Mul};
 
 use crate::core::animation_clip::{GraphClip, Interpolation, Keyframes, VariableCurve};
-use crate::core::animation_graph::TimeUpdate;
+use crate::core::animation_graph::PinMap;
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
-use crate::core::duration_data::DurationData;
 use crate::core::errors::GraphError;
-use crate::core::pose::{BonePose, Pose, PoseSpec};
+use crate::core::pose::{BonePose, Pose};
+use crate::core::prelude::{DataSpec, DataValue};
 use crate::core::systems::get_keyframe;
 use crate::interpolation::prelude::InterpolateStep;
 use crate::prelude::{InterpolateLinear, PassContext, SpecContext};
@@ -21,7 +21,7 @@ pub struct ClipNode {
 }
 
 impl ClipNode {
-    pub const OUTPUT: &'static str = "Pose Out";
+    pub const OUT_POSE: &'static str = "pose";
     pub fn new(
         clip: Handle<GraphClip>,
         override_duration: Option<f32>,
@@ -53,23 +53,25 @@ impl ClipNode {
 }
 
 impl NodeLike for ClipNode {
-    fn duration_pass(&self, ctx: PassContext) -> Result<Option<DurationData>, GraphError> {
-        Ok(Some(Some(self.clip_duration(&ctx))))
+    fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+        ctx.set_duration_fwd(Some(self.clip_duration(&ctx)));
+        Ok(())
     }
 
-    fn pose_pass(
-        &self,
-        time_update: TimeUpdate,
-        ctx: PassContext,
-    ) -> Result<Option<Pose>, GraphError> {
+    fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
         let clip_duration = self.clip_duration(&ctx);
 
         let Some(clip) = ctx.resources.graph_clip_assets.get(&self.clip) else {
-            return Ok(Some(Pose::default()));
+            // TODO: Should we propagate a GraphError instead?
+            ctx.set_data_fwd(Self::OUT_POSE, DataValue::Pose(Pose::default()));
+            return Ok(());
         };
 
-        let prev_time = ctx.prev_time_fwd();
+        let prev_time = ctx.prev_time();
+        let time_update = ctx.time_update_fwd()?;
         let time = time_update.apply(prev_time);
+
+        ctx.set_time(time);
 
         let mut out_pose = Pose {
             timestamp: time,
@@ -148,11 +150,17 @@ impl NodeLike for ClipNode {
             out_pose.add_bone(bone_pose, path.clone());
         }
 
-        Ok(Some(out_pose))
+        ctx.set_data_fwd(Self::OUT_POSE, DataValue::Pose(out_pose));
+
+        Ok(())
     }
 
-    fn pose_output_spec(&self, _: SpecContext) -> Option<PoseSpec> {
-        Some(PoseSpec::BoneSpace)
+    fn data_output_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {
+        [(Self::OUT_POSE.into(), DataSpec::Pose)].into()
+    }
+
+    fn time_output_spec(&self, _: SpecContext) -> Option<()> {
+        Some(())
     }
 
     fn display_name(&self) -> String {

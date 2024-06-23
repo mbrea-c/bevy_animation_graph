@@ -11,7 +11,7 @@ pub type BoneId = EntityPath;
 ///
 /// [`Keyframes`]: crate::core::animation_clip::Keyframes
 /// [`Transform`]: bevy::transform::prelude::Transform
-#[derive(Asset, Reflect, Clone, Debug, Default)]
+#[derive(Asset, Reflect, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct BonePose {
     pub(crate) rotation: Option<Quat>,
     pub(crate) translation: Option<Vec3>,
@@ -44,7 +44,8 @@ impl BonePose {
 /// Vertical slice of an [`GraphClip`]
 ///
 /// [`GraphClip`]: crate::prelude::GraphClip
-#[derive(Asset, Reflect, Clone, Debug, Default)]
+#[derive(Asset, Reflect, Clone, Debug, Default, Serialize, Deserialize)]
+#[reflect(Default)]
 pub struct Pose {
     pub(crate) bones: Vec<BonePose>,
     pub(crate) paths: HashMap<BoneId, usize>,
@@ -59,22 +60,22 @@ impl Pose {
     }
 }
 
-#[derive(Clone, Copy, Debug, Reflect, Default, Serialize, Deserialize, PartialEq, Eq)]
-#[reflect(Default)]
-pub enum PoseSpec {
-    #[default]
-    BoneSpace,
-    CharacterSpace,
-    GlobalSpace,
-    Any,
-}
-
-impl PoseSpec {
-    pub fn compatible(&self, other: &Self) -> bool {
-        if self == other {
-            true
-        } else {
-            matches!((self, other), (Self::Any, _) | (_, Self::Any))
-        }
-    }
-}
+// #[derive(Clone, Copy, Debug, Reflect, Default, Serialize, Deserialize, PartialEq, Eq)]
+// #[reflect(Default)]
+// pub enum PoseSpec {
+//     #[default]
+//     BoneSpace,
+//     CharacterSpace,
+//     GlobalSpace,
+//     Any,
+// }
+//
+// impl PoseSpec {
+//     pub fn compatible(&self, other: &Self) -> bool {
+//         if self == other {
+//             true
+//         } else {
+//             matches!((self, other), (Self::Any, _) | (_, Self::Any))
+//         }
+//     }
+// }
