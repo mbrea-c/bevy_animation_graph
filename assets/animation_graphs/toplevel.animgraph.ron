@@ -2,16 +2,17 @@
     nodes: [
         (
             name: "Locomotion FSM",
-            node: Fsm("fsm/meme.fsm.ron"),
+            node: Fsm("fsm/locomotion.fsm.ron"),
         ),
     ],
     edges_inverted: {
-        OutputTime: NodeTime("Locomotion FSM"),
         OutputData("pose"): NodeData("Locomotion FSM", "pose"),
-        NodeData("Locomotion FSM", "driver events"): InputData("les eventos"),
+        NodeData("Locomotion FSM", "driver events"): InputData("user events"),
+        NodeData("Locomotion FSM", "speed"): InputData("speed"),
+        OutputTime: NodeTime("Locomotion FSM"),
     },
     default_parameters: {
-        "les eventos": EventQueue((
+        "user events": EventQueue((
             events: [
                 (
                     event: (
@@ -22,6 +23,7 @@
                 ),
             ],
         )),
+        "speed": F32(2.0),
     },
     input_times: {},
     output_parameters: {
@@ -30,9 +32,9 @@
     output_time: Some(()),
     extra: (
         node_positions: {
-            "Locomotion FSM": (447.06067, 482.12152),
+            "Locomotion FSM": (463.6761, 488.58313),
         },
-        input_position: (192.0, 475.0),
+        input_position: (237.51926, 497.61542),
         output_position: (727.0, 463.0),
     ),
 )
