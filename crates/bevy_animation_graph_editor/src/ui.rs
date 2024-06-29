@@ -76,7 +76,7 @@ pub enum InspectorSelection {
     Graph,
     /// The selection data is contained in the FsmSelection, not here. This is because the FSM
     /// should not become unselected whenever the inspector window shows something else.
-    FSM,
+    Fsm,
     #[default]
     Nothing,
 }
@@ -298,7 +298,7 @@ impl egui_dock::TabViewer for TabViewer<'_> {
                 InspectorSelection::Graph => {
                     Self::graph_inspector(self.world, ui, self.selection, self.graph_changes)
                 }
-                InspectorSelection::FSM => {
+                InspectorSelection::Fsm => {
                     Self::fsm_inspector(self.world, ui, self.selection, self.global_changes)
                 }
             },
@@ -796,7 +796,7 @@ impl TabViewer<'_> {
                 state_creation: State::default(),
                 transition_creation: Transition::default(),
             });
-            selection.inspector_selection = InspectorSelection::FSM;
+            selection.inspector_selection = InspectorSelection::Fsm;
         }
     }
 
