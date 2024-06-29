@@ -29,6 +29,7 @@ use bevy_animation_graph::core::animation_graph::{AnimationGraph, NodeId};
 use bevy_animation_graph::core::animation_graph_player::AnimationGraphPlayer;
 use bevy_animation_graph::core::animation_node::AnimationNode;
 use bevy_animation_graph::core::context::{GraphContext, GraphContextId, SpecContext};
+use bevy_animation_graph::core::edge_data::AnimationEvent;
 use bevy_animation_graph::core::state_machine::high_level::{State, StateMachine, Transition};
 use bevy_animation_graph::core::state_machine::{StateId, TransitionId};
 use bevy_egui::EguiContext;
@@ -101,6 +102,9 @@ pub struct SceneSelection {
     scene: Handle<AnimatedScene>,
     respawn: bool,
     active_context: HashMap<UntypedAssetId, GraphContextId>,
+    event_table: Vec<String>,
+    /// Just here as a buffer for the editor
+    temp_event_val: String,
 }
 
 #[derive(Default)]
@@ -156,8 +160,11 @@ impl UiState {
             0.5,
             vec![EguiWindow::Preview, EguiWindow::PreviewHierarchy],
         );
-        let [_preview, _preview_errors] =
-            tree.split_below(preview, 0.8, vec![EguiWindow::PreviewErrors]);
+        let [_preview, _preview_errors] = tree.split_below(
+            preview,
+            0.8,
+            vec![EguiWindow::EventSender, EguiWindow::PreviewErrors],
+        );
 
         Self {
             state,
@@ -209,6 +216,7 @@ enum EguiWindow {
     SceneSelector,
     FsmSelector,
     Inspector,
+    EventSender,
     GraphSaver(AssetId<AnimationGraph>, String, bool),
     FsmSaver(AssetId<StateMachine>, String, bool),
 }
@@ -227,6 +235,7 @@ impl EguiWindow {
             EguiWindow::FsmSaver(_, _, _) => "Save State Machine".into(),
             EguiWindow::FsmEditor => "FSM Editor".into(),
             EguiWindow::Inspector => "Inspector".into(),
+            EguiWindow::EventSender => "Send events".into(),
         }
     }
 }
@@ -302,6 +311,7 @@ impl egui_dock::TabViewer for TabViewer<'_> {
                     Self::fsm_inspector(self.world, ui, self.selection, self.global_changes)
                 }
             },
+            EguiWindow::EventSender => Self::event_sender(self.world, ui, self.selection),
         }
 
         while !self.graph_changes.is_empty() {
@@ -556,6 +566,45 @@ impl TabViewer<'_> {
         // ----------------------------------------------------------------
     }
 
+    fn event_sender(world: &mut World, ui: &mut egui::Ui, selection: &mut EditorSelection) {
+        let Some(scene_selection) = &mut selection.scene else {
+            return;
+        };
+        let Some(graph_player) = get_animation_graph_player_mut(world) else {
+            return;
+        };
+
+        ui.horizontal_wrapped(|ui| {
+            scene_selection.event_table.retain(|ev| {
+                egui::Frame::none()
+                    .stroke(egui::Stroke::new(1., egui::Color32::WHITE))
+                    .show(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            if ui.button(ev).clicked() {
+                                graph_player.send_event(AnimationEvent { id: ev.into() });
+                            }
+                            if ui.button("×").clicked() {
+                                false
+                            } else {
+                                true
+                            }
+                        })
+                        .inner
+                    })
+                    .inner
+            });
+        });
+
+        ui.horizontal(|ui| {
+            ui.text_edit_singleline(&mut scene_selection.temp_event_val);
+            if ui.button("Add").clicked() {
+                scene_selection
+                    .event_table
+                    .push(scene_selection.temp_event_val.clone());
+            }
+        });
+    }
+
     fn fsm_editor(
         world: &mut World,
         ui: &mut egui::Ui,
@@ -762,6 +811,8 @@ impl TabViewer<'_> {
                 scene: chosen_handle,
                 respawn: true,
                 active_context: HashMap::default(),
+                event_table: Vec::new(),
+                temp_event_val: "".into(),
             });
         }
     }
@@ -808,13 +859,13 @@ impl TabViewer<'_> {
     ) {
         ui.heading("Animation graph");
 
+        select_graph_context(world, ui, selection);
+
         ui.collapsing("Create node", |ui| {
             Self::node_creator(world, ui, selection, graph_changes)
         });
 
         let mut changes = Vec::new();
-
-        select_graph_context(world, ui, selection);
 
         let Some(graph_selection) = &mut selection.graph_editor else {
             return;
@@ -1606,4 +1657,17 @@ fn get_animation_graph_player(world: &mut World) -> Option<&AnimationGraphPlayer
     let entity = instance.player_entity;
     let mut query = world.query::<&AnimationGraphPlayer>();
     query.get(world, entity).ok()
+}
+
+fn get_animation_graph_player_mut(world: &mut World) -> Option<&mut AnimationGraphPlayer> {
+    let mut query = world.query::<(&AnimatedSceneInstance, &PreviewScene)>();
+    let Ok((instance, _)) = query.get_single(world) else {
+        return None;
+    };
+    let entity = instance.player_entity;
+    let mut query = world.query::<&mut AnimationGraphPlayer>();
+    query
+        .get_mut(world, entity)
+        .ok()
+        .map(|player| player.into_inner())
 }

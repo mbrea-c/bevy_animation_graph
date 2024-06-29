@@ -11,14 +11,14 @@
     ],
     transitions: [
         (
-            id: "run_to_walk",
+            id: "slow_down",
             source: "run",
             target: "walk",
             duration: 1.0,
             graph: "animation_graphs/walk_to_run.animgraph.ron",
         ),
         (
-            id: "walk_to_run",
+            id: "speed_up",
             source: "walk",
             target: "run",
             duration: 1.0,
@@ -26,11 +26,14 @@
         ),
     ],
     start_state: "run",
+    input_data: {
+        "speed": F32(1.0),
+    },
     extra: (
         states: {
-            "run": (335.3684, 522.9473),
-            "walk": (334.10522, 310.10526),
             "kaput useless stateeeeeeeee reeeeee REEEE": (207.1579, 350.5263),
+            "walk": (334.10522, 310.10526),
+            "run": (554.1376, 309.71655),
         },
     ),
 )

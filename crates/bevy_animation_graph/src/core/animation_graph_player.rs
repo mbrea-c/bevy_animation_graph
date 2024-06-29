@@ -1,7 +1,7 @@
 use super::{
     animation_graph::{AnimationGraph, InputOverlay, TimeState, TimeUpdate},
     context::{BoneDebugGizmos, DeferredGizmos, PassContext},
-    edge_data::DataValue,
+    edge_data::{AnimationEvent, DataValue, EventQueue, SampledEvent},
     errors::GraphError,
     pose::{BoneId, Pose},
     prelude::GraphContextArena,
@@ -23,6 +23,7 @@ pub struct AnimationGraphPlayer {
     pub(crate) deferred_gizmos: DeferredGizmos,
     pub(crate) debug_draw_bones: Vec<BoneId>,
     pub(crate) entity_map: HashMap<BoneId, Entity>,
+    pub(crate) queued_events: EventQueue,
 
     input_overlay: InputOverlay,
     /// Error that ocurred during graph evaluation in the last frame
@@ -31,6 +32,8 @@ pub struct AnimationGraphPlayer {
 }
 
 impl AnimationGraphPlayer {
+    pub const USER_EVENTS: &'static str = "user events";
+
     /// Create a new animation graph player, with no graph playing
     pub fn new() -> Self {
         Self {
@@ -76,12 +79,27 @@ impl AnimationGraphPlayer {
         self
     }
 
+    /// Queue an event to make available to the animation graph this frame. This event queue is
+    /// cleared every frame.
+    pub fn send_event(&mut self, event: AnimationEvent) {
+        self.queued_events.events.push(SampledEvent {
+            event,
+            weight: 1.,
+            percentage: 1.,
+        });
+    }
+
     /// Query the animation graph with the latest time update and inputs
     pub(crate) fn query(
         &mut self,
         system_resources: &SystemResources,
         root_entity: Entity,
     ) -> Option<Pose> {
+        self.input_overlay.parameters.insert(
+            Self::USER_EVENTS.into(),
+            std::mem::take(&mut self.queued_events).into(),
+        );
+
         let graph_handle = self.animation.as_ref()?;
         let graph = system_resources.animation_graph_assets.get(graph_handle)?;
 
