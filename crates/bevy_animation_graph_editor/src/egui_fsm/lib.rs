@@ -80,6 +80,9 @@ pub struct FrameState {
     graph_changes: Vec<EguiFsmChange>,
 
     nodes_tmp: HashMap<usize, Node>,
+    /// Whether the node got clicked in this frame
+    just_selected_node: bool,
+    just_selected_transition: bool,
 }
 
 /// The settings that are used by the node editor context
@@ -109,6 +112,8 @@ impl FrameState {
         Option::take(&mut self.active_pin);
 
         self.graph_changes.clear();
+        self.just_selected_node = false;
+        self.just_selected_transition = false;
     }
 
     pub fn canvas_origin_screen_space(&self) -> egui::Vec2 {
@@ -354,6 +359,13 @@ impl FsmUiContext {
     /// List of changes that occurred to the graph during frame
     pub fn get_changes(&self) -> &Vec<EguiFsmChange> {
         &self.frame_state.graph_changes
+    }
+
+    pub fn is_node_just_selected(&self) -> bool {
+        self.frame_state.just_selected_node
+    }
+    pub fn is_transition_just_selected(&self) -> bool {
+        self.frame_state.just_selected_transition
     }
 }
 
@@ -1024,6 +1036,7 @@ impl FsmUiContext {
         self.state.selected_node_indices.clear();
         self.state.selected_link_indices.clear();
         self.state.selected_link_indices.push(idx);
+        self.frame_state.just_selected_transition = true;
     }
 
     fn find_duplicate_link(&self, start_pin_idx: usize, end_pin_idx: usize) -> Option<usize> {
@@ -1047,6 +1060,7 @@ impl FsmUiContext {
             self.state.selected_node_indices.clear();
             self.state.selected_link_indices.clear();
             self.state.selected_node_indices.push(idx);
+            self.frame_state.just_selected_node = true;
 
             if let Some(depth_idx) = self.state.node_depth_order.iter().position(|x| *x == idx) {
                 let id = self.state.node_depth_order.remove(depth_idx);
