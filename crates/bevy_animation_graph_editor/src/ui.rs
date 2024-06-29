@@ -583,11 +583,7 @@ impl TabViewer<'_> {
                             if ui.button(ev).clicked() {
                                 graph_player.send_event(AnimationEvent { id: ev.into() });
                             }
-                            if ui.button("×").clicked() {
-                                false
-                            } else {
-                                true
-                            }
+                            ui.button("×").clicked()
                         })
                         .inner
                     })
