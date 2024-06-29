@@ -82,6 +82,7 @@ pub struct FrameState {
 
     pins_tmp: HashMap<usize, Pin>,
     nodes_tmp: HashMap<usize, Node>,
+    just_selected_node: bool,
 }
 
 /// The settings that are used by the node editor context
@@ -112,6 +113,7 @@ impl FrameState {
         Option::take(&mut self.active_pin);
 
         self.graph_changes.clear();
+        self.just_selected_node = false;
     }
 
     pub fn canvas_origin_screen_space(&self) -> egui::Vec2 {
@@ -520,6 +522,10 @@ impl NodesContext {
     #[allow(dead_code)]
     pub fn get_node_dimensions(&self, id: usize) -> Option<egui::Vec2> {
         self.nodes.get(&id).map(|n| n.state.rect.size())
+    }
+
+    pub fn is_node_just_selected(&self) -> bool {
+        self.frame_state.just_selected_node
     }
 }
 
@@ -1424,6 +1430,7 @@ impl NodesContext {
             self.state.selected_node_indices.clear();
             self.state.selected_link_indices.clear();
             self.state.selected_node_indices.push(idx);
+            self.frame_state.just_selected_node = true;
 
             if let Some(depth_idx) = self.state.node_depth_order.iter().position(|x| *x == idx) {
                 let id = self.state.node_depth_order.remove(depth_idx);

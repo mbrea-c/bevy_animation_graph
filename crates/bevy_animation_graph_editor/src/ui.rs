@@ -70,6 +70,13 @@ pub struct FsmSelection {
 pub enum InspectorSelection {
     FsmTransition(FsmTransitionSelection),
     FsmState(FsmStateSelection),
+    Node(NodeSelection),
+    /// The selection data is contained in the GraphSelection, not here. This is because the graph
+    /// should not become unselected whenever the inspector window shows something else.
+    Graph,
+    /// The selection data is contained in the FsmSelection, not here. This is because the FSM
+    /// should not become unselected whenever the inspector window shows something else.
+    FSM,
     #[default]
     Nothing,
 }
@@ -93,7 +100,6 @@ pub struct NodeSelection {
 pub struct SceneSelection {
     scene: Handle<AnimatedScene>,
     respawn: bool,
-    // TODO: Use context ids
     active_context: HashMap<UntypedAssetId, GraphContextId>,
 }
 
@@ -107,7 +113,6 @@ pub struct EditorSelection {
     pub graph_editor: Option<GraphSelection>,
     pub fsm_editor: Option<FsmSelection>,
     pub inspector_selection: InspectorSelection,
-    node: Option<NodeSelection>,
     scene: Option<SceneSelection>,
     node_creation: NodeCreation,
     entity_path: Option<EntityPath>,
@@ -138,18 +143,8 @@ impl UiState {
     pub fn new() -> Self {
         let mut state = DockState::new(vec![EguiWindow::GraphEditor, EguiWindow::FsmEditor]);
         let tree = state.main_surface_mut();
-        let [graph_editor, inspectors] = tree.split_right(
-            NodeIndex::root(),
-            0.75,
-            vec![
-                EguiWindow::NodeInspector,
-                EguiWindow::StateInspector,
-                EguiWindow::GraphInspector,
-                EguiWindow::NodeCreate,
-                EguiWindow::Inspector,
-                EguiWindow::FsmInspector,
-            ],
-        );
+        let [graph_editor, inspectors] =
+            tree.split_right(NodeIndex::root(), 0.75, vec![EguiWindow::Inspector]);
         let [_graph_editor, graph_selector] =
             tree.split_left(graph_editor, 0.2, vec![EguiWindow::GraphSelector]);
         let [_graph_selector, scene_selector] =
@@ -207,17 +202,12 @@ impl UiState {
 enum EguiWindow {
     GraphEditor,
     FsmEditor,
-    NodeCreate,
     Preview,
     PreviewHierarchy,
     PreviewErrors,
     GraphSelector,
     SceneSelector,
     FsmSelector,
-    NodeInspector,
-    StateInspector,
-    GraphInspector,
-    FsmInspector,
     Inspector,
     GraphSaver(AssetId<AnimationGraph>, String, bool),
     FsmSaver(AssetId<StateMachine>, String, bool),
@@ -227,21 +217,16 @@ impl EguiWindow {
     pub fn display_name(&self) -> String {
         match self {
             EguiWindow::GraphEditor => "Graph Editor".into(),
-            EguiWindow::NodeCreate => "Create Node".into(),
             EguiWindow::Preview => "Preview Scene".into(),
             EguiWindow::PreviewHierarchy => "Preview Hierarchy".into(),
             EguiWindow::PreviewErrors => "Errors".into(),
             EguiWindow::GraphSelector => "Select Graph".into(),
             EguiWindow::SceneSelector => "Select Scene".into(),
             EguiWindow::FsmSelector => "Select FSM".into(),
-            EguiWindow::NodeInspector => "Inspect Node".into(),
-            EguiWindow::GraphInspector => "Inspect Graph IO".into(),
             EguiWindow::GraphSaver(_, _, _) => "Save Graph".into(),
             EguiWindow::FsmSaver(_, _, _) => "Save State Machine".into(),
             EguiWindow::FsmEditor => "FSM Editor".into(),
-            EguiWindow::StateInspector => "Inspect State".into(),
-            EguiWindow::Inspector => "Inspector (FSM State/Transition)".into(),
-            EguiWindow::FsmInspector => "Inspect FSM".into(),
+            EguiWindow::Inspector => "Inspector".into(),
         }
     }
 }
@@ -275,20 +260,8 @@ impl egui_dock::TabViewer for TabViewer<'_> {
                     self.save_requests,
                 );
             }
-            EguiWindow::NodeInspector => {
-                Self::node_inspector(self.world, ui, self.selection, self.graph_changes);
-            }
-            EguiWindow::GraphInspector => {
-                Self::graph_inspector(self.world, ui, self.selection, self.graph_changes);
-            }
-            EguiWindow::FsmInspector => {
-                Self::fsm_inspector(self.world, ui, self.selection, self.global_changes);
-            }
             EguiWindow::Preview => {
                 Self::animated_scene_preview(self.world, ui, self.preview_image, self.selection);
-            }
-            EguiWindow::NodeCreate => {
-                Self::node_creator(self.world, ui, self.selection, self.graph_changes);
             }
             EguiWindow::GraphSaver(graph, path, done) => {
                 Self::graph_saver(ui, self.graph_save_events, *graph, path, done);
@@ -311,7 +284,6 @@ impl egui_dock::TabViewer for TabViewer<'_> {
                     self.save_requests,
                 );
             }
-            EguiWindow::StateInspector => {}
             EguiWindow::Inspector => match &self.selection.inspector_selection {
                 InspectorSelection::FsmTransition(_) => {
                     Self::transition_inspector(self.world, ui, self.selection, self.global_changes)
@@ -320,6 +292,15 @@ impl egui_dock::TabViewer for TabViewer<'_> {
                     Self::state_inspector(self.world, ui, self.selection, self.global_changes)
                 }
                 InspectorSelection::Nothing => {}
+                InspectorSelection::Node(_) => {
+                    Self::node_inspector(self.world, ui, self.selection, self.graph_changes)
+                }
+                InspectorSelection::Graph => {
+                    Self::graph_inspector(self.world, ui, self.selection, self.graph_changes)
+                }
+                InspectorSelection::FSM => {
+                    Self::fsm_inspector(self.world, ui, self.selection, self.global_changes)
+                }
             },
         }
 
@@ -541,7 +522,9 @@ impl TabViewer<'_> {
                             .name(*selected_node)
                             .unwrap();
                         graph.nodes.get_mut(node_name).unwrap().should_debug = true;
-                        if let Some(node_selection) = &mut selection.node {
+                        if let InspectorSelection::Node(node_selection) =
+                            &mut selection.inspector_selection
+                        {
                             if &node_selection.node != node_name
                                 || node_selection.graph != graph_selection.graph
                             {
@@ -549,12 +532,13 @@ impl TabViewer<'_> {
                                 node_selection.name_buf.clone_from(node_name);
                                 node_selection.graph = graph_selection.graph;
                             }
-                        } else {
-                            selection.node = Some(NodeSelection {
-                                graph: graph_selection.graph,
-                                node: node_name.clone(),
-                                name_buf: node_name.clone(),
-                            });
+                        } else if graph_selection.nodes_context.is_node_just_selected() {
+                            selection.inspector_selection =
+                                InspectorSelection::Node(NodeSelection {
+                                    graph: graph_selection.graph,
+                                    node: node_name.clone(),
+                                    name_buf: node_name.clone(),
+                                });
                         }
                     }
                 }
@@ -664,11 +648,13 @@ impl TabViewer<'_> {
                         .state_indices
                         .name(*selected_node)
                         .unwrap();
-                    selection.inspector_selection =
-                        InspectorSelection::FsmState(FsmStateSelection {
-                            fsm: fsm_selection.fsm,
-                            state: state_name.clone(),
-                        });
+                    if fsm_selection.nodes_context.is_node_just_selected() {
+                        selection.inspector_selection =
+                            InspectorSelection::FsmState(FsmStateSelection {
+                                fsm: fsm_selection.fsm,
+                                state: state_name.clone(),
+                            });
+                    }
                 }
 
                 if let Some(selected_transition) = fsm_selection
@@ -682,11 +668,13 @@ impl TabViewer<'_> {
                         .transition_indices
                         .edge(*selected_transition)
                         .unwrap();
-                    selection.inspector_selection =
-                        InspectorSelection::FsmTransition(FsmTransitionSelection {
-                            fsm: fsm_selection.fsm,
-                            state: transition_id.clone(),
-                        });
+                    if fsm_selection.nodes_context.is_transition_just_selected() {
+                        selection.inspector_selection =
+                            InspectorSelection::FsmTransition(FsmTransitionSelection {
+                                fsm: fsm_selection.fsm,
+                                state: transition_id.clone(),
+                            });
+                    }
                 }
                 // ----------------------------------------------------------------
             });
@@ -736,6 +724,7 @@ impl TabViewer<'_> {
                 graph_indices: Self::update_graph_indices(world, chosen_id),
                 nodes_context: NodesContext::default(),
             });
+            selection.inspector_selection = InspectorSelection::Graph;
         }
     }
 
@@ -807,6 +796,7 @@ impl TabViewer<'_> {
                 state_creation: State::default(),
                 transition_creation: Transition::default(),
             });
+            selection.inspector_selection = InspectorSelection::FSM;
         }
     }
 
@@ -816,6 +806,12 @@ impl TabViewer<'_> {
         selection: &mut EditorSelection,
         graph_changes: &mut Vec<GraphChange>,
     ) {
+        ui.heading("Animation graph");
+
+        ui.collapsing("Create node", |ui| {
+            Self::node_creator(world, ui, selection, graph_changes)
+        });
+
         let mut changes = Vec::new();
 
         select_graph_context(world, ui, selection);
@@ -868,6 +864,7 @@ impl TabViewer<'_> {
         selection: &mut EditorSelection,
         global_changes: &mut Vec<GlobalChange>,
     ) {
+        ui.heading("State machine");
         let mut changes = Vec::new();
 
         select_graph_context_fsm(world, ui, selection);
@@ -1011,9 +1008,11 @@ impl TabViewer<'_> {
         selection: &mut EditorSelection,
         graph_changes: &mut Vec<GraphChange>,
     ) {
+        ui.heading("Graph node");
+
         let mut changes = Vec::new();
 
-        let Some(node_selection) = &mut selection.node else {
+        let InspectorSelection::Node(node_selection) = &mut selection.inspector_selection else {
             return;
         };
 
@@ -1032,7 +1031,7 @@ impl TabViewer<'_> {
         };
         let graph = graph_assets.get_mut(node_selection.graph).unwrap();
         let Some(node) = graph.nodes.get_mut(&node_selection.node) else {
-            selection.node = None;
+            selection.inspector_selection = InspectorSelection::Nothing;
             return;
         };
 
@@ -1076,7 +1075,7 @@ impl TabViewer<'_> {
         selection: &mut EditorSelection,
         graph_changes: &mut Vec<GlobalChange>,
     ) {
-        ui.label("FSM State");
+        ui.heading("FSM State");
 
         let mut changes = Vec::new();
 
@@ -1138,7 +1137,7 @@ impl TabViewer<'_> {
         selection: &mut EditorSelection,
         global_changes: &mut Vec<GlobalChange>,
     ) {
-        ui.label("FSM Transition");
+        ui.heading("FSM Transition");
         let mut changes = Vec::new();
 
         let Some(fsm_selection) = &mut selection.fsm_editor else {
