@@ -12,12 +12,23 @@ animations with complex blends and transitions, or you want to generate
 your animations procedurally from very few keyframes, simple animation
 clip playback is not enough.
 
-This library aims to fill this gap in the Bevy ecosystem.
+This crate works as a replacement to most of `bevy_animation`, and aims to
+provide a complete animation system and development workflow including
+animation graphs, animation state machines (i.e. animation controllers)
+and a graphical editor to create your animation graphs and state machines. 
+
+_NOTE: This project is separate from the animation graphs introduced in `bevy_animation`
+in version 0.14._
 
 ## Current Features
 
 - Animation graphs are assets. They can be loaded from asset files, or created in code with an ergonomic API.
 - Visual graph editor.
+- Animation state machines:
+  - Animation state machines are embedded as nodes in animation graphs.
+  - Each state in a state machines plays back its own animation graph on demand.
+  - Transitions also have their own animation graph, and they can query source
+    and target states' animation graphs.
 - Available nodes:
   - Animation chaining (i.e. play one node after another).
   - Two-bone inverse kinematics.
@@ -31,8 +42,8 @@ This library aims to fill this gap in the Bevy ecosystem.
     - Vec3: Rotation arc.
   - Speed up or slow down animation playback.
   - Animation graph node.
+  - Animation state machine node.
 - Nesting animation graphs as nodes within other graphs.
-- Export animation graphs in graphviz `.dot` format for visualization.
 - Output from graph nodes is cached to avoid unnecessary computations.
 - Support for custom nodes written in Rust (with the caveat that custom nodes cannot be serialized/deserialized as assets).
 
@@ -40,7 +51,6 @@ This library aims to fill this gap in the Bevy ecosystem.
 
 Being worked on:
 
-1. Finite state machines.
 1. Synchronization tracks.
 
 Wishlist:
@@ -92,6 +102,7 @@ This project is divided in two crates:
 
 | `bevy` | `bevy_animation_graph` | `bevy_animation_graph_editor` |
 | ------ | ---------------------- | ----------------------------- |
+| 0.13   | 0.4                    | 0.4                           |
 | 0.13   | 0.3                    | 0.3                           |
 | 0.12   | 0.2                    | 0.2                           |
 
