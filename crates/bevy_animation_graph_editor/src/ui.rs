@@ -583,7 +583,7 @@ impl TabViewer<'_> {
                             if ui.button(ev).clicked() {
                                 graph_player.send_event(AnimationEvent { id: ev.into() });
                             }
-                            ui.button("×").clicked()
+                            !ui.button("×").clicked()
                         })
                         .inner
                     })
@@ -803,11 +803,16 @@ impl TabViewer<'_> {
         //       when changing scene selection.
 
         if let Some(chosen_handle) = chosen_handle {
+            let event_table = if let Some(scn) = &selection.scene {
+                scn.event_table.clone()
+            } else {
+                Vec::new()
+            };
             selection.scene = Some(SceneSelection {
                 scene: chosen_handle,
                 respawn: true,
                 active_context: HashMap::default(),
-                event_table: Vec::new(),
+                event_table,
                 temp_event_val: "".into(),
             });
         }
