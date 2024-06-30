@@ -167,15 +167,11 @@ impl<'a> PassContext<'a> {
         let graph_id = match &node.node {
             crate::core::prelude::AnimationNodeType::Graph(n) => n.graph.id(),
             crate::core::prelude::AnimationNodeType::Fsm(n) => {
-                // TODO: Extract this into a function, probably in the FSM code
-                let cur_state_id = self
-                    .caches()
-                    .get(
-                        |c| c.get_fsm_state(node_ctx.node_id).cloned(),
-                        CacheReadFilter::FULL,
-                    )
-                    .unwrap()
-                    .state;
+                // TODO: Extract this into a function, probably(?) in the FSM code
+                let cur_state_id = fsm_ctx
+                    .as_ref()
+                    .map(|t| t.state_stack.last_state())
+                    .unwrap();
                 let fsm = self
                     .resources
                     .state_machine_assets
@@ -185,7 +181,7 @@ impl<'a> PassContext<'a> {
                 let cur_state = fsm.states.get(&cur_state_id).unwrap();
                 cur_state.graph.id()
             }
-            _ => panic!("Only graph nodes can have subgraphs"),
+            _ => panic!("Only graph or FSM nodes can have subgraphs"),
         };
 
         let subctx_id = SubContextId {

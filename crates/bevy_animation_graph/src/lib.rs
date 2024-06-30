@@ -34,8 +34,13 @@
 //!   bevy_animation_graph_editor -a <PATH_TO_ASSETS_DIRECTORY>
 //!   ```
 //!   to start the editor on the given assets folder. At the moment the editor only supports
-//!   creating and modifying animation graphs, but it can present a live preview of an
+//!   creating and modifying animation graphs and state machines, but it can present a live preview of an
 //!   `AnimatedScene` asset.
+//! - [`StateMachine`], defined in `*.fsm.ron` files. These are used to define, as the name
+//!   implies, _state machines_ where each state and transition plays back an animation graph and each transition's
+//!   graph can query the source and target states' respective graphs (useful for blending in
+//!   different ways, or playing a separate transition animation). State machines can be edited
+//!   with the graphical editor and are used as nodes in an existing animation graph.
 //! - [`AnimatedScene`], defined in `*.animscn.ron` files. These assets solve the ergonomics problem
 //!   of spawning in a scene that is animated via an animation graph. Without [`AnimatedScene`],
 //!   you would have to spawn the scene, manually find and remove remove Bevy's
@@ -107,34 +112,6 @@
 //! cargo install --path <PATH_TO_WORKSPACE> bevy_animation_graph_editor
 //! ```
 //!
-//! ## Graphviz `.dot` export
-//!
-//! While the editor now provides a more convenient way of visualizing, creating and editing
-//! graphs, there's also the option of exporting the graph to a `.dot` file for visualization. This
-//! crate provides a binary utility `show_graph` which does just that:
-//!
-//! ```text
-//!     show_graph <GRAPH ASSET PATH> <OUTPUT FILE PATH>
-//! ```
-//!
-//! If `<OUTPUT FILE PATH>` is `-`, then `show_graph` will output to STDOUT. The output can be
-//! processed into a pdf with:
-//!
-//! ```text
-//!     show_graph <GRAPH ASSET PATH> - | dot -Tpdf > graph.pdf
-//! ```
-//!
-//! assuming that the command `dot` is installed. If you have the zathura pdf reader installed
-//! you don't need to save the pdf into a file either, you can just open the file from STDIN:
-//!
-//! ```text
-//!     show_graph <GRAPH ASSET PATH> - | dot -Tpdf | zathura -
-//! ```
-//!
-//! If you would prefer not to install the `show_graph` command but do have `bevy_animation_graph`
-//! in your current cargo workspace (or you are in the bevy_animation_graph directory), you can
-//! replace `show_graph` with `cargo run -p bevy_animation_graph --bin show_graph` in the above commands.
-//!
 //! ## Examples
 //!
 //! ### Blend running and walking animation based on movement speed
@@ -172,31 +149,8 @@
 //!
 //! The resulting graphs can be seen in the assets directory of [the source repository](https://github.com/mbrea-c/bevy_animation_graph), under
 //! [assets/animation_graphs/velocity_to_params.animgraph.ron](https://github.com/mbrea-c/bevy_animation_graph/blob/master/assets/animation_graphs/velocity_to_params.animgraph.ron) (for computing `speed_fac` and `blend_fac`) and
-//! [assets/animation_graphs/fox.animgraph.ron](https://github.com/mbrea-c/bevy_animation_graph/blob/master/assets/animation_graphs/fox.animgraph.ron)
+//! [assets/animation_graphs/human.animgraph.ron](https://github.com/mbrea-c/bevy_animation_graph/blob/master/assets/animation_graphs/human.animgraph.ron)
 //! (for the animation tasks).
-//!
-//! ## How does this library work?
-//!
-//! There are two types of values processed by the graph: parameters and poses.
-//!
-//! Each node [`AnimationNode`] in an animation graph has an arbitrary number of parameter inputs
-//! and outputs, each with a particular type (defined in [`ParamValue`]). Each edge
-//! connects one output from one node to an input from another node, that is, the mapping of
-//! parameter inputs to parameter outputs is 1-many. Parameters are used for things like
-//! the speed factor of an animation or the weight of a blend.
-//!
-//! Additionally, each node can have any number of pose inputs and a single pose output.
-//! Pose edges connect each pose output to a single pose input, that is, the mapping of pose
-//! outputs to pose inputs is 1-1. Nodes also must output the duration of the animation if they
-//! have a pose output.
-//!
-//! Conceptually, pose outputs are *sampled* at a specific time, so when querying an input pose
-//! nodes must provide a time update. This time update can be a time increment (delta) or an absolute time.
-//!
-//! Nodes query their inputs lazily using a provided graph context (rather than all inputs being
-//! provided eagerly by the caller). The context will cache node outputs every frame to prevent repeated
-//! computations. The API is described by the [`NodeLike`] trait, which every graph node type must implement.
-//! The [`PassContext`] contains the API that a node has access to when called.
 //!
 //!
 //! [`ParamValue`]: crate::core::parameters::ParamValue
