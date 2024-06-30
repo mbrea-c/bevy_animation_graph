@@ -123,6 +123,9 @@ A more complex example is included in the [examples/human_ik/](examples/human_ik
 
 ### Editor usage demonstration video
 
+**NOTE: This video was taken with the last version of the crate. A lot has
+changed since then!**
+
 In YouTube:
 
 [![Demo](https://img.youtube.com/vi/q-JBSQJIcX0/hqdefault.jpg)](https://www.youtube.com/watch?v=q-JBSQJIcX0)
