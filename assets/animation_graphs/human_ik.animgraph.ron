@@ -1,0 +1,51 @@
+(
+    nodes: [
+        (
+            name: "base anim",
+            node: Graph("animation_graphs/human_new.animgraph.ron"),
+        ),
+        (
+            name: "arm ik",
+            node: TwoBoneIK,
+        ),
+    ],
+    edges_inverted: {
+        NodeData("arm ik", "Target Path"): InputData("right hand path"),
+        NodeData("base anim", "Target Speed"): InputData("Target Speed"),
+        OutputTime: NodeTime("arm ik"),
+        NodeData("base anim", "Target Direction"): InputData("Target Direction"),
+        OutputData("pose"): NodeData("arm ik", "pose"),
+        NodeData("arm ik", "pose"): NodeData("base anim", "pose"),
+        NodeData("arm ik", "Target Position"): InputData("target hand pos"),
+        NodeTime("arm ik", "time"): NodeTime("base anim"),
+    },
+    default_parameters: {
+        "Target Speed": F32(1.0),
+        "Target Direction": Vec3((1.0, 0.0, 0.0)),
+        "right hand path": EntityPath([
+            "metarig",
+            "spine",
+            "spine.001",
+            "spine.002",
+            "spine.003",
+            "shoulder.R",
+            "upper_arm.R",
+            "forearm.R",
+            "hand.R",
+        ]),
+        "target hand pos": Vec3((0.5, 1.5, 0.0)),
+    },
+    input_times: {},
+    output_parameters: {
+        "pose": Pose,
+    },
+    output_time: Some(()),
+    extra: (
+        node_positions: {
+            "base anim": (366.46158, 444.0),
+            "arm ik": (563.07697, 420.92303),
+        },
+        input_position: (108.0, 459.69223),
+        output_position: (777.2307, 446.7692),
+    ),
+)
