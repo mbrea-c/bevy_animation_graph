@@ -112,10 +112,7 @@ The documentation in [docs.rs](https://docs.rs/bevy_animation_graph) contains an
 introduction of the library and editor and an explanation of a simple animation graph example.
 See also the video below for a demonstration of editor usage.
 
-The complete example is also included in the
-[examples/fox/](examples/fox/examples/fox.rs) package.
-
-A more complex example is included in the [examples/human_ik/](examples/human_ik/examples/human_ik.rs) package.
+Examples are included in the [examples](examples/) directory.
 
 ### Screenshots
 
