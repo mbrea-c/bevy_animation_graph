@@ -1,24 +1,32 @@
 (
     nodes: [
         (
+            name: "run clip 1",
+            node: Clip("animations/human_run.anim.ron", None, None),
+        ),
+        (
+            name: "walk clip 2",
+            node: Clip("animations/human_walk.anim.ron", None, None),
+        ),
+        (
+            name: "Parameters",
+            node: Graph("animation_graphs/velocity_to_params.animgraph.ron"),
+        ),
+        (
+            name: "loop",
+            node: Loop(
+                interpolation_period: 0.5,
+            ),
+        ),
+        (
+            name: "walk clip 1",
+            node: Clip("animations/human_walk.anim.ron", None, None),
+        ),
+        (
             name: "chain walk",
             node: Chain(
                 interpolation_period: 0.5,
             ),
-        ),
-        (
-            name: "chain run",
-            node: Chain(
-                interpolation_period: 0.5,
-            ),
-        ),
-        (
-            name: "blend",
-            node: Blend,
-        ),
-        (
-            name: "speed",
-            node: Speed,
         ),
         (
             name: "flip walk",
@@ -34,16 +42,6 @@
             ),
         ),
         (
-            name: "loop",
-            node: Loop(
-                interpolation_period: 0.5,
-            ),
-        ),
-        (
-            name: "run clip 2",
-            node: Clip("animations/human_run.anim.ron", None, None),
-        ),
-        (
             name: "flip run",
             node: FlipLR(
                 config: (
@@ -57,47 +55,73 @@
             ),
         ),
         (
-            name: "run clip 1",
+            name: "speed",
+            node: Speed,
+        ),
+        (
+            name: "blend",
+            node: Blend,
+        ),
+        (
+            name: "chain run",
+            node: Chain(
+                interpolation_period: 0.5,
+            ),
+        ),
+        (
+            name: "run clip 2",
             node: Clip("animations/human_run.anim.ron", None, None),
         ),
         (
-            name: "walk clip 1",
-            node: Clip("animations/human_walk.anim.ron", None, None),
+            name: "Rotate",
+            node: Rotation(Compose, Character, Linear, 1, 1.0),
         ),
         (
-            name: "walk clip 2",
-            node: Clip("animations/human_walk.anim.ron", None, None),
+            name: "Make Rotation",
+            node: RotationArc,
         ),
     ],
     edges_inverted: {
-        NodeTime("blend", "time B"): NodeTime("chain run"),
-        NodeData("blend", "pose B"): NodeData("chain run", "pose"),
-        OutputData("pose"): NodeData("speed", "pose"),
-        NodeData("speed", "pose"): NodeData("loop", "pose"),
-        NodeTime("loop", "time"): NodeTime("blend"),
-        NodeData("blend", "factor"): InputData("blend"),
-        NodeData("loop", "pose"): NodeData("blend", "pose"),
-        NodeData("chain run", "pose A"): NodeData("run clip 1", "pose"),
-        NodeTime("blend", "time A"): NodeTime("chain walk"),
-        OutputTime: NodeTime("speed"),
-        NodeData("flip walk", "pose"): NodeData("walk clip 2", "pose"),
-        NodeTime("flip walk", "time"): NodeTime("walk clip 2"),
-        NodeTime("flip run", "time"): NodeTime("run clip 2"),
         NodeData("chain walk", "pose B"): NodeData("flip walk", "pose"),
-        NodeTime("chain run", "time A"): NodeTime("run clip 1"),
-        NodeData("blend", "pose A"): NodeData("chain walk", "pose"),
-        NodeTime("chain walk", "time B"): NodeTime("flip walk"),
-        NodeData("chain walk", "pose A"): NodeData("walk clip 1", "pose"),
+        NodeTime("Rotate", "time"): NodeTime("speed"),
+        NodeData("speed", "pose"): NodeData("loop", "pose"),
+        NodeData("Rotate", "Rotation"): NodeData("Make Rotation", "Quat Out"),
         NodeData("flip run", "pose"): NodeData("run clip 2", "pose"),
+        NodeData("loop", "pose"): NodeData("blend", "pose"),
+        NodeData("blend", "pose B"): NodeData("chain run", "pose"),
+        NodeTime("blend", "time B"): NodeTime("chain run"),
         NodeData("chain run", "pose B"): NodeData("flip run", "pose"),
         NodeTime("chain run", "time B"): NodeTime("flip run"),
-        NodeTime("chain walk", "time A"): NodeTime("walk clip 1"),
-        NodeData("speed", "Speed"): InputData("speed"),
+        NodeData("Parameters", "speed"): InputData("Target Speed"),
+        NodeTime("flip walk", "time"): NodeTime("walk clip 2"),
+        NodeData("chain run", "pose A"): NodeData("run clip 1", "pose"),
+        NodeTime("blend", "time A"): NodeTime("chain walk"),
         NodeTime("speed", "time"): NodeTime("loop"),
+        NodeTime("loop", "time"): NodeTime("blend"),
+        NodeData("flip walk", "pose"): NodeData("walk clip 2", "pose"),
+        OutputData("pose"): NodeData("Rotate", "pose"),
+        NodeTime("chain walk", "time A"): NodeTime("walk clip 1"),
+        NodeData("chain walk", "pose A"): NodeData("walk clip 1", "pose"),
+        NodeData("blend", "factor"): NodeData("Parameters", "blend_fac"),
+        NodeTime("chain walk", "time B"): NodeTime("flip walk"),
+        NodeData("blend", "pose A"): NodeData("chain walk", "pose"),
+        NodeData("Rotate", "pose"): NodeData("speed", "pose"),
+        NodeData("Make Rotation", "Vec3 In 1"): InputData("Z"),
+        NodeTime("flip run", "time"): NodeTime("run clip 2"),
+        OutputTime: NodeTime("Rotate"),
+        NodeData("Rotate", "Bone Mask"): InputData("rotation_bone"),
+        NodeData("speed", "Speed"): NodeData("Parameters", "speed_fac"),
+        NodeTime("chain run", "time A"): NodeTime("run clip 1"),
+        NodeData("Make Rotation", "Vec3 In 2"): InputData("Target Direction"),
     },
     default_parameters: {
-        "blend": F32(0.2),
-        "speed": F32(1.0),
+        "Target Speed": F32(1.6),
+        "Target Direction": Vec3((1.0, 0.0, 0.0)),
+        "rotation_bone": EntityPath([
+            "metarig",
+            "spine",
+        ]),
+        "Z": Vec3((0.0, 0.0, 1.0)),
     },
     input_times: {},
     output_parameters: {
@@ -106,19 +130,22 @@
     output_time: Some(()),
     extra: (
         node_positions: {
-            "chain walk": (335.0, 320.0),
-            "chain run": (328.0, 600.0),
-            "blend": (501.0, 441.0),
-            "speed": (777.0, 428.0),
-            "flip walk": (167.0, 401.0),
-            "loop": (640.0, 443.0),
-            "run clip 2": (27.0, 712.0),
-            "flip run": (170.0, 713.0),
             "run clip 1": (172.0, 558.0),
-            "walk clip 1": (169.0, 247.0),
             "walk clip 2": (21.0, 401.0),
+            "chain walk": (335.0, 320.0),
+            "Parameters": (453.23077, -5.538437),
+            "loop": (640.0, 443.0),
+            "Make Rotation": (887.9999, 192.92308),
+            "blend": (501.0, 441.0),
+            "flip walk": (167.0, 401.0),
+            "Rotate": (942.4617, 388.6154),
+            "walk clip 1": (169.0, 247.0),
+            "chain run": (328.0, 600.0),
+            "flip run": (170.0, 713.0),
+            "speed": (777.0, 428.0),
+            "run clip 2": (20.538483, 715.6923),
         },
-        input_position: (414.0, 193.0),
-        output_position: (914.0, 431.0),
+        input_position: (130.61536, -34.07692),
+        output_position: (1111.5385, 401.46152),
     ),
 )

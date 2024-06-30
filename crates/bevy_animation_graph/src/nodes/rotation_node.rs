@@ -14,6 +14,7 @@ use bevy::transform::components::Transform;
 use serde::{Deserialize, Serialize};
 
 #[derive(Reflect, Serialize, Deserialize, Clone, Copy, Debug, Default)]
+#[reflect(Default)]
 pub enum RotationMode {
     #[default]
     Blend,

@@ -31,7 +31,6 @@
     },
     extra: (
         states: {
-            "kaput useless stateeeeeeeee reeeeee REEEE": (207.1579, 350.5263),
             "walk": (334.10522, 310.10526),
             "run": (554.1376, 309.71655),
         },

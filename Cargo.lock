@@ -3289,6 +3289,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "human_fsm"
+version = "0.0.0"
+dependencies = [
+ "bevy 0.13.0",
+ "bevy_animation_graph",
+]
+
+[[package]]
 name = "human_ik"
 version = "0.0.0"
 dependencies = [
