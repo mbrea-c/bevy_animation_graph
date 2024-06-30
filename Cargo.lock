@@ -584,7 +584,21 @@ dependencies = [
 
 [[package]]
 name = "bevy_animation_graph"
-version = "0.3.0"
+version = "0.4.0"
+dependencies = [
+ "bevy 0.13.0",
+ "indexmap 2.2.5",
+ "regex",
+ "ron",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "bevy_animation_graph"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "76ac832d5479cb8af785c2feaf70a62c83f8553d1342dae9e8ff206493f557f9"
 dependencies = [
  "bevy 0.13.0",
  "indexmap 2.2.5",
@@ -596,11 +610,11 @@ dependencies = [
 
 [[package]]
 name = "bevy_animation_graph_editor"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "bevy 0.13.0",
  "bevy-inspector-egui 0.23.4",
- "bevy_animation_graph",
+ "bevy_animation_graph 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "clap",
  "derivative",
  "egui-notify",
@@ -2873,7 +2887,7 @@ name = "fox"
 version = "0.0.0"
 dependencies = [
  "bevy 0.13.0",
- "bevy_animation_graph",
+ "bevy_animation_graph 0.4.0",
 ]
 
 [[package]]
@@ -3285,7 +3299,7 @@ name = "human"
 version = "0.0.0"
 dependencies = [
  "bevy 0.13.0",
- "bevy_animation_graph",
+ "bevy_animation_graph 0.4.0",
 ]
 
 [[package]]
@@ -3293,7 +3307,7 @@ name = "human_fsm"
 version = "0.0.0"
 dependencies = [
  "bevy 0.13.0",
- "bevy_animation_graph",
+ "bevy_animation_graph 0.4.0",
 ]
 
 [[package]]
@@ -3302,7 +3316,7 @@ version = "0.0.0"
 dependencies = [
  "bevy 0.13.0",
  "bevy-inspector-egui 0.22.1",
- "bevy_animation_graph",
+ "bevy_animation_graph 0.4.0",
 ]
 
 [[package]]
