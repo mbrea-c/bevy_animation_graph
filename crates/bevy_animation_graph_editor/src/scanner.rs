@@ -50,7 +50,7 @@ pub fn asset_reload(
     mut persisted_asset_handles: ResMut<PersistedAssetHandles>,
     cli: Res<Cli>,
 ) {
-    if let Some(_) = reload_events.read().next() {
+    if reload_events.read().next().is_some() {
         visit_dirs(&cli.asset_source, &mut |path| {
             let relative_path = path.strip_prefix(&cli.asset_source).unwrap().to_owned();
             let loaded = asset_server.load_untyped(relative_path);
