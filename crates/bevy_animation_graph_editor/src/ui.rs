@@ -10,8 +10,8 @@ use crate::graph_update::{
     apply_global_changes, convert_fsm_change, convert_graph_change, update_graph, Change,
     FsmChange, FsmPropertiesChange, GlobalChange, GraphChange,
 };
+use crate::scanner::PersistedAssetHandles;
 use crate::tree::{Tree, TreeInternal, TreeResult};
-use crate::PersistedAssetHandles;
 use bevy::asset::UntypedAssetId;
 use bevy::ecs::system::CommandQueue;
 use bevy::prelude::*;

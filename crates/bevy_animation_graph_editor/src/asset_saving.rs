@@ -1,4 +1,4 @@
-use crate::{ui::UiState, PersistedAssetHandles};
+use crate::{scanner::PersistedAssetHandles, ui::UiState};
 use bevy::{
     asset::io::{file::FileAssetReader, AssetReader, AssetSourceId},
     prelude::*,
