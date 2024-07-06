@@ -68,6 +68,9 @@ pub enum AnimationNodeTypeSerial {
         #[serde(default)]
         interpolation_period: f32,
     },
+    Padding {
+        interpolation_period: f32,
+    },
     Speed,
     Rotation(
         RotationMode,
@@ -185,6 +188,9 @@ impl From<&AnimationNodeType> for AnimationNodeTypeSerial {
                 AnimationNodeTypeSerial::Graph(n.graph.path().unwrap().to_string())
             }
             AnimationNodeType::Custom(_) => panic!("Cannot serialize custom node!"),
+            AnimationNodeType::Padding(n) => AnimationNodeTypeSerial::Padding {
+                interpolation_period: n.interpolation_period,
+            },
         }
     }
 }
