@@ -6,7 +6,7 @@ use super::{
 use crate::{
     nodes::{
         AbsF32, AddF32, BlendNode, ChainNode, ClampF32, ClipNode, CompareF32, ConstBool, DivF32,
-        DummyNode, FSMNode, FireEventNode, FlipLRNode, GraphNode, LoopNode, MulF32,
+        DummyNode, FSMNode, FireEventNode, FlipLRNode, GraphNode, LoopNode, MulF32, PaddingNode,
         RotationArcNode, RotationNode, SpeedNode, SubF32, TwoBoneIKNode,
     },
     prelude::{PassContext, SpecContext},
@@ -162,6 +162,7 @@ pub enum AnimationNodeType {
     Blend(BlendNode),
     FlipLR(FlipLRNode),
     Loop(LoopNode),
+    Padding(PaddingNode),
     Speed(SpeedNode),
     Rotation(RotationNode),
     // ------------------------------------------------
@@ -229,6 +230,7 @@ impl AnimationNodeType {
             AnimationNodeType::Blend(n) => f(n),
             AnimationNodeType::FlipLR(n) => f(n),
             AnimationNodeType::Loop(n) => f(n),
+            AnimationNodeType::Padding(n) => f(n),
             AnimationNodeType::Speed(n) => f(n),
             AnimationNodeType::Rotation(n) => f(n),
             AnimationNodeType::AddF32(n) => f(n),
@@ -263,6 +265,7 @@ impl AnimationNodeType {
             AnimationNodeType::Blend(n) => f(n),
             AnimationNodeType::FlipLR(n) => f(n),
             AnimationNodeType::Loop(n) => f(n),
+            AnimationNodeType::Padding(n) => f(n),
             AnimationNodeType::Speed(n) => f(n),
             AnimationNodeType::Rotation(n) => f(n),
             AnimationNodeType::AddF32(n) => f(n),
@@ -297,6 +300,7 @@ impl AnimationNodeType {
             AnimationNodeType::Blend(n) => n,
             AnimationNodeType::FlipLR(n) => n,
             AnimationNodeType::Loop(n) => n,
+            AnimationNodeType::Padding(n) => n,
             AnimationNodeType::Speed(n) => n,
             AnimationNodeType::Rotation(n) => n,
             // AnimationNodeType::IntoBoneSpace(n) => n,
