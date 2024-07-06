@@ -8,7 +8,7 @@ use super::{
 };
 use crate::prelude::SystemResources;
 use bevy::{
-    asset::prelude::*, ecs::prelude::*, reflect::prelude::*, render::color::Color, utils::HashMap,
+    asset::prelude::*, color::LinearRgba, ecs::prelude::*, reflect::prelude::*, utils::HashMap,
 };
 
 /// Animation controls
@@ -161,7 +161,7 @@ impl AnimationGraphPlayer {
             .get_pass_context(system_resources, root_entity)
             .with_debugging(true);
         for bone_id in bones.drain(..) {
-            ctx.bone_gizmo(bone_id, Color::YELLOW, None);
+            ctx.bone_gizmo(bone_id, LinearRgba::WHITE, None);
         }
     }
 

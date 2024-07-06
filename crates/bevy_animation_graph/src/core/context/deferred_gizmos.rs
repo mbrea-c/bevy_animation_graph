@@ -4,10 +4,10 @@ use crate::core::{
     space_conversion::SpaceConversion,
 };
 use bevy::{
+    color::LinearRgba,
     gizmos::gizmos::Gizmos,
     math::{Quat, Vec3},
     reflect::Reflect,
-    render::color::Color,
 };
 
 #[derive(Clone)]
@@ -39,13 +39,13 @@ impl DeferredGizmos {
         }
     }
 
-    pub fn sphere(&mut self, position: Vec3, rotation: Quat, radius: f32, color: Color) {
+    pub fn sphere(&mut self, position: Vec3, rotation: Quat, radius: f32, color: LinearRgba) {
         self.commands.push(DeferredGizmoCommand::Sphere(
             position, rotation, radius, color,
         ));
     }
 
-    pub fn ray(&mut self, origin: Vec3, direction: Vec3, color: Color) {
+    pub fn ray(&mut self, origin: Vec3, direction: Vec3, color: LinearRgba) {
         self.commands
             .push(DeferredGizmoCommand::Ray(origin, direction, color));
     }
@@ -53,9 +53,9 @@ impl DeferredGizmos {
 
 #[derive(Clone, Reflect)]
 pub enum DeferredGizmoCommand {
-    Sphere(Vec3, Quat, f32, Color),
-    Ray(Vec3, Vec3, Color),
-    Bone(Vec3, Vec3, Color),
+    Sphere(Vec3, Quat, f32, LinearRgba),
+    Ray(Vec3, Vec3, LinearRgba),
+    Bone(Vec3, Vec3, LinearRgba),
 }
 
 impl DeferredGizmoCommand {
@@ -74,7 +74,7 @@ impl DeferredGizmoCommand {
     }
 }
 
-fn bone_gizmo(gizmos: &mut Gizmos, start: Vec3, end: Vec3, color: Color) {
+fn bone_gizmo(gizmos: &mut Gizmos, start: Vec3, end: Vec3, color: LinearRgba) {
     if start == end {
         return;
     }
@@ -107,9 +107,9 @@ pub trait BoneDebugGizmos {
     fn will_draw(&self) -> bool;
     fn gizmo(&mut self, gizmo: DeferredGizmoCommand);
 
-    fn pose_bone_gizmos(&mut self, color: Color, pose: &Pose);
-    fn bone_gizmo(&mut self, bone_id: BoneId, color: Color, pose: Option<&Pose>);
-    fn bone_sphere(&mut self, bone_id: BoneId, radius: f32, color: Color);
+    fn pose_bone_gizmos(&mut self, color: LinearRgba, pose: &Pose);
+    fn bone_gizmo(&mut self, bone_id: BoneId, color: LinearRgba, pose: Option<&Pose>);
+    fn bone_sphere(&mut self, bone_id: BoneId, radius: f32, color: LinearRgba);
     fn bone_rays(&mut self, bone_id: BoneId);
     fn sphere_in_parent_bone_space(
         &mut self,
@@ -117,14 +117,14 @@ pub trait BoneDebugGizmos {
         position: Vec3,
         rotation: Quat,
         radius: f32,
-        color: Color,
+        color: LinearRgba,
     );
     fn ray_in_parent_bone_space(
         &mut self,
         bone_id: BoneId,
         origin: Vec3,
         direction: Vec3,
-        color: Color,
+        color: LinearRgba,
     );
 }
 
@@ -139,7 +139,7 @@ impl BoneDebugGizmos for PassContext<'_> {
         }
     }
 
-    fn pose_bone_gizmos(&mut self, color: Color, pose: &Pose) {
+    fn pose_bone_gizmos(&mut self, color: LinearRgba, pose: &Pose) {
         if !self.will_draw() {
             return;
         }
@@ -149,7 +149,7 @@ impl BoneDebugGizmos for PassContext<'_> {
         }
     }
 
-    fn bone_gizmo(&mut self, bone_id: BoneId, color: Color, pose: Option<&Pose>) {
+    fn bone_gizmo(&mut self, bone_id: BoneId, color: LinearRgba, pose: Option<&Pose>) {
         if !self.will_draw() {
             return;
         }
@@ -169,7 +169,7 @@ impl BoneDebugGizmos for PassContext<'_> {
         ));
     }
 
-    fn bone_sphere(&mut self, bone_id: BoneId, radius: f32, color: Color) {
+    fn bone_sphere(&mut self, bone_id: BoneId, radius: f32, color: LinearRgba) {
         if !self.will_draw() {
             return;
         }
@@ -204,17 +204,17 @@ impl BoneDebugGizmos for PassContext<'_> {
         self.gizmo(DeferredGizmoCommand::Ray(
             global_transform.translation,
             global_transform.rotation * Vec3::X * 0.3,
-            Color::RED,
+            LinearRgba::RED,
         ));
         self.gizmo(DeferredGizmoCommand::Ray(
             global_transform.translation,
             global_transform.rotation * Vec3::Y * 0.3,
-            Color::GREEN,
+            LinearRgba::GREEN,
         ));
         self.gizmo(DeferredGizmoCommand::Ray(
             global_transform.translation,
             global_transform.rotation * Vec3::Z * 0.3,
-            Color::BLUE,
+            LinearRgba::BLUE,
         ));
     }
 
@@ -224,7 +224,7 @@ impl BoneDebugGizmos for PassContext<'_> {
         position: Vec3,
         rotation: Quat,
         radius: f32,
-        color: Color,
+        color: LinearRgba,
     ) {
         if !self.will_draw() {
             return;
@@ -251,7 +251,7 @@ impl BoneDebugGizmos for PassContext<'_> {
         bone_id: BoneId,
         origin: Vec3,
         direction: Vec3,
-        color: Color,
+        color: LinearRgba,
     ) {
         if !self.will_draw() {
             return;

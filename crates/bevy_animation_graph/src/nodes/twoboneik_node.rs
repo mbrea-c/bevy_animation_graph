@@ -12,9 +12,9 @@ use crate::{
     utils::unwrap::UnwrapVal,
 };
 use bevy::{
+    color::LinearRgba,
     math::{Quat, Vec3},
     reflect::{std_traits::ReflectDefault, Reflect},
-    render::color::Color,
     transform::components::Transform,
 };
 
@@ -59,8 +59,8 @@ impl NodeLike for TwoBoneIKNode {
             target.parent().and_then(|p| p.parent()),
         ) {
             // Debug render (if enabled)
-            ctx.bone_gizmo(target.clone(), Color::RED, Some(&pose));
-            ctx.bone_gizmo(parent_path.clone(), Color::RED, Some(&pose));
+            ctx.bone_gizmo(target.clone(), LinearRgba::RED, Some(&pose));
+            ctx.bone_gizmo(parent_path.clone(), LinearRgba::RED, Some(&pose));
 
             let bone = pose.bones[*bone_id].clone();
             let target_gp = ctx.root_to_bone_space(
@@ -105,8 +105,8 @@ impl NodeLike for TwoBoneIKNode {
             pose.bones[*bone_id].rotation = Some(bone_transform.rotation);
 
             // Debug render (if enabled)
-            ctx.bone_gizmo(target.clone(), Color::BLUE, Some(&pose));
-            ctx.bone_gizmo(parent_path.clone(), Color::BLUE, Some(&pose));
+            ctx.bone_gizmo(target.clone(), LinearRgba::BLUE, Some(&pose));
+            ctx.bone_gizmo(parent_path.clone(), LinearRgba::BLUE, Some(&pose));
         }
         ctx.set_time(pose.timestamp);
         ctx.set_data_fwd(Self::OUT_POSE, pose);

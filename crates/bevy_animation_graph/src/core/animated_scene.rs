@@ -10,7 +10,6 @@ use bevy::{
     render::view::{InheritedVisibility, ViewVisibility, Visibility},
     scene::{Scene, SceneInstance},
     transform::components::{GlobalTransform, Transform},
-    utils::BoxedFuture,
 };
 use serde::{Deserialize, Serialize};
 
@@ -59,25 +58,23 @@ impl AssetLoader for AnimatedSceneLoader {
     type Settings = ();
     type Error = AssetLoaderError;
 
-    fn load<'a>(
+    async fn load<'a>(
         &'a self,
-        reader: &'a mut Reader,
+        reader: &'a mut Reader<'_>,
         _settings: &'a Self::Settings,
-        load_context: &'a mut LoadContext,
-    ) -> BoxedFuture<'a, Result<Self::Asset, Self::Error>> {
-        Box::pin(async move {
-            let mut bytes = vec![];
-            reader.read_to_end(&mut bytes).await?;
-            let serial: AnimatedSceneSerial = ron::de::from_bytes(&bytes)?;
+        load_context: &'a mut LoadContext<'_>,
+    ) -> Result<Self::Asset, Self::Error> {
+        let mut bytes = vec![];
+        reader.read_to_end(&mut bytes).await?;
+        let serial: AnimatedSceneSerial = ron::de::from_bytes(&bytes)?;
 
-            let animation_graph: Handle<AnimationGraph> = load_context.load(serial.animation_graph);
-            let source: Handle<Scene> = load_context.load(serial.source);
+        let animation_graph: Handle<AnimationGraph> = load_context.load(serial.animation_graph);
+        let source: Handle<Scene> = load_context.load(serial.source);
 
-            Ok(AnimatedScene {
-                source,
-                path_to_player: serial.path_to_player,
-                animation_graph,
-            })
+        Ok(AnimatedScene {
+            source,
+            path_to_player: serial.path_to_player,
+            animation_graph,
         })
     }
 

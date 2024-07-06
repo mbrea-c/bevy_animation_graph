@@ -47,9 +47,9 @@ impl NodeLike for FlipLRNode {
         ctx.set_time_update_back(Self::IN_TIME, input);
         let in_pose: Pose = ctx.data_back(Self::IN_POSE)?.val();
         ctx.set_time(in_pose.timestamp);
-        ctx.pose_bone_gizmos(Color::RED, &in_pose);
+        ctx.pose_bone_gizmos(LinearRgba::RED, &in_pose);
         let flipped_pose = in_pose.flipped(&self.config);
-        ctx.pose_bone_gizmos(Color::BLUE, &flipped_pose);
+        ctx.pose_bone_gizmos(LinearRgba::BLUE, &flipped_pose);
         ctx.set_data_fwd(Self::OUT_POSE, flipped_pose);
 
         Ok(())
