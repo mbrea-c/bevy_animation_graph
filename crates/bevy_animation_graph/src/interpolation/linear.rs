@@ -106,6 +106,7 @@ impl InterpolateLinear for Pose {
         }
 
         result.timestamp = self.timestamp;
+        result.skeleton = self.skeleton.clone();
 
         result
     }

@@ -1,6 +1,7 @@
 use super::PassContext;
 use crate::core::{
     pose::{BoneId, Pose},
+    skeleton::Skeleton,
     space_conversion::SpaceConversion,
 };
 use bevy::{
@@ -108,7 +109,13 @@ pub trait BoneDebugGizmos {
     fn gizmo(&mut self, gizmo: DeferredGizmoCommand);
 
     fn pose_bone_gizmos(&mut self, color: LinearRgba, pose: &Pose);
-    fn bone_gizmo(&mut self, bone_id: BoneId, color: LinearRgba, pose: Option<&Pose>);
+    fn bone_gizmo(
+        &mut self,
+        bone_id: BoneId,
+        color: LinearRgba,
+        skeleton: &Skeleton,
+        pose: Option<&Pose>,
+    );
     fn bone_sphere(&mut self, bone_id: BoneId, radius: f32, color: LinearRgba);
     fn bone_rays(&mut self, bone_id: BoneId);
     fn sphere_in_parent_bone_space(
@@ -118,6 +125,7 @@ pub trait BoneDebugGizmos {
         rotation: Quat,
         radius: f32,
         color: LinearRgba,
+        skeleton: &Skeleton,
     );
     fn ray_in_parent_bone_space(
         &mut self,
@@ -125,6 +133,7 @@ pub trait BoneDebugGizmos {
         origin: Vec3,
         direction: Vec3,
         color: LinearRgba,
+        skeleton: &Skeleton,
     );
 }
 
@@ -144,12 +153,22 @@ impl BoneDebugGizmos for PassContext<'_> {
             return;
         }
 
+        let Some(skeleton) = self.resources.skeleton_assets.get(&pose.skeleton) else {
+            return;
+        };
+
         for bone_path in pose.paths.keys() {
-            self.bone_gizmo(bone_path.clone(), color, Some(pose));
+            self.bone_gizmo(bone_path.clone(), color, skeleton, Some(pose));
         }
     }
 
-    fn bone_gizmo(&mut self, bone_id: BoneId, color: LinearRgba, pose: Option<&Pose>) {
+    fn bone_gizmo(
+        &mut self,
+        bone_id: BoneId,
+        color: LinearRgba,
+        skeleton: &Skeleton,
+        pose: Option<&Pose>,
+    ) {
         if !self.will_draw() {
             return;
         }
@@ -157,11 +176,11 @@ impl BoneDebugGizmos for PassContext<'_> {
         let default_pose = Pose::default();
         let pose = pose.unwrap_or(&default_pose);
 
-        let Some(parent_id) = bone_id.parent() else {
+        let Some(parent_id) = skeleton.parent(&bone_id) else {
             return;
         };
-        let global_bone_transform = self.global_transform_of_bone(pose, bone_id);
-        let parent_bone_transform = self.global_transform_of_bone(pose, parent_id);
+        let global_bone_transform = self.global_transform_of_bone(pose, skeleton, bone_id);
+        let parent_bone_transform = self.global_transform_of_bone(pose, skeleton, parent_id);
         self.gizmo(DeferredGizmoCommand::Bone(
             parent_bone_transform.translation,
             global_bone_transform.translation,
@@ -225,11 +244,12 @@ impl BoneDebugGizmos for PassContext<'_> {
         rotation: Quat,
         radius: f32,
         color: LinearRgba,
+        skeleton: &Skeleton,
     ) {
         if !self.will_draw() {
             return;
         }
-        let parent_bone_id = bone_id.parent().unwrap();
+        let parent_bone_id = skeleton.parent(&bone_id).unwrap();
         let entity = self.entity_map.get(&parent_bone_id).unwrap();
         let global_transform = self
             .resources
@@ -252,11 +272,12 @@ impl BoneDebugGizmos for PassContext<'_> {
         origin: Vec3,
         direction: Vec3,
         color: LinearRgba,
+        skeleton: &Skeleton,
     ) {
         if !self.will_draw() {
             return;
         }
-        let parent_bone_id = bone_id.parent().unwrap();
+        let parent_bone_id = skeleton.parent(&bone_id).unwrap();
         let entity = self.entity_map.get(&parent_bone_id).unwrap();
         let global_transform = self
             .resources

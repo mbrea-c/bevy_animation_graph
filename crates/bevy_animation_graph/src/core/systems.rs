@@ -2,88 +2,24 @@ use super::{
     animation_clip::EntityPath,
     animation_graph::{TimeUpdate, UpdateTime},
     animation_graph_player::AnimationGraphPlayer,
-    pose::{BoneId, Pose},
+    pose::BoneId,
 };
 use crate::prelude::SystemResources;
 use bevy::{
-    core::prelude::*, ecs::prelude::*, gizmos::gizmos::Gizmos, hierarchy::prelude::*,
-    log::prelude::*, render::mesh::morph::MorphWeights, time::prelude::*, transform::prelude::*,
-    utils::HashMap,
+    ecs::prelude::*, gizmos::gizmos::Gizmos, render::mesh::morph::MorphWeights, time::prelude::*,
+    transform::prelude::*, utils::HashMap,
 };
-use std::{collections::VecDeque, ops::Deref};
-
-fn entity_from_path(
-    root: Entity,
-    path: &EntityPath,
-    children: &Query<&Children>,
-    names: &Query<&Name>,
-) -> Option<Entity> {
-    // PERF: finding the target entity can be optimised
-    let mut current_entity = root;
-
-    let mut parts = path.parts.iter().enumerate();
-
-    // check the first name is the root node which we already have
-    let (_, root_name) = parts.next()?;
-    if names.get(current_entity) != Ok(root_name) {
-        return None;
-    }
-
-    for (_idx, part) in parts {
-        let mut found = false;
-        let children = children.get(current_entity).ok()?;
-        if !found {
-            for child in children.deref() {
-                if let Ok(name) = names.get(*child) {
-                    if name == part {
-                        // Found a children with the right name, continue to the next part
-                        current_entity = *child;
-                        found = true;
-                        break;
-                    }
-                }
-            }
-        }
-        if !found {
-            warn!("Entity not found for path {:?} on part {:?}", path, part);
-            return None;
-        }
-    }
-    Some(current_entity)
-}
-
-/// Verify that there are no ancestors of a given entity that have an [`AnimationPlayer`].
-fn verify_no_ancestor_player(
-    player_parent: Option<&Parent>,
-    parents: &Query<(Has<AnimationGraphPlayer>, Option<&Parent>)>,
-) -> bool {
-    let Some(mut current) = player_parent.map(Parent::get) else {
-        return true;
-    };
-    loop {
-        let Ok((has_player, parent)) = parents.get(current) else {
-            return true;
-        };
-        if has_player {
-            return false;
-        }
-        if let Some(parent) = parent {
-            current = parent.get();
-        } else {
-            return true;
-        }
-    }
-}
+use std::collections::VecDeque;
 
 fn build_entity_map(root_entity: Entity, resources: &SystemResources) -> HashMap<BoneId, Entity> {
     let mut entity_map = HashMap::default();
 
     let root_name = resources.names_query.get(root_entity).unwrap();
-    let root_path: BoneId = EntityPath {
+    let root_path = EntityPath {
         parts: vec![root_name.clone()],
     };
 
-    entity_map.insert(root_path.clone(), root_entity);
+    entity_map.insert(root_path.id(), root_entity);
 
     let root_children = resources.children_query.get(root_entity).unwrap();
 
@@ -99,7 +35,7 @@ fn build_entity_map(root_entity: Entity, resources: &SystemResources) -> HashMap
             continue;
         };
         let path = parent_path.child(name.clone());
-        entity_map.insert(path.clone(), entity);
+        entity_map.insert(path.id(), entity);
 
         if let Ok(children) = resources.children_query.get(entity) {
             for child in children {
@@ -116,29 +52,15 @@ fn build_entity_map(root_entity: Entity, resources: &SystemResources) -> HashMap
 #[allow(clippy::too_many_arguments)]
 pub fn animation_player(
     time: Res<Time>,
-    morphs: Query<&mut MorphWeights>,
-    parents: Query<(Has<AnimationGraphPlayer>, Option<&Parent>)>,
-    mut animation_players: Query<(Entity, Option<&Parent>, &mut AnimationGraphPlayer)>,
+    mut animation_players: Query<(Entity, &mut AnimationGraphPlayer)>,
     sysres: SystemResources,
 ) {
-    animation_players
-        .par_iter_mut()
-        .for_each(|(root, maybe_parent, player)| {
-            run_animation_player(
-                root,
-                player,
-                &time,
-                &morphs,
-                maybe_parent,
-                &parents,
-                &sysres,
-            );
-        });
-    animation_players
-        .par_iter_mut()
-        .for_each(|(root, _, player)| {
-            debug_draw_animation_players(player, root, &sysres);
-        });
+    animation_players.par_iter_mut().for_each(|(root, player)| {
+        run_animation_player(root, player, &time, &sysres);
+    });
+    animation_players.par_iter_mut().for_each(|(root, player)| {
+        debug_draw_animation_players(player, root, &sysres);
+    });
 }
 
 /// System that will draw deferred gizmo commands called during graph evaluation
@@ -157,9 +79,6 @@ pub fn run_animation_player(
     root: Entity,
     mut player: Mut<AnimationGraphPlayer>,
     time: &Time,
-    morphs: &Query<&mut MorphWeights>,
-    maybe_parent: Option<&Parent>,
-    parents: &Query<(Has<AnimationGraphPlayer>, Option<&Parent>)>,
     system_resources: &SystemResources,
 ) {
     // Continue if paused unless the `AnimationPlayer` was changed
@@ -176,21 +95,46 @@ pub fn run_animation_player(
 
     player.entity_map = build_entity_map(root, system_resources);
 
-    let Some(out_pose) = player.query(system_resources, root) else {
-        return;
-    };
+    player.update(system_resources, root);
+}
 
-    // Apply the main animation
-    apply_pose(
-        &out_pose,
-        root,
-        &system_resources.names_query,
-        &system_resources.transform_query,
-        morphs,
-        maybe_parent,
-        parents,
-        &system_resources.children_query,
-    );
+pub fn apply_animation_to_targets(
+    mut animation_targets: Query<(
+        &mut Transform,
+        Option<&mut MorphWeights>,
+        &bevy::animation::AnimationTarget,
+    )>,
+    graph_players: Query<&AnimationGraphPlayer>,
+) {
+    for (mut target_transform, target_morphs, target) in &mut animation_targets {
+        let target_bone_id = BoneId::from(target.id);
+        let Ok(player) = graph_players.get(target.player) else {
+            continue;
+        };
+        let Some(pose) = &player.pose else {
+            continue;
+        };
+
+        let Some(bone_index) = pose.paths.get(&target_bone_id) else {
+            continue;
+        };
+
+        let bone_pose = &pose.bones[*bone_index];
+        if let Some(rotation) = bone_pose.rotation {
+            target_transform.rotation = rotation;
+        }
+        if let Some(translation) = bone_pose.translation {
+            target_transform.translation = translation;
+        }
+        if let Some(scale) = bone_pose.scale {
+            target_transform.scale = scale;
+        }
+        if let Some(weights) = &bone_pose.weights {
+            if let Some(mut morphs) = target_morphs {
+                apply_morph_weights(morphs.weights_mut(), weights);
+            }
+        }
+    }
 }
 
 pub fn debug_draw_animation_players(
@@ -223,65 +167,4 @@ pub(crate) fn get_keyframe(target_count: usize, keyframes: &[f32], key_index: us
     let start = target_count * key_index;
     let end = target_count * (key_index + 1);
     &keyframes[start..end]
-}
-
-#[allow(clippy::too_many_arguments)]
-fn apply_pose(
-    animation_pose: &Pose,
-    root: Entity,
-    names: &Query<&Name>,
-    transforms: &Query<(&mut Transform, &GlobalTransform)>,
-    morphs: &Query<&mut MorphWeights>,
-    maybe_parent: Option<&Parent>,
-    parents: &Query<(Has<AnimationGraphPlayer>, Option<&Parent>)>,
-    children: &Query<&Children>,
-) {
-    if !verify_no_ancestor_player(maybe_parent, parents) {
-        warn!("Animation player on {:?} has a conflicting animation player on an ancestor. Cannot safely animate.", root);
-        return;
-    }
-
-    let mut any_path_found = false;
-    for (path, bone_id) in &animation_pose.paths {
-        let Some(target) = entity_from_path(root, path, children, names) else {
-            continue;
-        };
-        any_path_found = true;
-        // SAFETY: The verify_no_ancestor_player check above ensures that two animation players cannot alias
-        // any of their descendant Transforms.
-        //
-        // The system scheduler prevents any other system from mutating Transforms at the same time,
-        // so the only way this fetch can alias is if two AnimationPlayers are targeting the same bone.
-        // This can only happen if there are two or more AnimationPlayers are ancestors to the same
-        // entities. By verifying that there is no other AnimationPlayer in the ancestors of a
-        // running AnimationPlayer before animating any entity, this fetch cannot alias.
-        //
-        // This means only the AnimationPlayers closest to the root of the hierarchy will be able
-        // to run their animation. Any players in the children or descendants will log a warning
-        // and do nothing.
-        let Ok((mut transform, _)) = (unsafe { transforms.get_unchecked(target) }) else {
-            continue;
-        };
-
-        let pose = &animation_pose.bones[*bone_id];
-        let mut morphs = unsafe { morphs.get_unchecked(target) };
-        if let Some(rotation) = pose.rotation {
-            transform.rotation = rotation;
-        }
-        if let Some(translation) = pose.translation {
-            transform.translation = translation;
-        }
-        if let Some(scale) = pose.scale {
-            transform.scale = scale;
-        }
-        if let Some(weights) = &pose.weights {
-            if let Ok(morphs) = &mut morphs {
-                apply_morph_weights(morphs.weights_mut(), weights);
-            }
-        }
-    }
-
-    if !any_path_found {
-        warn!("Animation player on {root:?} did not match any entity paths.");
-    }
 }

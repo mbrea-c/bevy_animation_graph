@@ -652,6 +652,7 @@ dependencies = [
  "ron",
  "serde",
  "thiserror",
+ "uuid",
 ]
 
 [[package]]

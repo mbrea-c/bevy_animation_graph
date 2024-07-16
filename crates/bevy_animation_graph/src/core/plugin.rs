@@ -2,6 +2,9 @@ use super::animation_clip::Interpolation;
 use super::edge_data::{AnimationEvent, EventQueue, SampledEvent};
 use super::pose::Pose;
 use super::prelude::GraphClip;
+use super::skeleton::loader::SkeletonLoader;
+use super::skeleton::Skeleton;
+use super::systems::apply_animation_to_targets;
 use super::{
     animated_scene::{
         process_animated_scenes, spawn_animated_scenes, AnimatedScene, AnimatedSceneLoader,
@@ -39,10 +42,16 @@ impl Plugin for AnimationGraphPlugin {
             .init_asset_loader::<AnimatedSceneLoader>()
             .init_asset::<StateMachine>()
             .init_asset_loader::<StateMachineLoader>()
+            .init_asset::<Skeleton>()
+            .init_asset_loader::<SkeletonLoader>()
             .add_systems(PreUpdate, (spawn_animated_scenes, process_animated_scenes))
             .add_systems(
                 PostUpdate,
-                (animation_player, animation_player_deferred_gizmos)
+                (
+                    animation_player,
+                    apply_animation_to_targets,
+                    animation_player_deferred_gizmos,
+                )
                     .chain()
                     .before(TransformSystem::TransformPropagate),
             );

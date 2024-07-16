@@ -206,7 +206,7 @@ impl LinkGraphicsData {
             points,
             closed: false,
             fill: egui::Color32::TRANSPARENT,
-            stroke,
+            stroke: stroke.into(),
         };
         ui.painter().set(shape, egui::Shape::Path(path_shape));
         self.draw_arrow(arrow_shape, stroke, ui);
@@ -224,7 +224,7 @@ impl LinkGraphicsData {
             points,
             closed: true,
             fill: stroke.color,
-            stroke,
+            stroke: stroke.into(),
         };
         ui.painter().set(shape, egui::Shape::Path(path_shape));
     }

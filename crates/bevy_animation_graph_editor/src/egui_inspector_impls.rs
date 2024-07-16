@@ -54,7 +54,7 @@ impl Plugin for BetterInspectorPlugin {
 
         PatternMapperInspector::register(app);
 
-        let type_registry = app.world.resource::<AppTypeRegistry>();
+        let type_registry = app.world().resource::<AppTypeRegistry>();
         let mut type_registry = type_registry.write();
         let type_registry = &mut type_registry;
 
@@ -238,7 +238,7 @@ pub struct PatternMapperInspector;
 impl PatternMapperInspector {
     pub fn register(app: &mut App) {
         app.insert_resource(EguiInspectorBuffers::<PatternMapper, PatternMapperSerial>::default());
-        let type_registry = app.world.resource::<AppTypeRegistry>();
+        let type_registry = app.world().resource::<AppTypeRegistry>();
         let mut type_registry = type_registry.write();
         let type_registry = &mut type_registry;
         add_no_many::<PatternMapper>(type_registry, Self::mutable, Self::readonly);

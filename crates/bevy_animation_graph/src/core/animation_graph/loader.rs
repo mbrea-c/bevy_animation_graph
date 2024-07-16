@@ -28,6 +28,7 @@ pub enum GraphClipSource {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct GraphClipSerial {
     source: GraphClipSource,
+    skeleton: String,
 }
 
 #[derive(Default)]
@@ -78,7 +79,9 @@ impl AssetLoader for GraphClipLoader {
             }
         };
 
-        let clip_mine = GraphClip::from(bevy_clip);
+        let skeleton = load_context.loader().load(serial.skeleton);
+
+        let clip_mine = GraphClip::from_bevy_clip(bevy_clip, skeleton);
 
         Ok(clip_mine)
     }

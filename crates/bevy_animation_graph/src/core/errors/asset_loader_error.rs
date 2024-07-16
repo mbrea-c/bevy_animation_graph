@@ -21,6 +21,8 @@ pub enum AssetLoaderError {
     LoadDirectError(#[from] bevy::asset::LoadDirectError),
     #[error("Animated scene path is incorrect: {0}")]
     AnimatedSceneMissingName(String),
+    #[error("Animated scene missing a root (an exsiting AnimationPlayer)")]
+    AnimatedSceneMissingRoot,
     #[error("Graph does not satisfy constraints: {0}")]
     InconsistentGraphError(#[from] GraphValidationError),
 }

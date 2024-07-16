@@ -2,6 +2,7 @@ use super::{
     animation_clip::EntityPath,
     context::PassContext,
     pose::{BoneId, BonePose, Pose},
+    skeleton::Skeleton,
 };
 use bevy::{ecs::entity::Entity, transform::components::Transform};
 use std::collections::VecDeque;
@@ -25,6 +26,7 @@ pub trait SpaceConversion {
         &self,
         transform: Transform,
         data: &Pose, // Should be in bone space
+        skeleton: &Skeleton,
         source: BoneId,
         target: BoneId,
     ) -> Transform;
@@ -40,6 +42,7 @@ pub trait SpaceConversion {
         &self,
         transform: Transform,
         data: &Pose, // Should be in bone space
+        skeleton: &Skeleton,
         source: BoneId,
         target: BoneId,
     ) -> Transform;
@@ -55,6 +58,7 @@ pub trait SpaceConversion {
         &self,
         transform: Transform,
         data: &Pose, // Should be in bone space
+        skeleton: &Skeleton,
         target: BoneId,
     ) -> Transform;
 
@@ -62,6 +66,7 @@ pub trait SpaceConversion {
         &self,
         transform: Transform,
         data: &Pose, // Should be in bone space
+        skeleton: &Skeleton,
         target: BoneId,
     ) -> Transform;
 
@@ -71,6 +76,7 @@ pub trait SpaceConversion {
     fn character_transform_of_bone(
         &self,
         data: &Pose, // Should be in bone space
+        skeleton: &Skeleton,
         target: BoneId,
     ) -> Transform;
 
@@ -78,6 +84,7 @@ pub trait SpaceConversion {
     fn global_transform_of_bone(
         &self,
         data: &Pose, // Should be in bone space
+        skeleton: &Skeleton,
         target: BoneId,
     ) -> Transform;
 
@@ -410,6 +417,7 @@ impl SpaceConversion for PassContext<'_> {
         &self,
         transform: Transform,
         data: &Pose, // Should be in bone space
+        skeleton: &Skeleton,
         source: BoneId,
         target: BoneId,
     ) -> Transform {
@@ -428,7 +436,7 @@ impl SpaceConversion for PassContext<'_> {
             let merged_local_transform = bone_frame.to_transform_with_base(*curr_local_transform);
 
             curr_transform = merged_local_transform * curr_transform;
-            curr_path = curr_path.parent().unwrap();
+            curr_path = skeleton.parent(&curr_path).unwrap();
         }
 
         Transform::from_matrix(curr_transform.compute_matrix().inverse()) * transform
@@ -438,6 +446,7 @@ impl SpaceConversion for PassContext<'_> {
         &self,
         transform: Transform,
         data: &Pose, // Should be in bone space
+        skeleton: &Skeleton,
         source: BoneId,
         target: BoneId,
     ) -> Transform {
@@ -456,7 +465,7 @@ impl SpaceConversion for PassContext<'_> {
             let merged_local_transform = bone_pose.to_transform_with_base(*curr_local_transform);
 
             curr_transform = merged_local_transform * curr_transform;
-            curr_path = curr_path.parent().unwrap();
+            curr_path = skeleton.parent(&curr_path).unwrap();
         }
 
         curr_transform * transform
@@ -465,7 +474,8 @@ impl SpaceConversion for PassContext<'_> {
     fn root_to_bone_space(
         &self,
         transform: Transform,
-        data: &Pose, // Should be in bone space
+        pose: &Pose, // Should be in bone space
+        skeleton: &Skeleton,
         target: BoneId,
     ) -> Transform {
         let root_name = self.resources.names_query.get(self.root_entity).unwrap();
@@ -473,17 +483,18 @@ impl SpaceConversion for PassContext<'_> {
             parts: vec![root_name.clone()],
         };
 
-        self.change_bone_space_down(transform, data, root_path, target)
+        self.change_bone_space_down(transform, pose, skeleton, root_path.id(), target)
     }
 
     fn global_to_bone_space(
         &self,
         transform: Transform,
-        data: &Pose, // Should be in bone space
+        pose: &Pose, // Should be in bone space
+        skeleton: &Skeleton,
         target: BoneId,
     ) -> Transform {
         let character_transform = self.transform_global_to_character(transform);
-        self.root_to_bone_space(character_transform, data, target)
+        self.root_to_bone_space(character_transform, pose, skeleton, target)
     }
 
     fn transform_global_to_character(&self, transform: Transform) -> Transform {
@@ -497,22 +508,33 @@ impl SpaceConversion for PassContext<'_> {
         inverse_global_transform * transform
     }
 
-    fn character_transform_of_bone(&self, data: &Pose, target: BoneId) -> Transform {
+    fn character_transform_of_bone(
+        &self,
+        pose: &Pose,
+        skeleton: &Skeleton,
+        target: BoneId,
+    ) -> Transform {
         let root_name = self.resources.names_query.get(self.root_entity).unwrap();
         let root_path = EntityPath {
             parts: vec![root_name.clone()],
         };
 
-        self.change_bone_space_up(Transform::IDENTITY, data, target, root_path)
+        self.change_bone_space_up(Transform::IDENTITY, pose, skeleton, target, root_path.id())
     }
 
-    fn global_transform_of_bone(&self, data: &Pose, target: BoneId) -> Transform {
+    fn global_transform_of_bone(
+        &self,
+        pose: &Pose,
+        skeleton: &Skeleton,
+        target: BoneId,
+    ) -> Transform {
         let (_, root_transform_global) = self
             .resources
             .transform_query
             .get(self.root_entity)
             .unwrap();
-        root_transform_global.compute_transform() * self.character_transform_of_bone(data, target)
+        root_transform_global.compute_transform()
+            * self.character_transform_of_bone(pose, skeleton, target)
     }
 
     fn extend_skeleton_bone(&self, data: &Pose) -> Pose {
@@ -542,8 +564,8 @@ impl SpaceConversion for PassContext<'_> {
             // Get the entity's current local transform
             let (entity_transform, _) = self.resources.transform_query.get(entity).unwrap();
             // Get the corresponding bone frame
-            let mut bone_pose = if new_pose.paths.contains_key(&entity_path) {
-                let bone_id = new_pose.paths.get(&entity_path).unwrap();
+            let mut bone_pose = if new_pose.paths.contains_key(&entity_path.id()) {
+                let bone_id = new_pose.paths.get(&entity_path.id()).unwrap();
                 new_pose.bones[*bone_id].clone()
             } else {
                 BonePose::default()
@@ -561,7 +583,7 @@ impl SpaceConversion for PassContext<'_> {
                 bone_pose.scale = Some(entity_transform.scale);
             }
 
-            new_pose.add_bone(bone_pose, entity_path);
+            new_pose.add_bone(bone_pose, entity_path.id());
         }
 
         new_pose

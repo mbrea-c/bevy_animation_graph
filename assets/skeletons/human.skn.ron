@@ -1,0 +1,3 @@
+(
+    source: Gltf(source: "models/character_rigged.glb", label: "Scene0"),
+)

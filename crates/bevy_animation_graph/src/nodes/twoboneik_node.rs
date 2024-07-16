@@ -49,24 +49,29 @@ impl NodeLike for TwoBoneIKNode {
         let input = ctx.time_update_fwd()?;
         ctx.set_time_update_back(Self::IN_TIME, input);
         let target: EntityPath = ctx.data_back(Self::TARGETBONE)?.val();
+        let target = target.id();
         let target_pos_char: Vec3 = ctx.data_back(Self::TARGETPOS)?.val();
         //let targetrotation: Quat = ctx.parameter_back(Self::TARGETROT).unwrap();
         let mut pose: Pose = ctx.data_back(Self::IN_POSE)?.val();
+        let Some(skeleton) = ctx.resources.skeleton_assets.get(&pose.skeleton) else {
+            return Err(GraphError::SkeletonMissing(ctx.node_id()));
+        };
 
         if let (Some(bone_id), Some(parent_path), Some(grandparent_path)) = (
             pose.paths.get(&target),
-            target.parent(),
-            target.parent().and_then(|p| p.parent()),
+            skeleton.parent(&target),
+            skeleton.parent(&target).and_then(|p| skeleton.parent(&p)),
         ) {
             // Debug render (if enabled)
-            ctx.bone_gizmo(target.clone(), LinearRgba::RED, Some(&pose));
-            ctx.bone_gizmo(parent_path.clone(), LinearRgba::RED, Some(&pose));
+            ctx.bone_gizmo(target.clone(), LinearRgba::RED, skeleton, Some(&pose));
+            ctx.bone_gizmo(parent_path.clone(), LinearRgba::RED, skeleton, Some(&pose));
 
             let bone = pose.bones[*bone_id].clone();
             let target_gp = ctx.root_to_bone_space(
                 Transform::from_translation(target_pos_char),
                 &pose,
-                grandparent_path.parent().unwrap().clone(),
+                skeleton,
+                skeleton.parent(&grandparent_path).unwrap().clone(),
             );
 
             let target_pos_gp = target_gp.translation;
@@ -105,8 +110,8 @@ impl NodeLike for TwoBoneIKNode {
             pose.bones[*bone_id].rotation = Some(bone_transform.rotation);
 
             // Debug render (if enabled)
-            ctx.bone_gizmo(target.clone(), LinearRgba::BLUE, Some(&pose));
-            ctx.bone_gizmo(parent_path.clone(), LinearRgba::BLUE, Some(&pose));
+            ctx.bone_gizmo(target.clone(), LinearRgba::BLUE, skeleton, Some(&pose));
+            ctx.bone_gizmo(parent_path.clone(), LinearRgba::BLUE, skeleton, Some(&pose));
         }
         ctx.set_time(pose.timestamp);
         ctx.set_data_fwd(Self::OUT_POSE, pose);

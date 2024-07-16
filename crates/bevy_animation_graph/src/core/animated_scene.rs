@@ -22,9 +22,9 @@ struct AnimatedSceneSerial {
 
 #[derive(Clone, Asset, Reflect)]
 pub struct AnimatedScene {
-    source: Handle<Scene>,
-    path_to_player: Vec<String>,
-    animation_graph: Handle<AnimationGraph>,
+    pub(crate) source: Handle<Scene>,
+    pub(crate) path_to_player: Vec<String>,
+    pub(crate) animation_graph: Handle<AnimationGraph>,
 }
 
 #[derive(Component)]

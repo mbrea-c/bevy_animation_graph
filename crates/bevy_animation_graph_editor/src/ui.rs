@@ -13,7 +13,7 @@ use crate::graph_update::{
 use crate::scanner::PersistedAssetHandles;
 use crate::tree::{Tree, TreeInternal, TreeResult};
 use bevy::asset::UntypedAssetId;
-use bevy::ecs::system::CommandQueue;
+use bevy::ecs::world::CommandQueue;
 use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
 use bevy::render::render_resource::{
@@ -1589,7 +1589,7 @@ pub fn graph_debug_draw_bone_system(
         return;
     };
 
-    player.gizmo_for_bones(vec![path.clone()])
+    player.gizmo_for_bones(vec![path.clone().id()])
 }
 
 pub fn setup_system(

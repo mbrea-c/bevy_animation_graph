@@ -5,7 +5,7 @@ use bevy::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Reflect, Clone, Debug)]
+#[derive(Reflect, Clone, Debug, Serialize, Deserialize)]
 #[reflect(Default)]
 pub enum BoneMask {
     /// If a bone is in the bones map, weight is given. Otherwise, weight is zero
@@ -28,63 +28,5 @@ impl BoneMask {
             BoneMask::Positive { bones } => bones.get(bone_id).copied().unwrap_or(0.),
             BoneMask::Negative { bones } => bones.get(bone_id).copied().unwrap_or(1.),
         }
-    }
-}
-
-#[derive(Reflect, Clone, Serialize, Deserialize, Debug)]
-pub enum BoneMaskSerial {
-    Positive { bones: HashMap<Vec<String>, f32> },
-    Negative { bones: HashMap<Vec<String>, f32> },
-}
-
-fn deserialize_bone_map(map: HashMap<Vec<String>, f32>) -> HashMap<BoneId, f32> {
-    map.into_iter().map(|(k, v)| (k.into(), v)).collect()
-}
-
-fn serialize_bone_map(map: HashMap<BoneId, f32>) -> HashMap<Vec<String>, f32> {
-    map.into_iter().map(|(k, v)| (k.into(), v)).collect()
-}
-
-impl From<BoneMaskSerial> for BoneMask {
-    fn from(value: BoneMaskSerial) -> Self {
-        match value {
-            BoneMaskSerial::Positive { bones } => BoneMask::Positive {
-                bones: deserialize_bone_map(bones),
-            },
-            BoneMaskSerial::Negative { bones } => BoneMask::Negative {
-                bones: deserialize_bone_map(bones),
-            },
-        }
-    }
-}
-
-impl From<BoneMask> for BoneMaskSerial {
-    fn from(value: BoneMask) -> Self {
-        match value {
-            BoneMask::Positive { bones } => BoneMaskSerial::Positive {
-                bones: serialize_bone_map(bones),
-            },
-            BoneMask::Negative { bones } => BoneMaskSerial::Negative {
-                bones: serialize_bone_map(bones),
-            },
-        }
-    }
-}
-
-impl Serialize for BoneMask {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        BoneMaskSerial::from(self.clone()).serialize(serializer)
-    }
-}
-
-impl<'de> Deserialize<'de> for BoneMask {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        BoneMaskSerial::deserialize(deserializer).map(BoneMask::from)
     }
 }

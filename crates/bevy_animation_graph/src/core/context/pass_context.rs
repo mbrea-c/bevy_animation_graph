@@ -294,6 +294,10 @@ impl<'a> PassContext<'a> {
 
         s
     }
+
+    pub fn node_id(&self) -> NodeId {
+        self.node_context.as_ref().unwrap().node_id.clone()
+    }
 }
 
 impl<'a> PassContext<'a> {
