@@ -2,4 +2,5 @@
     source: "models/character_rigged.glb#Scene0",
     path_to_player: ["metarig"],
     animation_graph: "animation_graphs/toplevel.animgraph.ron",
+    skeleton: "skeletons/human.skn.ron",
 )

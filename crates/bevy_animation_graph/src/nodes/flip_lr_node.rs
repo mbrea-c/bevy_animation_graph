@@ -3,9 +3,9 @@ use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::errors::GraphError;
 use crate::core::pose::Pose;
 use crate::core::prelude::DataSpec;
-use crate::flipping::FlipXBySuffix;
+use crate::flipping::flip_pose;
 use crate::prelude::config::FlipConfig;
-use crate::prelude::{BoneDebugGizmos, PassContext, SpecContext};
+use crate::prelude::{PassContext, SpecContext};
 use crate::utils::unwrap::UnwrapVal;
 use bevy::prelude::*;
 
@@ -47,9 +47,10 @@ impl NodeLike for FlipLRNode {
         ctx.set_time_update_back(Self::IN_TIME, input);
         let in_pose: Pose = ctx.data_back(Self::IN_POSE)?.val();
         ctx.set_time(in_pose.timestamp);
-        ctx.pose_bone_gizmos(Color::RED, &in_pose);
-        let flipped_pose = in_pose.flipped(&self.config);
-        ctx.pose_bone_gizmos(Color::BLUE, &flipped_pose);
+        let Some(skeleton) = ctx.resources.skeleton_assets.get(&in_pose.skeleton) else {
+            return Err(GraphError::SkeletonMissing(ctx.node_id()));
+        };
+        let flipped_pose = flip_pose(&in_pose, &self.config, skeleton);
         ctx.set_data_fwd(Self::OUT_POSE, flipped_pose);
 
         Ok(())

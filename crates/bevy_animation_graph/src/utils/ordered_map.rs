@@ -1,8 +1,8 @@
 use bevy::{
     reflect::{
-        map_apply, map_partial_eq, utility::GenericTypeInfoCell, DynamicMap, FromReflect, FromType,
-        GetTypeRegistration, Map, MapInfo, MapIter, Reflect, ReflectFromPtr, ReflectMut,
-        ReflectOwned, ReflectRef, TypeInfo, TypePath, TypeRegistration, Typed,
+        map_apply, map_partial_eq, map_try_apply, utility::GenericTypeInfoCell, DynamicMap,
+        FromReflect, FromType, GetTypeRegistration, Map, MapInfo, MapIter, Reflect, ReflectFromPtr,
+        ReflectMut, ReflectOwned, ReflectRef, TypeInfo, TypePath, TypeRegistration, Typed,
     },
     utils::AHasher,
 };
@@ -272,6 +272,10 @@ where
 
     fn reflect_partial_eq(&self, value: &dyn Reflect) -> Option<bool> {
         map_partial_eq(self, value)
+    }
+
+    fn try_apply(&mut self, value: &dyn Reflect) -> Result<(), bevy::reflect::ApplyError> {
+        map_try_apply(self, value)
     }
 }
 

@@ -3,4 +3,5 @@
         path: "models/character_rigged.glb",
         animation_name: "RunBake",
     ),
+    skeleton: "skeletons/human.skn.ron",
 )

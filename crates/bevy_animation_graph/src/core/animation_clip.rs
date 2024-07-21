@@ -1,7 +1,14 @@
 use bevy::{
-    asset::prelude::*, core::prelude::*, math::prelude::*, reflect::prelude::*, utils::HashMap,
+    animation::AnimationTargetId,
+    asset::prelude::*,
+    core::prelude::*,
+    math::prelude::*,
+    reflect::prelude::*,
+    utils::{hashbrown::HashMap, NoOpHash},
 };
 use serde::{Deserialize, Serialize};
+
+use super::{id, skeleton::Skeleton};
 
 /// List of keyframes for one of the attribute of a [`Transform`].
 ///
@@ -86,6 +93,10 @@ impl EntityPath {
         }
     }
 
+    pub fn last(&self) -> Option<Name> {
+        self.parts.last().cloned()
+    }
+
     /// Returns a string representation of the path, with '/' as the separator. If any path parts
     /// themselves contain '/', they will be escaped
     pub fn to_slashed_string(&self) -> String {
@@ -103,6 +114,10 @@ impl EntityPath {
                 .map(Name::new)
                 .collect(),
         }
+    }
+
+    pub fn id(&self) -> id::BoneId {
+        AnimationTargetId::from_names(self.parts.iter()).into()
     }
 }
 
@@ -173,66 +188,96 @@ impl<'de> Deserialize<'de> for EntityPath {
 /// A list of [`VariableCurve`], and the [`EntityPath`] to which they apply.
 #[derive(Asset, Reflect, Clone, Debug, Default)]
 pub struct GraphClip {
-    pub(crate) curves: Vec<Vec<VariableCurve>>,
-    pub(crate) paths: HashMap<EntityPath, usize>,
+    pub(crate) curves: AnimationCurves,
     pub(crate) duration: f32,
+    pub(crate) skeleton: Handle<Skeleton>,
 }
+
+/// This is a helper type to "steal" the data from a `bevy_animation::AnimationClip` into our
+/// `GraphClip`, since the internal fields of `bevy_animation::AnimationClip` are not public and we
+/// need to do a hackery.
+struct TempGraphClip {
+    curves: AnimationCurves,
+    duration: f32,
+}
+
+/// A mapping from [`AnimationTargetId`] (e.g. bone in a skinned mesh) to the
+/// animation curves.
+pub type AnimationCurves = HashMap<AnimationTargetId, Vec<VariableCurve>, NoOpHash>;
 
 impl GraphClip {
     #[inline]
-    /// [`VariableCurve`]s for each bone. Indexed by the bone ID.
-    pub fn curves(&self) -> &Vec<Vec<VariableCurve>> {
+    /// [`VariableCurve`]s for each animation target. Indexed by the [`AnimationTargetId`].
+    pub fn curves(&self) -> &AnimationCurves {
         &self.curves
     }
 
-    /// Gets the curves for a bone.
-    ///
-    /// Returns `None` if the bone is invalid.
     #[inline]
-    pub fn get_curves(&self, bone_id: usize) -> Option<&'_ Vec<VariableCurve>> {
-        self.curves.get(bone_id)
+    /// Get mutable references of [`VariableCurve`]s for each animation target. Indexed by the [`AnimationTargetId`].
+    pub fn curves_mut(&mut self) -> &mut AnimationCurves {
+        &mut self.curves
     }
 
-    /// Gets the curves by it's [`EntityPath`].
+    /// Gets the curves for a single animation target.
     ///
-    /// Returns `None` if the bone is invalid.
+    /// Returns `None` if this clip doesn't animate the target.
     #[inline]
-    pub fn get_curves_by_path(&self, path: &EntityPath) -> Option<&'_ Vec<VariableCurve>> {
-        self.paths.get(path).and_then(|id| self.curves.get(*id))
+    pub fn curves_for_target(
+        &self,
+        target_id: AnimationTargetId,
+    ) -> Option<&'_ Vec<VariableCurve>> {
+        self.curves.get(&target_id)
     }
 
-    /// Duration of the clip, represented in seconds
+    /// Gets mutable references of the curves for a single animation target.
+    ///
+    /// Returns `None` if this clip doesn't animate the target.
+    #[inline]
+    pub fn curves_for_target_mut(
+        &mut self,
+        target_id: AnimationTargetId,
+    ) -> Option<&'_ mut Vec<VariableCurve>> {
+        self.curves.get_mut(&target_id)
+    }
+
+    /// Duration of the clip, represented in seconds.
     #[inline]
     pub fn duration(&self) -> f32 {
         self.duration
     }
 
-    /// Add a [`VariableCurve`] to an [`EntityPath`].
-    pub fn add_curve_to_path(&mut self, path: EntityPath, curve: VariableCurve) {
+    /// Set the duration of the clip in seconds.
+    #[inline]
+    pub fn set_duration(&mut self, duration_sec: f32) {
+        self.duration = duration_sec;
+    }
+
+    /// Adds a [`VariableCurve`] to an [`AnimationTarget`] named by an
+    /// [`AnimationTargetId`].
+    ///
+    /// If the curve extends beyond the current duration of this clip, this
+    /// method lengthens this clip to include the entire time span that the
+    /// curve covers.
+    pub fn add_curve_to_target(&mut self, target_id: AnimationTargetId, curve: VariableCurve) {
         // Update the duration of the animation by this curve duration if it's longer
         self.duration = self
             .duration
             .max(*curve.keyframe_timestamps.last().unwrap_or(&0.0));
-        if let Some(bone_id) = self.paths.get(&path) {
-            self.curves[*bone_id].push(curve);
-        } else {
-            let idx = self.curves.len();
-            self.curves.push(vec![curve]);
-            self.paths.insert(path, idx);
-        }
+        self.curves.entry(target_id).or_default().push(curve);
     }
 
-    /// Whether this animation clip can run on entity with given [`Name`].
-    pub fn compatible_with(&self, name: &Name) -> bool {
-        self.paths.keys().any(|path| &path.parts[0] == name)
-    }
-}
-
-impl From<bevy::animation::AnimationClip> for GraphClip {
-    fn from(value: bevy::animation::AnimationClip) -> Self {
+    pub fn from_bevy_clip(
+        bevy_clip: bevy::animation::AnimationClip,
+        skelington: Handle<Skeleton>,
+    ) -> Self {
         // HACK: to get the corret type, since bevy's AnimationClip
         // does not expose its internals
-        unsafe { std::mem::transmute(value) }
+        let tmp_clip: TempGraphClip = unsafe { std::mem::transmute(bevy_clip) };
+        Self {
+            curves: tmp_clip.curves,
+            duration: tmp_clip.duration,
+            skeleton: skelington,
+        }
     }
 }
 

@@ -1,4 +1,4 @@
-use super::errors::AssetLoaderError;
+use super::{errors::AssetLoaderError, skeleton::Skeleton};
 use crate::prelude::{AnimationGraph, AnimationGraphPlayer};
 use bevy::{
     asset::{io::Reader, Asset, AssetLoader, AsyncReadExt, Handle, LoadContext},
@@ -10,7 +10,6 @@ use bevy::{
     render::view::{InheritedVisibility, ViewVisibility, Visibility},
     scene::{Scene, SceneInstance},
     transform::components::{GlobalTransform, Transform},
-    utils::BoxedFuture,
 };
 use serde::{Deserialize, Serialize};
 
@@ -19,13 +18,15 @@ struct AnimatedSceneSerial {
     source: String,
     path_to_player: Vec<String>,
     animation_graph: String,
+    skeleton: String,
 }
 
 #[derive(Clone, Asset, Reflect)]
 pub struct AnimatedScene {
-    source: Handle<Scene>,
-    path_to_player: Vec<String>,
-    animation_graph: Handle<AnimationGraph>,
+    pub(crate) source: Handle<Scene>,
+    pub(crate) path_to_player: Vec<String>,
+    pub(crate) animation_graph: Handle<AnimationGraph>,
+    pub(crate) skeleton: Handle<Skeleton>,
 }
 
 #[derive(Component)]
@@ -59,25 +60,25 @@ impl AssetLoader for AnimatedSceneLoader {
     type Settings = ();
     type Error = AssetLoaderError;
 
-    fn load<'a>(
+    async fn load<'a>(
         &'a self,
-        reader: &'a mut Reader,
+        reader: &'a mut Reader<'_>,
         _settings: &'a Self::Settings,
-        load_context: &'a mut LoadContext,
-    ) -> BoxedFuture<'a, Result<Self::Asset, Self::Error>> {
-        Box::pin(async move {
-            let mut bytes = vec![];
-            reader.read_to_end(&mut bytes).await?;
-            let serial: AnimatedSceneSerial = ron::de::from_bytes(&bytes)?;
+        load_context: &'a mut LoadContext<'_>,
+    ) -> Result<Self::Asset, Self::Error> {
+        let mut bytes = vec![];
+        reader.read_to_end(&mut bytes).await?;
+        let serial: AnimatedSceneSerial = ron::de::from_bytes(&bytes)?;
 
-            let animation_graph: Handle<AnimationGraph> = load_context.load(serial.animation_graph);
-            let source: Handle<Scene> = load_context.load(serial.source);
+        let animation_graph: Handle<AnimationGraph> = load_context.load(serial.animation_graph);
+        let source: Handle<Scene> = load_context.load(serial.source);
+        let skeleton: Handle<Skeleton> = load_context.load(serial.skeleton);
 
-            Ok(AnimatedScene {
-                source,
-                path_to_player: serial.path_to_player,
-                animation_graph,
-            })
+        Ok(AnimatedScene {
+            source,
+            path_to_player: serial.path_to_player,
+            animation_graph,
+            skeleton,
         })
     }
 
@@ -183,7 +184,10 @@ pub(crate) fn process_animated_scenes(
         commands
             .entity(next_entity)
             .remove::<AnimationPlayer>()
-            .insert(AnimationGraphPlayer::new().with_graph(animscn.animation_graph.clone()));
+            .insert(
+                AnimationGraphPlayer::new(animscn.skeleton.clone())
+                    .with_graph(animscn.animation_graph.clone()),
+            );
         commands
             .entity(animscn_entity)
             .insert(AnimatedSceneInstance {

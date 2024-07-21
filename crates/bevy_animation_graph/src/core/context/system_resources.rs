@@ -1,5 +1,5 @@
 use crate::{
-    core::state_machine::high_level::StateMachine,
+    core::{skeleton::Skeleton, state_machine::high_level::StateMachine},
     prelude::{AnimationGraph, GraphClip},
 };
 use bevy::{
@@ -16,6 +16,7 @@ pub struct SystemResources<'w, 's> {
     pub graph_clip_assets: Res<'w, Assets<GraphClip>>,
     pub animation_graph_assets: Res<'w, Assets<AnimationGraph>>,
     pub state_machine_assets: Res<'w, Assets<StateMachine>>,
+    pub skeleton_assets: Res<'w, Assets<Skeleton>>,
     // HACK: The mutable transform access is needed due to the query being reused by the apply_pose
     // function. This is due to bevy's restriction against conflicting system parameters
     pub transform_query: Query<'w, 's, (&'static mut Transform, &'static GlobalTransform)>,

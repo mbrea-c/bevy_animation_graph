@@ -1,4 +1,4 @@
-use crate::core::animation_graph::{SourcePin, TargetPin};
+use crate::core::animation_graph::{NodeId, SourcePin, TargetPin};
 use bevy::prelude::*;
 use thiserror::Error;
 
@@ -24,4 +24,6 @@ pub enum GraphError {
     FSMCurrentStateMissing,
     #[error("The asset for a state's graph is missing.")]
     FSMGraphAssetMissing,
+    #[error("We're missing a skeleton asset at: {0:?}")]
+    SkeletonMissing(NodeId),
 }

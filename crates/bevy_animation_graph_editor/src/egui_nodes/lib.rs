@@ -196,6 +196,7 @@ impl NodesContext {
         let mut ui = ui.child_ui(
             self.frame_state.canvas_rect_screen_space,
             egui::Layout::top_down(egui::Align::Center),
+            None,
         );
         // Setup and draw canvas, add links and nodes
         // This also draws text for attributes

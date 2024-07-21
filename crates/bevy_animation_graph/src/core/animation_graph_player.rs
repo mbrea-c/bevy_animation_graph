@@ -5,10 +5,12 @@ use super::{
     errors::GraphError,
     pose::{BoneId, Pose},
     prelude::GraphContextArena,
+    skeleton::Skeleton,
 };
 use crate::prelude::SystemResources;
 use bevy::{
-    asset::prelude::*, ecs::prelude::*, reflect::prelude::*, render::color::Color, utils::HashMap,
+    asset::prelude::*, color::palettes::css::WHITE, ecs::prelude::*, reflect::prelude::*,
+    utils::HashMap,
 };
 
 /// Animation controls
@@ -17,6 +19,7 @@ use bevy::{
 pub struct AnimationGraphPlayer {
     pub(crate) paused: bool,
     pub(crate) animation: Option<Handle<AnimationGraph>>,
+    pub(crate) skeleton: Handle<Skeleton>,
     pub(crate) context_arena: Option<GraphContextArena>,
     pub(crate) elapsed: TimeState,
     pub(crate) pending_update: Option<TimeUpdate>,
@@ -24,6 +27,7 @@ pub struct AnimationGraphPlayer {
     pub(crate) debug_draw_bones: Vec<BoneId>,
     pub(crate) entity_map: HashMap<BoneId, Entity>,
     pub(crate) queued_events: EventQueue,
+    pub(crate) pose: Option<Pose>,
 
     input_overlay: InputOverlay,
     /// Error that ocurred during graph evaluation in the last frame
@@ -35,8 +39,9 @@ impl AnimationGraphPlayer {
     pub const USER_EVENTS: &'static str = "user events";
 
     /// Create a new animation graph player, with no graph playing
-    pub fn new() -> Self {
+    pub fn new(skeleton: Handle<Skeleton>) -> Self {
         Self {
+            skeleton,
             ..Default::default()
         }
     }
@@ -90,20 +95,21 @@ impl AnimationGraphPlayer {
     }
 
     /// Query the animation graph with the latest time update and inputs
-    pub(crate) fn query(
-        &mut self,
-        system_resources: &SystemResources,
-        root_entity: Entity,
-    ) -> Option<Pose> {
+    pub(crate) fn update(&mut self, system_resources: &SystemResources, root_entity: Entity) {
         self.input_overlay.parameters.insert(
             Self::USER_EVENTS.into(),
             std::mem::take(&mut self.queued_events).into(),
         );
 
-        let graph_handle = self.animation.as_ref()?;
-        let graph = system_resources.animation_graph_assets.get(graph_handle)?;
+        let Some(graph_handle) = self.animation.as_ref() else {
+            return;
+        };
 
-        let pose = match graph.query_with_overlay(
+        let Some(graph) = system_resources.animation_graph_assets.get(graph_handle) else {
+            return;
+        };
+
+        match graph.query_with_overlay(
             self.elapsed.update,
             self.context_arena.as_mut().unwrap(),
             system_resources,
@@ -114,15 +120,13 @@ impl AnimationGraphPlayer {
         ) {
             Ok(pose) => {
                 self.error = None;
-                pose
+                self.pose = Some(pose);
             }
             Err(error) => {
                 self.error = Some(error);
-                Pose::default()
+                self.pose = None;
             }
         };
-
-        Some(pose)
     }
 
     pub fn get_pass_context<'a>(
@@ -157,11 +161,19 @@ impl AnimationGraphPlayer {
         }
 
         let mut bones = std::mem::take(&mut self.debug_draw_bones);
+
+        let skeleton_id = self.skeleton.id();
+
         let mut ctx = self
             .get_pass_context(system_resources, root_entity)
             .with_debugging(true);
+
+        let Some(skeleton) = ctx.resources.skeleton_assets.get(skeleton_id) else {
+            return;
+        };
+
         for bone_id in bones.drain(..) {
-            ctx.bone_gizmo(bone_id, Color::YELLOW, None);
+            ctx.bone_gizmo(bone_id, WHITE.into(), skeleton, None);
         }
     }
 

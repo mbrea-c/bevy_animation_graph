@@ -4,6 +4,7 @@ use crate::core::animation_clip::{GraphClip, Interpolation, Keyframes, VariableC
 use crate::core::animation_graph::PinMap;
 use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
 use crate::core::errors::GraphError;
+use crate::core::id::BoneId;
 use crate::core::pose::{BonePose, Pose};
 use crate::core::prelude::{DataSpec, DataValue};
 use crate::core::systems::get_keyframe;
@@ -75,13 +76,13 @@ impl NodeLike for ClipNode {
 
         let mut out_pose = Pose {
             timestamp: time,
+            skeleton: clip.skeleton.clone(),
             ..Pose::default()
         };
 
         let time = time.clamp(0., clip_duration);
 
-        for (path, bone_id) in &clip.paths {
-            let curves = clip.get_curves(*bone_id).unwrap();
+        for (bone_id, curves) in &clip.curves {
             let mut bone_pose = BonePose::default();
             for curve in curves {
                 // Some curves have only one keyframe used to set a transform
@@ -147,7 +148,7 @@ impl NodeLike for ClipNode {
                     &mut bone_pose,
                 );
             }
-            out_pose.add_bone(bone_pose, path.clone());
+            out_pose.add_bone(bone_pose, BoneId::from(*bone_id));
         }
 
         ctx.set_data_fwd(Self::OUT_POSE, DataValue::Pose(out_pose));

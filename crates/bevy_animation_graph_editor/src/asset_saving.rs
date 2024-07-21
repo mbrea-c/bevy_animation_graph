@@ -1,8 +1,5 @@
-use crate::{scanner::PersistedAssetHandles, ui::UiState};
-use bevy::{
-    asset::io::{file::FileAssetReader, AssetReader, AssetSourceId},
-    prelude::*,
-};
+use crate::{scanner::PersistedAssetHandles, ui::UiState, Cli};
+use bevy::prelude::*;
 use bevy_animation_graph::core::{
     animation_graph::{serial::AnimationGraphSerial, AnimationGraph},
     state_machine::high_level::{serial::StateMachineSerial, StateMachine},
@@ -37,20 +34,12 @@ pub fn save_graph_system(
     graph_assets: Res<Assets<AnimationGraph>>,
     mut ui_state: ResMut<UiState>,
     mut graph_handles: ResMut<PersistedAssetHandles>,
+    cli: Res<Cli>,
 ) {
     for ev in evr_save_graph.read() {
         let graph = graph_assets.get(ev.graph).unwrap();
         let graph_serial = AnimationGraphSerial::from(graph);
-        let source = asset_server.get_source(AssetSourceId::Default).unwrap();
-        let reader = source.reader();
-        // HACK: Ideally we would not be doing this, but using bevy's dyanmic asset
-        // saving API. However, this does not exist yet, so we're force to find the
-        // file path via "other means".
-        // unsafe downcast reader to FileAssetReader, since as_any is not implemented
-        // pray that nothing goes wrong
-        // TODO: An alternative could perhaps be to use the value in the Cli resource?
-        let reader = unsafe { &*((reader as *const dyn AssetReader) as *const FileAssetReader) };
-        let mut final_path = reader.root_path().clone();
+        let mut final_path = cli.asset_source.clone();
         final_path.push(&ev.virtual_path);
         info!("Saving graph with id {:?} to {:?}", ev.graph, final_path);
         ron::ser::to_writer_pretty(
@@ -76,20 +65,12 @@ pub fn save_fsm_system(
     graph_assets: Res<Assets<StateMachine>>,
     mut ui_state: ResMut<UiState>,
     mut persisted_handles: ResMut<PersistedAssetHandles>,
+    cli: Res<Cli>,
 ) {
     for ev in evr_save_graph.read() {
         let fsm = graph_assets.get(ev.fsm).unwrap();
         let graph_serial = StateMachineSerial::from(fsm);
-        let source = asset_server.get_source(AssetSourceId::Default).unwrap();
-        let reader = source.reader();
-        // HACK: Ideally we would not be doing this, but using bevy's dyanmic asset
-        // saving API. However, this does not exist yet, so we're force to find the
-        // file path via "other means".
-        // unsafe downcast reader to FileAssetReader, since as_any is not implemented
-        // pray that nothing goes wrong
-        // TODO: An alternative could perhaps be to use the value in the Cli resource?
-        let reader = unsafe { &*((reader as *const dyn AssetReader) as *const FileAssetReader) };
-        let mut final_path = reader.root_path().clone();
+        let mut final_path = cli.asset_source.clone();
         final_path.push(&ev.virtual_path);
         info!("Saving FSM with id {:?} to {:?}", ev.fsm, final_path);
         ron::ser::to_writer_pretty(

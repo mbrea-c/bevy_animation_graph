@@ -1,11 +1,9 @@
-use super::animation_clip::EntityPath;
+pub use super::id::BoneId;
+use super::skeleton::Skeleton;
 use bevy::{
     asset::prelude::*, math::prelude::*, reflect::prelude::*, transform::prelude::*, utils::HashMap,
 };
 use serde::{Deserialize, Serialize};
-
-// PERF: Bone ids should become integers eventually
-pub type BoneId = EntityPath;
 
 /// Vertical slice of a [`Keyframes`] that represents an instant in an animation [`Transform`].
 ///
@@ -50,6 +48,8 @@ pub struct Pose {
     pub(crate) bones: Vec<BonePose>,
     pub(crate) paths: HashMap<BoneId, usize>,
     pub(crate) timestamp: f32,
+    #[serde(skip)]
+    pub(crate) skeleton: Handle<Skeleton>,
 }
 
 impl Pose {
@@ -59,23 +59,3 @@ impl Pose {
         self.paths.insert(path, id);
     }
 }
-
-// #[derive(Clone, Copy, Debug, Reflect, Default, Serialize, Deserialize, PartialEq, Eq)]
-// #[reflect(Default)]
-// pub enum PoseSpec {
-//     #[default]
-//     BoneSpace,
-//     CharacterSpace,
-//     GlobalSpace,
-//     Any,
-// }
-//
-// impl PoseSpec {
-//     pub fn compatible(&self, other: &Self) -> bool {
-//         if self == other {
-//             true
-//         } else {
-//             matches!((self, other), (Self::Any, _) | (_, Self::Any))
-//         }
-//     }
-// }

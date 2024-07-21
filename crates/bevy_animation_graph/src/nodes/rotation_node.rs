@@ -99,22 +99,26 @@ impl NodeLike for RotationNode {
         // We do this first to ensure that the time update is available for any other nodes that might need it
         ctx.set_time_update_back(Self::IN_TIME, input);
 
-        let mut target: EntityPath = ctx.data_back(Self::TARGET)?.val();
+        let target: EntityPath = ctx.data_back(Self::TARGET)?.val();
+        let mut target = target.id();
         let rotation: Quat = ctx.data_back(Self::ROTATION)?.val();
         let mut pose: Pose = ctx.data_back(Self::IN_POSE)?.val();
+        let Some(skeleton) = ctx.resources.skeleton_assets.get(&pose.skeleton) else {
+            return Err(GraphError::SkeletonMissing(ctx.node_id()));
+        };
 
         if !pose.paths.contains_key(&target) {
-            pose.add_bone(BonePose::default(), target.clone());
+            pose.add_bone(BonePose::default(), target);
         }
 
         // build bone chain
-        let mut chain = vec![target.clone()];
-        while let Some(parent) = target.parent() {
+        let mut chain = vec![target];
+        while let Some(parent) = skeleton.parent(&target) {
             if chain.len() >= self.chain_length {
                 break;
             }
 
-            chain.insert(0, parent.clone());
+            chain.insert(0, parent);
             target = parent;
         }
 
@@ -123,17 +127,27 @@ impl NodeLike for RotationNode {
             let rotation_bone_space = match self.rotation_space {
                 RotationSpace::Local => rotation,
                 RotationSpace::Character => {
-                    if let Some(parent) = target.parent() {
-                        ctx.root_to_bone_space(Transform::from_rotation(rotation), &pose, parent)
-                            .rotation
+                    if let Some(parent) = skeleton.parent(&target) {
+                        ctx.root_to_bone_space(
+                            Transform::from_rotation(rotation),
+                            &pose,
+                            skeleton,
+                            parent,
+                        )
+                        .rotation
                     } else {
                         rotation
                     }
                 }
                 RotationSpace::Global => {
-                    if let Some(parent) = target.parent() {
-                        ctx.global_to_bone_space(Transform::from_rotation(rotation), &pose, parent)
-                            .rotation
+                    if let Some(parent) = skeleton.parent(&target) {
+                        ctx.global_to_bone_space(
+                            Transform::from_rotation(rotation),
+                            &pose,
+                            skeleton,
+                            parent,
+                        )
+                        .rotation
                     } else {
                         ctx.transform_global_to_character(Transform::from_rotation(rotation))
                             .rotation
