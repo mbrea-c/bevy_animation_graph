@@ -537,8 +537,9 @@ dependencies = [
 
 [[package]]
 name = "bevy-inspector-egui"
-version = "0.25.0"
-source = "git+https://github.com/jakobhellermann/bevy-inspector-egui.git#bc964b28f56787a6d2be42d403208d56ef750341"
+version = "0.25.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f8d77dbe53c8840aa74b66ea19dac6675d0a1752c989610cbded909d03967bec"
 dependencies = [
  "bevy-inspector-egui-derive 0.25.0",
  "bevy_app 0.14.0",
@@ -581,7 +582,8 @@ dependencies = [
 [[package]]
 name = "bevy-inspector-egui-derive"
 version = "0.25.0"
-source = "git+https://github.com/jakobhellermann/bevy-inspector-egui.git#bc964b28f56787a6d2be42d403208d56ef750341"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "161d93f4b3a9246a87485e30ccf4cc927f204a14f26df42da977e383f0a0ec5d"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -644,7 +646,7 @@ dependencies = [
 
 [[package]]
 name = "bevy_animation_graph"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "bevy 0.14.0",
  "indexmap 2.2.6",
@@ -657,10 +659,10 @@ dependencies = [
 
 [[package]]
 name = "bevy_animation_graph_editor"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "bevy 0.14.0",
- "bevy-inspector-egui 0.25.0",
+ "bevy-inspector-egui 0.25.1",
  "bevy_animation_graph",
  "clap",
  "derivative",
@@ -2667,7 +2669,8 @@ dependencies = [
 [[package]]
 name = "egui-notify"
 version = "0.15.0"
-source = "git+https://github.com/ItsEthra/egui-notify.git#b828cbcdc222e01cfde37eac3c5b3cc84409a621"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d0c6c49d9c02771e28f3b40289c16b4473308807b1ed09a878713d7f11e3dcad"
 dependencies = [
  "egui 0.28.1",
 ]
