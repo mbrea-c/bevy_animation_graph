@@ -1,4 +1,4 @@
-use super::errors::AssetLoaderError;
+use super::{errors::AssetLoaderError, skeleton::Skeleton};
 use crate::prelude::{AnimationGraph, AnimationGraphPlayer};
 use bevy::{
     asset::{io::Reader, Asset, AssetLoader, AsyncReadExt, Handle, LoadContext},
@@ -18,6 +18,7 @@ struct AnimatedSceneSerial {
     source: String,
     path_to_player: Vec<String>,
     animation_graph: String,
+    skeleton: String,
 }
 
 #[derive(Clone, Asset, Reflect)]
@@ -25,6 +26,7 @@ pub struct AnimatedScene {
     pub(crate) source: Handle<Scene>,
     pub(crate) path_to_player: Vec<String>,
     pub(crate) animation_graph: Handle<AnimationGraph>,
+    pub(crate) skeleton: Handle<Skeleton>,
 }
 
 #[derive(Component)]
@@ -70,11 +72,13 @@ impl AssetLoader for AnimatedSceneLoader {
 
         let animation_graph: Handle<AnimationGraph> = load_context.load(serial.animation_graph);
         let source: Handle<Scene> = load_context.load(serial.source);
+        let skeleton: Handle<Skeleton> = load_context.load(serial.skeleton);
 
         Ok(AnimatedScene {
             source,
             path_to_player: serial.path_to_player,
             animation_graph,
+            skeleton,
         })
     }
 
@@ -180,7 +184,10 @@ pub(crate) fn process_animated_scenes(
         commands
             .entity(next_entity)
             .remove::<AnimationPlayer>()
-            .insert(AnimationGraphPlayer::new().with_graph(animscn.animation_graph.clone()));
+            .insert(
+                AnimationGraphPlayer::new(animscn.skeleton.clone())
+                    .with_graph(animscn.animation_graph.clone()),
+            );
         commands
             .entity(animscn_entity)
             .insert(AnimatedSceneInstance {

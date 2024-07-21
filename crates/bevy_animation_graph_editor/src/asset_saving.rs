@@ -1,8 +1,5 @@
 use crate::{scanner::PersistedAssetHandles, ui::UiState, Cli};
-use bevy::{
-    asset::io::{file::FileAssetReader, AssetReader, AssetSourceId},
-    prelude::*,
-};
+use bevy::prelude::*;
 use bevy_animation_graph::core::{
     animation_graph::{serial::AnimationGraphSerial, AnimationGraph},
     state_machine::high_level::{serial::StateMachineSerial, StateMachine},

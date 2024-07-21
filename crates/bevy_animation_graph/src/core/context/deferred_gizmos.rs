@@ -157,8 +157,8 @@ impl BoneDebugGizmos for PassContext<'_> {
             return;
         };
 
-        for bone_path in pose.paths.keys() {
-            self.bone_gizmo(bone_path.clone(), color, skeleton, Some(pose));
+        for bone_id in pose.paths.keys() {
+            self.bone_gizmo(*bone_id, color, skeleton, Some(pose));
         }
     }
 

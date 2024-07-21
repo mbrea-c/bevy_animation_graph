@@ -11,7 +11,7 @@ pub struct Skeleton {
 
 impl Skeleton {
     pub fn add_bone(&mut self, path: EntityPath) {
-        if path.parts.len() == 0 {
+        if path.parts.is_empty() {
             panic!("Cannot have a bone path with length 0! Something must be wrong in the skeleton asset loader...");
         }
 

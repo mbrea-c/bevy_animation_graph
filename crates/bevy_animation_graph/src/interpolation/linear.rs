@@ -91,10 +91,10 @@ impl InterpolateLinear for Pose {
             if let Some(other_bone_id) = other.paths.get(path) {
                 result.add_bone(
                     self.bones[*bone_id].interpolate_linear(&other.bones[*other_bone_id], f),
-                    path.clone(),
+                    *path,
                 );
             } else {
-                result.add_bone(self.bones[*bone_id].clone(), path.clone());
+                result.add_bone(self.bones[*bone_id].clone(), *path);
             }
         }
 
@@ -102,7 +102,7 @@ impl InterpolateLinear for Pose {
             if self.paths.contains_key(path) {
                 continue;
             }
-            result.add_bone(other.bones[*bone_id].clone(), path.clone());
+            result.add_bone(other.bones[*bone_id].clone(), *path);
         }
 
         result.timestamp = self.timestamp;

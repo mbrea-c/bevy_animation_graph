@@ -55,6 +55,7 @@ impl AssetLoader for SkeletonLoader {
     }
 }
 
+#[allow(clippy::result_large_err)]
 fn build_skeleton(world: &World) -> Result<Skeleton, AssetLoaderError> {
     let mut skeleton = Skeleton::default();
 
@@ -95,9 +96,7 @@ fn find_root(world: &World) -> Option<Entity> {
             .query_filtered::<Entity, With<AnimationPlayer>>()
     };
 
-    let Some(entity) = query.iter(world).next() else {
-        return None;
-    };
+    let entity = query.iter(world).next()?;
 
     Some(entity)
 }

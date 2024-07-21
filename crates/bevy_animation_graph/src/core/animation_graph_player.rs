@@ -1,13 +1,17 @@
 use super::{
     animation_graph::{AnimationGraph, InputOverlay, TimeState, TimeUpdate},
-    context::{DeferredGizmos, PassContext},
+    context::{BoneDebugGizmos, DeferredGizmos, PassContext},
     edge_data::{AnimationEvent, DataValue, EventQueue, SampledEvent},
     errors::GraphError,
     pose::{BoneId, Pose},
     prelude::GraphContextArena,
+    skeleton::Skeleton,
 };
 use crate::prelude::SystemResources;
-use bevy::{asset::prelude::*, ecs::prelude::*, reflect::prelude::*, utils::HashMap};
+use bevy::{
+    asset::prelude::*, color::palettes::css::WHITE, ecs::prelude::*, reflect::prelude::*,
+    utils::HashMap,
+};
 
 /// Animation controls
 #[derive(Component, Default, Reflect)]
@@ -15,6 +19,7 @@ use bevy::{asset::prelude::*, ecs::prelude::*, reflect::prelude::*, utils::HashM
 pub struct AnimationGraphPlayer {
     pub(crate) paused: bool,
     pub(crate) animation: Option<Handle<AnimationGraph>>,
+    pub(crate) skeleton: Handle<Skeleton>,
     pub(crate) context_arena: Option<GraphContextArena>,
     pub(crate) elapsed: TimeState,
     pub(crate) pending_update: Option<TimeUpdate>,
@@ -34,8 +39,9 @@ impl AnimationGraphPlayer {
     pub const USER_EVENTS: &'static str = "user events";
 
     /// Create a new animation graph player, with no graph playing
-    pub fn new() -> Self {
+    pub fn new(skeleton: Handle<Skeleton>) -> Self {
         Self {
+            skeleton,
             ..Default::default()
         }
     }
@@ -155,12 +161,19 @@ impl AnimationGraphPlayer {
         }
 
         let mut bones = std::mem::take(&mut self.debug_draw_bones);
+
+        let skeleton_id = self.skeleton.id();
+
         let mut ctx = self
             .get_pass_context(system_resources, root_entity)
             .with_debugging(true);
+
+        let Some(skeleton) = ctx.resources.skeleton_assets.get(skeleton_id) else {
+            return;
+        };
+
         for bone_id in bones.drain(..) {
-            // TODO: Fix debug_draw_bones, needs skelly
-            // ctx.bone_gizmo(bone_id, LinearRgba::WHITE, None);
+            ctx.bone_gizmo(bone_id, WHITE.into(), skeleton, None);
         }
     }
 

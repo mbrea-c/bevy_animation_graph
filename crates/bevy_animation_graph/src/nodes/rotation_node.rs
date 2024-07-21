@@ -108,17 +108,17 @@ impl NodeLike for RotationNode {
         };
 
         if !pose.paths.contains_key(&target) {
-            pose.add_bone(BonePose::default(), target.clone());
+            pose.add_bone(BonePose::default(), target);
         }
 
         // build bone chain
-        let mut chain = vec![target.clone()];
+        let mut chain = vec![target];
         while let Some(parent) = skeleton.parent(&target) {
             if chain.len() >= self.chain_length {
                 break;
             }
 
-            chain.insert(0, parent.clone());
+            chain.insert(0, parent);
             target = parent;
         }
 

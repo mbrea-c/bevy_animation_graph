@@ -1640,7 +1640,7 @@ pub fn setup_system(
         camera: Camera {
             // render before the "main pass" camera
             order: -1,
-            clear_color: ClearColorConfig::Custom(Color::rgba(1.0, 1.0, 1.0, 0.0)),
+            clear_color: ClearColorConfig::Custom(Color::from(LinearRgba::new(1.0, 1.0, 1.0, 0.0))),
             target: RenderTarget::Image(image_handle),
             ..default()
         },
