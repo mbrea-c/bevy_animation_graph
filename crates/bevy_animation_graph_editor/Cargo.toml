@@ -12,10 +12,8 @@ keywords = ["bevy", "animation", "gamedev", "editor", "graph"]
 bevy = { workspace = true, features = ["file_watcher"] }
 ron = { workspace = true }
 derivative = "2.2.0"
-bevy_animation_graph = { version = "0.4.0", path = "../bevy_animation_graph" }
+bevy_animation_graph = { version = "0.5.0", path = "../bevy_animation_graph" }
 clap = { version = "4.4.18", features = ["derive"] }
-# TODO: wait for crates.io release
-bevy-inspector-egui = { git = "https://github.com/jakobhellermann/bevy-inspector-egui.git" }
+bevy-inspector-egui = { version = "0.25" }
 egui_dock = "0.13"
-# TODO: wait for crates.io release
-egui-notify = { git = "https://github.com/ItsEthra/egui-notify.git" }
+egui-notify = { version = "0.15" }
