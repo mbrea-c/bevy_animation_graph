@@ -46,10 +46,7 @@ impl BonePose {
             translation: either_or_mix(self.translation, other.translation, |a, b| a + alpha * b),
             scale: either_or_mix(self.scale, other.scale, |a, b| a + alpha * b),
             weights: either_or_mix(self.weights.clone(), other.weights.clone(), |a, b| {
-                a.into_iter()
-                    .zip(b.into_iter())
-                    .map(|(a, b)| a + alpha * b)
-                    .collect()
+                a.into_iter().zip(b).map(|(a, b)| a + alpha * b).collect()
             }),
         }
     }
@@ -60,10 +57,7 @@ impl BonePose {
             translation: either_or_mix(self.translation, other.translation, |a, b| b - a),
             scale: either_or_mix(self.scale, other.scale, |a, b| b - a),
             weights: either_or_mix(self.weights.clone(), other.weights.clone(), |a, b| {
-                a.into_iter()
-                    .zip(b.into_iter())
-                    .map(|(a, b)| b - a)
-                    .collect()
+                a.into_iter().zip(b).map(|(a, b)| b - a).collect()
             }),
         }
     }
