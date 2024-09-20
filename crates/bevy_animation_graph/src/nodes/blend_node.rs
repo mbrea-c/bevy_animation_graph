@@ -6,10 +6,22 @@ use crate::core::prelude::DataSpec;
 use crate::prelude::{InterpolateLinear, PassContext, SpecContext};
 use crate::utils::unwrap::UnwrapVal;
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
+
+#[derive(Reflect, Clone, Copy, Debug, Default, Serialize, Deserialize)]
+#[reflect(Default)]
+pub enum BlendMode {
+    #[default]
+    LinearInterpolate,
+    Additive,
+    Difference,
+}
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default)]
-pub struct BlendNode;
+pub struct BlendNode {
+    pub mode: BlendMode,
+}
 
 impl BlendNode {
     pub const FACTOR: &'static str = "factor";
@@ -19,8 +31,8 @@ impl BlendNode {
     pub const IN_TIME_B: &'static str = "time B";
     pub const OUT_POSE: &'static str = "pose";
 
-    pub fn new() -> Self {
-        Self
+    pub fn new(mode: BlendMode) -> Self {
+        Self { mode }
     }
 
     pub fn wrapped(self, name: impl Into<String>) -> AnimationNode {
@@ -51,8 +63,17 @@ impl NodeLike for BlendNode {
         ctx.set_time_update_back(Self::IN_TIME_B, TimeUpdate::Absolute(in_frame_1.timestamp));
         let in_frame_2: Pose = ctx.data_back(Self::IN_POSE_B)?.val();
 
-        let alpha = ctx.data_back(Self::FACTOR)?.unwrap_f32();
-        let out = in_frame_1.interpolate_linear(&in_frame_2, alpha);
+        let out = match self.mode {
+            BlendMode::LinearInterpolate => {
+                let alpha = ctx.data_back(Self::FACTOR)?.unwrap_f32();
+                in_frame_1.interpolate_linear(&in_frame_2, alpha)
+            }
+            BlendMode::Additive => {
+                let alpha = ctx.data_back(Self::FACTOR)?.unwrap_f32();
+                in_frame_1.additive_blend(&in_frame_2, alpha)
+            }
+            BlendMode::Difference => in_frame_1.difference(&in_frame_2),
+        };
 
         ctx.set_time(out.timestamp);
         ctx.set_data_fwd(Self::OUT_POSE, out);

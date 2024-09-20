@@ -85,29 +85,6 @@ impl InterpolateLinear for BonePose {
 
 impl InterpolateLinear for Pose {
     fn interpolate_linear(&self, other: &Self, f: f32) -> Self {
-        let mut result = Pose::default();
-
-        for (path, bone_id) in self.paths.iter() {
-            if let Some(other_bone_id) = other.paths.get(path) {
-                result.add_bone(
-                    self.bones[*bone_id].interpolate_linear(&other.bones[*other_bone_id], f),
-                    *path,
-                );
-            } else {
-                result.add_bone(self.bones[*bone_id].clone(), *path);
-            }
-        }
-
-        for (path, bone_id) in other.paths.iter() {
-            if self.paths.contains_key(path) {
-                continue;
-            }
-            result.add_bone(other.bones[*bone_id].clone(), *path);
-        }
-
-        result.timestamp = self.timestamp;
-        result.skeleton = self.skeleton.clone();
-
-        result
+        self.combine(other, |l, r| l.interpolate_linear(r, f))
     }
 }

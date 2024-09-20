@@ -1,0 +1,7 @@
+(
+    source: GltfNamed(
+        path: "models/character_rigged.glb",
+        animation_name: "StandBake",
+    ),
+    skeleton: "skeletons/human.skn.ron",
+)

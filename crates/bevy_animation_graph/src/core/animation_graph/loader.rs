@@ -132,7 +132,9 @@ impl AssetLoader for AnimationGraphLoader {
                     *override_interpolation,
                 )
                 .wrapped(&serial_node.name),
-                AnimationNodeTypeSerial::Blend => BlendNode::new().wrapped(&serial_node.name),
+                AnimationNodeTypeSerial::Blend { mode } => {
+                    BlendNode::new(*mode).wrapped(&serial_node.name)
+                }
                 AnimationNodeTypeSerial::Chain {
                     interpolation_period,
                 } => ChainNode::new(*interpolation_period).wrapped(&serial_node.name),
