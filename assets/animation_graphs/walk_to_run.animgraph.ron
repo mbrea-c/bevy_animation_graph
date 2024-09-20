@@ -8,7 +8,7 @@
         ),
         (
             name: "Blend",
-            node: Blend,
+            node: Blend(),
         ),
         (
             name: "Is it done?",
