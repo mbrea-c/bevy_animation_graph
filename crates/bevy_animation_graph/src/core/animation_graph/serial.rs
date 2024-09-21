@@ -6,7 +6,7 @@ use crate::{
     prelude::{AnimationNode, AnimationNodeType, DataSpec, DataValue},
     utils::ordered_map::OrderedMap,
 };
-use bevy::utils::HashMap;
+use bevy::{math::EulerRot, utils::HashMap};
 use serde::{Deserialize, Serialize};
 //     pub nodes: HashMap<String, AnimationNode>,
 //     /// Inverted, indexed by output node name.
@@ -92,6 +92,12 @@ pub enum AnimationNodeTypeSerial {
     ConstBool(bool),
     BuildVec3,
     DecomposeVec3,
+    LerpVec3,
+    SlerpQuat,
+    FromEuler(EulerRot),
+    IntoEuler(EulerRot),
+    MulQuat,
+    InvertQuat,
     RotationArc,
     FireEvent(AnimationEvent),
     // IntoBoneSpace,
@@ -186,6 +192,12 @@ impl From<&AnimationNodeType> for AnimationNodeTypeSerial {
             AnimationNodeType::ConstBool(n) => AnimationNodeTypeSerial::ConstBool(n.constant),
             AnimationNodeType::BuildVec3(_) => AnimationNodeTypeSerial::BuildVec3,
             AnimationNodeType::DecomposeVec3(_) => AnimationNodeTypeSerial::DecomposeVec3,
+            AnimationNodeType::LerpVec3(_) => AnimationNodeTypeSerial::LerpVec3,
+            AnimationNodeType::SlerpQuat(_) => AnimationNodeTypeSerial::SlerpQuat,
+            AnimationNodeType::FromEuler(n) => AnimationNodeTypeSerial::FromEuler(n.mode),
+            AnimationNodeType::IntoEuler(n) => AnimationNodeTypeSerial::IntoEuler(n.mode),
+            AnimationNodeType::MulQuat(_) => AnimationNodeTypeSerial::MulQuat,
+            AnimationNodeType::InvertQuat(_) => AnimationNodeTypeSerial::InvertQuat,
             AnimationNodeType::RotationArc(_) => AnimationNodeTypeSerial::RotationArc,
             AnimationNodeType::Fsm(n) => {
                 AnimationNodeTypeSerial::Fsm(n.fsm.path().unwrap().to_string())
