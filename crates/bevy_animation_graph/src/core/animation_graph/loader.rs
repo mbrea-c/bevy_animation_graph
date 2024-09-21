@@ -5,9 +5,9 @@ use super::{
 use crate::{
     core::{animation_clip::GraphClip, errors::AssetLoaderError},
     nodes::{
-        AbsF32, AddF32, BlendNode, ChainNode, ClampF32, ClipNode, CompareF32, ConstBool, DivF32,
-        FSMNode, FireEventNode, FlipLRNode, GraphNode, LoopNode, MulF32, PaddingNode,
-        RotationArcNode, RotationNode, SpeedNode, SubF32, TwoBoneIKNode,
+        AbsF32, AddF32, BlendNode, BuildVec3Node, ChainNode, ClampF32, ClipNode, CompareF32,
+        ConstBool, DivF32, FSMNode, FireEventNode, FlipLRNode, GraphNode, LoopNode, MulF32,
+        PaddingNode, RotationArcNode, RotationNode, SpeedNode, SubF32, TwoBoneIKNode,
     },
     prelude::DummyNode,
 };
@@ -192,6 +192,9 @@ impl AssetLoader for AnimationGraphLoader {
                 AnimationNodeTypeSerial::Padding {
                     interpolation_period,
                 } => PaddingNode::new(*interpolation_period).wrapped(&serial_node.name),
+                AnimationNodeTypeSerial::BuildVec3() => {
+                    BuildVec3Node::new().wrapped(&serial_node.name)
+                }
             };
             graph.add_node(node);
         }
