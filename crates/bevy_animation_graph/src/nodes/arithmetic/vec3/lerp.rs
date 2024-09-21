@@ -42,6 +42,7 @@ impl NodeLike for LerpVec3Node {
         [
             (Self::INPUT_A.into(), DataSpec::Vec3),
             (Self::INPUT_B.into(), DataSpec::Vec3),
+            (Self::INPUT_FACTOR.into(), DataSpec::F32),
         ]
         .into()
     }
