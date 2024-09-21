@@ -90,6 +90,7 @@ pub enum AnimationNodeTypeSerial {
     CompareF32(CompareOp),
     AbsF32,
     ConstBool(bool),
+    BuildVec3(),
     RotationArc,
     FireEvent(AnimationEvent),
     // IntoBoneSpace,
@@ -182,6 +183,7 @@ impl From<&AnimationNodeType> for AnimationNodeTypeSerial {
             AnimationNodeType::CompareF32(n) => AnimationNodeTypeSerial::CompareF32(n.op),
             AnimationNodeType::AbsF32(_) => AnimationNodeTypeSerial::AbsF32,
             AnimationNodeType::ConstBool(n) => AnimationNodeTypeSerial::ConstBool(n.constant),
+            AnimationNodeType::BuildVec3(_) => AnimationNodeTypeSerial::BuildVec3(),
             AnimationNodeType::RotationArc(_) => AnimationNodeTypeSerial::RotationArc,
             AnimationNodeType::Fsm(n) => {
                 AnimationNodeTypeSerial::Fsm(n.fsm.path().unwrap().to_string())
