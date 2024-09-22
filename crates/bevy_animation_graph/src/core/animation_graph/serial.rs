@@ -82,12 +82,14 @@ pub enum AnimationNodeTypeSerial {
         usize,
         #[serde(default)] f32,
     ),
+    ConstF32(f32),
     AddF32,
     SubF32,
     MulF32,
     DivF32,
     ClampF32,
     CompareF32(CompareOp),
+    SelectF32,
     AbsF32,
     ConstBool(bool),
     BuildVec3,
@@ -182,6 +184,7 @@ impl From<&AnimationNodeType> for AnimationNodeTypeSerial {
             // AnimationNodeType::IntoGlobalSpace(_) => AnimationNodeTypeSerial::IntoGlobalSpace,
             // AnimationNodeType::ExtendSkeleton(_) => AnimationNodeTypeSerial::ExtendSkeleton,
             AnimationNodeType::TwoBoneIK(_) => AnimationNodeTypeSerial::TwoBoneIK,
+            AnimationNodeType::ConstF32(n) => AnimationNodeTypeSerial::ConstF32(n.constant),
             AnimationNodeType::AddF32(_) => AnimationNodeTypeSerial::AddF32,
             AnimationNodeType::MulF32(_) => AnimationNodeTypeSerial::MulF32,
             AnimationNodeType::DivF32(_) => AnimationNodeTypeSerial::DivF32,
@@ -210,6 +213,7 @@ impl From<&AnimationNodeType> for AnimationNodeTypeSerial {
             AnimationNodeType::Padding(n) => AnimationNodeTypeSerial::Padding {
                 interpolation_period: n.interpolation_period,
             },
+            AnimationNodeType::SelectF32(_) => AnimationNodeTypeSerial::SelectF32,
         }
     }
 }
