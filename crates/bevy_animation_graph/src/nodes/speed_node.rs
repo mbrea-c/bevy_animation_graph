@@ -45,8 +45,9 @@ impl NodeLike for SpeedNode {
         let input = ctx.time_update_fwd()?;
         let fw_upd = match input {
             TimeUpdate::Delta(dt) => TimeUpdate::Delta(dt * speed),
-            TimeUpdate::Absolute(t) => TimeUpdate::Absolute(t * speed),
+            TimeUpdate::Absolute(t) => TimeUpdate::Absolute(t),
         };
+
         ctx.set_time_update_back(Self::IN_TIME, fw_upd);
         let mut in_pose: Pose = ctx.data_back(Self::IN_POSE)?.val();
 

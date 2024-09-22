@@ -15,9 +15,9 @@ use super::{
     systems::{animation_player, animation_player_deferred_gizmos},
 };
 use crate::nodes::{
-    AbsF32, AddF32, BlendNode, ChainNode, ClampF32, ClipNode, CompareF32, DivF32, DummyNode,
-    FireEventNode, FlipLRNode, GraphNode, LoopNode, MulF32, PaddingNode, RotationArcNode,
-    RotationNode, SpeedNode, SubF32, TwoBoneIKNode,
+    AbsF32, AddF32, BlendMode, BlendNode, BlendSyncMode, ChainNode, ClampF32, ClipNode, CompareF32,
+    DivF32, DummyNode, FireEventNode, FlipLRNode, GraphNode, LoopNode, MulF32, PaddingNode,
+    RotationArcNode, RotationNode, SpeedNode, SubF32, TwoBoneIKNode,
 };
 use crate::prelude::{
     config::{FlipConfig, FlipNameMapper, PatternMapper, PatternMapperSerial},
@@ -87,6 +87,8 @@ impl AnimationGraphPlugin {
             .register_type::<FlipNameMapper>()
             .register_type::<PatternMapper>()
             .register_type::<PatternMapperSerial>()
+            .register_type::<BlendMode>()
+            .register_type::<BlendSyncMode>()
             .register_type::<()>()
             .register_type_data::<(), ReflectDefault>()
         // --- Node registrations
