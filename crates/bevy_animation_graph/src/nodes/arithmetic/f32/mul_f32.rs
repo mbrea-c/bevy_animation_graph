@@ -25,7 +25,7 @@ impl MulF32 {
 
 impl NodeLike for MulF32 {
     fn display_name(&self) -> String {
-        "× Multiply".into()
+        "× Multiply F32".into()
     }
 
     fn duration(&self, _ctx: PassContext) -> Result<(), GraphError> {

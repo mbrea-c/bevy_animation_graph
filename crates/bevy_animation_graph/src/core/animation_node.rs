@@ -6,8 +6,10 @@ use super::{
 use crate::{
     nodes::{
         AbsF32, AddF32, BlendNode, BuildVec3Node, ChainNode, ClampF32, ClipNode, CompareF32,
-        ConstBool, DivF32, DummyNode, FSMNode, FireEventNode, FlipLRNode, GraphNode, LoopNode,
-        MulF32, PaddingNode, RotationArcNode, RotationNode, SpeedNode, SubF32, TwoBoneIKNode,
+        ConstBool, DecomposeVec3Node, DivF32, DummyNode, FSMNode, FireEventNode, FlipLRNode,
+        FromEulerNode, GraphNode, IntoEulerNode, InvertQuatNode, LerpVec3Node, LoopNode, MulF32,
+        MulQuatNode, PaddingNode, RotationArcNode, RotationNode, SlerpQuatNode, SpeedNode, SubF32,
+        TwoBoneIKNode,
     },
     prelude::{PassContext, SpecContext},
 };
@@ -205,6 +207,17 @@ pub enum AnimationNodeType {
     // ------------------------------------------------
     RotationArc(RotationArcNode),
     BuildVec3(BuildVec3Node),
+    DecomposeVec3(DecomposeVec3Node),
+    LerpVec3(LerpVec3Node),
+    // ------------------------------------------------
+
+    // --- Quat arithmetic nodes
+    // ------------------------------------------------
+    SlerpQuat(SlerpQuatNode),
+    FromEuler(FromEulerNode),
+    IntoEuler(IntoEulerNode),
+    MulQuat(MulQuatNode),
+    InvertQuat(InvertQuatNode),
     // ------------------------------------------------
     Fsm(#[reflect(ignore)] FSMNode),
     // HACK: needs to be ignored for now due to:
@@ -243,6 +256,13 @@ impl AnimationNodeType {
             AnimationNodeType::AbsF32(n) => f(n),
             AnimationNodeType::ConstBool(n) => f(n),
             AnimationNodeType::BuildVec3(n) => f(n),
+            AnimationNodeType::DecomposeVec3(n) => f(n),
+            AnimationNodeType::LerpVec3(n) => f(n),
+            AnimationNodeType::SlerpQuat(n) => f(n),
+            AnimationNodeType::FromEuler(n) => f(n),
+            AnimationNodeType::IntoEuler(n) => f(n),
+            AnimationNodeType::MulQuat(n) => f(n),
+            AnimationNodeType::InvertQuat(n) => f(n),
             AnimationNodeType::RotationArc(n) => f(n),
             AnimationNodeType::Fsm(n) => f(n),
             AnimationNodeType::Graph(n) => f(n),
@@ -279,6 +299,13 @@ impl AnimationNodeType {
             AnimationNodeType::AbsF32(n) => f(n),
             AnimationNodeType::ConstBool(n) => f(n),
             AnimationNodeType::BuildVec3(n) => f(n),
+            AnimationNodeType::DecomposeVec3(n) => f(n),
+            AnimationNodeType::LerpVec3(n) => f(n),
+            AnimationNodeType::SlerpQuat(n) => f(n),
+            AnimationNodeType::FromEuler(n) => f(n),
+            AnimationNodeType::IntoEuler(n) => f(n),
+            AnimationNodeType::MulQuat(n) => f(n),
+            AnimationNodeType::InvertQuat(n) => f(n),
             AnimationNodeType::RotationArc(n) => f(n),
             AnimationNodeType::Fsm(n) => f(n),
             AnimationNodeType::Graph(n) => f(n),
@@ -321,6 +348,13 @@ impl AnimationNodeType {
             AnimationNodeType::AbsF32(n) => n,
             AnimationNodeType::ConstBool(n) => n,
             AnimationNodeType::BuildVec3(n) => n,
+            AnimationNodeType::DecomposeVec3(n) => n,
+            AnimationNodeType::LerpVec3(n) => n,
+            AnimationNodeType::SlerpQuat(n) => n,
+            AnimationNodeType::FromEuler(n) => n,
+            AnimationNodeType::IntoEuler(n) => n,
+            AnimationNodeType::MulQuat(n) => n,
+            AnimationNodeType::InvertQuat(n) => n,
             AnimationNodeType::RotationArc(n) => n,
             AnimationNodeType::Fsm(n) => n,
             AnimationNodeType::Graph(n) => n,
