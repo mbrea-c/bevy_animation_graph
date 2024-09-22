@@ -28,8 +28,8 @@ impl BuildVec3Node {
 impl NodeLike for BuildVec3Node {
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
         let x: f32 = ctx.data_back(Self::INPUT_X)?.val();
-        let y: f32 = ctx.data_back(Self::INPUT_X)?.val();
-        let z: f32 = ctx.data_back(Self::INPUT_X)?.val();
+        let y: f32 = ctx.data_back(Self::INPUT_Y)?.val();
+        let z: f32 = ctx.data_back(Self::INPUT_Z)?.val();
 
         ctx.set_data_fwd(Self::OUTPUT, Vec3::new(x, y, z));
 
