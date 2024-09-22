@@ -2,7 +2,7 @@ use super::{pin, AnimationGraph, Extra};
 use crate::{
     core::{animation_clip::Interpolation, edge_data::AnimationEvent},
     flipping::config::FlipConfig,
-    nodes::{BlendMode, ChainDecay, CompareOp, RotationMode, RotationSpace},
+    nodes::{BlendMode, BlendSyncMode, ChainDecay, CompareOp, RotationMode, RotationSpace},
     prelude::{AnimationNode, AnimationNodeType, DataSpec, DataValue},
     utils::ordered_map::OrderedMap,
 };
@@ -62,6 +62,8 @@ pub enum AnimationNodeTypeSerial {
     Blend {
         #[serde(default)]
         mode: BlendMode,
+        #[serde(default)]
+        sync_mode: BlendSyncMode,
     },
     FlipLR {
         #[serde(default)]
@@ -162,7 +164,10 @@ impl From<&AnimationNodeType> for AnimationNodeTypeSerial {
             AnimationNodeType::Chain(n) => AnimationNodeTypeSerial::Chain {
                 interpolation_period: n.interpolation_period,
             },
-            AnimationNodeType::Blend(n) => AnimationNodeTypeSerial::Blend { mode: n.mode },
+            AnimationNodeType::Blend(n) => AnimationNodeTypeSerial::Blend {
+                mode: n.mode,
+                sync_mode: n.sync_mode,
+            },
             AnimationNodeType::FlipLR(n) => AnimationNodeTypeSerial::FlipLR {
                 config: n.config.clone(),
             },

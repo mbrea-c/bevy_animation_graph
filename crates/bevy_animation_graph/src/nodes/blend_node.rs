@@ -17,10 +17,21 @@ pub enum BlendMode {
     Difference,
 }
 
+#[derive(Reflect, Clone, Copy, Debug, Default, Serialize, Deserialize)]
+#[reflect(Default)]
+pub enum BlendSyncMode {
+    /// Sets the absolute timestamp of input 2 equal to the timestamp from input 1
+    #[default]
+    Absolute,
+    /// Propagates the same time update that was received, does not try to sync the inputs.
+    NoSync,
+}
+
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default)]
 pub struct BlendNode {
     pub mode: BlendMode,
+    pub sync_mode: BlendSyncMode,
 }
 
 impl BlendNode {
@@ -31,8 +42,8 @@ impl BlendNode {
     pub const IN_TIME_B: &'static str = "time B";
     pub const OUT_POSE: &'static str = "pose";
 
-    pub fn new(mode: BlendMode) -> Self {
-        Self { mode }
+    pub fn new(mode: BlendMode, sync_mode: BlendSyncMode) -> Self {
+        Self { mode, sync_mode }
     }
 
     pub fn wrapped(self, name: impl Into<String>) -> AnimationNode {
@@ -58,9 +69,22 @@ impl NodeLike for BlendNode {
 
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
         let input = ctx.time_update_fwd()?;
+
         ctx.set_time_update_back(Self::IN_TIME_A, input);
         let in_frame_1: Pose = ctx.data_back(Self::IN_POSE_A)?.val();
-        ctx.set_time_update_back(Self::IN_TIME_B, TimeUpdate::Absolute(in_frame_1.timestamp));
+
+        match self.sync_mode {
+            BlendSyncMode::Absolute => {
+                ctx.set_time_update_back(
+                    Self::IN_TIME_B,
+                    TimeUpdate::Absolute(in_frame_1.timestamp),
+                );
+            }
+            BlendSyncMode::NoSync => {
+                ctx.set_time_update_back(Self::IN_TIME_B, input);
+            }
+        };
+
         let in_frame_2: Pose = ctx.data_back(Self::IN_POSE_B)?.val();
 
         let out = match self.mode {
