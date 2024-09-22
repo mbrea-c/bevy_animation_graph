@@ -6,10 +6,10 @@ use crate::{
     core::{animation_clip::GraphClip, errors::AssetLoaderError},
     nodes::{
         AbsF32, AddF32, BlendNode, BuildVec3Node, ChainNode, ClampF32, ClipNode, CompareF32,
-        ConstBool, DecomposeVec3Node, DivF32, FSMNode, FireEventNode, FlipLRNode, FromEulerNode,
-        GraphNode, IntoEulerNode, InvertQuatNode, LerpVec3Node, LoopNode, MulF32, MulQuatNode,
-        PaddingNode, RotationArcNode, RotationNode, SlerpQuatNode, SpeedNode, SubF32,
-        TwoBoneIKNode,
+        ConstBool, ConstF32, DecomposeVec3Node, DivF32, FSMNode, FireEventNode, FlipLRNode,
+        FromEulerNode, GraphNode, IntoEulerNode, InvertQuatNode, LerpVec3Node, LoopNode, MulF32,
+        MulQuatNode, PaddingNode, RotationArcNode, RotationNode, SelectF32, SlerpQuatNode,
+        SpeedNode, SubF32, TwoBoneIKNode,
     },
     prelude::DummyNode,
 };
@@ -154,6 +154,9 @@ impl AssetLoader for AnimationGraphLoader {
                 AnimationNodeTypeSerial::FireEvent(ev) => {
                     FireEventNode::new(ev.clone()).wrapped(&serial_node.name)
                 }
+                AnimationNodeTypeSerial::ConstF32(n) => {
+                    ConstF32::new(*n).wrapped(&serial_node.name)
+                }
                 AnimationNodeTypeSerial::AddF32 => AddF32::new().wrapped(&serial_node.name),
                 AnimationNodeTypeSerial::SubF32 => SubF32::new().wrapped(&serial_node.name),
                 AnimationNodeTypeSerial::MulF32 => MulF32::new().wrapped(&serial_node.name),
@@ -214,6 +217,7 @@ impl AssetLoader for AnimationGraphLoader {
                 AnimationNodeTypeSerial::InvertQuat => {
                     InvertQuatNode::new().wrapped(&serial_node.name)
                 }
+                AnimationNodeTypeSerial::SelectF32 => SelectF32::new().wrapped(&serial_node.name),
             };
             graph.add_node(node);
         }

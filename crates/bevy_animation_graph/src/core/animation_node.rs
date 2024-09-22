@@ -6,10 +6,10 @@ use super::{
 use crate::{
     nodes::{
         AbsF32, AddF32, BlendNode, BuildVec3Node, ChainNode, ClampF32, ClipNode, CompareF32,
-        ConstBool, DecomposeVec3Node, DivF32, DummyNode, FSMNode, FireEventNode, FlipLRNode,
-        FromEulerNode, GraphNode, IntoEulerNode, InvertQuatNode, LerpVec3Node, LoopNode, MulF32,
-        MulQuatNode, PaddingNode, RotationArcNode, RotationNode, SlerpQuatNode, SpeedNode, SubF32,
-        TwoBoneIKNode,
+        ConstBool, ConstF32, DecomposeVec3Node, DivF32, DummyNode, FSMNode, FireEventNode,
+        FlipLRNode, FromEulerNode, GraphNode, IntoEulerNode, InvertQuatNode, LerpVec3Node,
+        LoopNode, MulF32, MulQuatNode, PaddingNode, RotationArcNode, RotationNode, SelectF32,
+        SlerpQuatNode, SpeedNode, SubF32, TwoBoneIKNode,
     },
     prelude::{PassContext, SpecContext},
 };
@@ -184,6 +184,7 @@ pub enum AnimationNodeType {
 
     // --- F32 arithmetic nodes
     // ------------------------------------------------
+    ConstF32(ConstF32),
     AddF32(AddF32),
     MulF32(MulF32),
     DivF32(DivF32),
@@ -191,6 +192,7 @@ pub enum AnimationNodeType {
     ClampF32(ClampF32),
     AbsF32(AbsF32),
     CompareF32(CompareF32),
+    SelectF32(SelectF32),
     // ------------------------------------------------
 
     // --- Bool nodes
@@ -247,12 +249,14 @@ impl AnimationNodeType {
             AnimationNodeType::Padding(n) => f(n),
             AnimationNodeType::Speed(n) => f(n),
             AnimationNodeType::Rotation(n) => f(n),
+            AnimationNodeType::ConstF32(n) => f(n),
             AnimationNodeType::AddF32(n) => f(n),
             AnimationNodeType::MulF32(n) => f(n),
             AnimationNodeType::DivF32(n) => f(n),
             AnimationNodeType::SubF32(n) => f(n),
             AnimationNodeType::ClampF32(n) => f(n),
             AnimationNodeType::CompareF32(n) => f(n),
+            AnimationNodeType::SelectF32(n) => f(n),
             AnimationNodeType::AbsF32(n) => f(n),
             AnimationNodeType::ConstBool(n) => f(n),
             AnimationNodeType::BuildVec3(n) => f(n),
@@ -290,12 +294,14 @@ impl AnimationNodeType {
             AnimationNodeType::Padding(n) => f(n),
             AnimationNodeType::Speed(n) => f(n),
             AnimationNodeType::Rotation(n) => f(n),
+            AnimationNodeType::ConstF32(n) => f(n),
             AnimationNodeType::AddF32(n) => f(n),
             AnimationNodeType::MulF32(n) => f(n),
             AnimationNodeType::DivF32(n) => f(n),
             AnimationNodeType::SubF32(n) => f(n),
             AnimationNodeType::ClampF32(n) => f(n),
             AnimationNodeType::CompareF32(n) => f(n),
+            AnimationNodeType::SelectF32(n) => f(n),
             AnimationNodeType::AbsF32(n) => f(n),
             AnimationNodeType::ConstBool(n) => f(n),
             AnimationNodeType::BuildVec3(n) => f(n),
@@ -339,6 +345,7 @@ impl AnimationNodeType {
             // AnimationNodeType::ExtendSkeleton(n) => n,
             AnimationNodeType::TwoBoneIK(n) => n,
             AnimationNodeType::FireEvent(n) => n,
+            AnimationNodeType::ConstF32(n) => n,
             AnimationNodeType::AddF32(n) => n,
             AnimationNodeType::MulF32(n) => n,
             AnimationNodeType::DivF32(n) => n,
@@ -346,6 +353,7 @@ impl AnimationNodeType {
             AnimationNodeType::ClampF32(n) => n,
             AnimationNodeType::CompareF32(n) => n,
             AnimationNodeType::AbsF32(n) => n,
+            AnimationNodeType::SelectF32(n) => n,
             AnimationNodeType::ConstBool(n) => n,
             AnimationNodeType::BuildVec3(n) => n,
             AnimationNodeType::DecomposeVec3(n) => n,
