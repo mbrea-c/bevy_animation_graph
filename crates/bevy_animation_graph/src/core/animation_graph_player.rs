@@ -205,4 +205,8 @@ impl AnimationGraphPlayer {
     pub fn get_error(&self) -> Option<GraphError> {
         self.error.clone()
     }
+
+    pub fn get_outputs(&self) -> &HashMap<PinId, DataValue> {
+        &self.outputs
+    }
 }
