@@ -6,10 +6,11 @@ use crate::{
     core::{animation_clip::GraphClip, errors::AssetLoaderError},
     nodes::{
         AbsF32, AddF32, BlendNode, BuildVec3Node, ChainNode, ClampF32, ClipNode, CompareF32,
-        ConstBool, ConstF32, DecomposeVec3Node, DivF32, FSMNode, FireEventNode, FlipLRNode,
-        FromEulerNode, GraphNode, IntoEulerNode, InvertQuatNode, LerpVec3Node, LoopNode, MulF32,
-        MulQuatNode, PaddingNode, RotationArcNode, RotationNode, SelectF32, SlerpQuatNode,
-        SpeedNode, SubF32, TwoBoneIKNode,
+        ConstBool, ConstEntityPath, ConstF32, ConstVec3Node, DecomposeVec3Node, DivF32, FSMNode,
+        FireEventNode, FlipLRNode, FromEulerNode, GraphNode, IntoEulerNode, InvertQuatNode,
+        LengthVec3Node, LerpVec3Node, LoopNode, MulF32, MulQuatNode, NormalizeVec3Node,
+        PaddingNode, RotationArcNode, RotationNode, SelectF32, SlerpQuatNode, SpeedNode, SubF32,
+        TwoBoneIKNode,
     },
     prelude::DummyNode,
 };
@@ -218,6 +219,18 @@ impl AssetLoader for AnimationGraphLoader {
                     InvertQuatNode::new().wrapped(&serial_node.name)
                 }
                 AnimationNodeTypeSerial::SelectF32 => SelectF32::new().wrapped(&serial_node.name),
+                AnimationNodeTypeSerial::ConstEntityPath(n) => {
+                    ConstEntityPath::new(n.clone()).wrapped(&serial_node.name)
+                }
+                AnimationNodeTypeSerial::NormalizeVec3 => {
+                    NormalizeVec3Node::new().wrapped(&serial_node.name)
+                }
+                AnimationNodeTypeSerial::LengthVec3 => {
+                    LengthVec3Node::new().wrapped(&serial_node.name)
+                }
+                AnimationNodeTypeSerial::ConstVec3(n) => {
+                    ConstVec3Node::new(*n).wrapped(&serial_node.name)
+                }
             };
             graph.add_node(node);
         }
