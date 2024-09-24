@@ -12,7 +12,7 @@ use crate::{
     prelude::{
         DataSpec, DataValue, DeferredGizmos, OptDataSpec, PassContext, SpecContext, SystemResources,
     },
-    utils::{ordered_map::OrderedMap, unwrap::UnwrapVal},
+    utils::ordered_map::OrderedMap,
 };
 use bevy::{
     prelude::*,
@@ -819,7 +819,7 @@ impl AnimationGraph {
         root_entity: Entity,
         entity_map: &HashMap<BoneId, Entity>,
         deferred_gizmos: &mut DeferredGizmos,
-    ) -> Result<Pose, GraphError> {
+    ) -> Result<HashMap<PinId, DataValue>, GraphError> {
         self.query_with_overlay(
             time_update,
             context_arena,
@@ -841,7 +841,7 @@ impl AnimationGraph {
         root_entity: Entity,
         entity_map: &HashMap<BoneId, Entity>,
         deferred_gizmos: &mut DeferredGizmos,
-    ) -> Result<Pose, GraphError> {
+    ) -> Result<HashMap<PinId, DataValue>, GraphError> {
         context_arena.next_frame();
         let mut ctx = PassContext::new(
             context_arena.get_toplevel_id(),
@@ -856,8 +856,13 @@ impl AnimationGraph {
             |c| c.set_time_update_back(TargetPin::OutputTime, time_update),
             CacheWriteFilter::Primary,
         );
-        self.get_data(TargetPin::OutputData(DEFAULT_OUTPUT_POSE.into()), ctx)
-            .map(|d| d.val())
+        let mut outputs = HashMap::new();
+        for k in self.output_parameters.keys() {
+            let out = self.get_data(TargetPin::OutputData(k.clone()), ctx.clone())?;
+            outputs.insert(k.clone(), out);
+        }
+
+        Ok(outputs)
     }
     // ----------------------------------------------------------------------------------------
 }
