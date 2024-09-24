@@ -1,8 +1,9 @@
 use super::{
     animation_clip::EntityPath,
-    animation_graph::{TimeUpdate, UpdateTime},
+    animation_graph::{TimeUpdate, UpdateTime, DEFAULT_OUTPUT_POSE},
     animation_graph_player::AnimationGraphPlayer,
     pose::BoneId,
+    prelude::DataValue,
 };
 use crate::prelude::SystemResources;
 use bevy::{
@@ -111,7 +112,7 @@ pub fn apply_animation_to_targets(
         let Ok(player) = graph_players.get(target.player) else {
             continue;
         };
-        let Some(pose) = &player.pose else {
+        let Some(DataValue::Pose(pose)) = player.outputs.get(DEFAULT_OUTPUT_POSE) else {
             continue;
         };
 

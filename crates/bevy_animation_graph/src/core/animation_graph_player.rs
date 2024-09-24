@@ -1,9 +1,9 @@
 use super::{
-    animation_graph::{AnimationGraph, InputOverlay, TimeState, TimeUpdate},
+    animation_graph::{AnimationGraph, InputOverlay, PinId, TimeState, TimeUpdate},
     context::{BoneDebugGizmos, DeferredGizmos, PassContext},
     edge_data::{AnimationEvent, DataValue, EventQueue, SampledEvent},
     errors::GraphError,
-    pose::{BoneId, Pose},
+    pose::BoneId,
     prelude::GraphContextArena,
     skeleton::Skeleton,
 };
@@ -27,7 +27,7 @@ pub struct AnimationGraphPlayer {
     pub(crate) debug_draw_bones: Vec<BoneId>,
     pub(crate) entity_map: HashMap<BoneId, Entity>,
     pub(crate) queued_events: EventQueue,
-    pub(crate) pose: Option<Pose>,
+    pub(crate) outputs: HashMap<PinId, DataValue>,
 
     input_overlay: InputOverlay,
     /// Error that ocurred during graph evaluation in the last frame
@@ -96,6 +96,7 @@ impl AnimationGraphPlayer {
 
     /// Query the animation graph with the latest time update and inputs
     pub(crate) fn update(&mut self, system_resources: &SystemResources, root_entity: Entity) {
+        self.outputs.clear();
         self.input_overlay.parameters.insert(
             Self::USER_EVENTS.into(),
             std::mem::take(&mut self.queued_events).into(),
@@ -118,13 +119,12 @@ impl AnimationGraphPlayer {
             &self.entity_map,
             &mut self.deferred_gizmos,
         ) {
-            Ok(pose) => {
+            Ok(outputs) => {
                 self.error = None;
-                self.pose = Some(pose);
+                self.outputs = outputs;
             }
             Err(error) => {
                 self.error = Some(error);
-                self.pose = None;
             }
         };
     }
@@ -204,5 +204,9 @@ impl AnimationGraphPlayer {
     /// `None`.
     pub fn get_error(&self) -> Option<GraphError> {
         self.error.clone()
+    }
+
+    pub fn get_outputs(&self) -> &HashMap<PinId, DataValue> {
+        &self.outputs
     }
 }
