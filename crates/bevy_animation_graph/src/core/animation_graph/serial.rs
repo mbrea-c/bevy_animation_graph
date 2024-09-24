@@ -1,12 +1,18 @@
 use super::{pin, AnimationGraph, Extra};
 use crate::{
-    core::{animation_clip::Interpolation, edge_data::AnimationEvent},
+    core::{
+        animation_clip::{EntityPath, Interpolation},
+        edge_data::AnimationEvent,
+    },
     flipping::config::FlipConfig,
     nodes::{BlendMode, BlendSyncMode, ChainDecay, CompareOp, RotationMode, RotationSpace},
     prelude::{AnimationNode, AnimationNodeType, DataSpec, DataValue},
     utils::ordered_map::OrderedMap,
 };
-use bevy::{math::EulerRot, utils::HashMap};
+use bevy::{
+    math::{EulerRot, Vec3},
+    utils::HashMap,
+};
 use serde::{Deserialize, Serialize};
 //     pub nodes: HashMap<String, AnimationNode>,
 //     /// Inverted, indexed by output node name.
@@ -112,6 +118,10 @@ pub enum AnimationNodeTypeSerial {
     Dummy,
     Fsm(String),
     Graph(String),
+    ConstEntityPath(EntityPath),
+    NormalizeVec3,
+    LengthVec3,
+    ConstVec3(Vec3),
 }
 
 impl From<&AnimationGraph> for AnimationGraphSerial {
@@ -219,6 +229,12 @@ impl From<&AnimationNodeType> for AnimationNodeTypeSerial {
                 interpolation_period: n.interpolation_period,
             },
             AnimationNodeType::SelectF32(_) => AnimationNodeTypeSerial::SelectF32,
+            AnimationNodeType::ConstEntityPath(n) => {
+                AnimationNodeTypeSerial::ConstEntityPath(n.path.clone())
+            }
+            AnimationNodeType::NormalizeVec3(_) => AnimationNodeTypeSerial::NormalizeVec3,
+            AnimationNodeType::LengthVec3(_) => AnimationNodeTypeSerial::LengthVec3,
+            AnimationNodeType::ConstVec3(n) => AnimationNodeTypeSerial::ConstVec3(n.constant),
         }
     }
 }
