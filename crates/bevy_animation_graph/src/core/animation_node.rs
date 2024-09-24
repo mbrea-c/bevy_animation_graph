@@ -6,10 +6,11 @@ use super::{
 use crate::{
     nodes::{
         AbsF32, AddF32, BlendNode, BuildVec3Node, ChainNode, ClampF32, ClipNode, CompareF32,
-        ConstBool, ConstF32, DecomposeVec3Node, DivF32, DummyNode, FSMNode, FireEventNode,
-        FlipLRNode, FromEulerNode, GraphNode, IntoEulerNode, InvertQuatNode, LerpVec3Node,
-        LoopNode, MulF32, MulQuatNode, PaddingNode, RotationArcNode, RotationNode, SelectF32,
-        SlerpQuatNode, SpeedNode, SubF32, TwoBoneIKNode,
+        ConstBool, ConstEntityPath, ConstF32, ConstVec3Node, DecomposeVec3Node, DivF32, DummyNode,
+        FSMNode, FireEventNode, FlipLRNode, FromEulerNode, GraphNode, IntoEulerNode,
+        InvertQuatNode, LengthVec3Node, LerpVec3Node, LoopNode, MulF32, MulQuatNode,
+        NormalizeVec3Node, PaddingNode, RotationArcNode, RotationNode, SelectF32, SlerpQuatNode,
+        SpeedNode, SubF32, TwoBoneIKNode,
     },
     prelude::{PassContext, SpecContext},
 };
@@ -182,9 +183,16 @@ pub enum AnimationNodeType {
     TwoBoneIK(TwoBoneIKNode),
     // ------------------------------------------------
 
+    // --- Constant nodes
+    // ------------------------------------------------
+    ConstBool(ConstBool),
+    ConstF32(ConstF32),
+    ConstVec3(ConstVec3Node),
+    ConstEntityPath(ConstEntityPath),
+    // ------------------------------------------------
+
     // --- F32 arithmetic nodes
     // ------------------------------------------------
-    ConstF32(ConstF32),
     AddF32(AddF32),
     MulF32(MulF32),
     DivF32(DivF32),
@@ -197,7 +205,6 @@ pub enum AnimationNodeType {
 
     // --- Bool nodes
     // ------------------------------------------------
-    ConstBool(ConstBool),
     // ------------------------------------------------
 
     // --- EventQueue nodes
@@ -211,6 +218,8 @@ pub enum AnimationNodeType {
     BuildVec3(BuildVec3Node),
     DecomposeVec3(DecomposeVec3Node),
     LerpVec3(LerpVec3Node),
+    NormalizeVec3(NormalizeVec3Node),
+    LengthVec3(LengthVec3Node),
     // ------------------------------------------------
 
     // --- Quat arithmetic nodes
@@ -278,6 +287,10 @@ impl AnimationNodeType {
             AnimationNodeType::FireEvent(n) => f(n),
             AnimationNodeType::Dummy(n) => f(n),
             AnimationNodeType::Custom(n) => f(n.node.lock().unwrap().deref()),
+            AnimationNodeType::ConstEntityPath(n) => f(n),
+            AnimationNodeType::NormalizeVec3(n) => f(n),
+            AnimationNodeType::LengthVec3(n) => f(n),
+            AnimationNodeType::ConstVec3(n) => f(n),
         }
     }
 
@@ -326,6 +339,10 @@ impl AnimationNodeType {
                 let mut nod = n.node.lock().unwrap();
                 f(nod.deref_mut())
             }
+            AnimationNodeType::ConstEntityPath(n) => f(n),
+            AnimationNodeType::NormalizeVec3(n) => f(n),
+            AnimationNodeType::LengthVec3(n) => f(n),
+            AnimationNodeType::ConstVec3(n) => f(n),
         }
     }
 
@@ -368,6 +385,10 @@ impl AnimationNodeType {
             AnimationNodeType::Graph(n) => n,
             AnimationNodeType::Dummy(n) => n,
             AnimationNodeType::Custom(_) => todo!(),
+            AnimationNodeType::ConstEntityPath(n) => n,
+            AnimationNodeType::NormalizeVec3(n) => n,
+            AnimationNodeType::LengthVec3(n) => n,
+            AnimationNodeType::ConstVec3(n) => n,
         }
     }
 }
