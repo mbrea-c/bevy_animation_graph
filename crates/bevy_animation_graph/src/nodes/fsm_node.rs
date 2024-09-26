@@ -1,6 +1,6 @@
 use crate::core::{
     animation_graph::PinMap,
-    animation_node::NodeLike,
+    animation_node::{NodeLike, ReflectNodeLike},
     context::{PassContext, SpecContext},
     edge_data::DataSpec,
     errors::GraphError,
@@ -9,7 +9,7 @@ use crate::core::{
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
-#[reflect(Default)]
+#[reflect(Default, NodeLike)]
 pub struct FSMNode {
     pub fsm: Handle<StateMachine>,
 }

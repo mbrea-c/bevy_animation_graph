@@ -1,6 +1,6 @@
 use crate::core::animation_clip::EntityPath;
 use crate::core::animation_graph::PinMap;
-use crate::core::animation_node::NodeLike;
+use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::pose::{BonePose, Pose};
 use crate::core::prelude::DataSpec;
@@ -36,7 +36,7 @@ pub enum ChainDecay {
 }
 
 #[derive(Reflect, Clone, Debug)]
-#[reflect(Default)]
+#[reflect(Default, NodeLike)]
 pub struct RotationNode {
     pub application_mode: RotationMode,
     pub rotation_space: RotationSpace,

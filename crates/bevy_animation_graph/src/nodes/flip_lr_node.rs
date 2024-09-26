@@ -1,5 +1,5 @@
 use crate::core::animation_graph::PinMap;
-use crate::core::animation_node::NodeLike;
+use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::pose::Pose;
 use crate::core::prelude::DataSpec;
@@ -10,7 +10,7 @@ use crate::utils::unwrap::UnwrapVal;
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug)]
-#[reflect(Default)]
+#[reflect(Default, NodeLike)]
 pub struct FlipLRNode {
     pub config: FlipConfig,
 }

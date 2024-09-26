@@ -13,6 +13,9 @@ pub enum AssetLoaderError {
     /// A [RON](ron) Error
     #[error("Could not parse RON: {0}")]
     RonSpannedError(#[from] ron::error::SpannedError),
+    /// A [RON](ron) Error with no span (post-processing error)
+    #[error("Could not parse RON: {0}")]
+    RonError(#[from] ron::Error),
     #[error("Could not load Gltf: {0}")]
     GltfError(#[from] bevy::gltf::GltfError),
     #[error("Could not find gltf named label: {0}")]

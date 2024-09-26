@@ -2,7 +2,7 @@ use std::ops::{Add, Mul};
 
 use crate::core::animation_clip::{GraphClip, Interpolation, Keyframes, VariableCurve};
 use crate::core::animation_graph::PinMap;
-use crate::core::animation_node::NodeLike;
+use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::id::BoneId;
 use crate::core::pose::{BonePose, Pose};
@@ -14,7 +14,7 @@ use bevy::asset::Handle;
 use bevy::reflect::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
-#[reflect(Default)]
+#[reflect(Default, NodeLike)]
 pub struct ClipNode {
     pub(crate) clip: Handle<GraphClip>,
     pub(crate) override_duration: Option<f32>,

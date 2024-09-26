@@ -1,5 +1,5 @@
 use crate::core::animation_graph::{AnimationGraph, InputOverlay, PinMap, TargetPin};
-use crate::core::animation_node::NodeLike;
+use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::context::CacheWriteFilter;
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
@@ -7,7 +7,7 @@ use crate::prelude::{PassContext, SpecContext};
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
-#[reflect(Default)]
+#[reflect(Default, NodeLike)]
 pub struct GraphNode {
     pub(crate) graph: Handle<AnimationGraph>,
 }

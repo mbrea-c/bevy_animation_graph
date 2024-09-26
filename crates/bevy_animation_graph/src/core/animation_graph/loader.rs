@@ -1,13 +1,14 @@
 use super::{serial::AnimationGraphSerial, AnimationGraph};
 use crate::{
     core::{animation_clip::GraphClip, errors::AssetLoaderError},
-    prelude::AnimationNode, utils::reflect_de::TypedReflectDeserializer,
+    prelude::{AnimationNode, ReflectNodeLike},
+    utils::reflect_de::TypedReflectDeserializer,
 };
 use bevy::{
     asset::{io::Reader, AssetLoader, AsyncReadExt, LoadContext},
     gltf::Gltf,
     prelude::*,
-    reflect::{TypeRegistry, TypeRegistryArc},
+    reflect::TypeRegistryArc,
 };
 use serde::{de::DeserializeSeed, Deserialize, Serialize};
 
@@ -101,7 +102,7 @@ impl FromWorld for AnimationGraphLoader {
 
 impl AssetLoader for AnimationGraphLoader {
     type Asset = AnimationGraph;
-    type Settings = ();e
+    type Settings = ();
     type Error = AssetLoaderError;
 
     async fn load<'a>(
@@ -125,20 +126,28 @@ impl AssetLoader for AnimationGraphLoader {
         // --- Add nodes
         // ------------------------------------------------------------------------------------
         let type_registry = self.type_registry.read();
-        for node in &serial.nodes {
+        for node in serial.nodes {
             let type_path = &node.ty;
-            let type_registration = type_registry.get_with_type_path(type_path).ok_or_else(|| {
-                ron::Error::Message(format!("No registration found for `{type_path}`"))
-            });
-            TypedReflectDeserializer {
-                registration: type_registration,
-                registry: &type_registry,
-                load_context,
-            }
-            let mut dynamic_properties = Vec::new();
+            let type_registration =
+                type_registry.get_with_type_path(type_path).ok_or_else(|| {
+                    ron::Error::Message(format!("No registration found for `{type_path}`"))
+                })?;
+            let node_like = type_registration.data::<ReflectNodeLike>().ok_or_else(|| {
+                ron::Error::Message(format!("`{type_path}` is not an animation node"))
+            })?;
 
-            // TODO!!!!!!!!!!
-            // graph.add_node(node);
+            let inner =
+                TypedReflectDeserializer::new(type_registration, &type_registry, load_context)
+                    .deserialize(node.inner)?;
+            let inner = node_like
+                .get_boxed(inner)
+                .expect("value with this type registration must be a NodeLike");
+
+            graph.add_node(AnimationNode {
+                name: node.name,
+                inner,
+                should_debug: false,
+            });
         }
         // ------------------------------------------------------------------------------------
 
@@ -172,20 +181,5 @@ impl AssetLoader for AnimationGraphLoader {
 
     fn extensions(&self) -> &[&str] {
         &["animgraph.ron"]
-    }
-}
-
-struct AnimationNodeDeserializer<'a> {
-    type_registry: &'a TypeRegistry,
-}
-
-impl<'a, 'de> DeserializeSeed<'de> for AnimationNodeDeserializer<'a> {
-    type Value = AnimationNode;
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        deserializer.deserialize_
     }
 }

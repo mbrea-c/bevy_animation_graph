@@ -358,6 +358,24 @@ impl<'a, 'b, 'de> DeserializeSeed<'de> for TypedReflectDeserializer<'a, 'b> {
                 AssetPath::try_parse(v)
                     .map_err(|err| Error::custom(format!("not a valid asset path: {err:#}")))
             }
+
+            fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                AssetPath::try_parse(&v)
+                    .map(AssetPath::into_owned)
+                    .map_err(|err| Error::custom(format!("not a valid asset path: {err:#}")))
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: Error,
+            {
+                AssetPath::try_parse(&v.to_owned())
+                    .map(AssetPath::into_owned)
+                    .map_err(|err| Error::custom(format!("not a valid asset path: {err:#}")))
+            }
         }
 
         let type_path = self.registration.type_info().type_path();

@@ -1,7 +1,12 @@
 use crate::{
     core::{
-        animation_clip::EntityPath, animation_graph::PinMap, animation_node::NodeLike,
-        errors::GraphError, pose::Pose, prelude::DataSpec, space_conversion::SpaceConversion,
+        animation_clip::EntityPath,
+        animation_graph::PinMap,
+        animation_node::{NodeLike, ReflectNodeLike},
+        errors::GraphError,
+        pose::Pose,
+        prelude::DataSpec,
+        space_conversion::SpaceConversion,
     },
     prelude::{BoneDebugGizmos, PassContext, SpecContext},
     utils::unwrap::UnwrapVal,
@@ -14,7 +19,7 @@ use bevy::{
 };
 
 #[derive(Reflect, Clone, Debug, Default)]
-#[reflect(Default)]
+#[reflect(Default, NodeLike)]
 pub struct TwoBoneIKNode {}
 
 impl TwoBoneIKNode {
