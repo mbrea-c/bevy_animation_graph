@@ -1,5 +1,5 @@
 use crate::core::animation_graph::{AnimationGraph, InputOverlay, PinMap, TargetPin};
-use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
+use crate::core::animation_node::NodeLike;
 use crate::core::context::CacheWriteFilter;
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
@@ -15,10 +15,6 @@ pub struct GraphNode {
 impl GraphNode {
     pub fn new(graph: Handle<AnimationGraph>) -> Self {
         Self { graph }
-    }
-
-    pub fn wrapped(self, name: impl Into<String>) -> AnimationNode {
-        AnimationNode::new_from_nodetype(name.into(), AnimationNodeType::Graph(self))
     }
 }
 

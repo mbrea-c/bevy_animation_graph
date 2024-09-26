@@ -1,6 +1,6 @@
 use crate::core::animation_clip::EntityPath;
 use crate::core::animation_graph::PinMap;
-use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
+use crate::core::animation_node::NodeLike;
 use crate::core::errors::GraphError;
 use crate::core::pose::{BonePose, Pose};
 use crate::core::prelude::DataSpec;
@@ -78,10 +78,6 @@ impl RotationNode {
             chain_length,
             base_weight,
         }
-    }
-
-    pub fn wrapped(self, name: impl Into<String>) -> AnimationNode {
-        AnimationNode::new_from_nodetype(name.into(), AnimationNodeType::Rotation(self))
     }
 }
 

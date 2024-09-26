@@ -2,7 +2,7 @@ use std::ops::{Add, Mul};
 
 use crate::core::animation_clip::{GraphClip, Interpolation, Keyframes, VariableCurve};
 use crate::core::animation_graph::PinMap;
-use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
+use crate::core::animation_node::NodeLike;
 use crate::core::errors::GraphError;
 use crate::core::id::BoneId;
 use crate::core::pose::{BonePose, Pose};
@@ -33,10 +33,6 @@ impl ClipNode {
             override_duration,
             override_interpolation,
         }
-    }
-
-    pub fn wrapped(self, name: impl Into<String>) -> AnimationNode {
-        AnimationNode::new_from_nodetype(name.into(), AnimationNodeType::Clip(self))
     }
 
     #[inline]

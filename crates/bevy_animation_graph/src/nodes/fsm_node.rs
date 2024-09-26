@@ -1,6 +1,6 @@
 use crate::core::{
     animation_graph::PinMap,
-    animation_node::{AnimationNode, AnimationNodeType, NodeLike},
+    animation_node::NodeLike,
     context::{PassContext, SpecContext},
     edge_data::DataSpec,
     errors::GraphError,
@@ -19,10 +19,6 @@ impl FSMNode {
 
     pub fn new(fsm: Handle<StateMachine>) -> Self {
         Self { fsm }
-    }
-
-    pub fn wrapped(self, name: impl Into<String>) -> AnimationNode {
-        AnimationNode::new_from_nodetype(name.into(), AnimationNodeType::Fsm(self))
     }
 }
 

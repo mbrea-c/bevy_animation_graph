@@ -14,17 +14,6 @@ use bevy::{
     utils::HashMap,
 };
 use serde::{Deserialize, Serialize};
-//     pub nodes: HashMap<String, AnimationNode>,
-//     /// Inverted, indexed by output node name.
-//     pub edges: HashMap<TargetPin, SourcePin>,
-//     pub default_output: Option<String>,
-//
-//     pub default_parameters: HashMap<PinId, ParamValue>,
-//     pub input_poses: HashMap<PinId, PoseSpec>,
-//     pub output_parameters: HashMap<PinId, ParamSpec>,
-//     pub output_pose: Option<PoseSpec>,
-//
-//     pub extra: Extra,
 
 pub type NodeIdSerial = String;
 pub type PinIdSerial = String;
@@ -56,6 +45,8 @@ pub struct AnimationGraphSerial {
 pub struct AnimationNodeSerial {
     pub name: String,
     pub node: AnimationNodeTypeSerial,
+    #[serde(flatten)]
+    pub value: ron::Value,
 }
 
 #[derive(Serialize, Deserialize, Clone)]

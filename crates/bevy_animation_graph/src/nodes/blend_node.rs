@@ -1,5 +1,5 @@
 use crate::core::animation_graph::{PinMap, TimeUpdate};
-use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
+use crate::core::animation_node::NodeLike;
 use crate::core::errors::GraphError;
 use crate::core::pose::Pose;
 use crate::core::prelude::DataSpec;
@@ -44,10 +44,6 @@ impl BlendNode {
 
     pub fn new(mode: BlendMode, sync_mode: BlendSyncMode) -> Self {
         Self { mode, sync_mode }
-    }
-
-    pub fn wrapped(self, name: impl Into<String>) -> AnimationNode {
-        AnimationNode::new_from_nodetype(name.into(), AnimationNodeType::Blend(self))
     }
 }
 

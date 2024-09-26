@@ -1,12 +1,7 @@
 use crate::{
     core::{
-        animation_clip::EntityPath,
-        animation_graph::PinMap,
-        animation_node::{AnimationNode, AnimationNodeType, NodeLike},
-        errors::GraphError,
-        pose::Pose,
-        prelude::DataSpec,
-        space_conversion::SpaceConversion,
+        animation_clip::EntityPath, animation_graph::PinMap, animation_node::NodeLike,
+        errors::GraphError, pose::Pose, prelude::DataSpec, space_conversion::SpaceConversion,
     },
     prelude::{BoneDebugGizmos, PassContext, SpecContext},
     utils::unwrap::UnwrapVal,
@@ -31,10 +26,6 @@ impl TwoBoneIKNode {
 
     pub fn new() -> Self {
         Self {}
-    }
-
-    pub fn wrapped(self, name: impl Into<String>) -> AnimationNode {
-        AnimationNode::new_from_nodetype(name.into(), AnimationNodeType::TwoBoneIK(self))
     }
 }
 
