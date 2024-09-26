@@ -48,11 +48,13 @@ pub enum DataSpec {
 
 #[derive(Serialize, Deserialize, Reflect, Clone, Debug)]
 pub enum DataValue {
+    // trivial copy
     F32(f32),
     Bool(bool),
     Vec3(Vec3),
-    EntityPath(EntityPath),
     Quat(Quat),
+    // non-trivial copy
+    EntityPath(EntityPath),
     BoneMask(BoneMask),
     Pose(Pose),
     EventQueue(EventQueue),
@@ -65,42 +67,66 @@ impl Default for DataValue {
 }
 
 impl DataValue {
+    // trivial copy
+
+    #[must_use]
+    pub const fn as_f32(&self) -> Option<f32> {
+        match self {
+            &Self::F32(x) => Some(x),
+            _ => None,
+        }
+    }
+
     #[must_use]
     pub fn into_f32(self) -> Option<f32> {
+        self.as_f32()
+    }
+
+    #[must_use]
+    pub const fn as_bool(&self) -> Option<bool> {
         match self {
-            Self::F32(x) => Some(x),
+            &Self::Bool(x) => Some(x),
             _ => None,
         }
     }
 
     #[must_use]
     pub fn into_bool(self) -> Option<bool> {
+        self.as_bool()
+    }
+
+    #[must_use]
+    pub const fn as_vec3(&self) -> Option<Vec3> {
         match self {
-            Self::Bool(x) => Some(x),
+            &Self::Vec3(x) => Some(x),
             _ => None,
         }
     }
 
     #[must_use]
     pub fn into_vec3(self) -> Option<Vec3> {
-        match self {
-            Self::Vec3(x) => Some(x),
-            _ => None,
-        }
+        self.as_vec3()
     }
 
     #[must_use]
-    pub fn into_entity_path(self) -> Option<EntityPath> {
+    pub const fn as_quat(&self) -> Option<Quat> {
         match self {
-            Self::EntityPath(x) => Some(x),
+            &Self::Quat(x) => Some(x),
             _ => None,
         }
     }
 
     #[must_use]
     pub fn into_quat(self) -> Option<Quat> {
+        self.as_quat()
+    }
+
+    // non-trivial copy
+
+    #[must_use]
+    pub fn into_entity_path(self) -> Option<EntityPath> {
         match self {
-            Self::Quat(x) => Some(x),
+            Self::EntityPath(x) => Some(x),
             _ => None,
         }
     }
