@@ -1,8 +1,8 @@
-use crate::core::animation_node::NodeLike;
+use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
-#[reflect(Default)]
+#[reflect(Default, NodeLike)]
 pub struct DummyNode;
 
 impl DummyNode {

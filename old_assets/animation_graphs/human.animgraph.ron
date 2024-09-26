@@ -33,7 +33,14 @@
         ),
         (
             name: "Rotate",
-            node: Rotation(Compose, Character, Linear, 1, 1.0),
+            ty: "bevy_animation_graph::nodes::rotation_node::RotationNode",
+            inner: (
+                application_mode: Compose,
+                rotation_space: Character,
+                chain_decay: Linear,
+                chain_length: 1,
+                base_weight: 1.0,
+            ),
         ),
         (
             name: "Run Clip 2",

@@ -10,7 +10,7 @@
         (
             name: "arm ik",
             ty: "bevy_animation_graph::nodes::twoboneik_node::TwoBoneIKNode",
-            inner: (),
+            inner: TwoBoneIKNode(),
         ),
     ],
     edges_inverted: {

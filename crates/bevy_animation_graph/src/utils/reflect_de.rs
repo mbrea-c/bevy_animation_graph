@@ -2,8 +2,6 @@
 //! parameter given, which automatically loads [`Handle`]s when it encounters
 //! them in a field.
 //!
-//! This makes use of [`ReflectHandle`].
-//!
 //! This should also be upstreamed to Bevy eventually, but for some more general
 //! use case than loading handles.
 

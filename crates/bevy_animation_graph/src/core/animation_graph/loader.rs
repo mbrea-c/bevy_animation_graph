@@ -1,6 +1,9 @@
 use super::{serial::AnimationGraphSerial, AnimationGraph};
 use crate::{
-    core::{animation_clip::GraphClip, errors::AssetLoaderError},
+    core::{
+        animation_clip::GraphClip,
+        errors::{AssetLoaderError, ParseNodeError},
+    },
     prelude::{AnimationNode, ReflectNodeLike},
     utils::reflect_de::TypedReflectDeserializer,
 };
@@ -127,24 +130,52 @@ impl AssetLoader for AnimationGraphLoader {
         // ------------------------------------------------------------------------------------
         let type_registry = self.type_registry.read();
         for node in serial.nodes {
-            let type_path = &node.ty;
-            let type_registration =
-                type_registry.get_with_type_path(type_path).ok_or_else(|| {
-                    ron::Error::Message(format!("No registration found for `{type_path}`"))
-                })?;
-            let node_like = type_registration.data::<ReflectNodeLike>().ok_or_else(|| {
-                ron::Error::Message(format!("`{type_path}` is not an animation node"))
-            })?;
+            let name = node.name;
+
+            let type_path = node.ty;
+            let type_registration = type_registry.get_with_type_path(&type_path).ok_or(
+                AssetLoaderError::ParseNode {
+                    name: name.clone(),
+                    source: ParseNodeError::NoTypeRegistration(type_path.clone()),
+                },
+            )?;
+            let node_like =
+                type_registration
+                    .data::<ReflectNodeLike>()
+                    .ok_or(AssetLoaderError::ParseNode {
+                        name: name.clone(),
+                        source: ParseNodeError::NotNodeLike(type_path.clone()),
+                    })?;
+            let from_reflect = type_registration.data::<ReflectFromReflect>().ok_or(
+                AssetLoaderError::ParseNode {
+                    name: name.clone(),
+                    source: ParseNodeError::NotFromReflect(type_path.clone()),
+                },
+            )?;
 
             let inner =
                 TypedReflectDeserializer::new(type_registration, &type_registry, load_context)
-                    .deserialize(node.inner)?;
-            let inner = node_like
-                .get_boxed(inner)
-                .expect("value with this type registration must be a NodeLike");
+                    .deserialize(node.inner)
+                    .map_err(|err| AssetLoaderError::ParseNode {
+                        name: name.clone(),
+                        source: err.into(),
+                    })?;
+            let inner = from_reflect.from_reflect(&*inner).unwrap_or_else(|| {
+                panic!(
+                    "from reflect mismatch - reflecting from a `{}` into a `{}` - value: {inner:?}",
+                    inner.reflect_type_path(),
+                    type_registration.type_info().type_path()
+                )
+            });
+            let inner = node_like.get_boxed(inner).unwrap_or_else(|value| {
+                panic!(
+                    "value of type `{}` registration should be a `NodeLike` - value: {value:?}",
+                    value.reflect_type_path()
+                )
+            });
 
             graph.add_node(AnimationNode {
-                name: node.name,
+                name,
                 inner,
                 should_debug: false,
             });
