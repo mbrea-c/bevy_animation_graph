@@ -1,12 +1,15 @@
 use super::{serial::AnimationGraphSerial, AnimationGraph};
-use crate::core::{animation_clip::GraphClip, errors::AssetLoaderError};
+use crate::{
+    core::{animation_clip::GraphClip, errors::AssetLoaderError},
+    prelude::AnimationNode, utils::reflect_de::TypedReflectDeserializer,
+};
 use bevy::{
     asset::{io::Reader, AssetLoader, AsyncReadExt, LoadContext},
     gltf::Gltf,
     prelude::*,
-    reflect::TypeRegistryArc,
+    reflect::{TypeRegistry, TypeRegistryArc},
 };
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeSeed, Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub enum GraphClipSource {
@@ -98,7 +101,7 @@ impl FromWorld for AnimationGraphLoader {
 
 impl AssetLoader for AnimationGraphLoader {
     type Asset = AnimationGraph;
-    type Settings = ();
+    type Settings = ();e
     type Error = AssetLoaderError;
 
     async fn load<'a>(
@@ -121,7 +124,18 @@ impl AssetLoader for AnimationGraphLoader {
 
         // --- Add nodes
         // ------------------------------------------------------------------------------------
+        let type_registry = self.type_registry.read();
         for node in &serial.nodes {
+            let type_path = &node.ty;
+            let type_registration = type_registry.get_with_type_path(type_path).ok_or_else(|| {
+                ron::Error::Message(format!("No registration found for `{type_path}`"))
+            });
+            TypedReflectDeserializer {
+                registration: type_registration,
+                registry: &type_registry,
+                load_context,
+            }
+            let mut dynamic_properties = Vec::new();
 
             // TODO!!!!!!!!!!
             // graph.add_node(node);
@@ -158,5 +172,20 @@ impl AssetLoader for AnimationGraphLoader {
 
     fn extensions(&self) -> &[&str] {
         &["animgraph.ron"]
+    }
+}
+
+struct AnimationNodeDeserializer<'a> {
+    type_registry: &'a TypeRegistry,
+}
+
+impl<'a, 'de> DeserializeSeed<'de> for AnimationNodeDeserializer<'a> {
+    type Value = AnimationNode;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        deserializer.deserialize_
     }
 }

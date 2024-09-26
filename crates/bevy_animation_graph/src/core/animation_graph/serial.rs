@@ -32,6 +32,6 @@ pub struct AnimationGraphSerial {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct AnimationNodeSerial {
     pub name: String,
-    #[serde(flatten)]
+    pub ty: String,
     pub inner: ron::Value,
 }
