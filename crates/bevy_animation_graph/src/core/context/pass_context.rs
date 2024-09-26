@@ -12,6 +12,7 @@ use crate::{
         pose::BoneId,
         state_machine::{LowLevelStateMachine, StateId},
     },
+    nodes::{FSMNode, GraphNode},
     prelude::{AnimationGraph, DataValue},
 };
 use bevy::{ecs::entity::Entity, utils::HashMap};
@@ -164,9 +165,13 @@ impl<'a> PassContext<'a> {
     ) -> Self {
         let node_ctx = self.node_context.unwrap();
         let node = node_ctx.graph.nodes.get(node_ctx.node_id).unwrap();
-        let graph_id = match &node.node {
-            crate::core::prelude::AnimationNodeType::Graph(n) => n.graph.id(),
-            crate::core::prelude::AnimationNodeType::Fsm(n) => {
+
+        let graph_id = {
+            let node = node.inner.as_any();
+
+            if let Some(node) = node.downcast_ref::<GraphNode>() {
+                node.graph.id()
+            } else if let Some(node) = node.downcast_ref::<FSMNode>() {
                 // TODO: Extract this into a function, probably(?) in the FSM code
                 let cur_state_id = fsm_ctx
                     .as_ref()
@@ -175,13 +180,14 @@ impl<'a> PassContext<'a> {
                 let fsm = self
                     .resources
                     .state_machine_assets
-                    .get(&n.fsm)
+                    .get(&node.fsm)
                     .unwrap()
                     .get_low_level_fsm();
                 let cur_state = fsm.states.get(&cur_state_id).unwrap();
                 cur_state.graph.id()
+            } else {
+                panic!("Only graph or FSM nodes can have subgraphs");
             }
-            _ => panic!("Only graph or FSM nodes can have subgraphs"),
         };
 
         let subctx_id = SubContextId {

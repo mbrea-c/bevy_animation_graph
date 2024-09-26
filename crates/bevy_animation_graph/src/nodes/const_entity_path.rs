@@ -21,6 +21,10 @@ impl ConstEntityPath {
 }
 
 impl NodeLike for ConstEntityPath {
+    fn clone_value(&self) -> Box<dyn NodeLike> {
+        Box::new(self.clone())
+    }
+
     fn display_name(&self) -> String {
         "Entity Path".into()
     }

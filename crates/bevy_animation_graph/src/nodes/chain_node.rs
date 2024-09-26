@@ -30,6 +30,10 @@ impl ChainNode {
 }
 
 impl NodeLike for ChainNode {
+    fn clone_value(&self) -> Box<dyn NodeLike> {
+        Box::new(self.clone())
+    }
+
     fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
         let source_duration_1 = ctx.duration_back(Self::IN_TIME_A)?;
         let source_duration_2 = ctx.duration_back(Self::IN_TIME_B)?;

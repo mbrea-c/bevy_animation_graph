@@ -22,6 +22,10 @@ impl LerpVec3Node {
 }
 
 impl NodeLike for LerpVec3Node {
+    fn clone_value(&self) -> Box<dyn NodeLike> {
+        Box::new(self.clone())
+    }
+
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
         let a: Vec3 = ctx.data_back(Self::INPUT_A)?.val();
         let b: Vec3 = ctx.data_back(Self::INPUT_B)?.val();

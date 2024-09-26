@@ -1106,8 +1106,7 @@ impl TabViewer<'_> {
         };
         let mut env = InspectorUi::for_bevy(&type_registry, &mut cx);
 
-        let inner = node.node.inner_reflect();
-        let changed = env.ui_for_reflect(inner, ui);
+        let changed = env.ui_for_reflect(node.inner.as_reflect_mut(), ui);
 
         if changed {
             changes.push(GraphChange {

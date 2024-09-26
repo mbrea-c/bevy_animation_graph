@@ -27,6 +27,10 @@ impl LoopNode {
 }
 
 impl NodeLike for LoopNode {
+    fn clone_value(&self) -> Box<dyn NodeLike> {
+        Box::new(self.clone())
+    }
+
     fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
         ctx.set_duration_fwd(None);
         Ok(())

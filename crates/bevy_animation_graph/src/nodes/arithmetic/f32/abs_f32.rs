@@ -1,5 +1,5 @@
 use crate::core::animation_graph::PinMap;
-use crate::core::animation_node::{AnimationNode, NodeLike};
+use crate::core::animation_node::NodeLike;
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
 use crate::prelude::{PassContext, SpecContext};
@@ -19,6 +19,10 @@ impl AbsF32 {
 }
 
 impl NodeLike for AbsF32 {
+    fn clone_value(&self) -> Box<dyn NodeLike> {
+        Box::new(self.clone())
+    }
+
     fn display_name(&self) -> String {
         "|_| Absolute val".into()
     }

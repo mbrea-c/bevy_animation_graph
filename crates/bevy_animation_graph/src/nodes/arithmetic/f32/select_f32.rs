@@ -22,6 +22,10 @@ impl SelectF32 {
 }
 
 impl NodeLike for SelectF32 {
+    fn clone_value(&self) -> Box<dyn NodeLike> {
+        Box::new(self.clone())
+    }
+
     fn display_name(&self) -> String {
         "Select F32".into()
     }

@@ -23,6 +23,10 @@ impl FSMNode {
 }
 
 impl NodeLike for FSMNode {
+    fn clone_value(&self) -> Box<dyn NodeLike> {
+        Box::new(self.clone())
+    }
+
     fn duration(&self, _ctx: PassContext) -> Result<(), GraphError> {
         todo!()
     }

@@ -24,6 +24,10 @@ impl SpeedNode {
 }
 
 impl NodeLike for SpeedNode {
+    fn clone_value(&self) -> Box<dyn NodeLike> {
+        Box::new(self.clone())
+    }
+
     fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
         let speed = ctx.data_back(Self::SPEED)?.unwrap_f32();
         let out_duration = if speed == 0. {

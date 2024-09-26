@@ -21,7 +21,7 @@ use crate::nodes::{
 };
 use crate::prelude::{
     config::{FlipConfig, FlipNameMapper, PatternMapper, PatternMapperSerial},
-    AnimationGraph, AnimationGraphPlayer, AnimationNodeType,
+    AnimationGraph, AnimationGraphPlayer,
 };
 use crate::{core::animation_clip::EntityPath, prelude::AnimationNode};
 use bevy::{prelude::*, transform::TransformSystem};
@@ -82,7 +82,6 @@ impl AnimationGraphPlugin {
             .register_type::<DataValue>()
             .register_type::<DataSpec>()
             .register_type::<AnimationNode>()
-            .register_type::<AnimationNodeType>()
             .register_type::<FlipConfig>()
             .register_type::<FlipNameMapper>()
             .register_type::<PatternMapper>()

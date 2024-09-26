@@ -20,6 +20,10 @@ impl LengthVec3Node {
 }
 
 impl NodeLike for LengthVec3Node {
+    fn clone_value(&self) -> Box<dyn NodeLike> {
+        Box::new(self.clone())
+    }
+
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
         let input: Vec3 = ctx.data_back(Self::INPUT)?.val();
         let output = input.length();

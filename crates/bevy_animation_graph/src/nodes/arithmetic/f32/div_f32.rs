@@ -20,6 +20,10 @@ impl DivF32 {
 }
 
 impl NodeLike for DivF32 {
+    fn clone_value(&self) -> Box<dyn NodeLike> {
+        Box::new(self.clone())
+    }
+
     fn display_name(&self) -> String {
         "÷ Divide".into()
     }

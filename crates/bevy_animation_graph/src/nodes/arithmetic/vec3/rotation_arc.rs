@@ -21,6 +21,10 @@ impl RotationArcNode {
 }
 
 impl NodeLike for RotationArcNode {
+    fn clone_value(&self) -> Box<dyn NodeLike> {
+        Box::new(self.clone())
+    }
+
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
         let input_1: Vec3 = ctx.data_back(Self::INPUT_1)?.val();
         let input_2: Vec3 = ctx.data_back(Self::INPUT_2)?.val();

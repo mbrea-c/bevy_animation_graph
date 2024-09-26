@@ -22,6 +22,10 @@ impl DecomposeVec3Node {
 }
 
 impl NodeLike for DecomposeVec3Node {
+    fn clone_value(&self) -> Box<dyn NodeLike> {
+        Box::new(self.clone())
+    }
+
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
         let Vec3 { x, y, z } = ctx.data_back(Self::INPUT)?.val();
 

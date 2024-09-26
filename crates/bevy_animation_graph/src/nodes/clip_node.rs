@@ -50,6 +50,10 @@ impl ClipNode {
 }
 
 impl NodeLike for ClipNode {
+    fn clone_value(&self) -> Box<dyn NodeLike> {
+        Box::new(self.clone())
+    }
+
     fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
         ctx.set_duration_fwd(Some(self.clip_duration(&ctx)));
         Ok(())

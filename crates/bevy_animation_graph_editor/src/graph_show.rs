@@ -7,7 +7,7 @@ use crate::egui_nodes::{
 use bevy::utils::HashMap;
 use bevy_animation_graph::core::{
     animation_graph::{AnimationGraph, SourcePin, TargetPin},
-    animation_node::{AnimationNode, NodeLike},
+    animation_node::AnimationNode,
     context::{GraphContext, SpecContext},
     edge_data::DataSpec,
 };
@@ -315,7 +315,7 @@ pub fn make_graph_indices(
         graph_indices.node_indices.add_mapping(node.name.clone());
 
         // add pins
-        for (name, _) in node.data_input_spec(ctx).iter() {
+        for (name, _) in node.inner.data_input_spec(ctx).iter() {
             graph_indices
                 .pin_indices
                 .add_mapping(Pin::Target(TargetPin::NodeData(
