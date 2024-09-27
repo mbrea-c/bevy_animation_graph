@@ -323,6 +323,30 @@ pub struct TypedReflectDeserializer<'a, 'p> {
 // `seed_deserialize`'s `registration`, and then use those lifetimes in
 // `deserialize` on the `seed` there
 
+// some impl notes:
+//
+// Why are we using dynamic dispatch? Why not just
+// `TypedReflectDeserializer<P: ValueProcessor>?`
+//   I tried to get this approach working for a long time. But we need
+//   `impl<T: ValueProcessor> ValueProcessor for &mut T`, which for some reason
+//   causes rustc to overflow when type checking. Making it static probably is
+//   the best approach, but I've already spent way too much time on this.
+//
+// Can we pass some data out of `can_deserialize` into `deserialize`?
+//   Technically this is possible, but would add an extra type parameter on
+//   `ValueProcessor`, which I don't want to do, since it would infect
+//   `TypedReflectDeserializer`, which is just annoying to deal with.
+//   If we were using a non-dyn method (the original one described above), then
+//   yes, but there is another problem. The seed produced by `seed_deserialize`
+//   won't be able to take values with lifetimes from the `&TypeRegistration`.
+//   We *need* HKTs for this. So this seed won't be particularly useful.
+//
+// Why `Option<&mut ValueProcessor>` instead of `Option<ValueProcessor>`?
+//   `TypedReflectDeserializer` will make other deserializers, which in turn
+//   will make more `TypedReflectDeserializers` values. We can't guarantee
+//   `ValueProcessor: Clone` since the closures inside may not (will not) be
+//   `Clone`.
+
 pub struct ValueProcessor<'p> {
     pub can_deserialize: Box<dyn FnMut(&TypeRegistration) -> bool + 'p>,
     pub deserialize: Box<
