@@ -3,7 +3,7 @@ use std::fmt;
 use super::{pin, Extra};
 use crate::{
     prelude::{AnimationNode, DataSpec, DataValue, NodeLike, OrderedMap, ReflectNodeLike},
-    utils::reflect_de::{TypedReflectDeserializer, ValueProcessorImpl},
+    utils::reflect_de::{TypedReflectDeserializer, ValueProcessor},
 };
 use bevy::{
     asset::{AssetPath, LoadContext, ReflectHandle},
@@ -145,6 +145,7 @@ impl<'de> DeserializeSeed<'de> for AnimationNodeLoadDeserializer<'_, '_> {
                     load_context,
                     ty,
                 } = self;
+
                 let type_registration =
                     type_registry
                         .get_with_type_path(self.ty)
@@ -161,22 +162,19 @@ impl<'de> DeserializeSeed<'de> for AnimationNodeLoadDeserializer<'_, '_> {
                             "`{ty}` cannot be created from reflection"
                         )))?;
 
-                let processor = ValueProcessorImpl {
-                    seed_deserialize: |registration: &TypeRegistration| {
-                        registration.data::<ReflectHandle>().map(drop)
-                    },
-                    deserialize:
-                        |registration: &TypeRegistration,
-                         deserializer: &mut dyn bevy::reflect::erased_serde::Deserializer,
-                         ()| {
-                            deserialize_handle(registration, deserializer, load_context)
-                        },
+                let mut processor = ValueProcessor {
+                    can_deserialize: Box::new(|registration| {
+                        registration.data::<ReflectHandle>().is_some()
+                    }),
+                    deserialize: Box::new(|registration, deserializer| {
+                        deserialize_handle(registration, deserializer, load_context)
+                    }),
                 };
 
                 let reflect_deserializer = TypedReflectDeserializer::new_with_processor(
                     type_registration,
                     type_registry,
-                    processor,
+                    &mut processor,
                 );
                 let inner = reflect_deserializer.deserialize(deserializer)?;
 

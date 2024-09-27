@@ -193,3 +193,18 @@ pub mod prelude {
     pub use super::nodes::*;
     pub use super::utils::ordered_map::OrderedMap;
 }
+
+mod tests_remove_this_before_pr_literally_just_random_testing {
+    fn x() {
+        struct Foo;
+
+        let mut foo = Foo;
+        let mut maybe_foo = Some(&mut foo);
+
+        for _ in 0..5 {
+            do_something_with(maybe_foo.as_deref_mut());
+        }
+
+        fn do_something_with(_foo: Option<&mut Foo>) {}
+    }
+}

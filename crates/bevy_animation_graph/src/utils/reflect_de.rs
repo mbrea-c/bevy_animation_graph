@@ -15,7 +15,6 @@ use bevy::reflect::{
 use serde::de::{DeserializeSeed, EnumAccess, Error, MapAccess, SeqAccess, VariantAccess, Visitor};
 use serde::Deserialize;
 use std::any::TypeId;
-use std::convert::Infallible;
 use std::fmt;
 use std::fmt::{Debug, Display, Formatter};
 use std::slice::Iter;
@@ -314,120 +313,50 @@ impl<'de> Deserialize<'de> for Ident {
 /// [`Box<DynamicList>`]: crate::DynamicList
 /// [`FromReflect`]: crate::FromReflect
 /// [`ReflectFromReflect`]: crate::ReflectFromReflect
-pub struct TypedReflectDeserializer<'a, P> {
+pub struct TypedReflectDeserializer<'a, 'p> {
     pub registration: &'a TypeRegistration,
     pub registry: &'a TypeRegistry,
-    pub processor: P,
+    pub processor: Option<&'a mut ValueProcessor<'p>>,
 }
 
 // TODO: lifetime and type system hackery to let `Seed` take lifetimes from
 // `seed_deserialize`'s `registration`, and then use those lifetimes in
 // `deserialize` on the `seed` there
 
-pub trait ValueProcessor {
-    type Seed;
-
-    fn seed_deserialize(self, registration: &TypeRegistration) -> Option<Self::Seed>;
-
-    fn deserialize(
-        self,
-        registration: &TypeRegistration,
-        deserializer: &mut dyn erased_serde::Deserializer,
-        seed: Self::Seed,
-    ) -> Result<Box<dyn Reflect>, erased_serde::Error>;
+pub struct ValueProcessor<'p> {
+    pub can_deserialize: Box<dyn FnMut(&TypeRegistration) -> bool + 'p>,
+    pub deserialize: Box<
+        dyn FnMut(
+                &TypeRegistration,
+                &mut dyn erased_serde::Deserializer,
+            ) -> Result<Box<dyn Reflect>, erased_serde::Error>
+            + 'p,
+    >,
 }
 
-impl<P: ValueProcessor + ?Sized> ValueProcessor for &mut P {
-    type Seed = P::Seed;
-
-    fn seed_deserialize(&mut self, registration: &TypeRegistration) -> Option<Self::Seed> {
-        (*self).seed_deserialize(registration)
-    }
-
-    fn deserialize(
-        &mut self,
-        registration: &TypeRegistration,
-        deserializer: &mut dyn erased_serde::Deserializer,
-        seed: Self::Seed,
-    ) -> Result<Box<dyn Reflect>, erased_serde::Error> {
-        (*self).deserialize(registration, deserializer, seed)
-    }
-}
-
-impl ValueProcessor for () {
-    type Seed = Infallible;
-
-    fn seed_deserialize(&mut self, _registration: &TypeRegistration) -> Option<Self::Seed> {
-        None
-    }
-
-    fn deserialize(
-        &mut self,
-        _registration: &TypeRegistration,
-        _deserializer: &mut dyn erased_serde::Deserializer,
-        _seed: Self::Seed,
-    ) -> Result<Box<dyn Reflect>, erased_serde::Error> {
-        unreachable!()
-    }
-}
-
-pub struct ValueProcessorImpl<SeedDeserialize, Deserialize> {
-    pub seed_deserialize: SeedDeserialize,
-    pub deserialize: Deserialize,
-}
-
-impl<Seed, SeedDeserialize, Deserialize> ValueProcessor
-    for ValueProcessorImpl<SeedDeserialize, Deserialize>
-where
-    SeedDeserialize: FnMut(&TypeRegistration) -> Option<Seed>,
-    Deserialize: FnMut(
-        &TypeRegistration,
-        &mut dyn erased_serde::Deserializer,
-        Seed,
-    ) -> Result<Box<dyn Reflect>, erased_serde::Error>,
-{
-    type Seed = Seed;
-
-    fn seed_deserialize(&mut self, registration: &TypeRegistration) -> Option<Seed> {
-        (self.seed_deserialize)(registration)
-    }
-
-    fn deserialize(
-        &mut self,
-        registration: &TypeRegistration,
-        deserializer: &mut dyn erased_serde::Deserializer,
-        seed: Seed,
-    ) -> Result<Box<dyn Reflect>, erased_serde::Error> {
-        (self.deserialize)(registration, deserializer, seed)
-    }
-}
-
-impl<'a> TypedReflectDeserializer<'a, ()> {
-    #[must_use]
-    pub const fn new(registration: &'a TypeRegistration, registry: &'a TypeRegistry) -> Self {
+impl<'a, 'p> TypedReflectDeserializer<'a, 'p> {
+    pub fn new(registration: &'a TypeRegistration, registry: &'a TypeRegistry) -> Self {
         Self {
             registration,
             registry,
-            processor: (),
+            processor: None,
         }
     }
-}
 
-impl<'a, P> TypedReflectDeserializer<'a, P> {
-    pub const fn new_with_processor(
+    pub fn new_with_processor(
         registration: &'a TypeRegistration,
         registry: &'a TypeRegistry,
-        processor: P,
+        processor: &'a mut ValueProcessor<'p>,
     ) -> Self {
         Self {
             registration,
             registry,
-            processor,
+            processor: Some(processor),
         }
     }
 }
 
-impl<'a, 'de, P: ValueProcessor> DeserializeSeed<'de> for TypedReflectDeserializer<'a, P> {
+impl<'de> DeserializeSeed<'de> for TypedReflectDeserializer<'_, '_> {
     type Value = Box<dyn Reflect>;
 
     fn deserialize<D>(mut self, deserializer: D) -> Result<Self::Value, D::Error>
@@ -435,13 +364,13 @@ impl<'a, 'de, P: ValueProcessor> DeserializeSeed<'de> for TypedReflectDeserializ
         D: serde::Deserializer<'de>,
     {
         // Ask the value processor to process this
-        if let Some(seed) = self.processor.seed_deserialize(&self.registration) {
-            let mut deserializer = <dyn erased_serde::Deserializer>::erase(deserializer);
-            return self
-                .processor
-                .deserialize(&self.registration, &mut deserializer, seed)
-                // TODO: is there a better way of returning this error?
-                .map_err(|err| serde::de::Error::custom(err.to_string()));
+        if let Some(processor) = self.processor.as_deref_mut() {
+            if (processor.can_deserialize)(&self.registration) {
+                let mut deserializer = <dyn erased_serde::Deserializer>::erase(deserializer);
+                return (processor.deserialize)(&self.registration, &mut deserializer)
+                    // TODO: is there a better way of returning this error?
+                    .map_err(|err| serde::de::Error::custom(err.to_string()));
+            }
         }
 
         let type_path = self.registration.type_info().type_path();
@@ -532,7 +461,7 @@ impl<'a, 'de, P: ValueProcessor> DeserializeSeed<'de> for TypedReflectDeserializ
                     deserializer.deserialize_option(OptionVisitor {
                         enum_info,
                         registry: self.registry,
-                        processor: self.processor,
+                        processor: self.processor.as_deref_mut(),
                     })?
                 } else {
                     deserializer.deserialize_enum(
@@ -542,7 +471,7 @@ impl<'a, 'de, P: ValueProcessor> DeserializeSeed<'de> for TypedReflectDeserializ
                             enum_info,
                             registration: self.registration,
                             registry: self.registry,
-                            processor: self.processor,
+                            processor: self.processor.as_deref_mut(),
                         },
                     )?
                 };
@@ -559,14 +488,14 @@ impl<'a, 'de, P: ValueProcessor> DeserializeSeed<'de> for TypedReflectDeserializ
     }
 }
 
-struct StructVisitor<'a, P> {
+struct StructVisitor<'a, 'p> {
     struct_info: &'static StructInfo,
     registration: &'a TypeRegistration,
     registry: &'a TypeRegistry,
-    processor: P,
+    processor: Option<&'a mut ValueProcessor<'p>>,
 }
 
-impl<'de, P: ValueProcessor> Visitor<'de> for StructVisitor<'_, P> {
+impl<'de> Visitor<'de> for StructVisitor<'_, '_> {
     type Value = DynamicStruct;
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
@@ -600,14 +529,14 @@ impl<'de, P: ValueProcessor> Visitor<'de> for StructVisitor<'_, P> {
     }
 }
 
-struct TupleStructVisitor<'a, P> {
+struct TupleStructVisitor<'a, 'p> {
     tuple_struct_info: &'static TupleStructInfo,
     registry: &'a TypeRegistry,
     registration: &'a TypeRegistration,
-    processor: P,
+    processor: Option<&'a mut ValueProcessor<'p>>,
 }
 
-impl<'de, P: ValueProcessor> Visitor<'de> for TupleStructVisitor<'_, P> {
+impl<'de> Visitor<'de> for TupleStructVisitor<'_, '_> {
     type Value = DynamicTupleStruct;
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
@@ -629,14 +558,14 @@ impl<'de, P: ValueProcessor> Visitor<'de> for TupleStructVisitor<'_, P> {
     }
 }
 
-struct TupleVisitor<'a, P> {
+struct TupleVisitor<'a, 'p> {
     tuple_info: &'static TupleInfo,
     registration: &'a TypeRegistration,
     registry: &'a TypeRegistry,
-    processor: P,
+    processor: Option<&'a mut ValueProcessor<'p>>,
 }
 
-impl<'de, P: ValueProcessor> Visitor<'de> for TupleVisitor<'_, P> {
+impl<'de> Visitor<'de> for TupleVisitor<'_, '_> {
     type Value = DynamicTuple;
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
@@ -657,13 +586,13 @@ impl<'de, P: ValueProcessor> Visitor<'de> for TupleVisitor<'_, P> {
     }
 }
 
-struct ArrayVisitor<'a, P> {
+struct ArrayVisitor<'a, 'p> {
     array_info: &'static ArrayInfo,
     registry: &'a TypeRegistry,
-    processor: P,
+    processor: Option<&'a mut ValueProcessor<'p>>,
 }
 
-impl<'de, P: ValueProcessor> Visitor<'de> for ArrayVisitor<'_, P> {
+impl<'de> Visitor<'de> for ArrayVisitor<'_, '_> {
     type Value = DynamicArray;
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
@@ -683,7 +612,7 @@ impl<'de, P: ValueProcessor> Visitor<'de> for ArrayVisitor<'_, P> {
         while let Some(value) = seq.next_element_seed(TypedReflectDeserializer {
             registration,
             registry: self.registry,
-            processor: &mut self.processor,
+            processor: self.processor.as_deref_mut(),
         })? {
             vec.push(value);
         }
@@ -699,13 +628,13 @@ impl<'de, P: ValueProcessor> Visitor<'de> for ArrayVisitor<'_, P> {
     }
 }
 
-struct ListVisitor<'a, P> {
+struct ListVisitor<'a, 'p> {
     list_info: &'static ListInfo,
     registry: &'a TypeRegistry,
-    processor: P,
+    processor: Option<&'a mut ValueProcessor<'p>>,
 }
 
-impl<'de, P: ValueProcessor> Visitor<'de> for ListVisitor<'_, P> {
+impl<'de> Visitor<'de> for ListVisitor<'_, '_> {
     type Value = DynamicList;
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
@@ -725,7 +654,7 @@ impl<'de, P: ValueProcessor> Visitor<'de> for ListVisitor<'_, P> {
         while let Some(value) = seq.next_element_seed(TypedReflectDeserializer {
             registration,
             registry: self.registry,
-            processor: &mut self.processor,
+            processor: self.processor.as_deref_mut(),
         })? {
             list.push_box(value);
         }
@@ -733,13 +662,13 @@ impl<'de, P: ValueProcessor> Visitor<'de> for ListVisitor<'_, P> {
     }
 }
 
-struct MapVisitor<'a, P> {
+struct MapVisitor<'a, 'p> {
     map_info: &'static MapInfo,
     registry: &'a TypeRegistry,
-    processor: P,
+    processor: Option<&'a mut ValueProcessor<'p>>,
 }
 
-impl<'de, P: ValueProcessor> Visitor<'de> for MapVisitor<'_, P> {
+impl<'de> Visitor<'de> for MapVisitor<'_, '_> {
     type Value = DynamicMap;
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
@@ -764,12 +693,12 @@ impl<'de, P: ValueProcessor> Visitor<'de> for MapVisitor<'_, P> {
         while let Some(key) = map.next_key_seed(TypedReflectDeserializer {
             registration: key_registration,
             registry: self.registry,
-            processor: &mut self.processor,
+            processor: self.processor.as_deref_mut(),
         })? {
             let value = map.next_value_seed(TypedReflectDeserializer {
                 registration: value_registration,
                 registry: self.registry,
-                processor: &mut self.processor,
+                processor: self.processor.as_deref_mut(),
             })?;
             dynamic_map.insert_boxed(key, value);
         }
@@ -778,14 +707,14 @@ impl<'de, P: ValueProcessor> Visitor<'de> for MapVisitor<'_, P> {
     }
 }
 
-struct EnumVisitor<'a, P> {
+struct EnumVisitor<'a, 'p> {
     enum_info: &'static EnumInfo,
     registration: &'a TypeRegistration,
     registry: &'a TypeRegistry,
-    processor: P,
+    processor: Option<&'a mut ValueProcessor<'p>>,
 }
 
-impl<'de, P: ValueProcessor> Visitor<'de> for EnumVisitor<'_, P> {
+impl<'de> Visitor<'de> for EnumVisitor<'_, '_> {
     type Value = DynamicEnum;
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
@@ -899,14 +828,14 @@ impl<'de> DeserializeSeed<'de> for VariantDeserializer {
     }
 }
 
-struct StructVariantVisitor<'a, P> {
+struct StructVariantVisitor<'a, 'p> {
     struct_info: &'static StructVariantInfo,
     registration: &'a TypeRegistration,
     registry: &'a TypeRegistry,
-    processor: P,
+    processor: Option<&'a mut ValueProcessor<'p>>,
 }
 
-impl<'de, P: ValueProcessor> Visitor<'de> for StructVariantVisitor<'_, P> {
+impl<'de> Visitor<'de> for StructVariantVisitor<'_, '_> {
     type Value = DynamicStruct;
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
@@ -940,14 +869,14 @@ impl<'de, P: ValueProcessor> Visitor<'de> for StructVariantVisitor<'_, P> {
     }
 }
 
-struct TupleVariantVisitor<'a, P> {
+struct TupleVariantVisitor<'a, 'p> {
     tuple_info: &'static TupleVariantInfo,
     registration: &'a TypeRegistration,
     registry: &'a TypeRegistry,
-    processor: P,
+    processor: Option<&'a mut ValueProcessor<'p>>,
 }
 
-impl<'de, P: ValueProcessor> Visitor<'de> for TupleVariantVisitor<'_, P> {
+impl<'de> Visitor<'de> for TupleVariantVisitor<'_, '_> {
     type Value = DynamicTuple;
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
@@ -968,13 +897,13 @@ impl<'de, P: ValueProcessor> Visitor<'de> for TupleVariantVisitor<'_, P> {
     }
 }
 
-struct OptionVisitor<'a, P> {
+struct OptionVisitor<'a, 'p> {
     enum_info: &'static EnumInfo,
     registry: &'a TypeRegistry,
-    processor: P,
+    processor: Option<&'a mut ValueProcessor<'p>>,
 }
 
-impl<'de, P: ValueProcessor> Visitor<'de> for OptionVisitor<'_, P> {
+impl<'de> Visitor<'de> for OptionVisitor<'_, '_> {
     type Value = DynamicEnum;
 
     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
@@ -1020,17 +949,16 @@ impl<'de, P: ValueProcessor> Visitor<'de> for OptionVisitor<'_, P> {
     }
 }
 
-fn visit_struct<'de, T, V, P>(
+fn visit_struct<'de, T, V>(
     map: &mut V,
     info: &'static T,
     registration: &TypeRegistration,
     registry: &TypeRegistry,
-    mut processor: P,
+    mut processor: Option<&mut ValueProcessor>,
 ) -> Result<DynamicStruct, V::Error>
 where
     T: StructLikeInfo,
     V: MapAccess<'de>,
-    P: ValueProcessor,
 {
     let mut dynamic_struct = DynamicStruct::default();
     while let Some(Ident(key)) = map.next_key::<Ident>()? {
@@ -1046,7 +974,7 @@ where
         let value = map.next_value_seed(TypedReflectDeserializer {
             registration,
             registry,
-            processor: &mut processor,
+            processor: processor.as_deref_mut(),
         })?;
         dynamic_struct.insert_boxed(&key, value);
     }
@@ -1063,17 +991,16 @@ where
     Ok(dynamic_struct)
 }
 
-fn visit_tuple<'de, T, V, P>(
+fn visit_tuple<'de, T, V>(
     seq: &mut V,
     info: &T,
     registration: &TypeRegistration,
     registry: &TypeRegistry,
-    mut processor: P,
+    mut processor: Option<&mut ValueProcessor>,
 ) -> Result<DynamicTuple, V::Error>
 where
     T: TupleLikeInfo + Container,
     V: SeqAccess<'de>,
-    P: ValueProcessor,
 {
     let mut tuple = DynamicTuple::default();
 
@@ -1096,7 +1023,7 @@ where
             .next_element_seed(TypedReflectDeserializer {
                 registration: info.get_field_registration(index, registry)?,
                 registry,
-                processor: &mut processor,
+                processor: processor.as_deref_mut(),
             })?
             .ok_or_else(|| Error::invalid_length(index, &len.to_string().as_str()))?;
         tuple.insert_boxed(value);
@@ -1105,17 +1032,16 @@ where
     Ok(tuple)
 }
 
-fn visit_struct_seq<'de, T, V, P>(
+fn visit_struct_seq<'de, T, V>(
     seq: &mut V,
     info: &T,
     registration: &TypeRegistration,
     registry: &TypeRegistry,
-    mut processor: P,
+    mut processor: Option<&mut ValueProcessor>,
 ) -> Result<DynamicStruct, V::Error>
 where
     T: StructLikeInfo + Container,
     V: SeqAccess<'de>,
-    P: ValueProcessor,
 {
     let mut dynamic_struct = DynamicStruct::default();
 
@@ -1145,7 +1071,7 @@ where
             .next_element_seed(TypedReflectDeserializer {
                 registration: info.get_field_registration(index, registry)?,
                 registry,
-                processor: &mut processor,
+                processor: processor.as_deref_mut(),
             })?
             .ok_or_else(|| Error::invalid_length(index, &len.to_string().as_str()))?;
         dynamic_struct.insert_boxed(name, value);
