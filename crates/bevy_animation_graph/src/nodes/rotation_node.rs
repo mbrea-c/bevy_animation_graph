@@ -6,7 +6,7 @@ use crate::core::pose::{BonePose, Pose};
 use crate::core::prelude::DataSpec;
 use crate::core::space_conversion::SpaceConversion;
 use crate::prelude::{PassContext, SpecContext};
-use crate::utils::asset::{self, GetTypedExt};
+use crate::utils::asset::GetTypedExt;
 use crate::utils::unwrap::UnwrapVal;
 use bevy::math::Quat;
 use bevy::reflect::std_traits::ReflectDefault;

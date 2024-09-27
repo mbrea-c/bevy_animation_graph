@@ -7,7 +7,7 @@ use crate::{
         errors::GraphError,
         state_machine::{high_level::StateMachine, LowLevelStateMachine},
     },
-    utils::asset::{self, GetTypedExt},
+    utils::asset::GetTypedExt,
 };
 use bevy::prelude::*;
 

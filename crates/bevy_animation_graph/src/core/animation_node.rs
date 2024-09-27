@@ -85,10 +85,10 @@ pub struct AnimationNode {
 
 impl AnimationNode {
     #[must_use]
-    pub fn new(name: impl Into<String>, node: Box<dyn NodeLike>) -> Self {
+    pub fn new(name: impl Into<String>, inner: Box<dyn NodeLike>) -> Self {
         Self {
             name: name.into(),
-            inner: node.into(),
+            inner,
             should_debug: false,
         }
     }

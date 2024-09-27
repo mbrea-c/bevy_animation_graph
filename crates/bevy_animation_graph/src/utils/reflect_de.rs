@@ -348,6 +348,10 @@ pub struct TypedReflectDeserializer<'a, 'p> {
 //   `ValueProcessor: Clone` since the closures inside may not (will not) be
 //   `Clone`.
 
+#[expect(
+    clippy::type_complexity,
+    reason = "can't use a type alias as a trait in `Box` here"
+)]
 pub struct ValueProcessor<'p> {
     pub can_deserialize: Box<dyn FnMut(&TypeRegistration) -> bool + 'p>,
     pub deserialize: Box<
@@ -360,14 +364,6 @@ pub struct ValueProcessor<'p> {
 }
 
 impl<'a, 'p> TypedReflectDeserializer<'a, 'p> {
-    pub fn new(registration: &'a TypeRegistration, registry: &'a TypeRegistry) -> Self {
-        Self {
-            registration,
-            registry,
-            processor: None,
-        }
-    }
-
     pub fn new_with_processor(
         registration: &'a TypeRegistration,
         registry: &'a TypeRegistry,
@@ -390,9 +386,9 @@ impl<'de> DeserializeSeed<'de> for TypedReflectDeserializer<'_, '_> {
     {
         // Ask the value processor to process this
         if let Some(processor) = self.processor.as_deref_mut() {
-            if (processor.can_deserialize)(&self.registration) {
+            if (processor.can_deserialize)(self.registration) {
                 let mut deserializer = <dyn erased_serde::Deserializer>::erase(deserializer);
-                return (processor.deserialize)(&self.registration, &mut deserializer)
+                return (processor.deserialize)(self.registration, &mut deserializer)
                     // TODO: is there a better way of returning this error?
                     .map_err(|err| serde::de::Error::custom(err.to_string()));
             }
@@ -999,6 +995,7 @@ where
         let value = map.next_value_seed(TypedReflectDeserializer {
             registration,
             registry,
+            #[expect(clippy::needless_option_as_deref, reason = "we are reborrowing")]
             processor: processor.as_deref_mut(),
         })?;
         dynamic_struct.insert_boxed(&key, value);
@@ -1048,6 +1045,7 @@ where
             .next_element_seed(TypedReflectDeserializer {
                 registration: info.get_field_registration(index, registry)?,
                 registry,
+                #[expect(clippy::needless_option_as_deref, reason = "we are reborrowing")]
                 processor: processor.as_deref_mut(),
             })?
             .ok_or_else(|| Error::invalid_length(index, &len.to_string().as_str()))?;
@@ -1096,6 +1094,7 @@ where
             .next_element_seed(TypedReflectDeserializer {
                 registration: info.get_field_registration(index, registry)?,
                 registry,
+                #[expect(clippy::needless_option_as_deref, reason = "we are reborrowing")]
                 processor: processor.as_deref_mut(),
             })?
             .ok_or_else(|| Error::invalid_length(index, &len.to_string().as_str()))?;

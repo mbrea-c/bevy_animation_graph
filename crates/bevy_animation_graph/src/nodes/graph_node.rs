@@ -4,7 +4,7 @@ use crate::core::context::CacheWriteFilter;
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
 use crate::prelude::{PassContext, SpecContext};
-use crate::utils::asset::{self, GetTypedExt};
+use crate::utils::asset::GetTypedExt;
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]

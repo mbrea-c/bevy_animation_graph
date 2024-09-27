@@ -7,10 +7,7 @@ use super::{
     prelude::GraphContextArena,
     skeleton::Skeleton,
 };
-use crate::{
-    prelude::SystemResources,
-    utils::asset::{self, GetTypedExt},
-};
+use crate::{prelude::SystemResources, utils::asset::GetTypedExt};
 use bevy::{
     asset::prelude::*, color::palettes::css::WHITE, ecs::prelude::*, reflect::prelude::*,
     utils::HashMap,

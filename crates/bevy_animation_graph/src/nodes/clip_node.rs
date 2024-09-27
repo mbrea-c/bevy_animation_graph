@@ -10,7 +10,7 @@ use crate::core::prelude::{DataSpec, DataValue};
 use crate::core::systems::get_keyframe;
 use crate::interpolation::prelude::InterpolateStep;
 use crate::prelude::{InterpolateLinear, PassContext, SpecContext};
-use crate::utils::asset::{self, GetTypedExt};
+use crate::utils::asset::GetTypedExt;
 use bevy::asset::Handle;
 use bevy::reflect::prelude::*;
 
