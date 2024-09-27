@@ -6,6 +6,7 @@ use crate::core::pose::{BonePose, Pose};
 use crate::core::prelude::DataSpec;
 use crate::core::space_conversion::SpaceConversion;
 use crate::prelude::{PassContext, SpecContext};
+use crate::utils::asset::{self, GetTypedExt};
 use crate::utils::unwrap::UnwrapVal;
 use bevy::math::Quat;
 use bevy::reflect::std_traits::ReflectDefault;
@@ -103,7 +104,11 @@ impl NodeLike for RotationNode {
         let mut target = target.id();
         let rotation: Quat = ctx.data_back(Self::ROTATION)?.val();
         let mut pose: Pose = ctx.data_back(Self::IN_POSE)?.val();
-        let Some(skeleton) = ctx.resources.skeleton_assets.get(&pose.skeleton) else {
+        let Some(skeleton) = ctx
+            .resources
+            .skeleton_assets
+            .get_typed(&pose.skeleton, &ctx.resources.loaded_untyped_assets)
+        else {
             return Err(GraphError::SkeletonMissing(ctx.node_id()));
         };
 

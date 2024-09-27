@@ -9,7 +9,7 @@ use crate::{
         space_conversion::SpaceConversion,
     },
     prelude::{BoneDebugGizmos, PassContext, SpecContext},
-    utils::unwrap::UnwrapVal,
+    utils::{asset::GetTypedExt, unwrap::UnwrapVal},
 };
 use bevy::{
     color::LinearRgba,
@@ -53,7 +53,11 @@ impl NodeLike for TwoBoneIKNode {
         let target_pos_char: Vec3 = ctx.data_back(Self::TARGETPOS)?.val();
         //let targetrotation: Quat = ctx.parameter_back(Self::TARGETROT).unwrap();
         let mut pose: Pose = ctx.data_back(Self::IN_POSE)?.val();
-        let Some(skeleton) = ctx.resources.skeleton_assets.get(&pose.skeleton) else {
+        let Some(skeleton) = ctx
+            .resources
+            .skeleton_assets
+            .get_typed(&pose.skeleton, &ctx.resources.loaded_untyped_assets)
+        else {
             return Err(GraphError::SkeletonMissing(ctx.node_id()));
         };
 

@@ -1,4 +1,4 @@
-use std::any::type_name;
+use std::any::{type_name, TypeId};
 
 use bevy::{asset::LoadedUntypedAsset, prelude::*};
 
@@ -15,26 +15,40 @@ use bevy::{asset::LoadedUntypedAsset, prelude::*};
 // TODO: also potentially replace the original handle with the properly typed
 // one
 
-pub fn look_up<'t, A: Asset>(
-    handle: &Handle<A>,
-    untyped: &Assets<LoadedUntypedAsset>,
-    typed: &'t Assets<A>,
-) -> Option<&'t A> {
-    if let Some(asset) = typed.get(handle) {
-        return Some(asset);
-    }
+pub trait GetTypedExt {
+    type Asset: Asset;
 
-    let untyped_handle = handle
-        .clone()
-        .untyped()
-        .try_typed::<LoadedUntypedAsset>()
-        .unwrap_or_else(|_| {
-            panic!(
-                "{handle:?} must either point to a `{}` or `{}`",
-                type_name::<A>(),
-                type_name::<LoadedUntypedAsset>(),
-            )
-        });
-    let LoadedUntypedAsset { handle } = untyped.get(&untyped_handle)?;
-    typed.get(&handle.clone().typed::<A>())
+    fn get_typed(
+        &self,
+        handle: &Handle<Self::Asset>,
+        untyped: &Assets<LoadedUntypedAsset>,
+    ) -> Option<&Self::Asset>;
+}
+
+impl<A: Asset> GetTypedExt for Assets<A> {
+    type Asset = A;
+
+    fn get_typed(
+        &self,
+        handle: &Handle<Self::Asset>,
+        untyped: &Assets<LoadedUntypedAsset>,
+    ) -> Option<&Self::Asset> {
+        let untyped_handle = handle.clone().untyped();
+        let type_id = untyped_handle.type_id();
+        if type_id == TypeId::of::<A>() {
+            return self.get(handle);
+        }
+
+        let untyped_handle = untyped_handle
+            .try_typed::<LoadedUntypedAsset>()
+            .unwrap_or_else(|_| {
+                panic!(
+                    "if this handle isn't for `{}`, then it must be for `{}`",
+                    type_name::<A>(),
+                    type_name::<LoadedUntypedAsset>()
+                )
+            });
+        let LoadedUntypedAsset { handle } = untyped.get(&untyped_handle)?;
+        self.get(&handle.clone().typed::<A>())
+    }
 }

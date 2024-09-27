@@ -12,7 +12,7 @@ use crate::{
         edge_data::{DataValue, EventQueue},
         errors::GraphError,
     },
-    utils::unwrap::UnwrapVal,
+    utils::{asset::GetTypedExt, unwrap::UnwrapVal},
 };
 use bevy::{
     asset::{Asset, Handle},
@@ -151,7 +151,7 @@ impl LowLevelStateMachine {
         let graph = ctx
             .resources
             .animation_graph_assets
-            .get(&state.graph)
+            .get_typed(&state.graph, &ctx.resources.loaded_untyped_assets)
             .unwrap();
 
         let mut input_overlay = InputOverlay::default();
@@ -258,7 +258,7 @@ impl LowLevelStateMachine {
                     let graph = ctx
                         .resources
                         .animation_graph_assets
-                        .get(queried_graph)
+                        .get_typed(queried_graph, &ctx.resources.loaded_untyped_assets)
                         .ok_or(GraphError::FSMGraphAssetMissing)?;
 
                     let target_pin = TargetPin::OutputData(DEFAULT_OUTPUT_POSE.to_string());
@@ -296,7 +296,7 @@ impl LowLevelStateMachine {
                     let graph = ctx
                         .resources
                         .animation_graph_assets
-                        .get(&state.graph)
+                        .get_typed(&state.graph, &ctx.resources.loaded_untyped_assets)
                         .unwrap();
                     let overlay = InputOverlay::default();
                     graph.get_time_update(
@@ -316,7 +316,7 @@ impl LowLevelStateMachine {
                     let graph = ctx
                         .resources
                         .animation_graph_assets
-                        .get(&state.graph)
+                        .get_typed(&state.graph, &ctx.resources.loaded_untyped_assets)
                         .unwrap();
                     let overlay = InputOverlay::default();
                     graph.get_time_update(
@@ -383,7 +383,7 @@ impl LowLevelStateMachine {
                 let graph = ctx
                     .resources
                     .animation_graph_assets
-                    .get(queried_graph)
+                    .get_typed(queried_graph, &ctx.resources.loaded_untyped_assets)
                     .ok_or(GraphError::FSMGraphAssetMissing)?;
 
                 let i = InputOverlay::default();

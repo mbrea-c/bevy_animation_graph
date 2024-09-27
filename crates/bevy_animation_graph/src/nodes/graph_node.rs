@@ -4,8 +4,7 @@ use crate::core::context::CacheWriteFilter;
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
 use crate::prelude::{PassContext, SpecContext};
-use crate::utils::asset;
-use bevy::asset::LoadedUntypedAsset;
+use crate::utils::asset::{self, GetTypedExt};
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
@@ -26,11 +25,13 @@ impl NodeLike for GraphNode {
     }
 
     fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let graph = ctx
+        let Some(graph) = ctx
             .resources
             .animation_graph_assets
-            .get(&self.graph)
-            .unwrap();
+            .get_typed(&self.graph, &ctx.resources.loaded_untyped_assets)
+        else {
+            return Ok(());
+        };
 
         let input_overlay = InputOverlay::default();
 
@@ -46,11 +47,11 @@ impl NodeLike for GraphNode {
     }
 
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let Some(graph) = asset::look_up(
-            &self.graph,
-            &ctx.resources.loaded_untyped_assets,
-            &ctx.resources.animation_graph_assets,
-        ) else {
+        let Some(graph) = ctx
+            .resources
+            .animation_graph_assets
+            .get_typed(&self.graph, &ctx.resources.loaded_untyped_assets)
+        else {
             return Ok(());
         };
 

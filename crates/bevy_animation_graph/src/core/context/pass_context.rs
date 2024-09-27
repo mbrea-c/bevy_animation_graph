@@ -14,6 +14,7 @@ use crate::{
     },
     nodes::{FSMNode, GraphNode},
     prelude::{AnimationGraph, DataValue},
+    utils::asset::GetTypedExt,
 };
 use bevy::{ecs::entity::Entity, utils::HashMap};
 
@@ -180,7 +181,7 @@ impl<'a> PassContext<'a> {
                 let fsm = self
                     .resources
                     .state_machine_assets
-                    .get(&node.fsm)
+                    .get_typed(&node.fsm, &self.resources.loaded_untyped_assets)
                     .unwrap()
                     .get_low_level_fsm();
                 let cur_state = fsm.states.get(&cur_state_id).unwrap();

@@ -7,7 +7,10 @@ use super::{
     prelude::GraphContextArena,
     skeleton::Skeleton,
 };
-use crate::prelude::SystemResources;
+use crate::{
+    prelude::SystemResources,
+    utils::asset::{self, GetTypedExt},
+};
 use bevy::{
     asset::prelude::*, color::palettes::css::WHITE, ecs::prelude::*, reflect::prelude::*,
     utils::HashMap,
@@ -106,7 +109,10 @@ impl AnimationGraphPlayer {
             return;
         };
 
-        let Some(graph) = system_resources.animation_graph_assets.get(graph_handle) else {
+        let Some(graph) = system_resources
+            .animation_graph_assets
+            .get_typed(graph_handle, &system_resources.loaded_untyped_assets)
+        else {
             return;
         };
 
@@ -162,13 +168,17 @@ impl AnimationGraphPlayer {
 
         let mut bones = std::mem::take(&mut self.debug_draw_bones);
 
-        let skeleton_id = self.skeleton.id();
+        let skeleton_handle = self.skeleton.clone();
 
         let mut ctx = self
             .get_pass_context(system_resources, root_entity)
             .with_debugging(true);
 
-        let Some(skeleton) = ctx.resources.skeleton_assets.get(skeleton_id) else {
+        let Some(skeleton) = ctx
+            .resources
+            .skeleton_assets
+            .get_typed(&skeleton_handle, &ctx.resources.loaded_untyped_assets)
+        else {
             return;
         };
 
