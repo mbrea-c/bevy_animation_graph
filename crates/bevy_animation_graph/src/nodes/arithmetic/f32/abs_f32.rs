@@ -7,14 +7,14 @@ use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default, NodeLike)]
-pub struct AbsF32 {}
+pub struct AbsF32;
 
 impl AbsF32 {
     pub const INPUT: &'static str = "F32 In";
     pub const OUTPUT: &'static str = "F32 Out";
 
     pub fn new() -> Self {
-        Self {}
+        Self
     }
 }
 

@@ -8,7 +8,7 @@ use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default, NodeLike)]
-pub struct DecomposeVec3Node {}
+pub struct DecomposeVec3Node;
 
 impl DecomposeVec3Node {
     pub const INPUT: &'static str = "vec";
@@ -17,7 +17,7 @@ impl DecomposeVec3Node {
     pub const OUTPUT_Z: &'static str = "z";
 
     pub fn new() -> Self {
-        Self {}
+        Self
     }
 }
 

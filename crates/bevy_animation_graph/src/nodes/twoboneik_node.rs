@@ -20,7 +20,7 @@ use bevy::{
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default, NodeLike)]
-pub struct TwoBoneIKNode {}
+pub struct TwoBoneIKNode;
 
 impl TwoBoneIKNode {
     pub const IN_TIME: &'static str = "time";

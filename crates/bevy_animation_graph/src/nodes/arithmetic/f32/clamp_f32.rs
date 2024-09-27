@@ -7,7 +7,7 @@ use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default, NodeLike)]
-pub struct ClampF32 {}
+pub struct ClampF32;
 
 impl ClampF32 {
     pub const INPUT: &'static str = "F32 In";
@@ -16,7 +16,7 @@ impl ClampF32 {
     pub const OUTPUT: &'static str = "F32 Out";
 
     pub fn new() -> Self {
-        Self {}
+        Self
     }
 }
 

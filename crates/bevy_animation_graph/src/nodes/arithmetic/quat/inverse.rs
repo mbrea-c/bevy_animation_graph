@@ -8,14 +8,14 @@ use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default, NodeLike)]
-pub struct InvertQuatNode {}
+pub struct InvertQuatNode;
 
 impl InvertQuatNode {
     pub const INPUT: &'static str = "quat";
     pub const OUTPUT: &'static str = "inverse";
 
     pub fn new() -> Self {
-        Self {}
+        Self
     }
 }
 

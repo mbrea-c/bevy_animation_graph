@@ -8,7 +8,7 @@ use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default, NodeLike)]
-pub struct LerpVec3Node {}
+pub struct LerpVec3Node;
 
 impl LerpVec3Node {
     pub const INPUT_A: &'static str = "a";
@@ -17,7 +17,7 @@ impl LerpVec3Node {
     pub const OUTPUT: &'static str = "out";
 
     pub fn new() -> Self {
-        Self {}
+        Self
     }
 }
 

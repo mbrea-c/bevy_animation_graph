@@ -8,7 +8,7 @@ use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default, NodeLike)]
-pub struct SelectF32 {}
+pub struct SelectF32;
 
 impl SelectF32 {
     pub const INPUT_BOOL: &'static str = "bool";
@@ -17,7 +17,7 @@ impl SelectF32 {
     pub const OUTPUT: &'static str = "out";
 
     pub fn new() -> Self {
-        Self {}
+        Self
     }
 }
 

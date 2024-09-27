@@ -7,7 +7,7 @@ use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default, NodeLike)]
-pub struct MulF32 {}
+pub struct MulF32;
 
 impl MulF32 {
     pub const INPUT_1: &'static str = "F32 In 1";
@@ -15,7 +15,7 @@ impl MulF32 {
     pub const OUTPUT: &'static str = "F32 Out";
 
     pub fn new() -> Self {
-        Self {}
+        Self
     }
 }
 

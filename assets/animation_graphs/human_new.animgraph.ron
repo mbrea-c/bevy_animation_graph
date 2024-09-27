@@ -3,7 +3,7 @@
         (
             name: "speed",
             ty: "bevy_animation_graph::nodes::speed_node::SpeedNode",
-            inner: SpeedNode(),
+            inner: (),
         ),
         (
             name: "walk clip 1",
@@ -138,7 +138,7 @@
         (
             name: "Make Rotation",
             ty: "bevy_animation_graph::nodes::arithmetic::vec3::rotation_arc::RotationArcNode",
-            inner: RotationArcNode(),
+            inner: (),
         ),
     ],
     edges_inverted: {

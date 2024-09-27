@@ -8,7 +8,7 @@ use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default, NodeLike)]
-pub struct MulQuatNode {}
+pub struct MulQuatNode;
 
 impl MulQuatNode {
     pub const INPUT_A: &'static str = "a";
@@ -16,7 +16,7 @@ impl MulQuatNode {
     pub const OUTPUT: &'static str = "out";
 
     pub fn new() -> Self {
-        Self {}
+        Self
     }
 }
 

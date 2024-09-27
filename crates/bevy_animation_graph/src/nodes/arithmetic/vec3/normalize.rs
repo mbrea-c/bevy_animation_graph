@@ -8,14 +8,14 @@ use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default, NodeLike)]
-pub struct NormalizeVec3Node {}
+pub struct NormalizeVec3Node;
 
 impl NormalizeVec3Node {
     pub const INPUT: &'static str = "in";
     pub const OUTPUT: &'static str = "out";
 
     pub fn new() -> Self {
-        Self {}
+        Self
     }
 }
 

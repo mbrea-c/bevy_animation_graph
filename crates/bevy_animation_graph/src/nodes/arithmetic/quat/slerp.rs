@@ -8,7 +8,7 @@ use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default, NodeLike)]
-pub struct SlerpQuatNode {}
+pub struct SlerpQuatNode;
 
 impl SlerpQuatNode {
     pub const INPUT_A: &'static str = "a";
@@ -17,7 +17,7 @@ impl SlerpQuatNode {
     pub const OUTPUT: &'static str = "out";
 
     pub fn new() -> Self {
-        Self {}
+        Self
     }
 }
 
