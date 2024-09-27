@@ -1,12 +1,5 @@
-use super::{serial::AnimationGraphSerial, AnimationGraph};
-use crate::{
-    core::{
-        animation_clip::GraphClip,
-        errors::{AssetLoaderError, ParseNodeError},
-    },
-    prelude::{AnimationNode, ReflectNodeLike},
-    utils::reflect_de::TypedReflectDeserializer,
-};
+use super::{serial::AnimationGraphLoadDeserializer, AnimationGraph};
+use crate::core::{animation_clip::GraphClip, errors::AssetLoaderError};
 use bevy::{
     asset::{io::Reader, AssetLoader, AsyncReadExt, LoadContext},
     gltf::Gltf,
@@ -116,7 +109,19 @@ impl AssetLoader for AnimationGraphLoader {
     ) -> Result<Self::Asset, Self::Error> {
         let mut bytes = vec![];
         reader.read_to_end(&mut bytes).await?;
-        let serial: AnimationGraphSerial = ron::de::from_bytes(&bytes)?;
+
+        // TODO: what's stopping us from removing the AnimationGraphSerial
+        // intermediary, and just deserializing to an AnimationGraph?
+
+        let mut ron_deserializer = ron::de::Deserializer::from_bytes(&bytes)?;
+        let graph_deserializer = AnimationGraphLoadDeserializer {
+            type_registry: &self.type_registry.read(),
+            load_context,
+        };
+        let serial = graph_deserializer
+            .deserialize(&mut ron_deserializer)
+            .map_err(|err| ron_deserializer.span_error(err))?;
+
         let mut graph = AnimationGraph::new();
 
         // --- Set up extra data
@@ -128,57 +133,8 @@ impl AssetLoader for AnimationGraphLoader {
 
         // --- Add nodes
         // ------------------------------------------------------------------------------------
-        let type_registry = self.type_registry.read();
         for node in serial.nodes {
-            let name = node.name;
-
-            let type_path = node.ty;
-            let type_registration = type_registry.get_with_type_path(&type_path).ok_or(
-                AssetLoaderError::ParseNode {
-                    name: name.clone(),
-                    source: ParseNodeError::NoTypeRegistration(type_path.clone()),
-                },
-            )?;
-            let node_like =
-                type_registration
-                    .data::<ReflectNodeLike>()
-                    .ok_or(AssetLoaderError::ParseNode {
-                        name: name.clone(),
-                        source: ParseNodeError::NotNodeLike(type_path.clone()),
-                    })?;
-            let from_reflect = type_registration.data::<ReflectFromReflect>().ok_or(
-                AssetLoaderError::ParseNode {
-                    name: name.clone(),
-                    source: ParseNodeError::NotFromReflect(type_path.clone()),
-                },
-            )?;
-
-            let inner =
-                TypedReflectDeserializer::new(type_registration, &type_registry, load_context)
-                    .deserialize(node.inner)
-                    .map_err(|err| AssetLoaderError::ParseNode {
-                        name: name.clone(),
-                        source: err.into(),
-                    })?;
-            let inner = from_reflect.from_reflect(&*inner).unwrap_or_else(|| {
-                panic!(
-                    "from reflect mismatch - reflecting from a `{}` into a `{}` - value: {inner:?}",
-                    inner.reflect_type_path(),
-                    type_registration.type_info().type_path()
-                )
-            });
-            let inner = node_like.get_boxed(inner).unwrap_or_else(|value| {
-                panic!(
-                    "value of type `{}` registration should be a `NodeLike` - value: {value:?}",
-                    value.reflect_type_path()
-                )
-            });
-
-            graph.add_node(AnimationNode {
-                name,
-                inner,
-                should_debug: false,
-            });
+            graph.add_node(node);
         }
         // ------------------------------------------------------------------------------------
 

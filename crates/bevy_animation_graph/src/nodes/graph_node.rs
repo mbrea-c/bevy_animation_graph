@@ -44,11 +44,12 @@ impl NodeLike for GraphNode {
     }
 
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let graph = ctx
-            .resources
-            .animation_graph_assets
-            .get(&self.graph)
-            .unwrap();
+        let Some(graph) = ctx.resources.animation_graph_assets.get(&self.graph) else {
+            // graph may not be loaded yet
+            // info!("TODO: graph not loaded - {:?}", self.graph);
+            return Ok(());
+        };
+        info!("TODO: graph loaded");
 
         let input_overlay = InputOverlay::default();
 

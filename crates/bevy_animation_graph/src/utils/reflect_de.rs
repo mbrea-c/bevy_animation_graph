@@ -5,7 +5,7 @@
 //! This should also be upstreamed to Bevy eventually, but for some more general
 //! use case than loading handles.
 
-use bevy::asset::{AssetPath, LoadContext, ReflectHandle};
+use bevy::asset::{AssetPath, LoadContext, LoadedUntypedAsset, ReflectHandle, UntypedHandle};
 use bevy::reflect::{
     serde::SerializationData, ArrayInfo, DynamicArray, DynamicEnum, DynamicList, DynamicMap,
     DynamicStruct, DynamicTuple, DynamicTupleStruct, DynamicVariant, EnumInfo, ListInfo, Map,
@@ -385,16 +385,18 @@ impl<'a, 'b, 'de> DeserializeSeed<'de> for TypedReflectDeserializer<'a, 'b> {
         }
 
         // Handle `Handle<T>`
-        if let Some(handle) = self.registration.data::<ReflectHandle>() {
-            let asset_type_id = handle.asset_type_id();
+        if let Some(handle_info) = self.registration.data::<ReflectHandle>() {
+            let asset_type_id = handle_info.asset_type_id();
             let asset_path = deserializer.deserialize_str(AssetPathVisitor)?;
-            let handle = self
+            let untyped_handle = self
                 .load_context
                 .loader()
                 .with_asset_type_id(asset_type_id)
                 .untyped()
                 .load(asset_path);
-            return Ok(Box::new(handle));
+            // this is actually a `Handle<LoadedUntypedAsset>`, not a `Handle<T>`
+            // we'll correct that in the AnimationGraphLoader...
+            return Ok(Box::new(untyped_handle));
         }
 
         match self.registration.type_info() {

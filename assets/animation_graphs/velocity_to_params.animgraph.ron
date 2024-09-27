@@ -2,39 +2,48 @@
     nodes: [
         (
             name: "Base speed",
-            node: AddF32,
+            ty: "bevy_animation_graph::nodes::arithmetic::f32::add_f32::AddF32",
+            inner: AddF32(),
         ),
         (
             name: "Amount into blend",
-            node: SubF32,
+            ty: "bevy_animation_graph::nodes::arithmetic::f32::sub_f32::SubF32",
+            inner: SubF32(),
         ),
         (
             name: "1 - blend_fac",
-            node: SubF32,
+            ty: "bevy_animation_graph::nodes::arithmetic::f32::sub_f32::SubF32",
+            inner: SubF32(),
         ),
         (
             name: "Factored run_speed",
-            node: MulF32,
+            ty: "bevy_animation_graph::nodes::arithmetic::f32::mul_f32::MulF32",
+            inner: MulF32(),
         ),
         (
             name: "Blend fac div",
-            node: DivF32,
+            ty: "bevy_animation_graph::nodes::arithmetic::f32::div_f32::DivF32",
+            inner: DivF32(),
         ),
         (
             name: "Clamp blend_fac",
-            node: ClampF32,
+            ty: "bevy_animation_graph::nodes::arithmetic::f32::clamp_f32::ClampF32",
+            inner: ClampF32(),
         ),
         (
             name: "speed_fac div",
-            node: DivF32,
+            ty: "bevy_animation_graph::nodes::arithmetic::f32::div_f32::DivF32",
+            inner: DivF32(),
         ),
         (
             name: "Blend range size",
-            node: SubF32,
+            ty: "bevy_animation_graph::nodes::arithmetic::f32::sub_f32::SubF32",
+            inner: SubF32(),
         ),
         (
             name: "Factored walk_speed",
-            node: MulF32,
+            ty: "bevy_animation_graph::nodes::arithmetic::f32::mul_f32::MulF32",
+            inner: MulF32(),
         ),
     ],
     edges_inverted: {

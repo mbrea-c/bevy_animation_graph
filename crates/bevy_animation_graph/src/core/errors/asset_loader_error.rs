@@ -18,12 +18,6 @@ pub enum AssetLoaderError {
     /// A [RON](ron) Error
     #[error("Could not parse RON: {0}")]
     RonSpannedError(#[from] ron::error::SpannedError),
-    #[error("Could not parse node \"{name}\": {source}")]
-    ParseNode {
-        name: String,
-        #[source]
-        source: ParseNodeError,
-    },
     #[error("Could not load Gltf: {0}")]
     GltfError(#[from] bevy::gltf::GltfError),
     #[error("Could not find gltf named label: {0}")]
@@ -36,17 +30,4 @@ pub enum AssetLoaderError {
     AnimatedSceneMissingRoot,
     #[error("Graph does not satisfy constraints: {0}")]
     InconsistentGraphError(#[from] GraphValidationError),
-}
-
-#[non_exhaustive]
-#[derive(Debug, Error)]
-pub enum ParseNodeError {
-    #[error("no type registration for `{0}`")]
-    NoTypeRegistration(String),
-    #[error("`{0}` is not a `NodeLike`")]
-    NotNodeLike(String),
-    #[error("`{0}` cannot be created from reflection")]
-    NotFromReflect(String),
-    #[error("failed to deserialize: {0}")] // TODO remove {0}
-    Deserialize(#[from] ron::Error),
 }

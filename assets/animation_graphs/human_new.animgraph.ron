@@ -132,13 +132,13 @@
             name: "walk clip 2",
             ty: "bevy_animation_graph::nodes::clip_node::ClipNode",
             inner: (
-                "animations/human_walk.anim.ron",
+                clip: "animations/human_walk.anim.ron",
             ),
         ),
         (
             name: "Make Rotation",
             ty: "bevy_animation_graph::nodes::arithmetic::vec3::rotation_arc::RotationArcNode",
-            inner: RotationArcNode,
+            inner: RotationArcNode(),
         ),
     ],
     edges_inverted: {

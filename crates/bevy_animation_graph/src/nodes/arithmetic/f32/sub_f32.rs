@@ -1,12 +1,12 @@
 use crate::core::animation_graph::PinMap;
-use crate::core::animation_node::NodeLike;
+use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
 use crate::prelude::{PassContext, SpecContext};
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
-#[reflect(Default)]
+#[reflect(Default, NodeLike)]
 pub struct SubF32 {}
 
 impl SubF32 {
