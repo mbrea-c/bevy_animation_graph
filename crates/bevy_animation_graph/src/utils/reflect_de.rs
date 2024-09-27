@@ -327,31 +327,14 @@ pub struct TypedReflectDeserializer<'a, P> {
 pub trait ValueProcessor {
     type Seed;
 
-    fn seed_deserialize(&mut self, registration: &TypeRegistration) -> Option<Self::Seed>;
+    fn seed_deserialize(self, registration: &TypeRegistration) -> Option<Self::Seed>;
 
     fn deserialize(
-        &mut self,
+        self,
         registration: &TypeRegistration,
         deserializer: &mut dyn erased_serde::Deserializer,
         seed: Self::Seed,
     ) -> Result<Box<dyn Reflect>, erased_serde::Error>;
-}
-
-impl ValueProcessor for () {
-    type Seed = Infallible;
-
-    fn seed_deserialize(&mut self, _registration: &TypeRegistration) -> Option<Self::Seed> {
-        None
-    }
-
-    fn deserialize(
-        &mut self,
-        _registration: &TypeRegistration,
-        _deserializer: &mut dyn erased_serde::Deserializer,
-        _seed: Self::Seed,
-    ) -> Result<Box<dyn Reflect>, erased_serde::Error> {
-        unreachable!()
-    }
 }
 
 impl<P: ValueProcessor + ?Sized> ValueProcessor for &mut P {
@@ -371,7 +354,30 @@ impl<P: ValueProcessor + ?Sized> ValueProcessor for &mut P {
     }
 }
 
-impl<Seed, SeedDeserialize, Deserialize> ValueProcessor for (SeedDeserialize, Deserialize)
+impl ValueProcessor for () {
+    type Seed = Infallible;
+
+    fn seed_deserialize(&mut self, _registration: &TypeRegistration) -> Option<Self::Seed> {
+        None
+    }
+
+    fn deserialize(
+        &mut self,
+        _registration: &TypeRegistration,
+        _deserializer: &mut dyn erased_serde::Deserializer,
+        _seed: Self::Seed,
+    ) -> Result<Box<dyn Reflect>, erased_serde::Error> {
+        unreachable!()
+    }
+}
+
+pub struct ValueProcessorImpl<SeedDeserialize, Deserialize> {
+    pub seed_deserialize: SeedDeserialize,
+    pub deserialize: Deserialize,
+}
+
+impl<Seed, SeedDeserialize, Deserialize> ValueProcessor
+    for ValueProcessorImpl<SeedDeserialize, Deserialize>
 where
     SeedDeserialize: FnMut(&TypeRegistration) -> Option<Seed>,
     Deserialize: FnMut(
@@ -383,7 +389,7 @@ where
     type Seed = Seed;
 
     fn seed_deserialize(&mut self, registration: &TypeRegistration) -> Option<Seed> {
-        (self.0)(registration)
+        (self.seed_deserialize)(registration)
     }
 
     fn deserialize(
@@ -392,7 +398,7 @@ where
         deserializer: &mut dyn erased_serde::Deserializer,
         seed: Seed,
     ) -> Result<Box<dyn Reflect>, erased_serde::Error> {
-        (self.1)(registration, deserializer, seed)
+        (self.deserialize)(registration, deserializer, seed)
     }
 }
 
@@ -407,28 +413,16 @@ impl<'a> TypedReflectDeserializer<'a, ()> {
     }
 }
 
-impl<'a, Seed, SeedDeserialize, Deserialize>
-    TypedReflectDeserializer<'a, (SeedDeserialize, Deserialize)>
-where
-    SeedDeserialize: FnMut(&TypeRegistration) -> Option<Seed>,
-    Deserialize: FnMut(
-        &TypeRegistration,
-        &mut dyn erased_serde::Deserializer,
-        Seed,
-    ) -> Result<Box<dyn Reflect>, erased_serde::Error>,
-    (SeedDeserialize, Deserialize): ValueProcessor,
-{
-    #[must_use]
+impl<'a, P> TypedReflectDeserializer<'a, P> {
     pub const fn new_with_processor(
         registration: &'a TypeRegistration,
         registry: &'a TypeRegistry,
-        seed_deserialize: SeedDeserialize,
-        deserialize: Deserialize,
+        processor: P,
     ) -> Self {
         Self {
             registration,
             registry,
-            processor: (seed_deserialize, deserialize),
+            processor,
         }
     }
 }
