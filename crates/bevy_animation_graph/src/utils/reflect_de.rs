@@ -320,6 +320,10 @@ pub struct TypedReflectDeserializer<'a, P> {
     pub processor: P,
 }
 
+// TODO: lifetime and type system hackery to let `Seed` take lifetimes from
+// `seed_deserialize`'s `registration`, and then use those lifetimes in
+// `deserialize` on the `seed` there
+
 pub trait ValueProcessor {
     type Seed;
 
@@ -367,35 +371,26 @@ impl<P: ValueProcessor + ?Sized> ValueProcessor for &mut P {
     }
 }
 
-trait Helper {
-    type This<'a>;
-}
-
-impl<T> Helper for T {
-    type This<'a> = Self;
-}
-
-impl<'r1, 'r2, Seed, SeedDeserialize, Deserialize> ValueProcessor for (SeedDeserialize, Deserialize)
+impl<Seed, SeedDeserialize, Deserialize> ValueProcessor for (SeedDeserialize, Deserialize)
 where
-    Seed: Helper,
-    SeedDeserialize: FnMut(&'r1 TypeRegistration) -> Option<Seed::This<'r1>>,
+    SeedDeserialize: FnMut(&TypeRegistration) -> Option<Seed>,
     Deserialize: FnMut(
-        &'r2 TypeRegistration,
+        &TypeRegistration,
         &mut dyn erased_serde::Deserializer,
-        Seed::This<'r2>,
+        Seed,
     ) -> Result<Box<dyn Reflect>, erased_serde::Error>,
 {
     type Seed = Seed;
 
-    fn seed_deserialize(&mut self, registration: &'r1 TypeRegistration) -> Option<Seed::This<'r1>> {
+    fn seed_deserialize(&mut self, registration: &TypeRegistration) -> Option<Seed> {
         (self.0)(registration)
     }
 
     fn deserialize(
         &mut self,
-        registration: &'r2 TypeRegistration,
+        registration: &TypeRegistration,
         deserializer: &mut dyn erased_serde::Deserializer,
-        seed: Seed::This<'r2>,
+        seed: Seed,
     ) -> Result<Box<dyn Reflect>, erased_serde::Error> {
         (self.1)(registration, deserializer, seed)
     }
@@ -412,16 +407,16 @@ impl<'a> TypedReflectDeserializer<'a, ()> {
     }
 }
 
-impl<'a, 'r, Seed, SeedDeserialize, Deserialize>
+impl<'a, Seed, SeedDeserialize, Deserialize>
     TypedReflectDeserializer<'a, (SeedDeserialize, Deserialize)>
 where
-    SeedDeserialize: FnMut(&'r TypeRegistration) -> Option<Seed>,
+    SeedDeserialize: FnMut(&TypeRegistration) -> Option<Seed>,
     Deserialize: FnMut(
-        &'r TypeRegistration,
+        &TypeRegistration,
         &mut dyn erased_serde::Deserializer,
         Seed,
     ) -> Result<Box<dyn Reflect>, erased_serde::Error>,
-    (SeedDeserialize, Deserialize): ValueProcessor<'r>,
+    (SeedDeserialize, Deserialize): ValueProcessor,
 {
     #[must_use]
     pub const fn new_with_processor(
@@ -438,19 +433,21 @@ where
     }
 }
 
-impl<'a, 'r, 'de, P: ValueProcessor<'r>> DeserializeSeed<'de> for TypedReflectDeserializer<'a, P> {
+impl<'a, 'de, P: ValueProcessor> DeserializeSeed<'de> for TypedReflectDeserializer<'a, P> {
     type Value = Box<dyn Reflect>;
 
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    fn deserialize<D>(mut self, deserializer: D) -> Result<Self::Value, D::Error>
     where
         D: serde::Deserializer<'de>,
     {
         // Ask the value processor to process this
         if let Some(seed) = self.processor.seed_deserialize(&self.registration) {
-            let deserializer = <dyn erased_serde::Deserializer>::erase(deserializer);
+            let mut deserializer = <dyn erased_serde::Deserializer>::erase(deserializer);
             return self
                 .processor
-                .deserialize(&self.registration, &mut deserializer, seed);
+                .deserialize(&self.registration, &mut deserializer, seed)
+                // TODO: is there a better way of returning this error?
+                .map_err(|err| serde::de::Error::custom(err.to_string()));
         }
 
         let type_path = self.registration.type_info().type_path();

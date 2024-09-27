@@ -6,7 +6,7 @@ use crate::{
     utils::reflect_de::TypedReflectDeserializer,
 };
 use bevy::{
-    asset::{LoadContext, ReflectHandle},
+    asset::{AssetPath, LoadContext, ReflectHandle},
     reflect::{ReflectFromReflect, TypeRegistry},
     utils::HashMap,
 };
@@ -110,64 +110,68 @@ impl<'de> DeserializeSeed<'de> for AnimationNodeLoadDeserializer<'_, '_> {
                 let reflect_deserializer = TypedReflectDeserializer::new_with_processor(
                     type_registration,
                     type_registry,
-                    |registration| registration.data::<ReflectHandle>(),
-                    |_, deserializer, reflect_handle| {
-                        panic!()
-                        // todo
-                        // struct AssetPathVisitor;
+                    // TODO: Technically, the data we get out of this call could
+                    // be passed straight to the deserializer fn.
+                    // However, this requires some sort of lifetime and type
+                    // magic that I don't understand. For now, this is fine.
+                    |registration| registration.data::<ReflectHandle>().map(drop),
+                    |registration, deserializer, ()| {
+                        struct AssetPathVisitor;
 
-                        // impl<'de> Visitor<'de> for AssetPathVisitor {
-                        //     type Value = AssetPath<'de>;
+                        impl<'de> Visitor<'de> for AssetPathVisitor {
+                            type Value = AssetPath<'de>;
 
-                        //     fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
-                        //         formatter.write_str("asset path")
-                        //     }
+                            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                                formatter.write_str("asset path")
+                            }
 
-                        //     fn visit_borrowed_str<E>(self, v: &'de str) -> Result<Self::Value, E>
-                        //     where
-                        //         E: Error,
-                        //     {
-                        //         AssetPath::try_parse(v).map_err(|err| {
-                        //             Error::custom(format!("not a valid asset path: {err:#}"))
-                        //         })
-                        //     }
+                            fn visit_borrowed_str<E>(self, v: &'de str) -> Result<Self::Value, E>
+                            where
+                                E: de::Error,
+                            {
+                                AssetPath::try_parse(v).map_err(|err| {
+                                    de::Error::custom(format!("not a valid asset path: {err:#}"))
+                                })
+                            }
 
-                        //     fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
-                        //     where
-                        //         E: Error,
-                        //     {
-                        //         AssetPath::try_parse(&v)
-                        //             .map(AssetPath::into_owned)
-                        //             .map_err(|err| {
-                        //                 Error::custom(format!("not a valid asset path: {err:#}"))
-                        //             })
-                        //     }
+                            fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+                            where
+                                E: de::Error,
+                            {
+                                AssetPath::try_parse(&v)
+                                    .map(AssetPath::into_owned)
+                                    .map_err(|err| {
+                                        de::Error::custom(format!(
+                                            "not a valid asset path: {err:#}"
+                                        ))
+                                    })
+                            }
 
-                        //     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-                        //     where
-                        //         E: Error,
-                        //     {
-                        //         AssetPath::try_parse(&v.to_owned())
-                        //             .map(AssetPath::into_owned)
-                        //             .map_err(|err| {
-                        //                 Error::custom(format!("not a valid asset path: {err:#}"))
-                        //             })
-                        //     }
-                        // }
+                            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+                            where
+                                E: de::Error,
+                            {
+                                AssetPath::try_parse(&v.to_owned())
+                                    .map(AssetPath::into_owned)
+                                    .map_err(|err| {
+                                        de::Error::custom(format!(
+                                            "not a valid asset path: {err:#}"
+                                        ))
+                                    })
+                            }
+                        }
 
-                        // if let Some(handle_info) = self.registration.data::<ReflectHandle>() {
-                        //     let asset_type_id = handle_info.asset_type_id();
-                        //     let asset_path = deserializer.deserialize_str(AssetPathVisitor)?;
-                        //     let untyped_handle = self
-                        //         .load_context
-                        //         .loader()
-                        //         .with_asset_type_id(asset_type_id)
-                        //         .untyped()
-                        //         .load(asset_path);
-                        //     // this is actually a `Handle<LoadedUntypedAsset>`, not a `Handle<T>`
-                        //     // we'll correct that in the AnimationGraphLoader...
-                        //     return Ok(Box::new(untyped_handle));
-                        // }
+                        let handle_info = registration.data::<ReflectHandle>().unwrap();
+                        let asset_type_id = handle_info.asset_type_id();
+                        let asset_path = deserializer.deserialize_str(AssetPathVisitor)?;
+                        let untyped_handle = load_context
+                            .loader()
+                            .with_asset_type_id(asset_type_id)
+                            .untyped()
+                            .load(asset_path);
+                        // this is actually a `Handle<LoadedUntypedAsset>`, not a `Handle<T>`
+                        // we'll correct that in the AnimationGraphLoader...
+                        Ok(Box::new(untyped_handle))
                     },
                 );
                 let inner = reflect_deserializer.deserialize(deserializer)?;
