@@ -4,6 +4,8 @@ use crate::core::context::CacheWriteFilter;
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
 use crate::prelude::{PassContext, SpecContext};
+use crate::utils::asset;
+use bevy::asset::LoadedUntypedAsset;
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
@@ -44,12 +46,13 @@ impl NodeLike for GraphNode {
     }
 
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let Some(graph) = ctx.resources.animation_graph_assets.get(&self.graph) else {
-            // graph may not be loaded yet
-            // info!("TODO: graph not loaded - {:?}", self.graph);
+        let Some(graph) = asset::look_up(
+            &self.graph,
+            &ctx.resources.loaded_untyped_assets,
+            &ctx.resources.animation_graph_assets,
+        ) else {
             return Ok(());
         };
-        info!("TODO: graph loaded");
 
         let input_overlay = InputOverlay::default();
 

@@ -16,8 +16,8 @@ use super::{
 };
 use crate::nodes::{
     AbsF32, AddF32, BlendMode, BlendNode, BlendSyncMode, ChainNode, ClampF32, ClipNode, CompareF32,
-    DivF32, DummyNode, FireEventNode, FlipLRNode, GraphNode, LoopNode, MulF32, PaddingNode,
-    RotationArcNode, RotationNode, SpeedNode, SubF32, TwoBoneIKNode,
+    DivF32, DummyNode, FSMNode, FireEventNode, FlipLRNode, GraphNode, LoopNode, MulF32,
+    PaddingNode, RotationArcNode, RotationNode, SpeedNode, SubF32, TwoBoneIKNode,
 };
 use crate::prelude::{
     config::{FlipConfig, FlipNameMapper, PatternMapper, PatternMapperSerial},
@@ -112,6 +112,7 @@ impl AnimationGraphPlugin {
             .register_type::<CompareF32>()
             .register_type::<FireEventNode>()
             .register_type::<RotationArcNode>()
+            .register_type::<FSMNode>()
             // .register_type::<ExtendSkeleton>()
             // .register_type::<IntoBoneSpaceNode>()
             // .register_type::<IntoGlobalSpaceNode>()

@@ -2,7 +2,8 @@
     nodes: [
         (
             name: "flip run",
-            node: FlipLR(
+            ty: "bevy_animation_graph::nodes::flip_lr_node::FlipLRNode",
+            inner: (
                 config: (
                     name_mapper: Pattern((
                         key_1: "L",
@@ -15,27 +16,36 @@
         ),
         (
             name: "chain run",
-            node: Chain(
+            ty: "bevy_animation_graph::nodes::chain_node::ChainNode",
+            inner: (
                 interpolation_period: 0.5,
             ),
         ),
         (
             name: "speed",
-            node: Speed,
+            ty: "bevy_animation_graph::nodes::speed_node::SpeedNode",
+            inner: (),
         ),
         (
             name: "run clip 1",
-            node: Clip("animations/human_run.anim.ron", None, None),
+            ty: "bevy_animation_graph::nodes::clip_node::ClipNode",
+            inner: (
+                clip: "animations/human_run.anim.ron",
+            ),
         ),
         (
             name: "loop",
-            node: Loop(
+            ty: "bevy_animation_graph::nodes::loop_node::LoopNode",
+            inner: (
                 interpolation_period: 0.5,
             ),
         ),
         (
             name: "run clip 2",
-            node: Clip("animations/human_run.anim.ron", None, None),
+            ty: "bevy_animation_graph::nodes::clip_node::ClipNode",
+            inner: (
+                clip: "animations/human_run.anim.ron",
+            ),
         ),
     ],
     edges_inverted: {

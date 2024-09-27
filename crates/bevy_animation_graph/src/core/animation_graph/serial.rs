@@ -116,7 +116,7 @@ fn deserialize_handle(
         .untyped()
         .load(asset_path);
     // this is actually a `Handle<LoadedUntypedAsset>`, not a `Handle<T>`
-    // we'll correct that in the AnimationGraphLoader...
+    // we'll correct that later...
     Ok(Box::new(untyped_handle))
 }
 
@@ -170,7 +170,6 @@ impl<'de> DeserializeSeed<'de> for AnimationNodeLoadDeserializer<'_, '_> {
                         deserialize_handle(registration, deserializer, load_context)
                     }),
                 };
-
                 let reflect_deserializer = TypedReflectDeserializer::new_with_processor(
                     type_registration,
                     type_registry,

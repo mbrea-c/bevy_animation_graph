@@ -319,18 +319,17 @@ pub struct TypedReflectDeserializer<'a, 'p> {
     pub processor: Option<&'a mut ValueProcessor<'p>>,
 }
 
-// TODO: lifetime and type system hackery to let `Seed` take lifetimes from
-// `seed_deserialize`'s `registration`, and then use those lifetimes in
-// `deserialize` on the `seed` there
-
-// some impl notes:
-//
 // Why are we using dynamic dispatch? Why not just
 // `TypedReflectDeserializer<P: ValueProcessor>?`
 //   I tried to get this approach working for a long time. But we need
 //   `impl<T: ValueProcessor> ValueProcessor for &mut T`, which for some reason
 //   causes rustc to overflow when type checking. Making it static probably is
 //   the best approach, but I've already spent way too much time on this.
+//
+// Why `ValueProcessor<'p>` instead of `ValueProcessor`?
+//   Otherwise the closures must be `'static`. This makes doing what we do in
+//   `animation_graph::serial` impossible, since we would be moving our
+//   `&mut LoadContext` into the closure.
 //
 // Can we pass some data out of `can_deserialize` into `deserialize`?
 //   Technically this is possible, but would add an extra type parameter on
