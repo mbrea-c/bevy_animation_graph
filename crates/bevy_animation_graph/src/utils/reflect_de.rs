@@ -1,6 +1,8 @@
-//! Carbon copy of [`bevy::reflect::serde`] but with an added [`LoadContext`]
-//! parameter given, which automatically loads [`Handle`]s when it encounters
-//! them in a field.
+//! Carbon copy of [`bevy::reflect::serde`] but with an added [`ValueProcessor`]
+//! used for potentially overriding the deserialization of certain fields.
+//!
+//! We use this to automatically load [`Handle`]s in reflect-built structs. Note
+//! that this process is actually quite hacky - see [`crate::utils::asset`].
 //!
 //! This should also be upstreamed to Bevy eventually, but for some more general
 //! use case than loading handles.

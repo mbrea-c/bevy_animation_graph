@@ -116,7 +116,7 @@ fn deserialize_handle(
         .untyped()
         .load(asset_path);
     // this is actually a `Handle<LoadedUntypedAsset>`, not a `Handle<T>`
-    // we'll correct that later...
+    // we fix that in `crate::utils::asset`
     Ok(Box::new(untyped_handle))
 }
 
