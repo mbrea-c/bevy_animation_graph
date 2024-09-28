@@ -12,7 +12,7 @@ use crate::{
         pose::BoneId,
         state_machine::low_level::{LowLevelStateId, LowLevelStateMachine},
     },
-    nodes::{FSMNode, GraphNode},
+    node,
     prelude::{AnimationGraph, DataValue},
     utils::asset::GetTypedExt,
 };
@@ -170,9 +170,9 @@ impl<'a> PassContext<'a> {
         let graph_id = {
             let node = node.inner.as_any();
 
-            if let Some(node) = node.downcast_ref::<GraphNode>() {
+            if let Some(node) = node.downcast_ref::<node::graph::Graph>() {
                 node.graph.id()
-            } else if let Some(node) = node.downcast_ref::<FSMNode>() {
+            } else if let Some(node) = node.downcast_ref::<node::graph::Fsm>() {
                 // TODO: Extract this into a function, probably(?) in the FSM code
                 let cur_state_id = fsm_ctx
                     .as_ref()

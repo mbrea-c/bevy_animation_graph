@@ -9,7 +9,7 @@ use crate::{
         prelude::GraphContextArena,
         state_machine::high_level::StateMachine,
     },
-    nodes::FSMNode,
+    node,
     prelude::{
         DataSpec, DataValue, DeferredGizmos, OptDataSpec, PassContext, SpecContext, SystemResources,
     },
@@ -494,7 +494,7 @@ impl AnimationGraph {
         self.nodes
             .values()
             .filter_map(|node| {
-                let fsm = node.inner.as_any().downcast_ref::<FSMNode>()?;
+                let fsm = node.inner.as_any().downcast_ref::<node::graph::Fsm>()?;
                 if fsm.fsm.id() == fsm_id {
                     Some(node.name.clone())
                 } else {

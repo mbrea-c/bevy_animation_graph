@@ -1,8 +1,13 @@
 (
     nodes: [
         (
+            name: "speed",
+            ty: "bevy_animation_graph::node::pose::ChangeSpeed",
+            inner: (),
+        ),
+        (
             name: "flip run",
-            ty: "bevy_animation_graph::nodes::flip_lr_node::FlipLRNode",
+            ty: "bevy_animation_graph::node::pose::FlipLeftRight",
             inner: (
                 config: (
                     name_mapper: Pattern((
@@ -15,53 +20,52 @@
             ),
         ),
         (
-            name: "chain run",
-            ty: "bevy_animation_graph::nodes::chain_node::ChainNode",
-            inner: (
-                interpolation_period: 0.5,
-            ),
-        ),
-        (
-            name: "speed",
-            ty: "bevy_animation_graph::nodes::speed_node::SpeedNode",
-            inner: (),
-        ),
-        (
-            name: "run clip 1",
-            ty: "bevy_animation_graph::nodes::clip_node::ClipNode",
-            inner: (
-                clip: "animations/human_run.anim.ron",
-            ),
-        ),
-        (
             name: "loop",
-            ty: "bevy_animation_graph::nodes::loop_node::LoopNode",
+            ty: "bevy_animation_graph::node::pose::Repeat",
             inner: (
                 interpolation_period: 0.5,
             ),
         ),
         (
             name: "run clip 2",
-            ty: "bevy_animation_graph::nodes::clip_node::ClipNode",
+            ty: "bevy_animation_graph::node::pose::Clip",
             inner: (
                 clip: "animations/human_run.anim.ron",
+                override_duration: None,
+                override_interpolation: None,
+            ),
+        ),
+        (
+            name: "chain run",
+            ty: "bevy_animation_graph::node::pose::Chain",
+            inner: (
+                interpolation_period: 0.5,
+            ),
+        ),
+        (
+            name: "run clip 1",
+            ty: "bevy_animation_graph::node::pose::Clip",
+            inner: (
+                clip: "animations/human_run.anim.ron",
+                override_duration: None,
+                override_interpolation: None,
             ),
         ),
     ],
     edges_inverted: {
-        NodeData("speed", "pose"): NodeData("loop", "pose"),
-        NodeTime("flip run", "time"): NodeTime("run clip 2"),
-        NodeTime("loop", "time"): NodeTime("chain run"),
-        NodeTime("chain run", "time B"): NodeTime("flip run"),
+        NodeData("speed", "speed"): InputData("speed"),
         OutputTime: NodeTime("speed"),
-        NodeData("flip run", "pose"): NodeData("run clip 2", "pose"),
-        NodeData("chain run", "pose B"): NodeData("flip run", "pose"),
-        OutputData("pose"): NodeData("speed", "pose"),
-        NodeTime("speed", "time"): NodeTime("loop"),
-        NodeData("loop", "pose"): NodeData("chain run", "pose"),
-        NodeData("speed", "Speed"): InputData("speed"),
-        NodeTime("chain run", "time A"): NodeTime("run clip 1"),
-        NodeData("chain run", "pose A"): NodeData("run clip 1", "pose"),
+        NodeData("chain run", "pose_a"): NodeData("run clip 1", "out"),
+        NodeTime("flip run", "in_time"): NodeTime("run clip 2"),
+        NodeData("chain run", "pose_b"): NodeData("flip run", "out"),
+        NodeTime("chain run", "time_a"): NodeTime("run clip 1"),
+        NodeData("loop", "in_pose"): NodeData("chain run", "out"),
+        NodeTime("loop", "in_time"): NodeTime("chain run"),
+        NodeData("speed", "in_pose"): NodeData("loop", "out"),
+        NodeData("flip run", "in_pose"): NodeData("run clip 2", "out"),
+        NodeTime("chain run", "time_b"): NodeTime("flip run"),
+        NodeTime("speed", "in_time"): NodeTime("loop"),
+        OutputData("pose"): NodeData("speed", "out"),
     },
     default_parameters: {
         "blend": F32(0.2),
@@ -74,12 +78,12 @@
     output_time: Some(()),
     extra: (
         node_positions: {
-            "flip run": (325.0, 549.0),
-            "chain run": (483.0, 436.0),
             "speed": (777.0, 428.0),
-            "run clip 1": (327.0, 394.0),
+            "flip run": (325.0, 549.0),
             "loop": (640.0, 443.0),
             "run clip 2": (182.0, 548.0),
+            "chain run": (483.0, 436.0),
+            "run clip 1": (327.0, 394.0),
         },
         input_position: (414.0, 193.0),
         output_position: (914.0, 431.0),

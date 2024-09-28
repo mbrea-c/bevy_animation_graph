@@ -4,7 +4,7 @@ use super::{
     errors::GraphError,
 };
 use crate::{
-    nodes::DummyNode,
+    node::Dummy,
     prelude::{PassContext, SpecContext},
 };
 use bevy::{
@@ -135,7 +135,6 @@ impl PinOrdering {
 }
 
 #[derive(Debug, Deref, DerefMut)]
-// #[derive(Reflect)] // manual reflect impl (see below)
 pub struct AnimationNode {
     pub name: String,
     #[deref]
@@ -157,7 +156,7 @@ impl AnimationNode {
 
 impl Default for AnimationNode {
     fn default() -> Self {
-        Self::new("", Box::new(DummyNode))
+        Self::new("", Box::new(Dummy))
     }
 }
 

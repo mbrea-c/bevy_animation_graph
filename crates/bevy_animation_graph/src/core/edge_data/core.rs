@@ -8,6 +8,7 @@ use bevy::{
     reflect::{std_traits::ReflectDefault, Reflect},
 };
 use serde::{Deserialize, Serialize};
+use thiserror::Error;
 
 #[derive(Reflect, Clone, Copy, Debug, Serialize, Deserialize, Default)]
 #[reflect(Default)]
@@ -237,41 +238,39 @@ impl DataValue {
     }
 }
 
-impl From<f32> for DataValue {
-    fn from(value: f32) -> Self {
-        Self::F32(value)
-    }
+#[derive(Debug, Clone, Copy, Error)]
+#[error("wrong data value kind")]
+pub struct WrongDataValueKind;
+
+macro_rules! impl_variant {
+    ($unwrapped:ident, $wrapped:ident) => {
+        impl From<$unwrapped> for DataValue {
+            fn from(value: $unwrapped) -> Self {
+                Self::$wrapped(value)
+            }
+        }
+
+        impl TryFrom<DataValue> for $unwrapped {
+            type Error = WrongDataValueKind;
+
+            fn try_from(value: DataValue) -> Result<Self, Self::Error> {
+                match value {
+                    DataValue::$wrapped(v) => Ok(v),
+                    _ => Err(WrongDataValueKind),
+                }
+            }
+        }
+    };
 }
 
-impl From<bool> for DataValue {
-    fn from(value: bool) -> Self {
-        Self::Bool(value)
-    }
-}
-
-impl From<Vec3> for DataValue {
-    fn from(value: Vec3) -> Self {
-        Self::Vec3(value)
-    }
-}
-
-impl From<Quat> for DataValue {
-    fn from(value: Quat) -> Self {
-        Self::Quat(value)
-    }
-}
-
-impl From<Pose> for DataValue {
-    fn from(value: Pose) -> Self {
-        Self::Pose(value)
-    }
-}
-
-impl From<EventQueue> for DataValue {
-    fn from(value: EventQueue) -> Self {
-        Self::EventQueue(value)
-    }
-}
+impl_variant!(bool, Bool);
+impl_variant!(f32, F32);
+impl_variant!(Vec3, Vec3);
+impl_variant!(Quat, Quat);
+impl_variant!(EntityPath, EntityPath);
+impl_variant!(BoneMask, BoneMask);
+impl_variant!(Pose, Pose);
+impl_variant!(EventQueue, EventQueue);
 
 impl From<&DataValue> for DataSpec {
     fn from(value: &DataValue) -> Self {

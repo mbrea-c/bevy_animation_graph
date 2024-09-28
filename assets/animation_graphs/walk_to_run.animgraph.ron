@@ -2,36 +2,39 @@
     nodes: [
         (
             name: "Done",
-            ty: "bevy_animation_graph::nodes::arithmetic::event_queue::fire_event::FireEventNode",
+            ty: "bevy_animation_graph::node::graph::SendEvent",
             inner: (
                 event: EndTransition,
             ),
         ),
         (
             name: "Blend",
-            ty: "bevy_animation_graph::nodes::blend_node::BlendNode",
-            inner: (),
+            ty: "bevy_animation_graph::node::pose::Blend",
+            inner: (
+                mode: LinearInterpolate,
+                sync_mode: Absolute,
+            ),
         ),
         (
             name: "Is it done?",
-            ty: "bevy_animation_graph::nodes::arithmetic::f32::compare_f32::CompareF32",
+            ty: "bevy_animation_graph::node::f32::Compare",
             inner: (
                 op: MoreEqual,
             ),
         ),
     ],
     edges_inverted: {
-        NodeData("Is it done?", "F32 In 2"): InputData("1"),
-        NodeTime("Blend", "time A"): InputTime("source time"),
-        OutputData("pose"): NodeData("Blend", "pose"),
-        NodeData("Done", "condition"): NodeData("Is it done?", "Bool Out"),
-        NodeData("Is it done?", "F32 In 1"): InputData("elapsed percent"),
-        NodeTime("Blend", "time B"): InputTime("target time"),
-        OutputTime: NodeTime("Blend"),
-        NodeData("Blend", "pose B"): InputData("target pose"),
+        OutputData("pose"): NodeData("Blend", "out"),
+        NodeData("Is it done?", "in_a"): InputData("elapsed percent"),
         NodeData("Blend", "factor"): InputData("elapsed percent"),
-        NodeData("Blend", "pose A"): InputData("source pose"),
-        OutputData("driver events"): NodeData("Done", "event"),
+        OutputTime: NodeTime("Blend"),
+        NodeTime("Blend", "in_time_b"): InputTime("target time"),
+        OutputData("driver events"): NodeData("Done", "events"),
+        NodeData("Is it done?", "in_b"): InputData("1"),
+        NodeData("Blend", "in_pose_a"): InputData("source pose"),
+        NodeTime("Blend", "in_time_a"): InputTime("source time"),
+        NodeData("Done", "condition"): NodeData("Is it done?", "out"),
+        NodeData("Blend", "in_pose_b"): InputData("target pose"),
     },
     default_parameters: {
         "blend": F32(0.2),
@@ -60,8 +63,8 @@
     output_time: Some(()),
     extra: (
         node_positions: {
-            "Blend": (553.0, 308.0),
             "Done": (592.0, 167.0),
+            "Blend": (553.0, 308.0),
             "Is it done?": (382.0, 156.0),
         },
         input_position: (167.0, 156.0),

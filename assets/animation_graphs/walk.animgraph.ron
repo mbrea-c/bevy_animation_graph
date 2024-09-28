@@ -1,15 +1,24 @@
 (
     nodes: [
         (
+            name: "walk clip 1",
+            ty: "bevy_animation_graph::node::pose::Clip",
+            inner: (
+                clip: "animations/human_walk.anim.ron",
+                override_duration: None,
+                override_interpolation: None,
+            ),
+        ),
+        (
             name: "chain walk",
-            ty: "bevy_animation_graph::nodes::chain_node::ChainNode",
+            ty: "bevy_animation_graph::node::pose::Chain",
             inner: (
                 interpolation_period: 0.5,
             ),
         ),
         (
             name: "flip walk",
-            ty: "bevy_animation_graph::nodes::flip_lr_node::FlipLRNode",
+            ty: "bevy_animation_graph::node::pose::FlipLeftRight",
             inner: (
                 config: (
                     name_mapper: Pattern((
@@ -22,46 +31,41 @@
             ),
         ),
         (
-            name: "walk clip 1",
-            ty: "bevy_animation_graph::nodes::clip_node::ClipNode",
-            inner: (
-                clip: "animations/human_walk.anim.ron",
-            ),
-        ),
-        (
-            name: "walk clip 2",
-            ty: "bevy_animation_graph::nodes::clip_node::ClipNode",
-            inner: (
-                clip: "animations/human_walk.anim.ron",
-            ),
-        ),
-        (
             name: "speed",
-            ty: "bevy_animation_graph::nodes::speed_node::SpeedNode",
+            ty: "bevy_animation_graph::node::pose::ChangeSpeed",
             inner: (),
         ),
         (
+            name: "walk clip 2",
+            ty: "bevy_animation_graph::node::pose::Clip",
+            inner: (
+                clip: "animations/human_walk.anim.ron",
+                override_duration: None,
+                override_interpolation: None,
+            ),
+        ),
+        (
             name: "loop",
-            ty: "bevy_animation_graph::nodes::loop_node::LoopNode",
+            ty: "bevy_animation_graph::node::pose::Repeat",
             inner: (
                 interpolation_period: 0.5,
             ),
         ),
     ],
     edges_inverted: {
-        NodeData("loop", "pose"): NodeData("chain walk", "pose"),
-        OutputData("pose"): NodeData("speed", "pose"),
+        OutputData("pose"): NodeData("speed", "out"),
+        NodeData("chain walk", "pose_a"): NodeData("walk clip 1", "out"),
         OutputTime: NodeTime("speed"),
-        NodeData("flip walk", "pose"): NodeData("walk clip 2", "pose"),
-        NodeTime("chain walk", "time B"): NodeTime("flip walk"),
-        NodeTime("loop", "time"): NodeTime("chain walk"),
-        NodeData("speed", "pose"): NodeData("loop", "pose"),
-        NodeData("chain walk", "pose A"): NodeData("walk clip 1", "pose"),
-        NodeTime("chain walk", "time A"): NodeTime("walk clip 1"),
-        NodeData("speed", "Speed"): InputData("speed"),
-        NodeTime("speed", "time"): NodeTime("loop"),
-        NodeTime("flip walk", "time"): NodeTime("walk clip 2"),
-        NodeData("chain walk", "pose B"): NodeData("flip walk", "pose"),
+        NodeTime("flip walk", "in_time"): NodeTime("walk clip 2"),
+        NodeData("chain walk", "pose_b"): NodeData("flip walk", "out"),
+        NodeData("speed", "speed"): InputData("speed"),
+        NodeData("loop", "in_pose"): NodeData("chain walk", "out"),
+        NodeTime("loop", "in_time"): NodeTime("chain walk"),
+        NodeTime("chain walk", "time_b"): NodeTime("flip walk"),
+        NodeData("speed", "in_pose"): NodeData("loop", "out"),
+        NodeTime("chain walk", "time_a"): NodeTime("walk clip 1"),
+        NodeData("flip walk", "in_pose"): NodeData("walk clip 2", "out"),
+        NodeTime("speed", "in_time"): NodeTime("loop"),
     },
     default_parameters: {
         "speed": F32(1.0),
@@ -73,11 +77,11 @@
     output_time: Some(()),
     extra: (
         node_positions: {
+            "walk clip 1": (310.0, 360.0),
             "chain walk": (476.0, 433.0),
             "flip walk": (308.0, 514.0),
-            "walk clip 1": (310.0, 360.0),
-            "walk clip 2": (162.0, 514.0),
             "speed": (776.0, 429.0),
+            "walk clip 2": (162.0, 514.0),
             "loop": (640.0, 443.0),
         },
         input_position: (601.0, 266.0),

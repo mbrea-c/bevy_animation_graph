@@ -2,7 +2,7 @@
     nodes: [
         (
             name: "Locomotion FSM",
-            ty: "bevy_animation_graph::nodes::fsm_node::FSMNode",
+            ty: "bevy_animation_graph::node::graph::Fsm",
             inner: (
                 fsm: "fsm/locomotion.fsm.ron",
             ),

@@ -4,7 +4,6 @@ use super::pose::Pose;
 use super::prelude::GraphClip;
 use super::skeleton::loader::SkeletonLoader;
 use super::skeleton::Skeleton;
-use super::state_machine::high_level::GlobalTransition;
 use super::systems::apply_animation_to_targets;
 use super::{
     animated_scene::{
@@ -15,11 +14,7 @@ use super::{
     state_machine::high_level::{loader::StateMachineLoader, StateMachine},
     systems::{animation_player, animation_player_deferred_gizmos},
 };
-use crate::nodes::{
-    AbsF32, AddF32, BlendMode, BlendNode, BlendSyncMode, ChainNode, ClampF32, ClipNode, CompareF32,
-    DivF32, DummyNode, FSMNode, FireEventNode, FlipLRNode, GraphNode, LoopNode, MulF32,
-    PaddingNode, RotationArcNode, RotationNode, SpeedNode, SubF32, TwoBoneIKNode,
-};
+use crate::node;
 use crate::prelude::{
     config::{FlipConfig, FlipNameMapper, PatternMapper, PatternMapperSerial},
     AnimationGraph, AnimationGraphPlayer,
@@ -88,39 +83,8 @@ impl AnimationGraphPlugin {
             .register_type::<FlipNameMapper<PatternMapperSerial>>()
             .register_type::<PatternMapper>()
             .register_type::<PatternMapperSerial>()
-            .register_type::<BlendMode>()
-            .register_type::<BlendSyncMode>()
-            .register_type::<GlobalTransition>()
             .register_type::<()>()
-            .register_type_data::<(), ReflectDefault>()
-        // --- Node registrations
-        // ------------------------------------------
-            .register_type::<ClipNode>()
-            .register_type::<DummyNode>()
-            .register_type::<ChainNode>()
-            .register_type::<BlendNode>()
-            .register_type::<FlipLRNode>()
-            .register_type::<GraphNode>()
-            .register_type::<LoopNode>()
-            .register_type::<PaddingNode>()
-            .register_type::<RotationNode>()
-            .register_type::<SpeedNode>()
-            .register_type::<TwoBoneIKNode>()
-            .register_type::<AbsF32>()
-            .register_type::<AddF32>()
-            .register_type::<ClampF32>()
-            .register_type::<DivF32>()
-            .register_type::<MulF32>()
-            .register_type::<SubF32>()
-            .register_type::<CompareF32>()
-            .register_type::<FireEventNode>()
-            .register_type::<RotationArcNode>()
-            .register_type::<FSMNode>()
-            // .register_type::<ExtendSkeleton>()
-            // .register_type::<IntoBoneSpaceNode>()
-            // .register_type::<IntoGlobalSpaceNode>()
-            // .register_type::<IntoCharacterSpaceNode>()
-        // ------------------------------------------
-        ;
+            .register_type_data::<(), ReflectDefault>();
+        node::register_types(app);
     }
 }
