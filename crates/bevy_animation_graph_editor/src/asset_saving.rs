@@ -1,7 +1,7 @@
 use crate::{scanner::PersistedAssetHandles, ui::UiState, Cli};
 use bevy::prelude::*;
 use bevy_animation_graph::core::{
-    animation_graph::{serial::AnimationGraphSerial, AnimationGraph},
+    animation_graph::{serial::AnimationGraphSerializer, AnimationGraph},
     state_machine::high_level::{serial::StateMachineSerial, StateMachine},
 };
 use std::path::PathBuf;
@@ -35,10 +35,12 @@ pub fn save_graph_system(
     mut ui_state: ResMut<UiState>,
     mut graph_handles: ResMut<PersistedAssetHandles>,
     cli: Res<Cli>,
+    registry: Res<AppTypeRegistry>,
 ) {
+    let type_registry = registry.0.read();
     for ev in evr_save_graph.read() {
         let graph = graph_assets.get(ev.graph).unwrap();
-        let graph_serial = AnimationGraphSerial::from(graph);
+        let graph_serial = AnimationGraphSerializer::new(graph, &type_registry);
         let mut final_path = cli.asset_source.clone();
         final_path.push(&ev.virtual_path);
         info!("Saving graph with id {:?} to {:?}", ev.graph, final_path);

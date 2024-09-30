@@ -1,18 +1,21 @@
 use std::fmt;
 
-use super::{pin, Extra};
+use super::{pin, AnimationGraph, Extra};
 use crate::{
     prelude::{AnimationNode, DataSpec, DataValue, NodeLike, OrderedMap, ReflectNodeLike},
     utils::reflect_de::{TypedReflectDeserializer, ValueProcessor},
 };
 use bevy::{
     asset::{AssetPath, LoadContext, ReflectHandle},
-    reflect::{Reflect, ReflectFromReflect, TypeRegistration, TypeRegistry},
+    reflect::{
+        serde::ReflectSerializer, Reflect, ReflectFromReflect, TypeRegistration, TypeRegistry,
+    },
     utils::HashMap,
 };
 use serde::{
     de::{self, DeserializeSeed, IgnoredAny, Visitor},
-    Deserialize, Deserializer,
+    ser::SerializeStruct,
+    Deserialize, Deserializer, Serialize,
 };
 
 // What's up with the `AnimationNodeLoadDeserializer`?
@@ -859,3 +862,90 @@ const _: () = {
         }
     }
 };
+
+// For serialization, we make an `AnimationNode` wrapper that contains
+// a reference to the type registry. Then, we wrap that new type in an
+// `AnimationGraphSerializer` type that mirrors the structure of `AnimationGraph`.
+// We only need to write custom serialization logic for the `AnimationNode` serializer type,
+// we get the `AnimationGraph` serialization "for free".
+
+pub struct AnimationNodeSerializer<'a> {
+    pub type_registry: &'a TypeRegistry,
+    pub name: String,
+    pub inner: Box<dyn NodeLike>,
+}
+
+impl AnimationNodeSerializer<'_> {
+    pub fn new<'a>(
+        node: &AnimationNode,
+        type_registry: &'a TypeRegistry,
+    ) -> AnimationNodeSerializer<'a> {
+        AnimationNodeSerializer {
+            type_registry,
+            name: node.name.clone(),
+            inner: node.inner.clone(),
+        }
+    }
+}
+
+#[derive(Serialize)]
+pub struct AnimationGraphSerializer<'a> {
+    pub nodes: Vec<AnimationNodeSerializer<'a>>,
+    pub edges_inverted: HashMap<TargetPinSerial, SourcePinSerial>,
+
+    pub default_parameters: OrderedMap<PinIdSerial, DataValue>,
+    pub input_times: OrderedMap<PinIdSerial, ()>,
+    pub output_parameters: OrderedMap<PinIdSerial, DataSpec>,
+    pub output_time: Option<()>,
+
+    pub extra: Extra,
+}
+
+impl AnimationGraphSerializer<'_> {
+    pub fn new<'a>(
+        graph: &AnimationGraph,
+        type_registry: &'a TypeRegistry,
+    ) -> AnimationGraphSerializer<'a> {
+        let mut serial = AnimationGraphSerializer {
+            nodes: Vec::new(),
+            edges_inverted: graph.edges.clone(),
+            default_parameters: graph.default_parameters.clone(),
+            input_times: graph.input_times.clone(),
+            output_parameters: graph.output_parameters.clone(),
+            output_time: graph.output_time.clone(),
+            extra: graph.extra.clone(),
+        };
+
+        for node in graph.nodes.values() {
+            serial
+                .nodes
+                .push(AnimationNodeSerializer::new(node, type_registry));
+        }
+
+        serial
+    }
+}
+
+impl<'a> Serialize for AnimationNodeSerializer<'a> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_struct("AnimationNodeSerializer", 3)?;
+
+        state.serialize_field("name", &self.name)?;
+        let type_path = self
+            .type_registry
+            .get_type_info(self.inner.type_id())
+            .map(|t| t.type_path())
+            .unwrap(); // TODO: figure out better way to handle failure
+
+        state.serialize_field("ty", type_path)?;
+
+        let reflect_serializer =
+            ReflectSerializer::new(self.inner.as_nodelike_reflect(), &self.type_registry);
+        state.serialize_field("inner", &reflect_serializer)?;
+
+        state.end()
+    }
+}

@@ -9,7 +9,7 @@ use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Reflect, Clone, Copy, Debug, Default, Serialize, Deserialize)]
-#[reflect(Default)]
+#[reflect(Default, Serialize)]
 pub enum BlendMode {
     #[default]
     LinearInterpolate,

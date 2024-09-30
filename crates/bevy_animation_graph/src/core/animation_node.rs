@@ -15,7 +15,7 @@ use bevy::{
 use std::fmt::Debug;
 
 #[reflect_trait]
-pub trait NodeLike: NodeLikeClone + Send + Sync + Debug + Reflect {
+pub trait NodeLike: NodeLikeClone + NodeLikeReflect + Send + Sync + Debug + Reflect {
     fn duration(&self, _ctx: PassContext) -> Result<(), GraphError> {
         Ok(())
     }
@@ -71,6 +71,16 @@ where
 impl Clone for Box<dyn NodeLike> {
     fn clone(&self) -> Self {
         self.clone_node_like()
+    }
+}
+
+pub trait NodeLikeReflect {
+    fn as_nodelike_reflect(&self) -> &dyn Reflect;
+}
+
+impl<T: NodeLike> NodeLikeReflect for T {
+    fn as_nodelike_reflect(&self) -> &dyn Reflect {
+        self
     }
 }
 
