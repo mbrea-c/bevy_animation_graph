@@ -22,10 +22,6 @@ impl SlerpQuatNode {
 }
 
 impl NodeLike for SlerpQuatNode {
-    fn clone_value(&self) -> Box<dyn NodeLike> {
-        Box::new(self.clone())
-    }
-
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
         let a: Quat = ctx.data_back(Self::INPUT_A)?.val();
         let b: Quat = ctx.data_back(Self::INPUT_B)?.val();

@@ -12,10 +12,6 @@ impl DummyNode {
 }
 
 impl NodeLike for DummyNode {
-    fn clone_value(&self) -> Box<dyn NodeLike> {
-        Box::new(self.clone())
-    }
-
     fn display_name(&self) -> String {
         "Dummy".into()
     }

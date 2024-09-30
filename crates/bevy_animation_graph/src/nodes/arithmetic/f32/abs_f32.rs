@@ -19,10 +19,6 @@ impl AbsF32 {
 }
 
 impl NodeLike for AbsF32 {
-    fn clone_value(&self) -> Box<dyn NodeLike> {
-        Box::new(self.clone())
-    }
-
     fn display_name(&self) -> String {
         "|_| Absolute val".into()
     }

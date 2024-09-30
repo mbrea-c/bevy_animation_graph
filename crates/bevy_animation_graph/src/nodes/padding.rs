@@ -29,10 +29,6 @@ impl PaddingNode {
 }
 
 impl NodeLike for PaddingNode {
-    fn clone_value(&self) -> Box<dyn NodeLike> {
-        Box::new(self.clone())
-    }
-
     fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
         let duration = ctx
             .duration_back(Self::IN_TIME)?

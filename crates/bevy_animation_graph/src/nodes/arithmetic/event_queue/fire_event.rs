@@ -26,10 +26,6 @@ impl FireEventNode {
 }
 
 impl NodeLike for FireEventNode {
-    fn clone_value(&self) -> Box<dyn NodeLike> {
-        Box::new(self.clone())
-    }
-
     fn display_name(&self) -> String {
         "FireEvent".into()
     }

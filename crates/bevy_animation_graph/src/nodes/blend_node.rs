@@ -48,10 +48,6 @@ impl BlendNode {
 }
 
 impl NodeLike for BlendNode {
-    fn clone_value(&self) -> Box<dyn NodeLike> {
-        Box::new(self.clone())
-    }
-
     fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
         let duration_1 = ctx.duration_back(Self::IN_TIME_A)?;
         let duration_2 = ctx.duration_back(Self::IN_TIME_B)?;

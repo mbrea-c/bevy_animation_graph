@@ -20,10 +20,6 @@ impl MulF32 {
 }
 
 impl NodeLike for MulF32 {
-    fn clone_value(&self) -> Box<dyn NodeLike> {
-        Box::new(self.clone())
-    }
-
     fn display_name(&self) -> String {
         "× Multiply F32".into()
     }

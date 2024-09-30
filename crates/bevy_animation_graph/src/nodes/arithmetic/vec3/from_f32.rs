@@ -22,10 +22,6 @@ impl BuildVec3Node {
 }
 
 impl NodeLike for BuildVec3Node {
-    fn clone_value(&self) -> Box<dyn NodeLike> {
-        Box::new(self.clone())
-    }
-
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
         let x: f32 = ctx.data_back(Self::INPUT_X)?.val();
         let y: f32 = ctx.data_back(Self::INPUT_Y)?.val();

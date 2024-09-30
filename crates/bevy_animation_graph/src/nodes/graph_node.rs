@@ -20,10 +20,6 @@ impl GraphNode {
 }
 
 impl NodeLike for GraphNode {
-    fn clone_value(&self) -> Box<dyn NodeLike> {
-        Box::new(self.clone())
-    }
-
     fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
         let Some(graph) = ctx
             .resources

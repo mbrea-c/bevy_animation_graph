@@ -20,10 +20,6 @@ impl ConstF32 {
 }
 
 impl NodeLike for ConstF32 {
-    fn clone_value(&self) -> Box<dyn NodeLike> {
-        Box::new(self.clone())
-    }
-
     fn display_name(&self) -> String {
         "F32".into()
     }

@@ -15,10 +15,7 @@ use bevy::{
 use std::fmt::Debug;
 
 #[reflect_trait]
-pub trait NodeLike: Send + Sync + Debug + Reflect {
-    /// Returns a boxed clone of this value.
-    fn clone_value(&self) -> Box<dyn NodeLike>;
-
+pub trait NodeLike: NodeLikeClone + Send + Sync + Debug + Reflect {
     fn duration(&self, _ctx: PassContext) -> Result<(), GraphError> {
         Ok(())
     }
@@ -55,6 +52,25 @@ pub trait NodeLike: Send + Sync + Debug + Reflect {
     /// The order of the output pins. This way, you can mix time and data pins in the UI.
     fn output_pin_ordering(&self) -> PinOrdering {
         PinOrdering::default()
+    }
+}
+
+pub trait NodeLikeClone {
+    fn clone_node_like(&self) -> Box<dyn NodeLike>;
+}
+
+impl<T> NodeLikeClone for T
+where
+    T: 'static + NodeLike + Clone,
+{
+    fn clone_node_like(&self) -> Box<dyn NodeLike> {
+        Box::new(self.clone())
+    }
+}
+
+impl Clone for Box<dyn NodeLike> {
+    fn clone(&self) -> Self {
+        self.clone_node_like()
     }
 }
 
@@ -104,7 +120,7 @@ impl Clone for AnimationNode {
     fn clone(&self) -> Self {
         Self {
             name: self.name.clone(),
-            inner: NodeLike::clone_value(&*self.inner),
+            inner: self.inner.clone(),
             should_debug: self.should_debug,
         }
     }

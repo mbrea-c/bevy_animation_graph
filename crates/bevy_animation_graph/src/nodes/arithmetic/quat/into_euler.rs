@@ -22,10 +22,6 @@ impl IntoEulerNode {
 }
 
 impl NodeLike for IntoEulerNode {
-    fn clone_value(&self) -> Box<dyn NodeLike> {
-        Box::new(self.clone())
-    }
-
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
         let quat: Quat = ctx.data_back(Self::INPUT)?.val();
 

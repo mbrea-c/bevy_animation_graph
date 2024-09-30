@@ -20,10 +20,6 @@ impl ConstBool {
 }
 
 impl NodeLike for ConstBool {
-    fn clone_value(&self) -> Box<dyn NodeLike> {
-        Box::new(self.clone())
-    }
-
     fn display_name(&self) -> String {
         "Bool".into()
     }

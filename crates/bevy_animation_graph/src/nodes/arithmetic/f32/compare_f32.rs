@@ -33,10 +33,6 @@ impl CompareF32 {
 }
 
 impl NodeLike for CompareF32 {
-    fn clone_value(&self) -> Box<dyn NodeLike> {
-        Box::new(self.clone())
-    }
-
     fn display_name(&self) -> String {
         "== Compare".into()
     }
