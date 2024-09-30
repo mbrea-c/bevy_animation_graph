@@ -1,6 +1,0 @@
-(
-    source: GltfNamed(
-        path: "models/Fox.glb",
-        animation_name: "Walk",
-    ),
-)
