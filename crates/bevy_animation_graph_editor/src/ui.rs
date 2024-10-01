@@ -1,3 +1,4 @@
+use std::any::TypeId;
 use std::path::PathBuf;
 
 use crate::asset_saving::{SaveFsm, SaveGraph};
@@ -32,6 +33,7 @@ use bevy_animation_graph::core::context::{GraphContext, GraphContextId, SpecCont
 use bevy_animation_graph::core::edge_data::AnimationEvent;
 use bevy_animation_graph::core::state_machine::high_level::{State, StateMachine, Transition};
 use bevy_animation_graph::core::state_machine::{StateId, TransitionId};
+use bevy_animation_graph::prelude::ReflectNodeLike;
 use bevy_egui::EguiContext;
 use bevy_inspector_egui::bevy_egui::EguiUserTextures;
 use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
@@ -1045,16 +1047,96 @@ impl TabViewer<'_> {
                 .0
                 .clone()
         };
-
         let type_registry = type_registry.read();
+
         let mut queue = CommandQueue::default();
         let mut cx = Context {
             world: Some(unsafe { unsafe_world.world_mut() }.into()),
             queue: Some(&mut queue),
         };
-        let mut env = InspectorUi::for_bevy(&type_registry, &mut cx);
 
-        env.ui_for_reflect(&mut selection.node_creation.node, ui);
+        let original_type_id = selection.node_creation.node.inner.type_id();
+        let mut type_id = original_type_id;
+        egui::Grid::new("node creator fields")
+            .num_columns(2)
+            .show(ui, |ui| {
+                ui.label("Name");
+                ui.text_edit_singleline(&mut selection.node_creation.node.name);
+                ui.end_row();
+
+                ui.label("Type");
+                {
+                    struct NodeType<'a> {
+                        type_id: TypeId,
+                        type_path: &'a str,
+                        short_path: &'a str,
+                    }
+
+                    let mut types = type_registry
+                        .iter_with_data::<ReflectNodeLike>()
+                        .map(|(registration, _)| NodeType {
+                            type_id: registration.type_id(),
+                            type_path: registration.type_info().type_path(),
+                            short_path: registration.type_info().type_path_table().short_path(),
+                        })
+                        .collect::<Vec<_>>();
+                    let longest_short_name = types
+                        .iter()
+                        .map(|type_info| type_info.short_path.len())
+                        .max()
+                        .unwrap_or_default();
+                    types.sort_unstable_by(|a, b| a.type_path.cmp(&b.type_path));
+
+                    let selected_text = type_registry
+                        .get_type_info(type_id)
+                        .map(|info| info.type_path_table().short_path())
+                        .unwrap_or("(?)");
+                    egui::ComboBox::from_id_source("node creator type")
+                        .selected_text(selected_text)
+                        .show_ui(ui, |ui| {
+                            for node_type in types {
+                                let padding =
+                                    " ".repeat(longest_short_name - node_type.short_path.len());
+                                let name = format!(
+                                    "{}{padding} ({})",
+                                    node_type.short_path, node_type.type_path
+                                );
+                                let name = egui::RichText::new(name).monospace();
+                                ui.selectable_value(&mut type_id, node_type.type_id, name);
+                            }
+                        });
+                }
+                ui.end_row();
+
+                ui.label("Node");
+                {
+                    let mut env = InspectorUi::for_bevy(&type_registry, &mut cx);
+                    env.ui_for_reflect(selection.node_creation.node.inner.as_reflect_mut(), ui);
+                }
+                ui.end_row();
+            });
+
+        if type_id != original_type_id {
+            // TODO actual error handling
+            let result = (|| {
+                let reflect_default = type_registry
+                    .get_type_data::<ReflectDefault>(type_id)
+                    .ok_or("type doesn't `#[reflect(Default)]`")?;
+                let node_like = type_registry
+                    .get_type_data::<ReflectNodeLike>(type_id)
+                    .ok_or("type doesn't `#[reflect(NodeLike)]`")?;
+                let inner = node_like
+                    .get_boxed(reflect_default.default())
+                    .map_err(|_| "default-created value is not a `NodeLike`")?;
+                selection.node_creation.node.inner = inner;
+                Ok::<_, &str>(())
+            })();
+
+            if let Err(err) = result {
+                warn!("Failed to start creating node of type {type_id:?}: {err}");
+            }
+        }
+
         let submit_response = ui.button("Create node");
 
         if submit_response.clicked() && selection.graph_editor.is_some() {
