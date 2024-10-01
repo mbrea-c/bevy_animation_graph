@@ -269,6 +269,7 @@ impl<'a> PassContext<'a> {
 
     pub fn spec_context(&'a self) -> SpecContext<'a> {
         SpecContext {
+            loaded_untyped_assets: &self.resources.loaded_untyped_assets,
             graph_assets: &self.resources.animation_graph_assets,
             fsm_assets: &self.resources.state_machine_assets,
         }

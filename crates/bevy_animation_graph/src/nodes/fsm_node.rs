@@ -42,7 +42,10 @@ impl NodeLike for FSMNode {
     }
 
     fn data_input_spec(&self, ctx: SpecContext) -> PinMap<DataSpec> {
-        let fsm = ctx.fsm_assets.get(&self.fsm).unwrap();
+        let fsm = ctx
+            .fsm_assets
+            .get_typed(&self.fsm, ctx.loaded_untyped_assets)
+            .unwrap_or_else(|| panic!("no FSM asset `{:?}`", self.fsm));
         let fsm_args = fsm
             .input_data
             .iter()

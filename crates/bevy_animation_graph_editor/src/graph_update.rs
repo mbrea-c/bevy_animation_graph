@@ -4,7 +4,7 @@ use crate::{
     graph_show::{GraphIndices, Pin},
 };
 use bevy::{
-    asset::{AssetId, Assets},
+    asset::{AssetId, Assets, LoadedUntypedAsset},
     ecs::world::World,
     log::info,
     math::Vec2,
@@ -145,11 +145,13 @@ pub fn convert_graph_change(
 
 pub fn update_graph(
     mut changes: Vec<GraphChange>,
+    loaded_untyped_assets: &Assets<LoadedUntypedAsset>,
     graph_assets: &mut Assets<AnimationGraph>,
     fsm_assets: &Assets<StateMachine>,
 ) -> bool {
     let graph_assets_copy = unsafe { &*(graph_assets as *const Assets<AnimationGraph>) };
     let ctx = SpecContext {
+        loaded_untyped_assets,
         graph_assets: graph_assets_copy,
         fsm_assets,
     };
