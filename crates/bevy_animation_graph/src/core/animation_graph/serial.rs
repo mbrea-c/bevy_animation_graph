@@ -3,13 +3,14 @@ use std::fmt;
 use super::{pin, AnimationGraph, Extra};
 use crate::{
     prelude::{AnimationNode, DataSpec, DataValue, NodeLike, OrderedMap, ReflectNodeLike},
-    utils::reflect_de::{TypedReflectDeserializer, ValueProcessor},
+    utils::{
+        reflect_de::{TypedReflectDeserializer, ValueProcessor},
+        reflect_ser::{ReflectSerializerProcessor, TypedReflectSerializer},
+    },
 };
 use bevy::{
     asset::{AssetPath, LoadContext, ReflectHandle},
-    reflect::{
-        serde::TypedReflectSerializer, Reflect, ReflectFromReflect, TypeRegistration, TypeRegistry,
-    },
+    reflect::{Reflect, ReflectFromReflect, TypeRegistration, TypeRegistry},
     utils::HashMap,
 };
 use serde::{
@@ -931,6 +932,42 @@ impl<'a> Serialize for AnimationNodeSerializer<'a> {
     where
         S: serde::Serializer,
     {
+        struct HandleProcessor;
+
+        impl ReflectSerializerProcessor for HandleProcessor {
+            fn try_serialize<S>(
+                &self,
+                value: &dyn Reflect,
+                registry: &TypeRegistry,
+                serializer: S,
+            ) -> Result<Result<S::Ok, S>, S::Error>
+            where
+                S: serde::Serializer,
+            {
+                let Some(untyped_handle) = registry
+                    .get_type_data::<ReflectHandle>(value.type_id())
+                    .and_then(|reflect_handle| {
+                        reflect_handle.downcast_handle_untyped(value.as_any())
+                    })
+                else {
+                    return Ok(Err(serializer));
+                };
+
+                let Some(path) = untyped_handle.path() else {
+                    return Err(serde::ser::Error::custom(
+                        "asset handle does not have a path",
+                    ));
+                };
+                let Some(path) = path.path().to_str() else {
+                    return Err(serde::ser::Error::custom(
+                        "asset handle has a non-UTF-8 path",
+                    ));
+                };
+
+                serializer.serialize_str(path).map(Ok)
+            }
+        }
+
         let mut state = serializer.serialize_struct("AnimationNodeSerializer", 3)?;
 
         state.serialize_field("name", &self.name)?;
@@ -945,8 +982,12 @@ impl<'a> Serialize for AnimationNodeSerializer<'a> {
             )))?;
         state.serialize_field("ty", type_path)?;
 
-        let reflect_serializer =
-            TypedReflectSerializer::new(self.inner.as_reflect(), &self.type_registry);
+        let mut processor = HandleProcessor;
+        let reflect_serializer = TypedReflectSerializer::new(
+            self.inner.as_reflect(),
+            &self.type_registry,
+            Some(&mut processor),
+        );
         state.serialize_field("inner", &reflect_serializer)?;
 
         state.end()
