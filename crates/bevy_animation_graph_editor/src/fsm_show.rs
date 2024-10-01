@@ -205,6 +205,7 @@ impl FsmReprSpec {
                 duration: None,
                 active,
                 is_start_state: state.id == fsm.start_state,
+                has_global_transition: state.global_transition.is_some(),
                 ..Default::default()
             };
 

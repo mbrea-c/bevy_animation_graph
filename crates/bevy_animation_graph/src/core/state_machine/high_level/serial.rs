@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::core::{animation_graph::PinMap, edge_data::DataValue};
 
-use super::{Extra, State, StateMachine, Transition};
+use super::{Extra, GlobalTransition, State, StateMachine, Transition};
 
 pub type StateIdSerial = String;
 pub type TransitionIdSerial = String;
@@ -10,6 +10,13 @@ pub type TransitionIdSerial = String;
 #[derive(Serialize, Deserialize, Clone)]
 pub struct StateSerial {
     pub id: StateIdSerial,
+    pub graph: String,
+    pub global_transition: Option<GlobalTransitionSerial>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct GlobalTransitionSerial {
+    pub duration: f32,
     pub graph: String,
 }
 
@@ -49,6 +56,19 @@ impl From<&State> for StateSerial {
     fn from(value: &State) -> Self {
         Self {
             id: value.id.clone(),
+            graph: value.graph.path().unwrap().to_string(),
+            global_transition: value
+                .global_transition
+                .as_ref()
+                .map(|gt| GlobalTransitionSerial::from(gt)),
+        }
+    }
+}
+
+impl From<&GlobalTransition> for GlobalTransitionSerial {
+    fn from(value: &GlobalTransition) -> Self {
+        Self {
+            duration: value.duration.clone(),
             graph: value.graph.path().unwrap().to_string(),
         }
     }

@@ -53,6 +53,7 @@ pub struct StateSpec {
     pub(crate) duration: Option<f32>,
     pub(crate) active: bool,
     pub(crate) is_start_state: bool,
+    pub(crate) has_global_transition: bool,
 }
 
 #[derive(Derivative, Clone)]

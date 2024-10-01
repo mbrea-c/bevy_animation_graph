@@ -10,6 +10,7 @@ use crate::core::{
 use bevy::{
     asset::{Asset, Handle},
     math::Vec2,
+    prelude::ReflectDefault,
     reflect::Reflect,
     utils::HashMap,
 };
@@ -19,6 +20,14 @@ use serde::{Deserialize, Serialize};
 #[derive(Reflect, Debug, Clone, Default)]
 pub struct State {
     pub id: StateId,
+    pub graph: Handle<AnimationGraph>,
+    pub global_transition: Option<GlobalTransition>,
+}
+
+#[derive(Reflect, Debug, Clone, Default)]
+#[reflect(Default)]
+pub struct GlobalTransition {
+    pub duration: f32,
     pub graph: Handle<AnimationGraph>,
 }
 
@@ -238,6 +247,33 @@ impl StateMachine {
                 graph: state.graph.clone(),
                 transition: None,
             });
+            if state.global_transition.is_some() {
+                // TODO: the source state is inaccurate since it will come from several places
+                for source_state in self.states.values() {
+                    if source_state.id != state.id {
+                        llfsm.add_state(super::core::LowLevelState {
+                            id: format!("global_{}_{}_transition_state", source_state.id, state.id),
+                            graph: state.global_transition.as_ref().unwrap().graph.clone(),
+                            transition: Some(super::core::TransitionData {
+                                source: source_state.id.clone(),
+                                target: state.id.clone(),
+                                hl_transition_id: format!("global_to_{}", state.id),
+                                duration: state.global_transition.as_ref().unwrap().duration,
+                            }),
+                        });
+                        llfsm.add_transition(
+                            source_state.id.clone(),
+                            format!("global_to_{}", state.id),
+                            format!("global_{}_{}_transition_state", source_state.id, state.id),
+                        );
+                        llfsm.add_transition(
+                            format!("global_{}_{}_transition_state", source_state.id, state.id),
+                            "end_transition".into(),
+                            state.id.clone(),
+                        );
+                    }
+                }
+            }
         }
 
         for transition in self.transitions.values() {
