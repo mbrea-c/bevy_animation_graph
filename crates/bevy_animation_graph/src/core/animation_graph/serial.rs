@@ -8,7 +8,7 @@ use crate::{
 use bevy::{
     asset::{AssetPath, LoadContext, ReflectHandle},
     reflect::{
-        serde::ReflectSerializer, Reflect, ReflectFromReflect, TypeRegistration, TypeRegistry,
+        serde::TypedReflectSerializer, Reflect, ReflectFromReflect, TypeRegistration, TypeRegistry,
     },
     utils::HashMap,
 };
@@ -934,16 +934,19 @@ impl<'a> Serialize for AnimationNodeSerializer<'a> {
         let mut state = serializer.serialize_struct("AnimationNodeSerializer", 3)?;
 
         state.serialize_field("name", &self.name)?;
+
         let type_path = self
             .type_registry
             .get_type_info(self.inner.type_id())
             .map(|t| t.type_path())
-            .unwrap(); // TODO: figure out better way to handle failure
-
+            .ok_or(serde::ser::Error::custom(format!(
+                "no type registration for `{}`",
+                self.inner.reflect_type_path()
+            )))?;
         state.serialize_field("ty", type_path)?;
 
         let reflect_serializer =
-            ReflectSerializer::new(self.inner.as_nodelike_reflect(), &self.type_registry);
+            TypedReflectSerializer::new(self.inner.as_reflect(), &self.type_registry);
         state.serialize_field("inner", &reflect_serializer)?;
 
         state.end()
