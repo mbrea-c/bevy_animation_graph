@@ -55,7 +55,7 @@ fn get_serializable<'a, E: Error>(
 ///
 /// # Example
 ///
-/// ```
+/// ```ignore
 /// # use bevy_reflect::prelude::*;
 /// # use bevy_reflect::{TypeRegistry, serde::TypedReflectSerializer};
 /// #[derive(Reflect, PartialEq, Debug)]

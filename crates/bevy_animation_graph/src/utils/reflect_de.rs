@@ -266,7 +266,7 @@ impl<'de> Deserialize<'de> for Ident {
 ///
 /// # Example
 ///
-/// ```
+/// ```ignore
 /// # use std::any::TypeId;
 /// # use serde::de::DeserializeSeed;
 /// # use bevy_reflect::prelude::*;

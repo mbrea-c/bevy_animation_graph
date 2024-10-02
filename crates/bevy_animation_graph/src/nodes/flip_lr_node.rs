@@ -9,9 +9,10 @@ use crate::prelude::{PassContext, SpecContext};
 use crate::utils::asset::GetTypedExt;
 use crate::utils::unwrap::UnwrapVal;
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 
-#[derive(Reflect, Clone, Debug)]
-#[reflect(Default, NodeLike)]
+#[derive(Reflect, Clone, Debug, Serialize, Deserialize)]
+#[reflect(Default, NodeLike, Serialize, Deserialize)]
 pub struct FlipLRNode {
     pub config: FlipConfig,
 }
@@ -76,4 +77,38 @@ impl NodeLike for FlipLRNode {
     fn display_name(&self) -> String {
         "🚻 Flip Left/Right".into()
     }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::core::animation_graph::serial::AnimationNodeSerializer;
+
+    use super::*;
+    use bevy::reflect::TypeRegistry;
+
+    /// We create a Bevy type registry to test reflect-based serialization
+    #[test]
+    fn test_serialize() {
+        let mut registry = TypeRegistry::new();
+        registry.register::<FlipLRNode>();
+
+        let node = super::FlipLRNode::default();
+        let serializer = AnimationNodeSerializer {
+            type_registry: &registry,
+            name: "Test".to_string(),
+            inner: Box::new(node),
+        };
+        let serialized = ron::to_string(&serializer).unwrap();
+        assert_eq!(serialized, "(name:\"Test\",ty:\"bevy_animation_graph::nodes::flip_lr_node::FlipLRNode\",inner:(config:(name_mapper:Pattern((key_1:\"L\",key_2:\"R\",pattern_before:\"^.*\",pattern_after:\"$\")))))".to_string());
+    }
+
+    // TODO: How do we test deserialization?
+    //
+    // The main issue is that we need a LoadContext. I could not figure
+    // out a way to mock it. Maybe we need to set up all the rigamarole
+    // necessary for actually loading an animation graph, add the node under test
+    // to an empty animation graph and test de/serialization on the graph
+    // using real asset loaders?
+    //
+    // See: https://github.com/bevyengine/bevy/blob/7c6057bc69cd7263a2971d8653675a8c9c194710/crates/bevy_asset/src/server/loaders.rs#L333
 }
