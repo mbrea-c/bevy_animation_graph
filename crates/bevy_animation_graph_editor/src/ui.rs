@@ -20,7 +20,7 @@ use bevy::render::camera::RenderTarget;
 use bevy::render::render_resource::{
     Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
 };
-use bevy::utils::{HashMap, HashSet};
+use bevy::utils::HashMap;
 use bevy::window::PrimaryWindow;
 use bevy_animation_graph::core::animated_scene::{
     AnimatedScene, AnimatedSceneBundle, AnimatedSceneInstance,
