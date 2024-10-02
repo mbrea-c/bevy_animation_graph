@@ -20,7 +20,7 @@ use bevy::render::camera::RenderTarget;
 use bevy::render::render_resource::{
     Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
 };
-use bevy::utils::HashMap;
+use bevy::utils::{HashMap, HashSet};
 use bevy::window::PrimaryWindow;
 use bevy_animation_graph::core::animated_scene::{
     AnimatedScene, AnimatedSceneBundle, AnimatedSceneInstance,
@@ -1066,26 +1066,61 @@ impl TabViewer<'_> {
 
                 ui.label("Type");
                 {
-                    struct NodeType<'a> {
-                        type_id: TypeId,
-                        type_path: &'a str,
-                        short_path: &'a str,
+                    struct TypeInfo<'a> {
+                        id: TypeId,
+                        path: &'a str,
+                        segments: Vec<&'a str>,
+                        short: String,
                     }
 
+                    let mut segments_found = HashMap::<Vec<&str>, usize>::new();
                     let mut types = type_registry
                         .iter_with_data::<ReflectNodeLike>()
-                        .map(|(registration, _)| NodeType {
-                            type_id: registration.type_id(),
-                            type_path: registration.type_info().type_path(),
-                            short_path: registration.type_info().type_path_table().short_path(),
+                        .map(|(registration, _)| {
+                            let path = registration.type_info().type_path();
+
+                            // `bevy_animation_graph::node::f32::Add` ->
+                            // - `Add`
+                            // - `f32::Add`
+                            // - `node::f32::Add`
+                            // - `bevy_animation_graph::node::f32::Add`
+                            let mut segments = Vec::new();
+                            for segment in path.rsplit("::") {
+                                segments.insert(0, segment);
+                                *segments_found.entry(segments.clone()).or_default() += 1;
+                            }
+
+                            TypeInfo {
+                                id: registration.type_id(),
+                                path,
+                                segments,
+                                short: String::new(),
+                            }
                         })
                         .collect::<Vec<_>>();
+                    for type_info in &mut types {
+                        let mut segments = Vec::new();
+                        for segment in type_info.segments.iter().rev() {
+                            segments.insert(0, *segment);
+                            if segments_found.get(&segments).copied().unwrap_or_default() <= 1 {
+                                // we've found the shortest unique path starting from the right
+                                type_info.short = segments.join("::");
+                                break;
+                            }
+                        }
+
+                        debug_assert!(
+                            !type_info.short.is_empty(),
+                            "should have found a short type path for `{}`",
+                            type_info.path
+                        );
+                    }
                     let longest_short_name = types
                         .iter()
-                        .map(|type_info| type_info.short_path.len())
+                        .map(|type_info| type_info.short.len())
                         .max()
                         .unwrap_or_default();
-                    types.sort_unstable_by(|a, b| a.type_path.cmp(&b.type_path));
+                    types.sort_unstable_by(|a, b| a.path.cmp(&b.path));
 
                     let selected_text = type_registry
                         .get_type_info(type_id)
@@ -1096,13 +1131,11 @@ impl TabViewer<'_> {
                         .show_ui(ui, |ui| {
                             for node_type in types {
                                 let padding =
-                                    " ".repeat(longest_short_name - node_type.short_path.len());
-                                let name = format!(
-                                    "{}{padding} ({})",
-                                    node_type.short_path, node_type.type_path
-                                );
+                                    " ".repeat(longest_short_name - node_type.short.len());
+                                let name =
+                                    format!("{}{padding}  {}", node_type.short, node_type.path);
                                 let name = egui::RichText::new(name).monospace();
-                                ui.selectable_value(&mut type_id, node_type.type_id, name);
+                                ui.selectable_value(&mut type_id, node_type.id, name);
                             }
                         });
                 }
