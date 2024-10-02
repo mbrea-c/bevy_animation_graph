@@ -1122,12 +1122,13 @@ impl TabViewer<'_> {
                         .unwrap_or_default();
                     types.sort_unstable_by(|a, b| a.path.cmp(&b.path));
 
-                    let selected_text = type_registry
-                        .get_type_info(type_id)
-                        .map(|info| info.type_path_table().short_path())
-                        .unwrap_or("(?)");
+                    let selected_text = types
+                        .iter()
+                        .find(|type_info| type_info.id == type_id)
+                        .map(|type_info| type_info.short.clone())
+                        .unwrap_or_else(|| "(?)".into());
                     egui::ComboBox::from_id_source("node creator type")
-                        .selected_text(selected_text)
+                        .selected_text(egui::RichText::new(selected_text).monospace())
                         .show_ui(ui, |ui| {
                             for node_type in types {
                                 let padding =
