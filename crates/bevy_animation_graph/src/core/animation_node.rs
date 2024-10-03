@@ -9,10 +9,10 @@ use crate::{
 };
 use bevy::{
     prelude::{Deref, DerefMut},
-    reflect::prelude::*,
+    reflect::{prelude::*, FromType},
     utils::HashMap,
 };
-use std::fmt::Debug;
+use std::{any::TypeId, fmt::Debug};
 
 #[reflect_trait]
 pub trait NodeLike: NodeLikeClone + Send + Sync + Debug + Reflect {
@@ -72,6 +72,51 @@ impl Clone for Box<dyn NodeLike> {
     fn clone(&self) -> Self {
         self.clone_node_like()
     }
+}
+
+#[derive(Clone)]
+pub struct ReflectEditProxy {
+    pub proxy_type_id: TypeId,
+    pub from_proxy: fn(&dyn Reflect) -> Box<dyn NodeLike>,
+    pub to_proxy: fn(&dyn NodeLike) -> Box<dyn Reflect>,
+}
+
+impl<T> FromType<T> for ReflectEditProxy
+where
+    T: EditProxy + NodeLike,
+{
+    fn from_type() -> Self {
+        Self {
+            proxy_type_id: TypeId::of::<<T as EditProxy>::Proxy>(),
+            from_proxy: from_proxy::<T>,
+            to_proxy: to_proxy::<T>,
+        }
+    }
+}
+
+fn from_proxy<T: EditProxy + NodeLike>(proxy: &dyn Reflect) -> Box<dyn NodeLike> {
+    if proxy.type_id() == TypeId::of::<T::Proxy>() {
+        let proxy = proxy.downcast_ref::<T::Proxy>().unwrap();
+        Box::new(T::update_from_proxy(proxy))
+    } else {
+        panic!("Type mismatch")
+    }
+}
+
+fn to_proxy<T: EditProxy + NodeLike>(node: &dyn NodeLike) -> Box<dyn Reflect> {
+    if node.type_id() == TypeId::of::<T>() {
+        let node = node.as_any().downcast_ref::<T>().unwrap();
+        Box::new(T::make_proxy(node))
+    } else {
+        panic!("Type mismatch")
+    }
+}
+
+pub trait EditProxy {
+    type Proxy: Reflect;
+
+    fn update_from_proxy(proxy: &Self::Proxy) -> Self;
+    fn make_proxy(&self) -> Self::Proxy;
 }
 
 #[derive(Clone, Reflect, Debug, Default)]

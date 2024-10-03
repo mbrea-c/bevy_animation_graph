@@ -33,7 +33,7 @@ use bevy_animation_graph::core::context::{GraphContext, GraphContextId, SpecCont
 use bevy_animation_graph::core::edge_data::AnimationEvent;
 use bevy_animation_graph::core::state_machine::high_level::{State, StateMachine, Transition};
 use bevy_animation_graph::core::state_machine::{StateId, TransitionId};
-use bevy_animation_graph::prelude::ReflectNodeLike;
+use bevy_animation_graph::prelude::{ReflectEditProxy, ReflectNodeLike};
 use bevy_egui::EguiContext;
 use bevy_inspector_egui::bevy_egui::EguiUserTextures;
 use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
@@ -1206,6 +1206,7 @@ impl TabViewer<'_> {
                 .0
                 .clone()
         };
+
         let mut graph_assets = unsafe {
             unsafe_world
                 .get_resource_mut::<Assets<AnimationGraph>>()
@@ -1236,7 +1237,23 @@ impl TabViewer<'_> {
         };
         let mut env = InspectorUi::for_bevy(&type_registry, &mut cx);
 
-        let changed = env.ui_for_reflect(node.inner.as_reflect_mut(), ui);
+        // TODO: Make node update into a GraphChange
+        // (eventually we want all graph mutations to go through GraphChange, this
+        // will enable easier undo/redo support)
+        let changed = if let Some(edit_proxy) =
+            type_registry.get_type_data::<ReflectEditProxy>(node.inner.type_id())
+        {
+            let mut proxy = (edit_proxy.to_proxy)(node.inner.as_ref());
+            let changed = env.ui_for_reflect(proxy.as_reflect_mut(), ui);
+            if changed {
+                let inner = (edit_proxy.from_proxy)(proxy.as_ref());
+                node.inner = inner;
+            }
+            changed
+        } else {
+            let changed = env.ui_for_reflect(node.inner.as_reflect_mut(), ui);
+            changed
+        };
 
         if changed {
             changes.push(GraphChange {

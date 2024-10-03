@@ -4,8 +4,8 @@ use crate::core::errors::GraphError;
 use crate::core::pose::Pose;
 use crate::core::prelude::DataSpec;
 use crate::flipping::flip_pose;
-use crate::prelude::config::FlipConfig;
-use crate::prelude::{PassContext, SpecContext};
+use crate::prelude::config::{FlipConfig, FlipConfigProxy};
+use crate::prelude::{EditProxy, PassContext, SpecContext};
 use crate::utils::asset::GetTypedExt;
 use crate::utils::unwrap::UnwrapVal;
 use bevy::prelude::*;
@@ -76,6 +76,28 @@ impl NodeLike for FlipLRNode {
 
     fn display_name(&self) -> String {
         "🚻 Flip Left/Right".into()
+    }
+}
+
+#[derive(Clone, Reflect)]
+pub struct FlipLRProxy {
+    pub config: FlipConfigProxy,
+}
+
+impl EditProxy for FlipLRNode {
+    type Proxy = FlipLRProxy;
+
+    fn update_from_proxy(proxy: &Self::Proxy) -> Self {
+        Self {
+            // TODO: This will fail if the regex is incorrect, may cause some editor crashes
+            config: proxy.config.clone().try_into().unwrap(),
+        }
+    }
+
+    fn make_proxy(&self) -> Self::Proxy {
+        Self::Proxy {
+            config: FlipConfigProxy::from(self.config.clone()),
+        }
     }
 }
 
