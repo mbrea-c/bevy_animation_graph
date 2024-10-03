@@ -48,11 +48,13 @@ pub enum DataSpec {
 
 #[derive(Serialize, Deserialize, Reflect, Clone, Debug)]
 pub enum DataValue {
+    // trivial copy
     F32(f32),
     Bool(bool),
     Vec3(Vec3),
-    EntityPath(EntityPath),
     Quat(Quat),
+    // non-trivial copy
+    EntityPath(EntityPath),
     BoneMask(BoneMask),
     Pose(Pose),
     EventQueue(EventQueue),
@@ -61,6 +63,96 @@ pub enum DataValue {
 impl Default for DataValue {
     fn default() -> Self {
         Self::F32(0.)
+    }
+}
+
+impl DataValue {
+    // trivial copy
+
+    #[must_use]
+    pub const fn as_f32(&self) -> Option<f32> {
+        match self {
+            &Self::F32(x) => Some(x),
+            _ => None,
+        }
+    }
+
+    #[must_use]
+    pub fn into_f32(self) -> Option<f32> {
+        self.as_f32()
+    }
+
+    #[must_use]
+    pub const fn as_bool(&self) -> Option<bool> {
+        match self {
+            &Self::Bool(x) => Some(x),
+            _ => None,
+        }
+    }
+
+    #[must_use]
+    pub fn into_bool(self) -> Option<bool> {
+        self.as_bool()
+    }
+
+    #[must_use]
+    pub const fn as_vec3(&self) -> Option<Vec3> {
+        match self {
+            &Self::Vec3(x) => Some(x),
+            _ => None,
+        }
+    }
+
+    #[must_use]
+    pub fn into_vec3(self) -> Option<Vec3> {
+        self.as_vec3()
+    }
+
+    #[must_use]
+    pub const fn as_quat(&self) -> Option<Quat> {
+        match self {
+            &Self::Quat(x) => Some(x),
+            _ => None,
+        }
+    }
+
+    #[must_use]
+    pub fn into_quat(self) -> Option<Quat> {
+        self.as_quat()
+    }
+
+    // non-trivial copy
+
+    #[must_use]
+    pub fn into_entity_path(self) -> Option<EntityPath> {
+        match self {
+            Self::EntityPath(x) => Some(x),
+            _ => None,
+        }
+    }
+
+    #[must_use]
+    pub fn into_bone_mask(self) -> Option<BoneMask> {
+        match self {
+            Self::BoneMask(x) => Some(x),
+            _ => None,
+        }
+    }
+
+    #[must_use]
+    pub fn into_pose(self) -> Option<Pose> {
+        match self {
+            Self::Pose(x) => Some(x),
+            _ => None,
+        }
+    }
+
+    #[must_use]
+    pub fn into_event_queue(self) -> Option<EventQueue> {
+        match self {
+            Self::EventQueue(x) => Some(x),
+            _ => None,
+        }
     }
 }
 
