@@ -4,7 +4,7 @@ use crate::{
         duration_data::DurationData,
         pose::Pose,
         prelude::AnimationGraph,
-        state_machine::FSMState,
+        state_machine::low_level::FSMState,
     },
     prelude::DataValue,
 };

@@ -30,8 +30,9 @@ use bevy_animation_graph::core::animation_graph_player::AnimationGraphPlayer;
 use bevy_animation_graph::core::animation_node::AnimationNode;
 use bevy_animation_graph::core::context::{GraphContext, GraphContextId, SpecContext};
 use bevy_animation_graph::core::edge_data::AnimationEvent;
-use bevy_animation_graph::core::state_machine::high_level::{State, StateMachine, Transition};
-use bevy_animation_graph::core::state_machine::{StateId, TransitionId};
+use bevy_animation_graph::core::state_machine::high_level::{
+    State, StateId, StateMachine, Transition, TransitionId,
+};
 use bevy_egui::EguiContext;
 use bevy_inspector_egui::bevy_egui::EguiUserTextures;
 use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};

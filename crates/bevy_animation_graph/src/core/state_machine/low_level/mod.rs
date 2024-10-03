@@ -1,4 +1,3 @@
-use super::{StateId, TransitionId};
 use crate::{
     core::{
         animation_graph::{
@@ -20,25 +19,57 @@ use bevy::{
     utils::HashMap,
 };
 
+use super::high_level;
+
+pub type LowLevelTransitionId = String;
+
+#[derive(Reflect, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum LowLevelStateId {
+    HlState(high_level::StateId),
+    DirectTransition(high_level::TransitionId),
+    GlobalTransition(
+        /// source
+        high_level::StateId,
+        /// target (state with global transition enabled)
+        high_level::StateId,
+    ),
+}
+
+/// Type of transition between states (based where it comes from in the high-level fsm)
+#[derive(Reflect, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum LowLevelTransitionType {
+    Direct,
+    Global,
+    Fallback,
+}
+
+/// Type of transition between states (based where it comes from in the high-level fsm)
+#[derive(Reflect, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum LowLevelTransitionVariant {
+    Start,
+    End,
+}
+
 /// Stateful data associated with an FSM node
-#[derive(Reflect, Debug, Default, Clone)]
+#[derive(Reflect, Debug, Clone)]
 pub struct FSMState {
-    pub state: StateId,
+    pub state: LowLevelStateId,
     pub state_entered_time: f32,
 }
 
 #[derive(Reflect, Debug, Clone)]
 pub struct TransitionData {
-    pub source: StateId,
-    pub target: StateId,
-    pub hl_transition_id: TransitionId,
+    pub source: high_level::StateId,
+    pub target: high_level::StateId,
+    /// Which high-level transition this comes from (generally here for debugging purposes)
+    pub hl_transition_id: high_level::TransitionId,
     pub duration: f32,
 }
 
 /// Specification of a state node in the low-level FSM
 #[derive(Reflect, Debug, Clone)]
 pub struct LowLevelState {
-    pub id: StateId,
+    pub id: LowLevelStateId,
     pub graph: Handle<AnimationGraph>,
     pub transition: Option<TransitionData>,
 }
@@ -46,9 +77,11 @@ pub struct LowLevelState {
 /// It's a state machine in the mathematical sense (-ish). Transitions are immediate.
 #[derive(Asset, Reflect, Debug, Clone, Default)]
 pub struct LowLevelStateMachine {
-    pub states: HashMap<StateId, LowLevelState>,
-    pub transitions: HashMap<(StateId, TransitionId), StateId>,
-    pub start_state: Option<StateId>,
+    pub states: HashMap<LowLevelStateId, LowLevelState>,
+
+    pub transitions: HashMap<(LowLevelStateId, LowLevelTransitionId), LowLevelStateId>,
+
+    pub start_state: Option<LowLevelStateId>,
     pub input_data: PinMap<DataValue>,
 }
 
@@ -78,7 +111,12 @@ impl LowLevelStateMachine {
         self.states.insert(state.id.clone(), state);
     }
 
-    pub fn add_transition(&mut self, from: StateId, transition: TransitionId, to: StateId) {
+    pub fn add_transition(
+        &mut self,
+        from: LowLevelStateId,
+        transition: LowLevelTransitionId,
+        to: LowLevelStateId,
+    ) {
         self.transitions.insert((from, transition), to);
     }
 
@@ -227,22 +265,26 @@ impl LowLevelStateMachine {
                 } else {
                     let (queried_state, queried_role) = if s == Self::SOURCE_POSE {
                         (
-                            state
-                                .transition
-                                .as_ref()
-                                .ok_or(GraphError::FSMExpectedTransitionFoundState)?
-                                .source
-                                .clone(),
+                            LowLevelStateId::HlState(
+                                state
+                                    .transition
+                                    .as_ref()
+                                    .ok_or(GraphError::FSMExpectedTransitionFoundState)?
+                                    .source
+                                    .clone(),
+                            ),
                             StateRole::Source,
                         )
                     } else if s == Self::TARGET_POSE {
                         (
-                            state
-                                .transition
-                                .as_ref()
-                                .ok_or(GraphError::FSMExpectedTransitionFoundState)?
-                                .target
-                                .clone(),
+                            LowLevelStateId::HlState(
+                                state
+                                    .transition
+                                    .as_ref()
+                                    .ok_or(GraphError::FSMExpectedTransitionFoundState)?
+                                    .target
+                                    .clone(),
+                            ),
                             StateRole::Target,
                         )
                     } else {
@@ -352,22 +394,26 @@ impl LowLevelStateMachine {
             SourcePin::InputTime(p) => {
                 let (queried_state, queried_role) = if p == Self::SOURCE_TIME {
                     (
-                        state
-                            .transition
-                            .as_ref()
-                            .ok_or(GraphError::FSMExpectedTransitionFoundState)?
-                            .source
-                            .clone(),
+                        LowLevelStateId::HlState(
+                            state
+                                .transition
+                                .as_ref()
+                                .ok_or(GraphError::FSMExpectedTransitionFoundState)?
+                                .source
+                                .clone(),
+                        ),
                         StateRole::Source,
                     )
                 } else if p == Self::TARGET_TIME {
                     (
-                        state
-                            .transition
-                            .as_ref()
-                            .ok_or(GraphError::FSMExpectedTransitionFoundState)?
-                            .target
-                            .clone(),
+                        LowLevelStateId::HlState(
+                            state
+                                .transition
+                                .as_ref()
+                                .ok_or(GraphError::FSMExpectedTransitionFoundState)?
+                                .target
+                                .clone(),
+                        ),
                         StateRole::Source,
                     )
                 } else {

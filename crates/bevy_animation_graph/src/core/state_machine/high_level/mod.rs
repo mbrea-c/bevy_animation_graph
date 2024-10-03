@@ -1,7 +1,7 @@
 pub mod loader;
 pub mod serial;
 
-use super::{LowLevelStateMachine, StateId, TransitionId};
+use super::low_level::{LowLevelState, LowLevelStateId, LowLevelStateMachine};
 use crate::core::{
     animation_graph::{AnimationGraph, PinMap},
     edge_data::DataValue,
@@ -15,6 +15,11 @@ use bevy::{
     utils::HashMap,
 };
 use serde::{Deserialize, Serialize};
+
+/// Unique within a high-level FSM
+pub type StateId = String;
+/// Unique within a high-level FSM
+pub type TransitionId = String;
 
 /// Specification of a state node in the low-level FSM
 #[derive(Reflect, Debug, Clone, Default)]
@@ -238,23 +243,27 @@ impl StateMachine {
     pub fn update_low_level_fsm(&mut self) {
         let mut llfsm = LowLevelStateMachine::new();
 
-        llfsm.start_state = Some(self.start_state.clone());
+        llfsm.start_state = Some(LowLevelStateId::HlState(self.start_state.clone()));
         llfsm.input_data = self.input_data.clone();
 
         for state in self.states.values() {
-            llfsm.add_state(super::core::LowLevelState {
-                id: state.id.clone(),
+            llfsm.add_state(super::low_level::LowLevelState {
+                id: LowLevelStateId::HlState(state.id.clone()),
                 graph: state.graph.clone(),
                 transition: None,
             });
+
             if state.global_transition.is_some() {
                 // TODO: the source state is inaccurate since it will come from several places
                 for source_state in self.states.values() {
                     if source_state.id != state.id {
-                        llfsm.add_state(super::core::LowLevelState {
-                            id: format!("global_{}_{}_transition_state", source_state.id, state.id),
+                        llfsm.add_state(LowLevelState {
+                            id: LowLevelStateId::GlobalTransition(
+                                source_state.id.clone(),
+                                state.id.clone(),
+                            ),
                             graph: state.global_transition.as_ref().unwrap().graph.clone(),
-                            transition: Some(super::core::TransitionData {
+                            transition: Some(super::low_level::TransitionData {
                                 source: source_state.id.clone(),
                                 target: state.id.clone(),
                                 hl_transition_id: format!("global_to_{}", state.id),
@@ -262,14 +271,20 @@ impl StateMachine {
                             }),
                         });
                         llfsm.add_transition(
-                            source_state.id.clone(),
+                            LowLevelStateId::HlState(source_state.id.clone()),
                             format!("global_to_{}", state.id),
-                            format!("global_{}_{}_transition_state", source_state.id, state.id),
+                            LowLevelStateId::GlobalTransition(
+                                source_state.id.clone(),
+                                state.id.clone(),
+                            ),
                         );
                         llfsm.add_transition(
-                            format!("global_{}_{}_transition_state", source_state.id, state.id),
+                            LowLevelStateId::GlobalTransition(
+                                source_state.id.clone(),
+                                state.id.clone(),
+                            ),
                             "end_transition".into(),
-                            state.id.clone(),
+                            LowLevelStateId::HlState(state.id.clone()),
                         );
                     }
                 }
@@ -277,10 +292,10 @@ impl StateMachine {
         }
 
         for transition in self.transitions.values() {
-            llfsm.add_state(super::core::LowLevelState {
-                id: format!("{}_state", transition.id),
+            llfsm.add_state(LowLevelState {
+                id: LowLevelStateId::DirectTransition(transition.id.clone()),
                 graph: transition.graph.clone(),
-                transition: Some(super::core::TransitionData {
+                transition: Some(super::low_level::TransitionData {
                     source: transition.source.clone(),
                     target: transition.target.clone(),
                     hl_transition_id: transition.id.clone(),
@@ -289,15 +304,15 @@ impl StateMachine {
             });
 
             llfsm.add_transition(
-                transition.source.clone(),
+                LowLevelStateId::HlState(transition.source.clone()),
                 transition.id.clone(),
-                format!("{}_state", transition.id),
+                LowLevelStateId::DirectTransition(transition.id.clone()),
             );
 
             llfsm.add_transition(
-                format!("{}_state", transition.id),
+                LowLevelStateId::DirectTransition(transition.id.clone()),
                 "end_transition".into(),
-                transition.target.clone(),
+                LowLevelStateId::HlState(transition.target.clone()),
             );
         }
 

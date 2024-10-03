@@ -15,10 +15,7 @@ use bevy_animation_graph::core::{
     animation_node::AnimationNode,
     context::SpecContext,
     edge_data::DataValue,
-    state_machine::{
-        high_level::{State, StateMachine, Transition},
-        StateId, TransitionId,
-    },
+    state_machine::high_level::{State, StateId, StateMachine, Transition, TransitionId},
 };
 
 use super::egui_fsm::lib::EguiFsmChange;
