@@ -122,14 +122,10 @@ fn keyboard_animation_control(
     }
 
     if keyboard_input.pressed(KeyCode::ArrowUp) {
-        player.send_event(AnimationEvent {
-            id: "speed_up".into(),
-        })
+        player.send_event(AnimationEvent::TransitionToState("run".into()));
     }
     if keyboard_input.pressed(KeyCode::ArrowDown) {
-        player.send_event(AnimationEvent {
-            id: "slow_down".into(),
-        })
+        player.send_event(AnimationEvent::TransitionToState("walk".into()));
     }
 
     if params.direction == Vec3::ZERO {

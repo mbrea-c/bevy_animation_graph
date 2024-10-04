@@ -15,10 +15,7 @@ use bevy_animation_graph::core::{
     animation_node::AnimationNode,
     context::SpecContext,
     edge_data::DataValue,
-    state_machine::{
-        high_level::{State, StateMachine, Transition},
-        StateId, TransitionId,
-    },
+    state_machine::high_level::{State, StateId, StateMachine, Transition, TransitionId},
 };
 
 use super::egui_fsm::lib::EguiFsmChange;
@@ -309,7 +306,7 @@ pub fn convert_fsm_change(
                 .unwrap();
             GlobalChange::FsmChange {
                 asset_id: graph_id,
-                change: FsmChange::TransitionDeleted(transition_name.to_string()),
+                change: FsmChange::TransitionDeleted(transition_name.clone()),
             }
         }
         EguiFsmChange::StateRemoved(state_id) => {

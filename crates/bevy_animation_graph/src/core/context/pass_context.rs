@@ -10,7 +10,7 @@ use crate::{
         duration_data::DurationData,
         errors::GraphError,
         pose::BoneId,
-        state_machine::{LowLevelStateMachine, StateId},
+        state_machine::low_level::{LowLevelStateId, LowLevelStateMachine},
     },
     prelude::{AnimationGraph, DataValue},
 };
@@ -40,11 +40,11 @@ pub struct FsmContext<'a> {
 
 #[derive(Clone)]
 pub struct StateStack {
-    pub stack: Vec<(StateId, StateRole)>,
+    pub stack: Vec<(LowLevelStateId, StateRole)>,
 }
 
 impl StateStack {
-    pub fn last_state(&self) -> StateId {
+    pub fn last_state(&self) -> LowLevelStateId {
         self.stack.last().unwrap().0.clone()
     }
     pub fn last_role(&self) -> StateRole {
@@ -278,7 +278,7 @@ impl<'a> PassContext<'a> {
     pub fn str_ctx_stack(&self) -> String {
         let mut s = if let Some(fsm_ctx) = &self.fsm_context {
             format!(
-                "- [FSM] {}: {}",
+                "- [FSM] {}: {:?}",
                 "state_id",
                 fsm_ctx.state_stack.last_state()
             )

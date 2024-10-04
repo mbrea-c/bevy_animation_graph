@@ -1,4 +1,4 @@
-use super::{serial::StateMachineSerial, State, StateMachine, Transition};
+use super::{serial::StateMachineSerial, GlobalTransition, State, StateMachine, Transition};
 use crate::core::errors::AssetLoaderError;
 use bevy::asset::{io::Reader, AssetLoader, AsyncReadExt, LoadContext};
 
@@ -26,9 +26,15 @@ impl AssetLoader for StateMachineLoader {
         };
 
         for state_serial in serial.states {
+            let global_transition_data =
+                state_serial.global_transition.map(|gt| GlobalTransition {
+                    duration: gt.duration,
+                    graph: load_context.load(gt.graph),
+                });
             fsm.add_state(State {
                 id: state_serial.id,
                 graph: load_context.load(state_serial.graph),
+                global_transition: global_transition_data,
             });
         }
 

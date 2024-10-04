@@ -4,6 +4,7 @@ use super::pose::Pose;
 use super::prelude::GraphClip;
 use super::skeleton::loader::SkeletonLoader;
 use super::skeleton::Skeleton;
+use super::state_machine::high_level::GlobalTransition;
 use super::systems::apply_animation_to_targets;
 use super::{
     animated_scene::{
@@ -89,6 +90,7 @@ impl AnimationGraphPlugin {
             .register_type::<PatternMapperSerial>()
             .register_type::<BlendMode>()
             .register_type::<BlendSyncMode>()
+            .register_type::<GlobalTransition>()
             .register_type::<()>()
             .register_type_data::<(), ReflectDefault>()
         // --- Node registrations

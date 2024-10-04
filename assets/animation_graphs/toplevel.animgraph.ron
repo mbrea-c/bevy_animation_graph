@@ -15,9 +15,7 @@
         "user events": EventQueue((
             events: [
                 (
-                    event: (
-                        id: "",
-                    ),
+                    event: StringId(""),
                     weight: 1.0,
                     percentage: 1.0,
                 ),
