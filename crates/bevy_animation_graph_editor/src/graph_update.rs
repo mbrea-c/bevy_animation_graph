@@ -306,7 +306,7 @@ pub fn convert_fsm_change(
                 .unwrap();
             GlobalChange::FsmChange {
                 asset_id: graph_id,
-                change: FsmChange::TransitionDeleted(transition_name.to_string()),
+                change: FsmChange::TransitionDeleted(transition_name.clone()),
             }
         }
         EguiFsmChange::StateRemoved(state_id) => {

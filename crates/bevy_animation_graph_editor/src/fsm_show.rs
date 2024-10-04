@@ -174,7 +174,7 @@ impl FsmReprSpec {
         fsm.get_low_level_fsm()
             .states
             .get(&fsm_state.state)
-            .and_then(|s| s.transition.as_ref())
+            .and_then(|s| s.hl_transition.as_ref())
             .map(|t| t.hl_transition_id == transition.id)
             .unwrap_or(false)
     }

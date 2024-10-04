@@ -1,7 +1,10 @@
 pub mod loader;
 pub mod serial;
 
-use super::low_level::{LowLevelState, LowLevelStateId, LowLevelStateMachine};
+use super::low_level::{
+    LowLevelState, LowLevelStateId, LowLevelStateMachine, LowLevelTransition, LowLevelTransitionId,
+    LowLevelTransitionType,
+};
 use crate::core::{
     animation_graph::{AnimationGraph, PinMap},
     edge_data::DataValue,
@@ -18,8 +21,21 @@ use serde::{Deserialize, Serialize};
 
 /// Unique within a high-level FSM
 pub type StateId = String;
+
 /// Unique within a high-level FSM
-pub type TransitionId = String;
+#[derive(Reflect, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum TransitionId {
+    /// Direct transitions are still indexed by String Id
+    Direct(String),
+    /// There can only be a single global transition between any state pair
+    Global(StateId, StateId),
+}
+
+impl Default for TransitionId {
+    fn default() -> Self {
+        Self::Direct("".to_string())
+    }
+}
 
 /// Specification of a state node in the low-level FSM
 #[derive(Reflect, Debug, Clone, Default)]
@@ -250,42 +266,51 @@ impl StateMachine {
             llfsm.add_state(super::low_level::LowLevelState {
                 id: LowLevelStateId::HlState(state.id.clone()),
                 graph: state.graph.clone(),
-                transition: None,
+                hl_transition: None,
             });
 
             if state.global_transition.is_some() {
                 // TODO: the source state is inaccurate since it will come from several places
                 for source_state in self.states.values() {
                     if source_state.id != state.id {
+                        let transition_id =
+                            TransitionId::Global(source_state.id.clone(), state.id.clone());
+
                         llfsm.add_state(LowLevelState {
                             id: LowLevelStateId::GlobalTransition(
                                 source_state.id.clone(),
                                 state.id.clone(),
                             ),
                             graph: state.global_transition.as_ref().unwrap().graph.clone(),
-                            transition: Some(super::low_level::TransitionData {
+                            hl_transition: Some(super::low_level::TransitionData {
                                 source: source_state.id.clone(),
                                 target: state.id.clone(),
-                                hl_transition_id: format!("global_to_{}", state.id),
+                                hl_transition_id: transition_id.clone(),
                                 duration: state.global_transition.as_ref().unwrap().duration,
                             }),
                         });
-                        llfsm.add_transition(
-                            LowLevelStateId::HlState(source_state.id.clone()),
-                            format!("global_to_{}", state.id),
-                            LowLevelStateId::GlobalTransition(
+                        llfsm.add_transition(LowLevelTransition {
+                            id: LowLevelTransitionId::Start(transition_id.clone()),
+                            source: LowLevelStateId::HlState(source_state.id.clone()),
+                            target: LowLevelStateId::GlobalTransition(
                                 source_state.id.clone(),
                                 state.id.clone(),
                             ),
-                        );
-                        llfsm.add_transition(
-                            LowLevelStateId::GlobalTransition(
+                            transition_type: LowLevelTransitionType::Global,
+                            hl_source: source_state.id.clone(),
+                            hl_target: state.id.clone(),
+                        });
+                        llfsm.add_transition(LowLevelTransition {
+                            id: LowLevelTransitionId::End(transition_id.clone()),
+                            source: LowLevelStateId::GlobalTransition(
                                 source_state.id.clone(),
                                 state.id.clone(),
                             ),
-                            "end_transition".into(),
-                            LowLevelStateId::HlState(state.id.clone()),
-                        );
+                            target: LowLevelStateId::HlState(state.id.clone()),
+                            transition_type: LowLevelTransitionType::Global,
+                            hl_source: source_state.id.clone(),
+                            hl_target: state.id.clone(),
+                        });
                     }
                 }
             }
@@ -295,7 +320,7 @@ impl StateMachine {
             llfsm.add_state(LowLevelState {
                 id: LowLevelStateId::DirectTransition(transition.id.clone()),
                 graph: transition.graph.clone(),
-                transition: Some(super::low_level::TransitionData {
+                hl_transition: Some(super::low_level::TransitionData {
                     source: transition.source.clone(),
                     target: transition.target.clone(),
                     hl_transition_id: transition.id.clone(),
@@ -303,17 +328,23 @@ impl StateMachine {
                 }),
             });
 
-            llfsm.add_transition(
-                LowLevelStateId::HlState(transition.source.clone()),
-                transition.id.clone(),
-                LowLevelStateId::DirectTransition(transition.id.clone()),
-            );
+            llfsm.add_transition(LowLevelTransition {
+                id: LowLevelTransitionId::Start(transition.id.clone()),
+                source: LowLevelStateId::HlState(transition.source.clone()),
+                target: LowLevelStateId::DirectTransition(transition.id.clone()),
+                transition_type: LowLevelTransitionType::Direct,
+                hl_source: transition.source.clone(),
+                hl_target: transition.target.clone(),
+            });
 
-            llfsm.add_transition(
-                LowLevelStateId::DirectTransition(transition.id.clone()),
-                "end_transition".into(),
-                LowLevelStateId::HlState(transition.target.clone()),
-            );
+            llfsm.add_transition(LowLevelTransition {
+                id: LowLevelTransitionId::End(transition.id.clone()),
+                source: LowLevelStateId::DirectTransition(transition.id.clone()),
+                target: LowLevelStateId::HlState(transition.target.clone()),
+                transition_type: LowLevelTransitionType::Direct,
+                hl_source: transition.source.clone(),
+                hl_target: transition.target.clone(),
+            });
         }
 
         self.low_level_fsm = llfsm;

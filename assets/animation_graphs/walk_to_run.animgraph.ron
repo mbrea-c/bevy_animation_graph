@@ -2,9 +2,7 @@
     nodes: [
         (
             name: "Done",
-            node: FireEvent((
-                id: "end_transition",
-            )),
+            node: FireEvent(EndTransition),
         ),
         (
             name: "Blend",

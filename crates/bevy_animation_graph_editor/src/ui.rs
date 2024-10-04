@@ -103,9 +103,9 @@ pub struct SceneSelection {
     scene: Handle<AnimatedScene>,
     respawn: bool,
     active_context: HashMap<UntypedAssetId, GraphContextId>,
-    event_table: Vec<String>,
+    event_table: Vec<AnimationEvent>,
     /// Just here as a buffer for the editor
-    temp_event_val: String,
+    event_editor: AnimationEvent,
 }
 
 #[derive(Default)]
@@ -568,10 +568,29 @@ impl TabViewer<'_> {
     }
 
     fn event_sender(world: &mut World, ui: &mut egui::Ui, selection: &mut EditorSelection) {
+        let unsafe_world = world.as_unsafe_world_cell();
+        let type_registry = unsafe {
+            unsafe_world
+                .get_resource::<AppTypeRegistry>()
+                .unwrap()
+                .0
+                .clone()
+        };
+
+        let type_registry = type_registry.read();
+        let mut queue = CommandQueue::default();
+        let mut cx = Context {
+            world: Some(unsafe { unsafe_world.world_mut() }.into()),
+            queue: Some(&mut queue),
+        };
+        let mut env = InspectorUi::for_bevy(&type_registry, &mut cx);
+
         let Some(scene_selection) = &mut selection.scene else {
             return;
         };
-        let Some(graph_player) = get_animation_graph_player_mut(world) else {
+        let Some(graph_player) =
+            get_animation_graph_player_mut(unsafe { unsafe_world.world_mut() })
+        else {
             return;
         };
 
@@ -581,8 +600,8 @@ impl TabViewer<'_> {
                     .stroke(egui::Stroke::new(1., egui::Color32::WHITE))
                     .show(ui, |ui| {
                         ui.horizontal(|ui| {
-                            if ui.button(ev).clicked() {
-                                graph_player.send_event(AnimationEvent { id: ev.into() });
+                            if ui.button(format!("{:?}", ev)).clicked() {
+                                graph_player.send_event(ev.clone());
                             }
                             !ui.button("×").clicked()
                         })
@@ -592,14 +611,14 @@ impl TabViewer<'_> {
             });
         });
 
-        ui.horizontal(|ui| {
-            ui.text_edit_singleline(&mut scene_selection.temp_event_val);
-            if ui.button("Add").clicked() {
-                scene_selection
-                    .event_table
-                    .push(scene_selection.temp_event_val.clone());
-            }
-        });
+        ui.separator();
+
+        env.ui_for_reflect(&mut scene_selection.event_editor, ui);
+        if ui.button("Add").clicked() {
+            scene_selection
+                .event_table
+                .push(scene_selection.event_editor.clone());
+        }
     }
 
     fn fsm_editor(
@@ -814,7 +833,7 @@ impl TabViewer<'_> {
                 respawn: true,
                 active_context: HashMap::default(),
                 event_table,
-                temp_event_val: "".into(),
+                event_editor: AnimationEvent::default(),
             });
         }
     }

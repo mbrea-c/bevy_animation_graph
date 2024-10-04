@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 use crate::{
     core::{
         animation_graph::{
@@ -8,7 +10,7 @@ use crate::{
             CacheReadFilter, CacheWriteFilter, FsmContext, PassContext, StateRole, StateStack,
         },
         duration_data::DurationData,
-        edge_data::{DataValue, EventQueue},
+        edge_data::{AnimationEvent, DataValue, EventQueue},
         errors::GraphError,
     },
     utils::unwrap::UnwrapVal,
@@ -21,7 +23,11 @@ use bevy::{
 
 use super::high_level;
 
-pub type LowLevelTransitionId = String;
+#[derive(Reflect, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum LowLevelTransitionId {
+    Start(high_level::TransitionId),
+    End(high_level::TransitionId),
+}
 
 #[derive(Reflect, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum LowLevelStateId {
@@ -35,19 +41,34 @@ pub enum LowLevelStateId {
     ),
 }
 
-/// Type of transition between states (based where it comes from in the high-level fsm)
-#[derive(Reflect, Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Reflect, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum LowLevelTransitionType {
     Direct,
     Global,
     Fallback,
 }
 
-/// Type of transition between states (based where it comes from in the high-level fsm)
-#[derive(Reflect, Debug, Clone, PartialEq, Eq, Hash)]
-pub enum LowLevelTransitionVariant {
-    Start,
-    End,
+impl PartialOrd for LowLevelTransitionType {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for LowLevelTransitionType {
+    fn cmp(&self, other: &Self) -> Ordering {
+        use LowLevelTransitionType::*;
+        match (self, other) {
+            (Direct, Direct) => Ordering::Equal,
+            (Direct, Global) => Ordering::Less,
+            (Direct, Fallback) => Ordering::Less,
+            (Global, Direct) => Ordering::Greater,
+            (Global, Global) => Ordering::Equal,
+            (Global, Fallback) => Ordering::Less,
+            (Fallback, Direct) => Ordering::Greater,
+            (Fallback, Global) => Ordering::Greater,
+            (Fallback, Fallback) => Ordering::Equal,
+        }
+    }
 }
 
 /// Stateful data associated with an FSM node
@@ -61,7 +82,6 @@ pub struct FSMState {
 pub struct TransitionData {
     pub source: high_level::StateId,
     pub target: high_level::StateId,
-    /// Which high-level transition this comes from (generally here for debugging purposes)
     pub hl_transition_id: high_level::TransitionId,
     pub duration: f32,
 }
@@ -71,7 +91,18 @@ pub struct TransitionData {
 pub struct LowLevelState {
     pub id: LowLevelStateId,
     pub graph: Handle<AnimationGraph>,
-    pub transition: Option<TransitionData>,
+    pub hl_transition: Option<TransitionData>,
+}
+
+/// Specification of a transition in the low-level FSM
+#[derive(Reflect, Debug, Clone)]
+pub struct LowLevelTransition {
+    pub id: LowLevelTransitionId,
+    pub source: LowLevelStateId,
+    pub target: LowLevelStateId,
+    pub transition_type: LowLevelTransitionType,
+    pub hl_source: high_level::StateId,
+    pub hl_target: high_level::StateId,
 }
 
 /// It's a state machine in the mathematical sense (-ish). Transitions are immediate.
@@ -79,7 +110,9 @@ pub struct LowLevelState {
 pub struct LowLevelStateMachine {
     pub states: HashMap<LowLevelStateId, LowLevelState>,
 
-    pub transitions: HashMap<(LowLevelStateId, LowLevelTransitionId), LowLevelStateId>,
+    pub transitions: HashMap<LowLevelTransitionId, LowLevelTransition>,
+    pub transitions_by_hl_state_pair:
+        HashMap<(high_level::StateId, high_level::StateId), Vec<LowLevelTransitionId>>,
 
     pub start_state: Option<LowLevelStateId>,
     pub input_data: PinMap<DataValue>,
@@ -102,6 +135,7 @@ impl LowLevelStateMachine {
         Self {
             states: HashMap::new(),
             transitions: HashMap::new(),
+            transitions_by_hl_state_pair: HashMap::new(),
             start_state: None,
             input_data: PinMap::new(),
         }
@@ -111,13 +145,18 @@ impl LowLevelStateMachine {
         self.states.insert(state.id.clone(), state);
     }
 
-    pub fn add_transition(
-        &mut self,
-        from: LowLevelStateId,
-        transition: LowLevelTransitionId,
-        to: LowLevelStateId,
-    ) {
-        self.transitions.insert((from, transition), to);
+    pub fn add_transition(&mut self, transition: LowLevelTransition) {
+        self.transitions
+            .insert(transition.id.clone(), transition.clone());
+        if matches!(transition.id, LowLevelTransitionId::Start(_)) {
+            let vec = self
+                .transitions_by_hl_state_pair
+                .entry((transition.hl_source.clone(), transition.hl_target.clone()))
+                .or_default();
+            vec.push(transition.id.clone());
+            // Direct transitions should come first
+            vec.sort_by_key(|id| self.transitions.get(id).unwrap().transition_type);
+        }
     }
 
     fn handle_event_queue(
@@ -143,12 +182,52 @@ impl LowLevelStateMachine {
         });
 
         for event in event_queue.events {
-            let transition = event.event.id;
-            if let Some(state) = self.transitions.get(&(fsm_state.state.clone(), transition)) {
-                fsm_state = FSMState {
-                    state: state.clone(),
-                    state_entered_time: time,
-                };
+            match event.event {
+                AnimationEvent::TransitionToState(hl_target_state_id) => {
+                    if let LowLevelStateId::HlState(hl_curr_state_id) = fsm_state.state.clone() {
+                        if let Some(transition) = self
+                            .transitions_by_hl_state_pair
+                            .get(&(hl_curr_state_id, hl_target_state_id))
+                            .and_then(|ids| ids.iter().next())
+                            .and_then(|id| self.transitions.get(id))
+                        {
+                            fsm_state = FSMState {
+                                state: transition.target.clone(),
+                                state_entered_time: time,
+                            };
+                        }
+                    }
+                }
+                AnimationEvent::Transition(transition_id) => {
+                    if let Some(transition) = self
+                        .transitions
+                        .get(&LowLevelTransitionId::Start(transition_id))
+                    {
+                        if fsm_state.state == transition.source {
+                            fsm_state = FSMState {
+                                state: transition.target.clone(),
+                                state_entered_time: time,
+                            };
+                        }
+                    }
+                }
+                AnimationEvent::EndTransition => {
+                    if let Some(hl_transition_data) = self
+                        .states
+                        .get(&fsm_state.state)
+                        .and_then(|s| s.hl_transition.as_ref())
+                    {
+                        if let Some(transition) = self.transitions.get(&LowLevelTransitionId::End(
+                            hl_transition_data.hl_transition_id.clone(),
+                        )) {
+                            fsm_state = FSMState {
+                                state: transition.target.clone(),
+                                state_entered_time: time,
+                            };
+                        }
+                    }
+                }
+                AnimationEvent::StringId(_) => {}
             }
         }
 
@@ -197,7 +276,7 @@ impl LowLevelStateMachine {
         let time = ctx.time();
         let elapsed_time = time - fsm_state.state_entered_time;
         let percent_through_duration = state
-            .transition
+            .hl_transition
             .as_ref()
             .map(|t| elapsed_time / t.duration)
             .unwrap_or(0.);
@@ -267,7 +346,7 @@ impl LowLevelStateMachine {
                         (
                             LowLevelStateId::HlState(
                                 state
-                                    .transition
+                                    .hl_transition
                                     .as_ref()
                                     .ok_or(GraphError::FSMExpectedTransitionFoundState)?
                                     .source
@@ -279,7 +358,7 @@ impl LowLevelStateMachine {
                         (
                             LowLevelStateId::HlState(
                                 state
-                                    .transition
+                                    .hl_transition
                                     .as_ref()
                                     .ok_or(GraphError::FSMExpectedTransitionFoundState)?
                                     .target
@@ -396,7 +475,7 @@ impl LowLevelStateMachine {
                     (
                         LowLevelStateId::HlState(
                             state
-                                .transition
+                                .hl_transition
                                 .as_ref()
                                 .ok_or(GraphError::FSMExpectedTransitionFoundState)?
                                 .source
@@ -408,7 +487,7 @@ impl LowLevelStateMachine {
                     (
                         LowLevelStateId::HlState(
                             state
-                                .transition
+                                .hl_transition
                                 .as_ref()
                                 .ok_or(GraphError::FSMExpectedTransitionFoundState)?
                                 .target

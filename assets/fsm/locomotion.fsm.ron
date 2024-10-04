@@ -16,14 +16,14 @@
     ],
     transitions: [
         (
-            id: "slow_down",
+            id: Direct("slow_down"),
             source: "run",
             target: "walk",
             duration: 1.0,
             graph: "animation_graphs/walk_to_run.animgraph.ron",
         ),
         (
-            id: "speed_up",
+            id: Direct("speed_up"),
             source: "walk",
             target: "run",
             duration: 1.0,
