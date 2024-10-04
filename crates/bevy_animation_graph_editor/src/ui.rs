@@ -643,8 +643,10 @@ impl TabViewer<'_> {
                         &mut selection.scene,
                         list_graph_contexts(world, |ctx| {
                             let graph_id = ctx.get_graph_id();
-                            let graph = graph_assets.get(graph_id).unwrap();
-                            graph.contains_state_machine(fsm_selection.fsm).is_some()
+                            graph_assets
+                                .get(graph_id)
+                                .map(|graph| graph.contains_state_machine(fsm_selection.fsm))
+                                .is_some()
                         }),
                     ) {
                         if scene
