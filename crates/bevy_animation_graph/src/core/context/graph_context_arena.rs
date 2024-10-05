@@ -1,5 +1,7 @@
 use super::GraphContext;
-use crate::core::{animation_graph::NodeId, prelude::AnimationGraph, state_machine::StateId};
+use crate::core::{
+    animation_graph::NodeId, prelude::AnimationGraph, state_machine::low_level::LowLevelStateId,
+};
 use bevy::{asset::AssetId, reflect::Reflect, utils::HashMap};
 
 #[derive(Reflect, Clone, Copy, Debug, Eq, PartialEq, Hash, Default)]
@@ -9,7 +11,7 @@ pub struct GraphContextId(usize);
 pub struct SubContextId {
     pub ctx_id: GraphContextId,
     pub node_id: NodeId,
-    pub state_id: Option<StateId>,
+    pub state_id: Option<LowLevelStateId>,
 }
 
 #[derive(Reflect, Debug)]

@@ -4,8 +4,8 @@ use crate::egui_fsm::{
 };
 use bevy::{asset::Assets, math::Vec2, utils::HashMap};
 use bevy_animation_graph::core::state_machine::{
-    high_level::{State, StateMachine, Transition},
-    FSMState, StateId, TransitionId,
+    high_level::{State, StateId, StateMachine, Transition, TransitionId},
+    low_level::{FSMState, LowLevelStateId},
 };
 use bevy_inspector_egui::egui::Color32;
 
@@ -159,7 +159,7 @@ impl FsmReprSpec {
             return false;
         };
 
-        fsm_state.state == node.id
+        fsm_state.state == LowLevelStateId::HlState(node.id.clone())
     }
 
     fn transition_debug_info(
@@ -174,7 +174,7 @@ impl FsmReprSpec {
         fsm.get_low_level_fsm()
             .states
             .get(&fsm_state.state)
-            .and_then(|s| s.transition.as_ref())
+            .and_then(|s| s.hl_transition.as_ref())
             .map(|t| t.hl_transition_id == transition.id)
             .unwrap_or(false)
     }
@@ -205,6 +205,7 @@ impl FsmReprSpec {
                 duration: None,
                 active,
                 is_start_state: state.id == fsm.start_state,
+                has_global_transition: state.global_transition.is_some(),
                 ..Default::default()
             };
 

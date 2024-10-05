@@ -4,9 +4,7 @@
             name: "Done",
             ty: "bevy_animation_graph::nodes::arithmetic::event_queue::fire_event::FireEventNode",
             inner: (
-                event: (
-                    id: "end_transition",
-                ),
+                event: EndTransition,
             ),
         ),
         (

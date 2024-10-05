@@ -400,7 +400,11 @@ impl FsmUiContext {
             |ui| {
                 let mut title_info = None;
                 let titlebar_shape = ui.painter().add(egui::Shape::Noop);
-                let node_title = node.spec.name.clone();
+                let node_title = if node.spec.has_global_transition {
+                    format!("⚡ {}", node.spec.name.clone())
+                } else {
+                    node.spec.name.clone()
+                };
                 let response = ui.allocate_ui(ui.available_size(), |ui| ui.label(node_title));
                 let title_bar_content_rect = response.response.rect;
                 title_info.replace((titlebar_shape, title_bar_content_rect));

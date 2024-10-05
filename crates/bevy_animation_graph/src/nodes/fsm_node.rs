@@ -5,7 +5,7 @@ use crate::{
         context::{PassContext, SpecContext},
         edge_data::DataSpec,
         errors::GraphError,
-        state_machine::{high_level::StateMachine, LowLevelStateMachine},
+        state_machine::{high_level::StateMachine, low_level::LowLevelStateMachine},
     },
     utils::asset::GetTypedExt,
 };

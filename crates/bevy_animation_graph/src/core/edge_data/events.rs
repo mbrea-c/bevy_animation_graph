@@ -1,11 +1,27 @@
 use bevy::reflect::{std_traits::ReflectDefault, Reflect};
 use serde::{Deserialize, Serialize};
 
+use crate::core::state_machine::high_level::{StateId, TransitionId};
+
 /// Event data
-#[derive(Clone, Debug, Reflect, Serialize, Deserialize, Default)]
+#[derive(Clone, Debug, Reflect, Serialize, Deserialize)]
 #[reflect(Default)]
-pub struct AnimationEvent {
-    pub id: String,
+pub enum AnimationEvent {
+    /// Trigger the most specific transition from transitioning into the provided state. That
+    /// will be:
+    /// * A direct transition, if present, or
+    /// * A global transition, if present
+    TransitionToState(StateId),
+    /// Trigger a specific transition (if possible)
+    Transition(TransitionId),
+    EndTransition,
+    StringId(String),
+}
+
+impl Default for AnimationEvent {
+    fn default() -> Self {
+        Self::StringId("".to_string())
+    }
 }
 
 /// Structure containing a sampled event and relevant metadata

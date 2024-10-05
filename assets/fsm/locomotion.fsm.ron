@@ -3,22 +3,27 @@
         (
             id: "walk",
             graph: "animation_graphs/walk.animgraph.ron",
+            global_transition: Some((
+                duration: 1.0,
+                graph: "animation_graphs/walk_to_run.animgraph.ron",
+            )),
         ),
         (
             id: "run",
             graph: "animation_graphs/run.animgraph.ron",
+            global_transition: None,
         ),
     ],
     transitions: [
         (
-            id: "slow_down",
+            id: Direct("slow_down"),
             source: "run",
             target: "walk",
             duration: 1.0,
             graph: "animation_graphs/walk_to_run.animgraph.ron",
         ),
         (
-            id: "speed_up",
+            id: Direct("speed_up"),
             source: "walk",
             target: "run",
             duration: 1.0,
@@ -31,8 +36,8 @@
     },
     extra: (
         states: {
-            "walk": (334.10522, 310.10526),
-            "run": (554.1376, 309.71655),
+            "walk": (334.10522, 309.52664),
+            "run": (552.15, 310.6519),
         },
     ),
 )
