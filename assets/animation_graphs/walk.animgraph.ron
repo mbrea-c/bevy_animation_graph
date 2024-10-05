@@ -2,24 +2,21 @@
     nodes: [
         (
             name: "walk clip 1",
-            ty: "bevy_animation_graph::node::pose::Clip",
-            inner: (
+            inner: {"bevy_animation_graph::node::pose::Clip": (
                 clip: "animations/human_walk.anim.ron",
                 override_duration: None,
                 override_interpolation: None,
-            ),
+            )},
         ),
         (
             name: "chain walk",
-            ty: "bevy_animation_graph::node::pose::Chain",
-            inner: (
+            inner: {"bevy_animation_graph::node::pose::Chain": (
                 interpolation_period: 0.5,
-            ),
+            )},
         ),
         (
             name: "flip walk",
-            ty: "bevy_animation_graph::node::pose::FlipLeftRight",
-            inner: (
+            inner: {"bevy_animation_graph::node::pose::FlipLeftRight": (
                 config: (
                     name_mapper: Pattern((
                         key_1: "L",
@@ -28,28 +25,25 @@
                         pattern_after: "$",
                     )),
                 ),
-            ),
+            )},
         ),
         (
             name: "speed",
-            ty: "bevy_animation_graph::node::pose::ChangeSpeed",
-            inner: (),
+            inner: {"bevy_animation_graph::node::pose::ChangeSpeed": ()},
         ),
         (
             name: "walk clip 2",
-            ty: "bevy_animation_graph::node::pose::Clip",
-            inner: (
+            inner: {"bevy_animation_graph::node::pose::Clip": (
                 clip: "animations/human_walk.anim.ron",
                 override_duration: None,
                 override_interpolation: None,
-            ),
+            )},
         ),
         (
             name: "loop",
-            ty: "bevy_animation_graph::node::pose::Repeat",
-            inner: (
+            inner: {"bevy_animation_graph::node::pose::Repeat": (
                 interpolation_period: 0.5,
-            ),
+            )},
         ),
     ],
     edges_inverted: {

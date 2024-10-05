@@ -2,49 +2,48 @@
     nodes: [
         (
             name: "chain walk",
-            ty: "bevy_animation_graph::node::pose::Chain",
-            inner: (
+            inner: {
+                "bevy_animation_graph::node::pose::Chain": (
                 interpolation_period: 0.5,
-            ),
+                )
+            },
         ),
         (
             name: "walk clip 2",
-            ty: "bevy_animation_graph::node::pose::Clip",
-            inner: (
+            inner: {
+                "bevy_animation_graph::node::pose::Clip": (
                 clip: "animations/human_walk.anim.ron",
                 override_duration: None,
                 override_interpolation: None,
-            ),
+            ),},
         ),
         (
             name: "wave diff",
-            ty: "bevy_animation_graph::node::pose::Blend",
-            inner: (
+            inner: {"bevy_animation_graph::node::pose::Blend":
+            (
                 mode: Difference,
                 sync_mode: Absolute,
-            ),
+            )},
         ),
         (
             name: "wave",
-            ty: "bevy_animation_graph::node::pose::Clip",
-            inner: (
+            inner: {"bevy_animation_graph::node::pose::Clip":
+            (
                 clip: "animations/human_wave.anim.ron",
                 override_duration: None,
                 override_interpolation: None,
-            ),
+            )},
         ),
         (
             name: "wave additive",
-            ty: "bevy_animation_graph::node::pose::Blend",
-            inner: (
+            inner: {"bevy_animation_graph::node::pose::Blend": (
                 mode: Additive,
                 sync_mode: Absolute,
-            ),
+            )},
         ),
         (
             name: "flip run",
-            ty: "bevy_animation_graph::node::pose::FlipLeftRight",
-            inner: (
+            inner: {"bevy_animation_graph::node::pose::FlipLeftRight": (
                 config: (
                     name_mapper: Pattern((
                         key_1: "L",
@@ -53,49 +52,45 @@
                         pattern_after: "$",
                     )),
                 ),
-            ),
+            )},
         ),
         (
             name: "run clip 2",
-            ty: "bevy_animation_graph::node::pose::Clip",
-            inner: (
+            inner: {"bevy_animation_graph::node::pose::Clip": (
                 clip: "animations/human_run.anim.ron",
                 override_duration: None,
                 override_interpolation: None,
-            ),
+            )},
         ),
         (
             name: "Make Rotation",
-            ty: "bevy_animation_graph::node::quat::FromRotationArc",
-            inner: (),
+            inner: {"bevy_animation_graph::node::quat::FromRotationArc": ()},
         ),
         (
             name: "run clip 1",
-            ty: "bevy_animation_graph::node::pose::Clip",
-            inner: (
+            inner: {"bevy_animation_graph::node::pose::Clip":
+            (
                 clip: "animations/human_run.anim.ron",
                 override_duration: None,
                 override_interpolation: None,
-            ),
+            )},
         ),
         (
             name: "speed",
-            ty: "bevy_animation_graph::node::pose::ChangeSpeed",
-            inner: (),
+            inner: {"bevy_animation_graph::node::pose::ChangeSpeed": ()},
         ),
         (
             name: "stand",
-            ty: "bevy_animation_graph::node::pose::Clip",
-            inner: (
+            inner: {"bevy_animation_graph::node::pose::Clip":
+            (
                 clip: "animations/human_stand.anim.ron",
                 override_duration: None,
                 override_interpolation: None,
-            ),
+            )},
         ),
         (
             name: "flip walk",
-            ty: "bevy_animation_graph::node::pose::FlipLeftRight",
-            inner: (
+            inner: {"bevy_animation_graph::node::pose::FlipLeftRight": (
                 config: (
                     name_mapper: Pattern((
                         key_1: "L",
@@ -104,56 +99,51 @@
                         pattern_after: "$",
                     )),
                 ),
-            ),
+            )},
         ),
         (
             name: "blend",
-            ty: "bevy_animation_graph::node::pose::Blend",
-            inner: (
+            inner: {"bevy_animation_graph::node::pose::Blend":
+            (
                 mode: LinearInterpolate,
                 sync_mode: Absolute,
-            ),
+            )},
         ),
         (
             name: "Parameters",
-            ty: "bevy_animation_graph::node::graph::Graph",
-            inner: (
+            inner: {"bevy_animation_graph::node::graph::Graph": (
                 graph: "animation_graphs/velocity_to_params.animgraph.ron",
-            ),
+            )},
         ),
         (
             name: "Rotate",
-            ty: "bevy_animation_graph::node::pose::Rotate",
-            inner: (
+            inner: {"bevy_animation_graph::node::pose::Rotate": (
                 application_mode: Compose,
                 rotation_space: Character,
                 chain_decay: Linear,
                 chain_length: 1,
                 base_weight: 1.0,
-            ),
+            )},
         ),
         (
             name: "chain run",
-            ty: "bevy_animation_graph::node::pose::Chain",
-            inner: (
+            inner: {"bevy_animation_graph::node::pose::Chain": (
                 interpolation_period: 0.5,
-            ),
+            )},
         ),
         (
             name: "walk clip 1",
-            ty: "bevy_animation_graph::node::pose::Clip",
-            inner: (
+            inner: {"bevy_animation_graph::node::pose::Clip": (
                 clip: "animations/human_walk.anim.ron",
                 override_duration: None,
                 override_interpolation: None,
-            ),
+            )},
         ),
         (
             name: "loop",
-            ty: "bevy_animation_graph::node::pose::Repeat",
-            inner: (
+            inner: {"bevy_animation_graph::node::pose::Repeat": (
                 interpolation_period: 0.5,
-            ),
+            )},
         ),
     ],
     edges_inverted: {

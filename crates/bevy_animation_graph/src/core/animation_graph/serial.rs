@@ -4,7 +4,7 @@ use super::{pin, AnimationGraph, Extra};
 use crate::{
     prelude::{AnimationNode, DataSpec, DataValue, NodeLike, OrderedMap, ReflectNodeLike},
     utils::{
-        reflect_de::{TypedReflectDeserializer, ValueProcessor},
+        reflect_de::{ReflectDeserializer, ValueProcessor},
         reflect_ser::{ReflectSerializerProcessor, TypedReflectSerializer},
     },
 };
@@ -131,77 +131,65 @@ impl<'de> DeserializeSeed<'de> for AnimationNodeLoadDeserializer<'_, '_> {
     where
         D: serde::Deserializer<'de>,
     {
-        struct NodeInnerDeserializer<'a, 'b, 'c> {
+        struct NodeInnerDeserializer<'a, 'b> {
             type_registry: &'a TypeRegistry,
             load_context: &'a mut LoadContext<'b>,
-            ty: &'c str,
         }
 
-        impl<'de> DeserializeSeed<'de> for NodeInnerDeserializer<'_, '_, '_> {
+        impl<'de> DeserializeSeed<'de> for NodeInnerDeserializer<'_, '_> {
             type Value = Box<dyn NodeLike>;
 
             fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
             where
                 D: Deserializer<'de>,
             {
-                let Self {
-                    type_registry,
-                    load_context,
-                    ty,
-                } = self;
-
-                let type_registration =
-                    type_registry
-                        .get_with_type_path(self.ty)
-                        .ok_or(de::Error::custom(format!(
-                            "no type registration for `{ty}`"
-                        )))?;
-                let node_like = type_registration
-                    .data::<ReflectNodeLike>()
-                    .ok_or(de::Error::custom(format!("`{ty}` is not a `NodeLike`")))?;
-                let from_reflect =
-                    type_registration
-                        .data::<ReflectFromReflect>()
-                        .ok_or(de::Error::custom(format!(
-                            "`{ty}` cannot be created from reflection"
-                        )))?;
-
                 let mut processor = ValueProcessor {
                     can_deserialize: Box::new(|registration| {
                         registration.data::<ReflectHandle>().is_some()
                     }),
                     deserialize: Box::new(|registration, deserializer| {
-                        deserialize_handle(registration, deserializer, load_context)
+                        deserialize_handle(registration, deserializer, self.load_context)
                     }),
                 };
-                let reflect_deserializer = TypedReflectDeserializer::new_with_processor(
-                    type_registration,
-                    type_registry,
-                    &mut processor,
-                );
-                let inner = reflect_deserializer.deserialize(deserializer)?;
+                let value = ReflectDeserializer::new(self.type_registry, Some(&mut processor))
+                    .deserialize(deserializer)?;
+                let type_info = value.get_represented_type_info().ok_or_else(|| {
+                    de::Error::custom(format!("{value:?} does not represent any type"))
+                })?;
+                let type_id = type_info.type_id();
+                let type_path = type_info.type_path();
 
-                let inner = from_reflect.from_reflect(&*inner).unwrap_or_else(|| {
-                        panic!(
-                            "from reflect mismatch - reflecting from a `{}` into a `{ty}` - value: {inner:?}",
-                            inner.reflect_type_path()
-                        )
-                    });
-                let inner = node_like.get_boxed(inner).unwrap_or_else(|value| {
-                    panic!("value of type `{ty}` should be a `NodeLike` - value: {value:?}")
-                });
+                let reflect_from_reflect = self
+                    .type_registry
+                    .get_type_data::<ReflectFromReflect>(type_id)
+                    .ok_or_else(|| {
+                        de::Error::custom(format!(
+                            "`{type_path}` cannot be constructed reflexively via `FromReflect`"
+                        ))
+                    })?;
+                let value = reflect_from_reflect
+                    .from_reflect(value.as_ref())
+                    .expect("should be able to convert value into represented type");
 
-                Ok(inner)
+                let reflect_target = self
+                    .type_registry
+                    .get_type_data::<ReflectNodeLike>(type_id)
+                    .ok_or_else(|| {
+                        de::Error::custom(format!("`{type_path}` does not `#[reflect(NodeLike)]`"))
+                    })?;
+                let target = reflect_target
+                    .get_boxed(value)
+                    .expect("should be able to downcast value into `NodeLike`");
+
+                Ok(target)
             }
         }
 
         const NAME: &str = "name";
-        const TY: &str = "ty";
         const INNER: &str = "inner";
 
         enum Field {
             Name,
-            Ty,
             Inner,
             _Ignore,
         }
@@ -221,8 +209,7 @@ impl<'de> DeserializeSeed<'de> for AnimationNodeLoadDeserializer<'_, '_> {
             {
                 match v {
                     0 => Ok(Field::Name),
-                    1 => Ok(Field::Ty),
-                    2 => Ok(Field::Inner),
+                    1 => Ok(Field::Inner),
                     _ => Ok(Field::_Ignore),
                 }
             }
@@ -233,7 +220,6 @@ impl<'de> DeserializeSeed<'de> for AnimationNodeLoadDeserializer<'_, '_> {
             {
                 match v {
                     NAME => Ok(Field::Name),
-                    TY => Ok(Field::Ty),
                     INNER => Ok(Field::Inner),
                     _ => Ok(Field::_Ignore),
                 }
@@ -265,19 +251,15 @@ impl<'de> DeserializeSeed<'de> for AnimationNodeLoadDeserializer<'_, '_> {
             where
                 A: serde::de::SeqAccess<'de>,
             {
-                const INVALID_LENGTH: &str = "struct AnimationNode with 3 elements";
+                const INVALID_LENGTH: &str = "struct AnimationNode with 2 elements";
 
                 let name = seq
                     .next_element::<String>()?
                     .ok_or(de::Error::invalid_length(0, &INVALID_LENGTH))?;
-                let ty = seq
-                    .next_element::<&str>()?
-                    .ok_or(de::Error::invalid_length(1, &INVALID_LENGTH))?;
                 let inner = seq
                     .next_element_seed(NodeInnerDeserializer {
                         type_registry: self.type_registry,
                         load_context: self.load_context,
-                        ty,
                     })?
                     .ok_or(de::Error::invalid_length(2, &INVALID_LENGTH))?;
 
@@ -292,10 +274,7 @@ impl<'de> DeserializeSeed<'de> for AnimationNodeLoadDeserializer<'_, '_> {
             where
                 A: de::MapAccess<'de>,
             {
-                // unfortunately, this code is field-order-dependent
-                // `ty` MUST be defined before `inner`
                 let mut name = None::<String>;
-                let mut ty = None::<&str>;
                 let mut inner = None::<Box<dyn NodeLike>>;
                 while let Some(key) = map.next_key::<Field>()? {
                     match key {
@@ -305,12 +284,6 @@ impl<'de> DeserializeSeed<'de> for AnimationNodeLoadDeserializer<'_, '_> {
                             }
                             name = Some(map.next_value::<String>()?);
                         }
-                        Field::Ty => {
-                            if ty.is_some() {
-                                return Err(de::Error::duplicate_field(TY));
-                            }
-                            ty = Some(map.next_value::<&str>()?);
-                        }
                         Field::Inner => {
                             if inner.is_some() {
                                 return Err(de::Error::duplicate_field(INNER));
@@ -319,9 +292,6 @@ impl<'de> DeserializeSeed<'de> for AnimationNodeLoadDeserializer<'_, '_> {
                             inner = Some(map.next_value_seed(NodeInnerDeserializer {
                                 type_registry: self.type_registry,
                                 load_context: self.load_context,
-                                ty: ty.ok_or(de::Error::custom(
-                                    "`ty` must be defined before `inner`",
-                                ))?,
                             })?);
                         }
                         _ => {
@@ -342,7 +312,7 @@ impl<'de> DeserializeSeed<'de> for AnimationNodeLoadDeserializer<'_, '_> {
             type_registry: self.type_registry,
             load_context: self.load_context,
         };
-        deserializer.deserialize_struct("AnimationNode", &[NAME, TY, INNER], visitor)
+        deserializer.deserialize_struct("AnimationNode", &[NAME, INNER], visitor)
     }
 }
 

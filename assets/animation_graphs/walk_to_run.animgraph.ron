@@ -2,25 +2,22 @@
     nodes: [
         (
             name: "Done",
-            ty: "bevy_animation_graph::node::graph::SendEvent",
-            inner: (
+            inner: {"bevy_animation_graph::node::graph::SendEvent": (
                 event: EndTransition,
-            ),
+            )},
         ),
         (
             name: "Blend",
-            ty: "bevy_animation_graph::node::pose::Blend",
-            inner: (
+            inner: {"bevy_animation_graph::node::pose::Blend": (
                 mode: LinearInterpolate,
                 sync_mode: Absolute,
-            ),
+            )},
         ),
         (
             name: "Is it done?",
-            ty: "bevy_animation_graph::node::f32::Compare",
-            inner: (
+            inner: {"bevy_animation_graph::node::f32::Compare": (
                 op: MoreEqual,
-            ),
+            )},
         ),
     ],
     edges_inverted: {

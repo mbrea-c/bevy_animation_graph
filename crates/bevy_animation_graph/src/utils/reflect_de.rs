@@ -7,6 +7,7 @@
 //! This should also be upstreamed to Bevy eventually, but for some more general
 //! use case than loading handles.
 
+use bevy::reflect::serde::TypeRegistrationDeserializer;
 use bevy::reflect::{
     erased_serde, serde::SerializationData, ArrayInfo, DynamicArray, DynamicEnum, DynamicList,
     DynamicMap, DynamicStruct, DynamicTuple, DynamicTupleStruct, DynamicVariant, EnumInfo,
@@ -14,7 +15,9 @@ use bevy::reflect::{
     TupleInfo, TupleStructInfo, TupleVariantInfo, TypeInfo, TypeRegistration, TypeRegistry,
     VariantInfo,
 };
-use serde::de::{DeserializeSeed, EnumAccess, Error, MapAccess, SeqAccess, VariantAccess, Visitor};
+use serde::de::{
+    DeserializeSeed, EnumAccess, Error, IgnoredAny, MapAccess, SeqAccess, VariantAccess, Visitor,
+};
 use serde::Deserialize;
 use std::any::TypeId;
 use std::fmt;
@@ -239,6 +242,69 @@ impl<'de> Deserialize<'de> for Ident {
     }
 }
 
+pub struct ReflectDeserializer<'a, 'p> {
+    registry: &'a TypeRegistry,
+    pub processor: Option<&'a mut ValueProcessor<'p>>,
+}
+
+impl<'a, 'p> ReflectDeserializer<'a, 'p> {
+    pub fn new(registry: &'a TypeRegistry, processor: Option<&'a mut ValueProcessor<'p>>) -> Self {
+        Self {
+            registry,
+            processor,
+        }
+    }
+}
+
+impl<'de> DeserializeSeed<'de> for ReflectDeserializer<'_, '_> {
+    type Value = Box<dyn Reflect>;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct UntypedReflectDeserializerVisitor<'a, 'p> {
+            registry: &'a TypeRegistry,
+            processor: Option<&'a mut ValueProcessor<'p>>,
+        }
+
+        impl<'de> Visitor<'de> for UntypedReflectDeserializerVisitor<'_, '_> {
+            type Value = Box<dyn Reflect>;
+
+            fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {
+                formatter
+                    .write_str("map containing `type` and `value` entries for the reflected value")
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: MapAccess<'de>,
+            {
+                let registration = map
+                    .next_key_seed(TypeRegistrationDeserializer::new(self.registry))?
+                    .ok_or_else(|| Error::invalid_length(0, &"a single entry"))?;
+
+                let value = map.next_value_seed(TypedReflectDeserializer {
+                    registration,
+                    registry: self.registry,
+                    processor: self.processor,
+                })?;
+
+                if map.next_key::<IgnoredAny>()?.is_some() {
+                    return Err(Error::invalid_length(2, &"a single entry"));
+                }
+
+                Ok(value)
+            }
+        }
+
+        deserializer.deserialize_map(UntypedReflectDeserializerVisitor {
+            registry: self.registry,
+            processor: self.processor,
+        })
+    }
+}
+
 /// A deserializer for reflected types whose [`TypeRegistration`] is known.
 ///
 /// This is the deserializer counterpart to [`TypedReflectSerializer`].
@@ -361,20 +427,6 @@ pub struct ValueProcessor<'p> {
             ) -> Result<Box<dyn Reflect>, erased_serde::Error>
             + 'p,
     >,
-}
-
-impl<'a, 'p> TypedReflectDeserializer<'a, 'p> {
-    pub fn new_with_processor(
-        registration: &'a TypeRegistration,
-        registry: &'a TypeRegistry,
-        processor: &'a mut ValueProcessor<'p>,
-    ) -> Self {
-        Self {
-            registration,
-            registry,
-            processor: Some(processor),
-        }
-    }
 }
 
 impl<'de> DeserializeSeed<'de> for TypedReflectDeserializer<'_, '_> {

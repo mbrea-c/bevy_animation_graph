@@ -2,10 +2,9 @@
     nodes: [
         (
             name: "Locomotion FSM",
-            ty: "bevy_animation_graph::node::graph::Fsm",
-            inner: (
+            inner: {"bevy_animation_graph::node::graph::Fsm": (
                 fsm: "fsm/locomotion.fsm.ron",
-            ),
+            )},
         ),
     ],
     edges_inverted: {
