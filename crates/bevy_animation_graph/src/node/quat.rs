@@ -29,6 +29,7 @@ pub(super) fn register_types(app: &mut App) {
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default, NodeLike)]
 pub struct FromEuler {
+    #[reflect(ignore)]
     pub mode: EulerRot,
 }
 
@@ -60,6 +61,7 @@ impl NodeLike for FromEuler {
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default, NodeLike)]
 pub struct IntoEuler {
+    #[reflect(ignore)]
     pub mode: EulerRot,
 }
 
