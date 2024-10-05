@@ -2,63 +2,81 @@
     nodes: [
         (
             name: "Base speed",
-            node: AddF32,
-        ),
-        (
-            name: "Amount into blend",
-            node: SubF32,
-        ),
-        (
-            name: "1 - blend_fac",
-            node: SubF32,
+            inner: {
+                "bevy_animation_graph::node::f32::Add": (),
+            },
         ),
         (
             name: "Factored run_speed",
-            node: MulF32,
+            inner: {
+                "bevy_animation_graph::node::f32::Mul": (),
+            },
         ),
         (
-            name: "Blend fac div",
-            node: DivF32,
-        ),
-        (
-            name: "Clamp blend_fac",
-            node: ClampF32,
+            name: "1 - blend_fac",
+            inner: {
+                "bevy_animation_graph::node::f32::Sub": (),
+            },
         ),
         (
             name: "speed_fac div",
-            node: DivF32,
+            inner: {
+                "bevy_animation_graph::node::f32::Div": (),
+            },
+        ),
+        (
+            name: "Amount into blend",
+            inner: {
+                "bevy_animation_graph::node::f32::Sub": (),
+            },
         ),
         (
             name: "Blend range size",
-            node: SubF32,
+            inner: {
+                "bevy_animation_graph::node::f32::Sub": (),
+            },
         ),
         (
             name: "Factored walk_speed",
-            node: MulF32,
+            inner: {
+                "bevy_animation_graph::node::f32::Mul": (),
+            },
+        ),
+        (
+            name: "Clamp blend_fac",
+            inner: {
+                "bevy_animation_graph::node::f32::Clamp": (),
+            },
+        ),
+        (
+            name: "Blend fac div",
+            inner: {
+                "bevy_animation_graph::node::f32::Div": (),
+            },
         ),
     ],
     edges_inverted: {
-        NodeData("Clamp blend_fac", "F32 In"): NodeData("Blend fac div", "F32 Out"),
-        NodeData("Amount into blend", "F32 In 2"): InputData("blend_start"),
-        NodeData("Blend range size", "F32 In 1"): InputData("blend_end"),
-        NodeData("Base speed", "F32 In 2"): NodeData("Factored walk_speed", "F32 Out"),
-        NodeData("Clamp blend_fac", "Max"): InputData("1"),
-        NodeData("1 - blend_fac", "F32 In 2"): NodeData("Clamp blend_fac", "F32 Out"),
-        NodeData("Amount into blend", "F32 In 1"): InputData("speed"),
-        NodeData("Blend range size", "F32 In 2"): InputData("blend_start"),
-        OutputData("speed_fac"): NodeData("speed_fac div", "F32 Out"),
-        NodeData("Blend fac div", "F32 In 1"): NodeData("Amount into blend", "F32 Out"),
-        NodeData("Clamp blend_fac", "Min"): InputData("0"),
-        NodeData("Blend fac div", "F32 In 2"): NodeData("Blend range size", "F32 Out"),
-        NodeData("1 - blend_fac", "F32 In 1"): InputData("1"),
-        NodeData("speed_fac div", "F32 In 2"): NodeData("Base speed", "F32 Out"),
-        NodeData("Factored walk_speed", "F32 In 2"): InputData("walk_speed"),
-        NodeData("Factored run_speed", "F32 In 2"): InputData("run_speed"),
-        NodeData("Factored run_speed", "F32 In 1"): NodeData("Clamp blend_fac", "F32 Out"),
-        NodeData("Base speed", "F32 In 1"): NodeData("Factored run_speed", "F32 Out"),
-        NodeData("speed_fac div", "F32 In 1"): InputData("speed"),
-        OutputData("blend_fac"): NodeData("Clamp blend_fac", "F32 Out"),
-        NodeData("Factored walk_speed", "F32 In 1"): NodeData("1 - blend_fac", "F32 Out"),
+        NodeData("Factored walk_speed", "in_b"): InputData("walk_speed"),
+        NodeData("1 - blend_fac", "in_a"): InputData("1"),
+        NodeData("Blend fac div", "in_a"): NodeData("Amount into blend", "out"),
+        NodeData("Blend range size", "in_a"): InputData("blend_end"),
+        OutputData("blend_fac"): NodeData("Clamp blend_fac", "out"),
+        NodeData("Factored run_speed", "in_a"): NodeData("Clamp blend_fac", "out"),
+        NodeData("1 - blend_fac", "in_b"): NodeData("Clamp blend_fac", "out"),
+        NodeData("Clamp blend_fac", "max"): InputData("1"),
+        NodeData("Amount into blend", "in_b"): InputData("blend_start"),
+        NodeData("Base speed", "in_a"): NodeData("Factored run_speed", "out"),
+        NodeData("Amount into blend", "in_a"): InputData("speed"),
+        NodeData("speed_fac div", "in_a"): InputData("speed"),
+        NodeData("Blend range size", "in_b"): InputData("blend_start"),
+        NodeData("Factored run_speed", "in_b"): InputData("run_speed"),
+        NodeData("speed_fac div", "in_b"): NodeData("Base speed", "out"),
+        OutputData("speed_fac"): NodeData("speed_fac div", "out"),
+        NodeData("Blend fac div", "in_b"): NodeData("Blend range size", "out"),
+        NodeData("Base speed", "in_b"): NodeData("Factored walk_speed", "out"),
+        NodeData("Clamp blend_fac", "in"): NodeData("Blend fac div", "out"),
+        NodeData("Clamp blend_fac", "min"): InputData("0"),
+        NodeData("Factored walk_speed", "in_a"): NodeData("1 - blend_fac", "out"),
     },
     default_parameters: {
         "speed": F32(1.0),
@@ -78,14 +96,14 @@
     extra: (
         node_positions: {
             "Base speed": (563.07684, 184.61542),
-            "Amount into blend": (-27.692139, -233.53845),
-            "1 - blend_fac": (253.84619, 183.69238),
             "Factored run_speed": (415.38458, 88.61536),
-            "Blend fac div": (125.53845, -143.99998),
-            "Clamp blend_fac": (282.46143, -148.61539),
+            "1 - blend_fac": (253.84619, 183.69238),
             "speed_fac div": (712.61536, 181.84619),
+            "Amount into blend": (-27.692139, -233.53845),
             "Blend range size": (-30.461609, -67.38461),
             "Factored walk_speed": (409.8462, 264.9231),
+            "Clamp blend_fac": (282.46143, -148.61539),
+            "Blend fac div": (125.53845, -143.99998),
         },
         input_position: (-194.76935, -21.23082),
         output_position: (967.38446, 101.53839),

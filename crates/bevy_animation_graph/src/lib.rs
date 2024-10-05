@@ -183,13 +183,13 @@
 pub mod core;
 pub mod flipping;
 pub mod interpolation;
-pub mod nodes;
+pub mod node;
 mod utils;
 
 pub mod prelude {
     pub use super::core::prelude::*;
     pub use super::flipping::*;
     pub use super::interpolation::linear::*;
-    pub use super::nodes::*;
+    pub use super::node::*;
     pub use super::utils::ordered_map::OrderedMap;
 }

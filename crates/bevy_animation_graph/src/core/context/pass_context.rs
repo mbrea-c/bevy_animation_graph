@@ -12,7 +12,9 @@ use crate::{
         pose::BoneId,
         state_machine::low_level::{LowLevelStateId, LowLevelStateMachine},
     },
+    node,
     prelude::{AnimationGraph, DataValue},
+    utils::asset::GetTypedExt,
 };
 use bevy::{ecs::entity::Entity, utils::HashMap};
 
@@ -164,9 +166,13 @@ impl<'a> PassContext<'a> {
     ) -> Self {
         let node_ctx = self.node_context.unwrap();
         let node = node_ctx.graph.nodes.get(node_ctx.node_id).unwrap();
-        let graph_id = match &node.node {
-            crate::core::prelude::AnimationNodeType::Graph(n) => n.graph.id(),
-            crate::core::prelude::AnimationNodeType::Fsm(n) => {
+
+        let graph_id = {
+            let node = node.inner.as_any();
+
+            if let Some(node) = node.downcast_ref::<node::graph::Graph>() {
+                node.graph.id()
+            } else if let Some(node) = node.downcast_ref::<node::graph::Fsm>() {
                 // TODO: Extract this into a function, probably(?) in the FSM code
                 let cur_state_id = fsm_ctx
                     .as_ref()
@@ -175,13 +181,14 @@ impl<'a> PassContext<'a> {
                 let fsm = self
                     .resources
                     .state_machine_assets
-                    .get(&n.fsm)
+                    .get_typed(&node.fsm, &self.resources.loaded_untyped_assets)
                     .unwrap()
                     .get_low_level_fsm();
                 let cur_state = fsm.states.get(&cur_state_id).unwrap();
                 cur_state.graph.id()
+            } else {
+                panic!("Only graph or FSM nodes can have subgraphs");
             }
-            _ => panic!("Only graph or FSM nodes can have subgraphs"),
         };
 
         let subctx_id = SubContextId {
@@ -262,6 +269,7 @@ impl<'a> PassContext<'a> {
 
     pub fn spec_context(&'a self) -> SpecContext<'a> {
         SpecContext {
+            loaded_untyped_assets: &self.resources.loaded_untyped_assets,
             graph_assets: &self.resources.animation_graph_assets,
             fsm_assets: &self.resources.state_machine_assets,
         }
