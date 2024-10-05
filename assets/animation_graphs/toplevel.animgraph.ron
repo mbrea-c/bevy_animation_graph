@@ -2,16 +2,18 @@
     nodes: [
         (
             name: "Locomotion FSM",
-            inner: {"bevy_animation_graph::node::graph::Fsm": (
-                fsm: "fsm/locomotion.fsm.ron",
-            )},
+            inner: {
+                "bevy_animation_graph::node::graph::Fsm": (
+                    fsm: "fsm/locomotion.fsm.ron",
+                ),
+            },
         ),
     ],
     edges_inverted: {
-        OutputData("pose"): NodeData("Locomotion FSM", "pose"),
         NodeData("Locomotion FSM", "driver events"): InputData("user events"),
-        NodeData("Locomotion FSM", "speed"): InputData("speed"),
         OutputTime: NodeTime("Locomotion FSM"),
+        NodeData("Locomotion FSM", "speed"): InputData("speed"),
+        OutputData("pose"): NodeData("Locomotion FSM", "pose"),
     },
     default_parameters: {
         "user events": EventQueue((

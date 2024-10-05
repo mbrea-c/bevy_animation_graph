@@ -2,23 +2,27 @@
     nodes: [
         (
             name: "base anim",
-            inner: {"bevy_animation_graph::node::graph::Graph": (
-                graph: "animation_graphs/human_new.animgraph.ron",
-            )},
+            inner: {
+                "bevy_animation_graph::node::graph::Graph": (
+                    graph: "animation_graphs/human_new.animgraph.ron",
+                ),
+            },
         ),
         (
             name: "arm ik",
-            inner: {"bevy_animation_graph::node::ik::TwoBone": ()},
+            inner: {
+                "bevy_animation_graph::node::ik::TwoBone": (),
+            },
         ),
     ],
     edges_inverted: {
-        OutputTime: NodeTime("arm ik"),
-        NodeData("base anim", "Target Speed"): InputData("Target Speed"),
+        NodeData("base anim", "Target Direction"): InputData("Target Direction"),
+        NodeTime("arm ik", "in_time"): NodeTime("base anim"),
         NodeData("arm ik", "bone_path"): InputData("right hand path"),
         NodeData("arm ik", "in_pose"): NodeData("base anim", "pose"),
         NodeData("arm ik", "target_position"): InputData("target hand pos"),
-        NodeData("base anim", "Target Direction"): InputData("Target Direction"),
-        NodeTime("arm ik", "in_time"): NodeTime("base anim"),
+        OutputTime: NodeTime("arm ik"),
+        NodeData("base anim", "Target Speed"): InputData("Target Speed"),
         OutputData("pose"): NodeData("arm ik", "out"),
     },
     default_parameters: {

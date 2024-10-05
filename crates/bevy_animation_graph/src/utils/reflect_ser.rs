@@ -39,6 +39,55 @@ fn get_serializable<'a, E: Error>(
     Ok(reflect_serialize.get_serializable(reflect_value))
 }
 
+pub struct ReflectSerializer<'a, P> {
+    pub value: &'a dyn Reflect,
+    pub registry: &'a TypeRegistry,
+    pub processor: Option<&'a P>,
+}
+
+impl<'a, P> ReflectSerializer<'a, P> {
+    pub fn new(
+        value: &'a dyn Reflect,
+        registry: &'a TypeRegistry,
+        processor: Option<&'a P>,
+    ) -> Self {
+        ReflectSerializer {
+            value,
+            registry,
+            processor,
+        }
+    }
+}
+
+impl<P: ReflectSerializerProcessor> Serialize for ReflectSerializer<'_, P> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let mut state = serializer.serialize_map(Some(1))?;
+        state.serialize_entry(
+            self.value
+                .get_represented_type_info()
+                .ok_or_else(|| {
+                    if self.value.is_dynamic() {
+                        Error::custom(format_args!(
+                            "cannot serialize dynamic value without represented type: {}",
+                            self.value.reflect_type_path()
+                        ))
+                    } else {
+                        Error::custom(format_args!(
+                            "cannot get type info for {}",
+                            self.value.reflect_type_path()
+                        ))
+                    }
+                })?
+                .type_path(),
+            &TypedReflectSerializer::new(self.value, self.registry, self.processor),
+        )?;
+        state.end()
+    }
+}
+
 /// A serializer for reflected types whose type will be known during deserialization.
 ///
 /// This is the serializer counterpart to [`TypedReflectDeserializer`].

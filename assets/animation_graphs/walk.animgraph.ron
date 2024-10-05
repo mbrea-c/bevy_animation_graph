@@ -1,65 +1,77 @@
 (
     nodes: [
         (
-            name: "walk clip 1",
-            inner: {"bevy_animation_graph::node::pose::Clip": (
-                clip: "animations/human_walk.anim.ron",
-                override_duration: None,
-                override_interpolation: None,
-            )},
+            name: "speed",
+            inner: {
+                "bevy_animation_graph::node::pose::ChangeSpeed": (),
+            },
         ),
         (
             name: "chain walk",
-            inner: {"bevy_animation_graph::node::pose::Chain": (
-                interpolation_period: 0.5,
-            )},
-        ),
-        (
-            name: "flip walk",
-            inner: {"bevy_animation_graph::node::pose::FlipLeftRight": (
-                config: (
-                    name_mapper: Pattern((
-                        key_1: "L",
-                        key_2: "R",
-                        pattern_before: "^.*",
-                        pattern_after: "$",
-                    )),
+            inner: {
+                "bevy_animation_graph::node::pose::Chain": (
+                    interpolation_period: 0.5,
                 ),
-            )},
+            },
         ),
         (
-            name: "speed",
-            inner: {"bevy_animation_graph::node::pose::ChangeSpeed": ()},
+            name: "walk clip 1",
+            inner: {
+                "bevy_animation_graph::node::pose::Clip": (
+                    clip: "animations/human_walk.anim.ron",
+                    override_duration: None,
+                    override_interpolation: None,
+                ),
+            },
         ),
         (
             name: "walk clip 2",
-            inner: {"bevy_animation_graph::node::pose::Clip": (
-                clip: "animations/human_walk.anim.ron",
-                override_duration: None,
-                override_interpolation: None,
-            )},
+            inner: {
+                "bevy_animation_graph::node::pose::Clip": (
+                    clip: "animations/human_walk.anim.ron",
+                    override_duration: None,
+                    override_interpolation: None,
+                ),
+            },
         ),
         (
             name: "loop",
-            inner: {"bevy_animation_graph::node::pose::Repeat": (
-                interpolation_period: 0.5,
-            )},
+            inner: {
+                "bevy_animation_graph::node::pose::Repeat": (
+                    interpolation_period: 0.5,
+                ),
+            },
+        ),
+        (
+            name: "flip walk",
+            inner: {
+                "bevy_animation_graph::node::pose::FlipLeftRight": (
+                    config: (
+                        name_mapper: Pattern((
+                            key_1: "L",
+                            key_2: "R",
+                            pattern_before: "^.*",
+                            pattern_after: "$",
+                        )),
+                    ),
+                ),
+            },
         ),
     ],
     edges_inverted: {
+        NodeData("flip walk", "in_pose"): NodeData("walk clip 2", "out"),
+        NodeData("speed", "in_pose"): NodeData("loop", "out"),
+        NodeTime("chain walk", "time_b"): NodeTime("flip walk"),
+        NodeData("speed", "speed"): InputData("speed"),
         OutputData("pose"): NodeData("speed", "out"),
         NodeData("chain walk", "pose_a"): NodeData("walk clip 1", "out"),
         OutputTime: NodeTime("speed"),
         NodeTime("flip walk", "in_time"): NodeTime("walk clip 2"),
         NodeData("chain walk", "pose_b"): NodeData("flip walk", "out"),
-        NodeData("speed", "speed"): InputData("speed"),
+        NodeTime("speed", "in_time"): NodeTime("loop"),
         NodeData("loop", "in_pose"): NodeData("chain walk", "out"),
         NodeTime("loop", "in_time"): NodeTime("chain walk"),
-        NodeTime("chain walk", "time_b"): NodeTime("flip walk"),
-        NodeData("speed", "in_pose"): NodeData("loop", "out"),
         NodeTime("chain walk", "time_a"): NodeTime("walk clip 1"),
-        NodeData("flip walk", "in_pose"): NodeData("walk clip 2", "out"),
-        NodeTime("speed", "in_time"): NodeTime("loop"),
     },
     default_parameters: {
         "speed": F32(1.0),
@@ -71,12 +83,12 @@
     output_time: Some(()),
     extra: (
         node_positions: {
-            "walk clip 1": (310.0, 360.0),
-            "chain walk": (476.0, 433.0),
-            "flip walk": (308.0, 514.0),
             "speed": (776.0, 429.0),
+            "chain walk": (476.0, 433.0),
+            "walk clip 1": (310.0, 360.0),
             "walk clip 2": (162.0, 514.0),
             "loop": (640.0, 443.0),
+            "flip walk": (308.0, 514.0),
         },
         input_position: (601.0, 266.0),
         output_position: (914.0, 431.0),

@@ -1,65 +1,77 @@
 (
     nodes: [
         (
-            name: "speed",
-            inner: {"bevy_animation_graph::node::pose::ChangeSpeed": ()},
-        ),
-        (
-            name: "flip run",
-            inner: {"bevy_animation_graph::node::pose::FlipLeftRight": (
-                config: (
-                    name_mapper: Pattern((
-                        key_1: "L",
-                        key_2: "R",
-                        pattern_before: "^.*",
-                        pattern_after: "$",
-                    )),
-                ),
-            )},
-        ),
-        (
-            name: "loop",
-            inner: {"bevy_animation_graph::node::pose::Repeat": (
-                interpolation_period: 0.5,
-            )},
-        ),
-        (
-            name: "run clip 2",
-            inner: {"bevy_animation_graph::node::pose::Clip": (
-                clip: "animations/human_run.anim.ron",
-                override_duration: None,
-                override_interpolation: None,
-            )},
-        ),
-        (
             name: "chain run",
-            inner: {"bevy_animation_graph::node::pose::Chain": (
-                interpolation_period: 0.5,
-            )},
+            inner: {
+                "bevy_animation_graph::node::pose::Chain": (
+                    interpolation_period: 0.5,
+                ),
+            },
+        ),
+        (
+            name: "speed",
+            inner: {
+                "bevy_animation_graph::node::pose::ChangeSpeed": (),
+            },
         ),
         (
             name: "run clip 1",
-            inner: {"bevy_animation_graph::node::pose::Clip": (
-                clip: "animations/human_run.anim.ron",
-                override_duration: None,
-                override_interpolation: None,
-            )},
+            inner: {
+                "bevy_animation_graph::node::pose::Clip": (
+                    clip: "animations/human_run.anim.ron",
+                    override_duration: None,
+                    override_interpolation: None,
+                ),
+            },
+        ),
+        (
+            name: "run clip 2",
+            inner: {
+                "bevy_animation_graph::node::pose::Clip": (
+                    clip: "animations/human_run.anim.ron",
+                    override_duration: None,
+                    override_interpolation: None,
+                ),
+            },
+        ),
+        (
+            name: "flip run",
+            inner: {
+                "bevy_animation_graph::node::pose::FlipLeftRight": (
+                    config: (
+                        name_mapper: Pattern((
+                            key_1: "L",
+                            key_2: "R",
+                            pattern_before: "^.*",
+                            pattern_after: "$",
+                        )),
+                    ),
+                ),
+            },
+        ),
+        (
+            name: "loop",
+            inner: {
+                "bevy_animation_graph::node::pose::Repeat": (
+                    interpolation_period: 0.5,
+                ),
+            },
         ),
     ],
     edges_inverted: {
-        NodeData("speed", "speed"): InputData("speed"),
-        OutputTime: NodeTime("speed"),
-        NodeData("chain run", "pose_a"): NodeData("run clip 1", "out"),
-        NodeTime("flip run", "in_time"): NodeTime("run clip 2"),
-        NodeData("chain run", "pose_b"): NodeData("flip run", "out"),
-        NodeTime("chain run", "time_a"): NodeTime("run clip 1"),
-        NodeData("loop", "in_pose"): NodeData("chain run", "out"),
-        NodeTime("loop", "in_time"): NodeTime("chain run"),
-        NodeData("speed", "in_pose"): NodeData("loop", "out"),
-        NodeData("flip run", "in_pose"): NodeData("run clip 2", "out"),
         NodeTime("chain run", "time_b"): NodeTime("flip run"),
-        NodeTime("speed", "in_time"): NodeTime("loop"),
+        NodeData("speed", "in_pose"): NodeData("loop", "out"),
+        NodeData("chain run", "pose_b"): NodeData("flip run", "out"),
+        NodeData("speed", "speed"): InputData("speed"),
+        NodeTime("chain run", "time_a"): NodeTime("run clip 1"),
+        NodeTime("flip run", "in_time"): NodeTime("run clip 2"),
+        OutputTime: NodeTime("speed"),
         OutputData("pose"): NodeData("speed", "out"),
+        NodeTime("loop", "in_time"): NodeTime("chain run"),
+        NodeData("loop", "in_pose"): NodeData("chain run", "out"),
+        NodeData("flip run", "in_pose"): NodeData("run clip 2", "out"),
+        NodeData("chain run", "pose_a"): NodeData("run clip 1", "out"),
+        NodeTime("speed", "in_time"): NodeTime("loop"),
     },
     default_parameters: {
         "blend": F32(0.2),
@@ -72,12 +84,12 @@
     output_time: Some(()),
     extra: (
         node_positions: {
+            "chain run": (483.0, 436.0),
             "speed": (777.0, 428.0),
+            "run clip 1": (327.0, 394.0),
+            "run clip 2": (182.0, 548.0),
             "flip run": (325.0, 549.0),
             "loop": (640.0, 443.0),
-            "run clip 2": (182.0, 548.0),
-            "chain run": (483.0, 436.0),
-            "run clip 1": (327.0, 394.0),
         },
         input_position: (414.0, 193.0),
         output_position: (914.0, 431.0),

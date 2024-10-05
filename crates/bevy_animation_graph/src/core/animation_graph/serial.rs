@@ -5,7 +5,7 @@ use crate::{
     prelude::{AnimationNode, DataSpec, DataValue, NodeLike, OrderedMap, ReflectNodeLike},
     utils::{
         reflect_de::{ReflectDeserializer, ValueProcessor},
-        reflect_ser::{ReflectSerializerProcessor, TypedReflectSerializer},
+        reflect_ser::{ReflectSerializer, ReflectSerializerProcessor},
     },
 };
 use bevy::{
@@ -938,26 +938,17 @@ impl<'a> Serialize for AnimationNodeSerializer<'a> {
             }
         }
 
-        let mut state = serializer.serialize_struct("AnimationNodeSerializer", 3)?;
+        let mut state = serializer.serialize_struct("AnimationNodeSerializer", 2)?;
 
         state.serialize_field("name", &self.name)?;
 
-        let type_path = self
-            .type_registry
-            .get_type_info(self.inner.type_id())
-            .map(|t| t.type_path())
-            .ok_or(serde::ser::Error::custom(format!(
-                "no type registration for `{}`",
-                self.inner.reflect_type_path()
-            )))?;
-        state.serialize_field("ty", type_path)?;
-
         let mut processor = HandleProcessor;
-        let reflect_serializer = TypedReflectSerializer::new(
+        let reflect_serializer = ReflectSerializer::new(
             self.inner.as_reflect(),
             &self.type_registry,
             Some(&mut processor),
         );
+
         state.serialize_field("inner", &reflect_serializer)?;
 
         state.end()
