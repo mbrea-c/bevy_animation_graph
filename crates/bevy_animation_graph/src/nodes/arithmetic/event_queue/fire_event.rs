@@ -1,7 +1,7 @@
 use crate::{
     core::{
         animation_graph::PinMap,
-        animation_node::{AnimationNode, AnimationNodeType, NodeLike},
+        animation_node::{NodeLike, ReflectNodeLike},
         context::{PassContext, SpecContext},
         edge_data::{AnimationEvent, DataSpec, EventQueue, SampledEvent},
         errors::GraphError,
@@ -11,7 +11,7 @@ use crate::{
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
-#[reflect(Default)]
+#[reflect(Default, NodeLike)]
 pub struct FireEventNode {
     pub event: AnimationEvent,
 }
@@ -22,10 +22,6 @@ impl FireEventNode {
 
     pub fn new(event: AnimationEvent) -> Self {
         Self { event }
-    }
-
-    pub fn wrapped(self, name: impl Into<String>) -> AnimationNode {
-        AnimationNode::new_from_nodetype(name.into(), AnimationNodeType::FireEvent(self))
     }
 }
 

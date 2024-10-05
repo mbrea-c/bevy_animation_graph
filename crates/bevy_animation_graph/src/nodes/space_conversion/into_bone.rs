@@ -11,7 +11,7 @@ use crate::{
 use bevy::reflect::{std_traits::ReflectDefault, Reflect};
 
 #[derive(Reflect, Clone, Debug, Default)]
-#[reflect(Default)]
+#[reflect(Default, NodeLike)]
 pub struct IntoBoneSpaceNode {}
 
 impl IntoBoneSpaceNode {

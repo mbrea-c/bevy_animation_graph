@@ -69,7 +69,7 @@ pub enum Interpolation {
 
 /// Path to an entity, with [`Name`]s. Each entity in a path must have a name.
 #[derive(Reflect, Clone, Debug, Hash, PartialEq, Eq, Default)]
-#[reflect(Default)]
+#[reflect(Default, Serialize, Deserialize)]
 pub struct EntityPath {
     /// Parts of the path
     pub parts: Vec<Name>,

@@ -1,5 +1,5 @@
 use crate::core::animation_graph::{PinMap, TimeUpdate};
-use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
+use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::pose::Pose;
 use crate::core::prelude::DataSpec;
@@ -9,7 +9,7 @@ use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Reflect, Clone, Copy, Debug, Default, Serialize, Deserialize)]
-#[reflect(Default)]
+#[reflect(Default, Serialize)]
 pub enum BlendMode {
     #[default]
     LinearInterpolate,
@@ -28,7 +28,7 @@ pub enum BlendSyncMode {
 }
 
 #[derive(Reflect, Clone, Debug, Default)]
-#[reflect(Default)]
+#[reflect(Default, NodeLike)]
 pub struct BlendNode {
     pub mode: BlendMode,
     pub sync_mode: BlendSyncMode,
@@ -44,10 +44,6 @@ impl BlendNode {
 
     pub fn new(mode: BlendMode, sync_mode: BlendSyncMode) -> Self {
         Self { mode, sync_mode }
-    }
-
-    pub fn wrapped(self, name: impl Into<String>) -> AnimationNode {
-        AnimationNode::new_from_nodetype(name.into(), AnimationNodeType::Blend(self))
     }
 }
 

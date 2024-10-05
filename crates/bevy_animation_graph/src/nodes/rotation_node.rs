@@ -1,11 +1,12 @@
 use crate::core::animation_clip::EntityPath;
 use crate::core::animation_graph::PinMap;
-use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
+use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::pose::{BonePose, Pose};
 use crate::core::prelude::DataSpec;
 use crate::core::space_conversion::SpaceConversion;
 use crate::prelude::{PassContext, SpecContext};
+use crate::utils::asset::GetTypedExt;
 use crate::utils::unwrap::UnwrapVal;
 use bevy::math::Quat;
 use bevy::reflect::std_traits::ReflectDefault;
@@ -36,7 +37,7 @@ pub enum ChainDecay {
 }
 
 #[derive(Reflect, Clone, Debug)]
-#[reflect(Default)]
+#[reflect(Default, NodeLike)]
 pub struct RotationNode {
     pub application_mode: RotationMode,
     pub rotation_space: RotationSpace,
@@ -79,10 +80,6 @@ impl RotationNode {
             base_weight,
         }
     }
-
-    pub fn wrapped(self, name: impl Into<String>) -> AnimationNode {
-        AnimationNode::new_from_nodetype(name.into(), AnimationNodeType::Rotation(self))
-    }
 }
 
 impl NodeLike for RotationNode {
@@ -103,7 +100,11 @@ impl NodeLike for RotationNode {
         let mut target = target.id();
         let rotation: Quat = ctx.data_back(Self::ROTATION)?.val();
         let mut pose: Pose = ctx.data_back(Self::IN_POSE)?.val();
-        let Some(skeleton) = ctx.resources.skeleton_assets.get(&pose.skeleton) else {
+        let Some(skeleton) = ctx
+            .resources
+            .skeleton_assets
+            .get_typed(&pose.skeleton, &ctx.resources.loaded_untyped_assets)
+        else {
             return Err(GraphError::SkeletonMissing(ctx.node_id()));
         };
 

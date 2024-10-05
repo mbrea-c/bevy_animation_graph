@@ -1,14 +1,15 @@
 use super::pin;
 use crate::{
     core::{
-        animation_node::{AnimationNode, NodeLike},
+        animation_node::AnimationNode,
         context::{CacheReadFilter, CacheWriteFilter},
         duration_data::DurationData,
         errors::{GraphError, GraphValidationError},
         pose::{BoneId, Pose},
-        prelude::{AnimationNodeType, GraphContextArena},
+        prelude::GraphContextArena,
         state_machine::high_level::StateMachine,
     },
+    nodes::FSMNode,
     prelude::{
         DataSpec, DataValue, DeferredGizmos, OptDataSpec, PassContext, SpecContext, SystemResources,
     },
@@ -492,17 +493,15 @@ impl AnimationGraph {
         let fsm_id = fsm.into();
         self.nodes
             .values()
-            .filter_map(|n| match &n.node {
-                AnimationNodeType::Fsm(m) => Some((n.name.clone(), m)),
-                _ => None,
-            })
-            .fold(None, |acc, (name, m)| {
-                acc.or(if m.fsm.id() == fsm_id {
-                    Some(name)
+            .filter_map(|node| {
+                let fsm = node.inner.as_any().downcast_ref::<FSMNode>()?;
+                if fsm.fsm.id() == fsm_id {
+                    Some(node.name.clone())
                 } else {
                     None
-                })
+                }
             })
+            .next()
     }
 
     fn extract_target_param_spec(

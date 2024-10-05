@@ -1,5 +1,5 @@
 use crate::core::animation_graph::{PinMap, TimeUpdate};
-use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
+use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::pose::Pose;
 use crate::core::prelude::DataSpec;
@@ -8,7 +8,7 @@ use crate::utils::unwrap::UnwrapVal;
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
-#[reflect(Default)]
+#[reflect(Default, NodeLike)]
 pub struct ChainNode {
     /// Time in-between animations where the output should interpolate between the last pose of the
     /// first animation and the first pose of the second
@@ -26,10 +26,6 @@ impl ChainNode {
         Self {
             interpolation_period,
         }
-    }
-
-    pub fn wrapped(self, name: impl Into<String>) -> AnimationNode {
-        AnimationNode::new_from_nodetype(name.into(), AnimationNodeType::Chain(self))
     }
 }
 

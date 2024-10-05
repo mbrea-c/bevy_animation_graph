@@ -1,16 +1,18 @@
 use crate::core::animation_graph::PinMap;
-use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
+use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::pose::Pose;
 use crate::core::prelude::DataSpec;
 use crate::flipping::flip_pose;
-use crate::prelude::config::FlipConfig;
-use crate::prelude::{PassContext, SpecContext};
+use crate::prelude::config::{FlipConfig, FlipConfigProxy};
+use crate::prelude::{EditProxy, PassContext, SpecContext};
+use crate::utils::asset::GetTypedExt;
 use crate::utils::unwrap::UnwrapVal;
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 
-#[derive(Reflect, Clone, Debug)]
-#[reflect(Default)]
+#[derive(Reflect, Clone, Debug, Serialize, Deserialize)]
+#[reflect(Default, NodeLike, Serialize, Deserialize)]
 pub struct FlipLRNode {
     pub config: FlipConfig,
 }
@@ -29,10 +31,6 @@ impl FlipLRNode {
     pub fn new(config: FlipConfig) -> Self {
         Self { config }
     }
-
-    pub fn wrapped(self, name: impl Into<String>) -> AnimationNode {
-        AnimationNode::new_from_nodetype(name.into(), AnimationNodeType::FlipLR(self))
-    }
 }
 
 impl NodeLike for FlipLRNode {
@@ -47,7 +45,11 @@ impl NodeLike for FlipLRNode {
         ctx.set_time_update_back(Self::IN_TIME, input);
         let in_pose: Pose = ctx.data_back(Self::IN_POSE)?.val();
         ctx.set_time(in_pose.timestamp);
-        let Some(skeleton) = ctx.resources.skeleton_assets.get(&in_pose.skeleton) else {
+        let Some(skeleton) = ctx
+            .resources
+            .skeleton_assets
+            .get_typed(&in_pose.skeleton, &ctx.resources.loaded_untyped_assets)
+        else {
             return Err(GraphError::SkeletonMissing(ctx.node_id()));
         };
         let flipped_pose = flip_pose(&in_pose, &self.config, skeleton);
@@ -75,4 +77,60 @@ impl NodeLike for FlipLRNode {
     fn display_name(&self) -> String {
         "🚻 Flip Left/Right".into()
     }
+}
+
+#[derive(Clone, Reflect)]
+pub struct FlipLRProxy {
+    pub config: FlipConfigProxy,
+}
+
+impl EditProxy for FlipLRNode {
+    type Proxy = FlipLRProxy;
+
+    fn update_from_proxy(proxy: &Self::Proxy) -> Self {
+        Self {
+            // TODO: This will fail if the regex is incorrect, may cause some editor crashes
+            config: proxy.config.clone().try_into().unwrap(),
+        }
+    }
+
+    fn make_proxy(&self) -> Self::Proxy {
+        Self::Proxy {
+            config: FlipConfigProxy::from(self.config.clone()),
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use crate::core::animation_graph::serial::AnimationNodeSerializer;
+
+    use super::*;
+    use bevy::reflect::TypeRegistry;
+
+    /// We create a Bevy type registry to test reflect-based serialization
+    #[test]
+    fn test_serialize() {
+        let mut registry = TypeRegistry::new();
+        registry.register::<FlipLRNode>();
+
+        let node = super::FlipLRNode::default();
+        let serializer = AnimationNodeSerializer {
+            type_registry: &registry,
+            name: "Test".to_string(),
+            inner: Box::new(node),
+        };
+        let serialized = ron::to_string(&serializer).unwrap();
+        assert_eq!(serialized, "(name:\"Test\",ty:\"bevy_animation_graph::nodes::flip_lr_node::FlipLRNode\",inner:(config:(name_mapper:Pattern((key_1:\"L\",key_2:\"R\",pattern_before:\"^.*\",pattern_after:\"$\")))))".to_string());
+    }
+
+    // TODO: How do we test deserialization?
+    //
+    // The main issue is that we need a LoadContext. I could not figure
+    // out a way to mock it. Maybe we need to set up all the rigamarole
+    // necessary for actually loading an animation graph, add the node under test
+    // to an empty animation graph and test de/serialization on the graph
+    // using real asset loaders?
+    //
+    // See: https://github.com/bevyengine/bevy/blob/7c6057bc69cd7263a2971d8653675a8c9c194710/crates/bevy_asset/src/server/loaders.rs#L333
 }

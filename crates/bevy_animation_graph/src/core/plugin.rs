@@ -17,12 +17,12 @@ use super::{
 };
 use crate::nodes::{
     AbsF32, AddF32, BlendMode, BlendNode, BlendSyncMode, ChainNode, ClampF32, ClipNode, CompareF32,
-    DivF32, DummyNode, FireEventNode, FlipLRNode, GraphNode, LoopNode, MulF32, PaddingNode,
-    RotationArcNode, RotationNode, SpeedNode, SubF32, TwoBoneIKNode,
+    DivF32, DummyNode, FSMNode, FireEventNode, FlipLRNode, GraphNode, LoopNode, MulF32,
+    PaddingNode, RotationArcNode, RotationNode, SpeedNode, SubF32, TwoBoneIKNode,
 };
 use crate::prelude::{
     config::{FlipConfig, FlipNameMapper, PatternMapper, PatternMapperSerial},
-    AnimationGraph, AnimationGraphPlayer, AnimationNodeType,
+    AnimationGraph, AnimationGraphPlayer,
 };
 use crate::{core::animation_clip::EntityPath, prelude::AnimationNode};
 use bevy::{prelude::*, transform::TransformSystem};
@@ -83,9 +83,9 @@ impl AnimationGraphPlugin {
             .register_type::<DataValue>()
             .register_type::<DataSpec>()
             .register_type::<AnimationNode>()
-            .register_type::<AnimationNodeType>()
             .register_type::<FlipConfig>()
-            .register_type::<FlipNameMapper>()
+            .register_type::<FlipNameMapper<PatternMapper>>()
+            .register_type::<FlipNameMapper<PatternMapperSerial>>()
             .register_type::<PatternMapper>()
             .register_type::<PatternMapperSerial>()
             .register_type::<BlendMode>()
@@ -115,6 +115,7 @@ impl AnimationGraphPlugin {
             .register_type::<CompareF32>()
             .register_type::<FireEventNode>()
             .register_type::<RotationArcNode>()
+            .register_type::<FSMNode>()
             // .register_type::<ExtendSkeleton>()
             // .register_type::<IntoBoneSpaceNode>()
             // .register_type::<IntoGlobalSpaceNode>()

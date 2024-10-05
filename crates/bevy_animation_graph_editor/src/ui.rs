@@ -1,3 +1,4 @@
+use std::any::TypeId;
 use std::path::PathBuf;
 
 use crate::asset_saving::{SaveFsm, SaveGraph};
@@ -12,7 +13,7 @@ use crate::graph_update::{
 };
 use crate::scanner::PersistedAssetHandles;
 use crate::tree::{Tree, TreeInternal, TreeResult};
-use bevy::asset::UntypedAssetId;
+use bevy::asset::{LoadedUntypedAsset, UntypedAssetId};
 use bevy::ecs::world::CommandQueue;
 use bevy::prelude::*;
 use bevy::render::camera::RenderTarget;
@@ -33,6 +34,7 @@ use bevy_animation_graph::core::edge_data::AnimationEvent;
 use bevy_animation_graph::core::state_machine::high_level::{
     State, StateId, StateMachine, Transition, TransitionId,
 };
+use bevy_animation_graph::prelude::{ReflectEditProxy, ReflectNodeLike};
 use bevy_egui::EguiContext;
 use bevy_inspector_egui::bevy_egui::EguiUserTextures;
 use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
@@ -316,10 +318,17 @@ impl egui_dock::TabViewer for TabViewer<'_> {
         }
 
         while !self.graph_changes.is_empty() {
-            let must_regen_indices = self.world.resource_scope::<Assets<AnimationGraph>, bool>(
-                |world, mut graph_assets| {
-                    world.resource_scope::<Assets<StateMachine>, bool>(|_, fsm_assets| {
-                        update_graph(self.graph_changes.clone(), &mut graph_assets, &fsm_assets)
+            let must_regen_indices = self.world.resource_scope::<Assets<LoadedUntypedAsset>, _>(
+                |world, loaded_untyped_assets| {
+                    world.resource_scope::<Assets<AnimationGraph>, _>(|world, mut graph_assets| {
+                        world.resource_scope::<Assets<StateMachine>, _>(|_, fsm_assets| {
+                            update_graph(
+                                self.graph_changes.clone(),
+                                &loaded_untyped_assets,
+                                &mut graph_assets,
+                                &fsm_assets,
+                            )
+                        })
                     })
                 },
             );
@@ -451,109 +460,116 @@ impl TabViewer<'_> {
             return;
         };
 
-        world.resource_scope::<Assets<AnimationGraph>, ()>(|world, mut graph_assets| {
-            world.resource_scope::<Assets<StateMachine>, ()>(|world, fsm_assets| {
-                if !graph_assets.contains(graph_selection.graph) {
-                    return;
-                }
+        world.resource_scope::<Assets<LoadedUntypedAsset>, _>(|world, loaded_untyped_assets| {
+            world.resource_scope::<Assets<AnimationGraph>, _>(|world, mut graph_assets| {
+                world.resource_scope::<Assets<StateMachine>, _>(|world, fsm_assets| {
+                    if !graph_assets.contains(graph_selection.graph) {
+                        return;
+                    }
 
-                let changes = {
-                    let graph = graph_assets.get(graph_selection.graph).unwrap();
-                    let spec_context = SpecContext {
-                        graph_assets: &graph_assets,
-                        fsm_assets: &fsm_assets,
-                    };
+                    let changes = {
+                        let graph = graph_assets.get(graph_selection.graph).unwrap();
+                        let spec_context = SpecContext {
+                            loaded_untyped_assets: &loaded_untyped_assets,
+                            graph_assets: &graph_assets,
+                            fsm_assets: &fsm_assets,
+                        };
 
-                    // Autoselect context if none selected and some available
-                    if let (Some(scene), Some(available_contexts)) = (
-                        &mut selection.scene,
-                        list_graph_contexts(world, |ctx| {
-                            ctx.get_graph_id() == graph_selection.graph
-                        }),
-                    ) {
-                        if scene
-                            .active_context
-                            .get(&graph_selection.graph.untyped())
-                            .is_none()
-                            && !available_contexts.is_empty()
-                        {
-                            scene
+                        // Autoselect context if none selected and some available
+                        if let (Some(scene), Some(available_contexts)) = (
+                            &mut selection.scene,
+                            list_graph_contexts(world, |ctx| {
+                                ctx.get_graph_id() == graph_selection.graph
+                            }),
+                        ) {
+                            if scene
                                 .active_context
-                                .insert(graph_selection.graph.untyped(), available_contexts[0]);
-                        }
-                    }
-
-                    let graph_player = get_animation_graph_player(world);
-
-                    let maybe_graph_context = selection
-                        .scene
-                        .as_ref()
-                        .and_then(|s| s.active_context.get(&graph_selection.graph.untyped()))
-                        .zip(graph_player)
-                        .and_then(|(id, p)| Some(id).zip(p.get_context_arena()))
-                        .and_then(|(id, ca)| ca.get_context(*id));
-
-                    let nodes = GraphReprSpec::from_graph(
-                        graph,
-                        &graph_selection.graph_indices,
-                        spec_context,
-                        maybe_graph_context,
-                    );
-
-                    graph_selection
-                        .nodes_context
-                        .show(nodes.nodes, nodes.edges, ui);
-                    graph_selection.nodes_context.get_changes().clone()
-                }
-                .into_iter()
-                .map(|c| {
-                    convert_graph_change(c, &graph_selection.graph_indices, graph_selection.graph)
-                });
-                graph_changes.extend(changes);
-
-                // --- Update selection for node inspector.
-                // --- And enable debug render for latest node selected only
-                // ----------------------------------------------------------------
-
-                let graph = graph_assets.get_mut(graph_selection.graph).unwrap();
-                for (_, node) in graph.nodes.iter_mut() {
-                    node.should_debug = false;
-                }
-                if let Some(selected_node) = graph_selection
-                    .nodes_context
-                    .get_selected_nodes()
-                    .iter()
-                    .rev()
-                    .find(|id| **id > 1)
-                {
-                    if *selected_node > 1 {
-                        let node_name = graph_selection
-                            .graph_indices
-                            .node_indices
-                            .name(*selected_node)
-                            .unwrap();
-                        graph.nodes.get_mut(node_name).unwrap().should_debug = true;
-                        if let InspectorSelection::Node(node_selection) =
-                            &mut selection.inspector_selection
-                        {
-                            if &node_selection.node != node_name
-                                || node_selection.graph != graph_selection.graph
+                                .get(&graph_selection.graph.untyped())
+                                .is_none()
+                                && !available_contexts.is_empty()
                             {
-                                node_selection.node.clone_from(node_name);
-                                node_selection.name_buf.clone_from(node_name);
-                                node_selection.graph = graph_selection.graph;
+                                scene
+                                    .active_context
+                                    .insert(graph_selection.graph.untyped(), available_contexts[0]);
                             }
-                        } else if graph_selection.nodes_context.is_node_just_selected() {
-                            selection.inspector_selection =
-                                InspectorSelection::Node(NodeSelection {
-                                    graph: graph_selection.graph,
-                                    node: node_name.clone(),
-                                    name_buf: node_name.clone(),
-                                });
+                        }
+
+                        let graph_player = get_animation_graph_player(world);
+
+                        let maybe_graph_context = selection
+                            .scene
+                            .as_ref()
+                            .and_then(|s| s.active_context.get(&graph_selection.graph.untyped()))
+                            .zip(graph_player)
+                            .and_then(|(id, p)| Some(id).zip(p.get_context_arena()))
+                            .and_then(|(id, ca)| ca.get_context(*id));
+
+                        let nodes = GraphReprSpec::from_graph(
+                            graph,
+                            &graph_selection.graph_indices,
+                            spec_context,
+                            maybe_graph_context,
+                        );
+
+                        graph_selection
+                            .nodes_context
+                            .show(nodes.nodes, nodes.edges, ui);
+                        graph_selection.nodes_context.get_changes().clone()
+                    }
+                    .into_iter()
+                    .map(|c| {
+                        convert_graph_change(
+                            c,
+                            &graph_selection.graph_indices,
+                            graph_selection.graph,
+                        )
+                    });
+                    graph_changes.extend(changes);
+
+                    // --- Update selection for node inspector.
+                    // --- And enable debug render for latest node selected only
+                    // ----------------------------------------------------------------
+
+                    let graph = graph_assets.get_mut(graph_selection.graph).unwrap();
+                    for (_, node) in graph.nodes.iter_mut() {
+                        node.should_debug = false;
+                    }
+                    if let Some(selected_node) = graph_selection
+                        .nodes_context
+                        .get_selected_nodes()
+                        .iter()
+                        .rev()
+                        .find(|id| **id > 1)
+                    {
+                        if *selected_node > 1 {
+                            let node_name = graph_selection
+                                .graph_indices
+                                .node_indices
+                                .name(*selected_node)
+                                .unwrap();
+                            graph.nodes.get_mut(node_name).unwrap().should_debug = true;
+                            if let InspectorSelection::Node(node_selection) =
+                                &mut selection.inspector_selection
+                            {
+                                if &node_selection.node != node_name
+                                    || node_selection.graph != graph_selection.graph
+                                {
+                                    node_selection.node.clone_from(node_name);
+                                    node_selection.name_buf.clone_from(node_name);
+                                    node_selection.graph = graph_selection.graph;
+                                }
+                            } else if graph_selection.nodes_context.is_node_just_selected() {
+                                selection.inspector_selection =
+                                    InspectorSelection::Node(NodeSelection {
+                                        graph: graph_selection.graph,
+                                        node: node_name.clone(),
+                                        name_buf: node_name.clone(),
+                                    });
+                            }
                         }
                     }
-                }
-                // ----------------------------------------------------------------
+                    // ----------------------------------------------------------------
+                });
             });
         });
 
@@ -647,8 +663,10 @@ impl TabViewer<'_> {
                         &mut selection.scene,
                         list_graph_contexts(world, |ctx| {
                             let graph_id = ctx.get_graph_id();
-                            let graph = graph_assets.get(graph_id).unwrap();
-                            graph.contains_state_machine(fsm_selection.fsm).is_some()
+                            graph_assets
+                                .get(graph_id)
+                                .map(|graph| graph.contains_state_machine(fsm_selection.fsm))
+                                .is_some()
                         }),
                     ) {
                         if scene
@@ -1051,16 +1069,130 @@ impl TabViewer<'_> {
                 .0
                 .clone()
         };
-
         let type_registry = type_registry.read();
+
         let mut queue = CommandQueue::default();
         let mut cx = Context {
             world: Some(unsafe { unsafe_world.world_mut() }.into()),
             queue: Some(&mut queue),
         };
-        let mut env = InspectorUi::for_bevy(&type_registry, &mut cx);
 
-        env.ui_for_reflect(&mut selection.node_creation.node, ui);
+        let original_type_id = selection.node_creation.node.inner.type_id();
+        let mut type_id = original_type_id;
+        egui::Grid::new("node creator fields")
+            .num_columns(2)
+            .show(ui, |ui| {
+                ui.label("Name");
+                ui.text_edit_singleline(&mut selection.node_creation.node.name);
+                ui.end_row();
+
+                ui.label("Type");
+                {
+                    struct TypeInfo<'a> {
+                        id: TypeId,
+                        path: &'a str,
+                        segments: Vec<&'a str>,
+                        short: String,
+                    }
+
+                    let mut segments_found = HashMap::<Vec<&str>, usize>::new();
+                    let mut types = type_registry
+                        .iter_with_data::<ReflectNodeLike>()
+                        .map(|(registration, _)| {
+                            let path = registration.type_info().type_path();
+
+                            // `bevy_animation_graph::node::f32::Add` ->
+                            // - `Add`
+                            // - `f32::Add`
+                            // - `node::f32::Add`
+                            // - `bevy_animation_graph::node::f32::Add`
+                            let mut segments = Vec::new();
+                            for segment in path.rsplit("::") {
+                                segments.insert(0, segment);
+                                *segments_found.entry(segments.clone()).or_default() += 1;
+                            }
+
+                            TypeInfo {
+                                id: registration.type_id(),
+                                path,
+                                segments,
+                                short: String::new(),
+                            }
+                        })
+                        .collect::<Vec<_>>();
+                    for type_info in &mut types {
+                        let mut segments = Vec::new();
+                        for segment in type_info.segments.iter().rev() {
+                            segments.insert(0, *segment);
+                            if segments_found.get(&segments).copied().unwrap_or_default() <= 1 {
+                                // we've found the shortest unique path starting from the right
+                                type_info.short = segments.join("::");
+                                break;
+                            }
+                        }
+
+                        debug_assert!(
+                            !type_info.short.is_empty(),
+                            "should have found a short type path for `{}`",
+                            type_info.path
+                        );
+                    }
+                    let longest_short_name = types
+                        .iter()
+                        .map(|type_info| type_info.short.len())
+                        .max()
+                        .unwrap_or_default();
+                    types.sort_unstable_by(|a, b| a.path.cmp(&b.path));
+
+                    let selected_text = types
+                        .iter()
+                        .find(|type_info| type_info.id == type_id)
+                        .map(|type_info| type_info.short.clone())
+                        .unwrap_or_else(|| "(?)".into());
+                    egui::ComboBox::from_id_source("node creator type")
+                        .selected_text(egui::RichText::new(selected_text).monospace())
+                        .show_ui(ui, |ui| {
+                            for node_type in types {
+                                let padding =
+                                    " ".repeat(longest_short_name - node_type.short.len());
+                                let name =
+                                    format!("{}{padding}  {}", node_type.short, node_type.path);
+                                let name = egui::RichText::new(name).monospace();
+                                ui.selectable_value(&mut type_id, node_type.id, name);
+                            }
+                        });
+                }
+                ui.end_row();
+
+                ui.label("Node");
+                {
+                    let mut env = InspectorUi::for_bevy(&type_registry, &mut cx);
+                    env.ui_for_reflect(selection.node_creation.node.inner.as_reflect_mut(), ui);
+                }
+                ui.end_row();
+            });
+
+        if type_id != original_type_id {
+            // TODO actual error handling
+            let result = (|| {
+                let reflect_default = type_registry
+                    .get_type_data::<ReflectDefault>(type_id)
+                    .ok_or("type doesn't `#[reflect(Default)]`")?;
+                let node_like = type_registry
+                    .get_type_data::<ReflectNodeLike>(type_id)
+                    .ok_or("type doesn't `#[reflect(NodeLike)]`")?;
+                let inner = node_like
+                    .get_boxed(reflect_default.default())
+                    .map_err(|_| "default-created value is not a `NodeLike`")?;
+                selection.node_creation.node.inner = inner;
+                Ok::<_, &str>(())
+            })();
+
+            if let Err(err) = result {
+                warn!("Failed to start creating node of type {type_id:?}: {err}");
+            }
+        }
+
         let submit_response = ui.button("Create node");
 
         if submit_response.clicked() && selection.graph_editor.is_some() {
@@ -1096,6 +1228,7 @@ impl TabViewer<'_> {
                 .0
                 .clone()
         };
+
         let mut graph_assets = unsafe {
             unsafe_world
                 .get_resource_mut::<Assets<AnimationGraph>>()
@@ -1126,8 +1259,23 @@ impl TabViewer<'_> {
         };
         let mut env = InspectorUi::for_bevy(&type_registry, &mut cx);
 
-        let inner = node.node.inner_reflect();
-        let changed = env.ui_for_reflect(inner, ui);
+        // TODO: Make node update into a GraphChange
+        // (eventually we want all graph mutations to go through GraphChange, this
+        // will enable easier undo/redo support)
+        let changed = if let Some(edit_proxy) =
+            type_registry.get_type_data::<ReflectEditProxy>(node.inner.type_id())
+        {
+            let mut proxy = (edit_proxy.to_proxy)(node.inner.as_ref());
+            let changed = env.ui_for_reflect(proxy.as_reflect_mut(), ui);
+            if changed {
+                let inner = (edit_proxy.from_proxy)(proxy.as_ref());
+                node.inner = inner;
+            }
+            changed
+        } else {
+            let changed = env.ui_for_reflect(node.inner.as_reflect_mut(), ui);
+            changed
+        };
 
         if changed {
             changes.push(GraphChange {
@@ -1398,9 +1546,16 @@ impl TabViewer<'_> {
     }
 
     fn update_graph(world: &mut World, changes: Vec<GraphChange>) -> bool {
-        world.resource_scope::<Assets<AnimationGraph>, bool>(|world, mut graph_assets| {
-            world.resource_scope::<Assets<StateMachine>, bool>(|_, fsm_assets| {
-                update_graph(changes, &mut graph_assets, &fsm_assets)
+        world.resource_scope::<Assets<LoadedUntypedAsset>, _>(|world, loaded_untyped_assets| {
+            world.resource_scope::<Assets<AnimationGraph>, _>(|world, mut graph_assets| {
+                world.resource_scope::<Assets<StateMachine>, _>(|_, fsm_assets| {
+                    update_graph(
+                        changes,
+                        &loaded_untyped_assets,
+                        &mut graph_assets,
+                        &fsm_assets,
+                    )
+                })
             })
         })
     }
@@ -1428,31 +1583,29 @@ impl TabViewer<'_> {
         world: &mut World,
         graph_id: AssetId<AnimationGraph>,
     ) -> Result<GraphIndices, Vec<GraphChange>> {
-        world.resource_scope::<Assets<AnimationGraph>, Result<GraphIndices, Vec<GraphChange>>>(
-            |world, graph_assets| {
-                world
-                    .resource_scope::<Assets<StateMachine>, Result<GraphIndices, Vec<GraphChange>>>(
-                        |_, fsm_assets| {
-                            let graph = graph_assets.get(graph_id).unwrap();
-                            let spec_context = SpecContext {
-                                graph_assets: &graph_assets,
-                                fsm_assets: &fsm_assets,
-                            };
+        world.resource_scope::<Assets<LoadedUntypedAsset>, _>(|world, loaded_untyped_assets| {
+            world.resource_scope::<Assets<AnimationGraph>, _>(|world, graph_assets| {
+                world.resource_scope::<Assets<StateMachine>, _>(|_, fsm_assets| {
+                    let graph = graph_assets.get(graph_id).unwrap();
+                    let spec_context = SpecContext {
+                        loaded_untyped_assets: &loaded_untyped_assets,
+                        graph_assets: &graph_assets,
+                        fsm_assets: &fsm_assets,
+                    };
 
-                            match make_graph_indices(graph, spec_context) {
-                                Err(targets) => Err(targets
-                                    .into_iter()
-                                    .map(|t| GraphChange {
-                                        graph: graph_id,
-                                        change: Change::LinkRemoved(t),
-                                    })
-                                    .collect()),
-                                Ok(indices) => Ok(indices),
-                            }
-                        },
-                    )
-            },
-        )
+                    match make_graph_indices(graph, spec_context) {
+                        Err(targets) => Err(targets
+                            .into_iter()
+                            .map(|t| GraphChange {
+                                graph: graph_id,
+                                change: Change::LinkRemoved(t),
+                            })
+                            .collect()),
+                        Ok(indices) => Ok(indices),
+                    }
+                })
+            })
+        })
     }
 }
 

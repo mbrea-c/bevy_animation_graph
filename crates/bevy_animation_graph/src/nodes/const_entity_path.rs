@@ -1,6 +1,6 @@
 use crate::core::animation_clip::EntityPath;
 use crate::core::animation_graph::PinMap;
-use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
+use crate::core::animation_node::NodeLike;
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
 use crate::prelude::{DataValue, PassContext, SpecContext};
@@ -17,10 +17,6 @@ impl ConstEntityPath {
 
     pub fn new(path: EntityPath) -> Self {
         Self { path }
-    }
-
-    pub fn wrapped(self, name: impl Into<String>) -> AnimationNode {
-        AnimationNode::new_from_nodetype(name.into(), AnimationNodeType::ConstEntityPath(self))
     }
 }
 

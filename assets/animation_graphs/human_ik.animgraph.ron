@@ -2,11 +2,15 @@
     nodes: [
         (
             name: "base anim",
-            node: Graph("animation_graphs/human_new.animgraph.ron"),
+            ty: "bevy_animation_graph::nodes::graph_node::GraphNode",
+            inner: (
+                graph: "animation_graphs/human_new.animgraph.ron",
+            )
         ),
         (
             name: "arm ik",
-            node: TwoBoneIK,
+            ty: "bevy_animation_graph::nodes::twoboneik_node::TwoBoneIKNode",
+            inner: (),
         ),
     ],
     edges_inverted: {

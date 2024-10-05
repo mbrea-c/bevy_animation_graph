@@ -2,7 +2,7 @@ use std::ops::{Add, Mul};
 
 use crate::core::animation_clip::{GraphClip, Interpolation, Keyframes, VariableCurve};
 use crate::core::animation_graph::PinMap;
-use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
+use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::id::BoneId;
 use crate::core::pose::{BonePose, Pose};
@@ -10,11 +10,12 @@ use crate::core::prelude::{DataSpec, DataValue};
 use crate::core::systems::get_keyframe;
 use crate::interpolation::prelude::InterpolateStep;
 use crate::prelude::{InterpolateLinear, PassContext, SpecContext};
+use crate::utils::asset::GetTypedExt;
 use bevy::asset::Handle;
 use bevy::reflect::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
-#[reflect(Default)]
+#[reflect(Default, NodeLike)]
 pub struct ClipNode {
     pub(crate) clip: Handle<GraphClip>,
     pub(crate) override_duration: Option<f32>,
@@ -35,10 +36,6 @@ impl ClipNode {
         }
     }
 
-    pub fn wrapped(self, name: impl Into<String>) -> AnimationNode {
-        AnimationNode::new_from_nodetype(name.into(), AnimationNodeType::Clip(self))
-    }
-
     #[inline]
     pub fn clip_duration(&self, ctx: &PassContext) -> f32 {
         if let Some(duration) = self.override_duration {
@@ -46,7 +43,7 @@ impl ClipNode {
         } else {
             ctx.resources
                 .graph_clip_assets
-                .get(&self.clip)
+                .get_typed(&self.clip, &ctx.resources.loaded_untyped_assets)
                 .unwrap()
                 .duration()
         }
@@ -62,7 +59,11 @@ impl NodeLike for ClipNode {
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
         let clip_duration = self.clip_duration(&ctx);
 
-        let Some(clip) = ctx.resources.graph_clip_assets.get(&self.clip) else {
+        let Some(clip) = ctx
+            .resources
+            .graph_clip_assets
+            .get_typed(&self.clip, &ctx.resources.loaded_untyped_assets)
+        else {
             // TODO: Should we propagate a GraphError instead?
             ctx.set_data_fwd(Self::OUT_POSE, DataValue::Pose(Pose::default()));
             return Ok(());
