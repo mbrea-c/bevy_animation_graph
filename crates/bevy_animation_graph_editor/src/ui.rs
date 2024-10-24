@@ -1,3 +1,4 @@
+use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 
 use crate::asset_saving::{SaveFsm, SaveGraph};
@@ -1060,7 +1061,15 @@ impl TabViewer<'_> {
         };
         let mut env = InspectorUi::for_bevy(&type_registry, &mut cx);
 
-        env.ui_for_reflect(&mut selection.node_creation.node, ui);
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        "Create node".hash(&mut hasher);
+        let node_creator_id = egui::Id::new(hasher.finish());
+        env.ui_for_reflect_with_options(
+            &mut selection.node_creation.node,
+            ui,
+            node_creator_id,
+            &(),
+        );
         let submit_response = ui.button("Create node");
 
         if submit_response.clicked() && selection.graph_editor.is_some() {
