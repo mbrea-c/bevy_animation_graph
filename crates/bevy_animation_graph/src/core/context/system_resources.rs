@@ -3,7 +3,7 @@ use crate::{
     prelude::{AnimationGraph, GraphClip},
 };
 use bevy::{
-    asset::{Assets, LoadedUntypedAsset},
+    asset::Assets,
     core::Name,
     ecs::{prelude::*, system::SystemParam},
     hierarchy::{Children, Parent},
@@ -13,7 +13,6 @@ use bevy::{
 /// Contains temprary data such as references to assets, gizmos, etc.
 #[derive(SystemParam)]
 pub struct SystemResources<'w, 's> {
-    pub loaded_untyped_assets: Res<'w, Assets<LoadedUntypedAsset>>,
     pub graph_clip_assets: Res<'w, Assets<GraphClip>>,
     pub animation_graph_assets: Res<'w, Assets<AnimationGraph>>,
     pub state_machine_assets: Res<'w, Assets<StateMachine>>,

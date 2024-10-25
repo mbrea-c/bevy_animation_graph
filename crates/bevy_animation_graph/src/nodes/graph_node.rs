@@ -4,7 +4,6 @@ use crate::core::context::CacheWriteFilter;
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
 use crate::prelude::{PassContext, SpecContext};
-use crate::utils::asset::GetTypedExt;
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
@@ -21,11 +20,7 @@ impl GraphNode {
 
 impl NodeLike for GraphNode {
     fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let Some(graph) = ctx
-            .resources
-            .animation_graph_assets
-            .get_typed(&self.graph, &ctx.resources.loaded_untyped_assets)
-        else {
+        let Some(graph) = ctx.resources.animation_graph_assets.get(&self.graph) else {
             return Ok(());
         };
 
@@ -43,11 +38,7 @@ impl NodeLike for GraphNode {
     }
 
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let Some(graph) = ctx
-            .resources
-            .animation_graph_assets
-            .get_typed(&self.graph, &ctx.resources.loaded_untyped_assets)
-        else {
+        let Some(graph) = ctx.resources.animation_graph_assets.get(&self.graph) else {
             return Ok(());
         };
 

@@ -6,7 +6,6 @@ use crate::core::prelude::DataSpec;
 use crate::flipping::flip_pose;
 use crate::prelude::config::{FlipConfig, FlipConfigProxy};
 use crate::prelude::{EditProxy, PassContext, SpecContext};
-use crate::utils::asset::GetTypedExt;
 use crate::utils::unwrap::UnwrapVal;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -45,11 +44,7 @@ impl NodeLike for FlipLRNode {
         ctx.set_time_update_back(Self::IN_TIME, input);
         let in_pose: Pose = ctx.data_back(Self::IN_POSE)?.val();
         ctx.set_time(in_pose.timestamp);
-        let Some(skeleton) = ctx
-            .resources
-            .skeleton_assets
-            .get_typed(&in_pose.skeleton, &ctx.resources.loaded_untyped_assets)
-        else {
+        let Some(skeleton) = ctx.resources.skeleton_assets.get(&in_pose.skeleton) else {
             return Err(GraphError::SkeletonMissing(ctx.node_id()));
         };
         let flipped_pose = flip_pose(&in_pose, &self.config, skeleton);

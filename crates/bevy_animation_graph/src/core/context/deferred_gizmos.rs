@@ -1,11 +1,8 @@
 use super::PassContext;
-use crate::{
-    core::{
-        pose::{BoneId, Pose},
-        skeleton::Skeleton,
-        space_conversion::SpaceConversion,
-    },
-    utils::asset::GetTypedExt,
+use crate::core::{
+    pose::{BoneId, Pose},
+    skeleton::Skeleton,
+    space_conversion::SpaceConversion,
 };
 use bevy::{
     color::LinearRgba,
@@ -156,11 +153,7 @@ impl BoneDebugGizmos for PassContext<'_> {
             return;
         }
 
-        let Some(skeleton) = self
-            .resources
-            .skeleton_assets
-            .get_typed(&pose.skeleton, &self.resources.loaded_untyped_assets)
-        else {
+        let Some(skeleton) = self.resources.skeleton_assets.get(&pose.skeleton) else {
             return;
         };
 

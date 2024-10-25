@@ -116,12 +116,10 @@ fn deserialize_handle(
     let asset_path = deserializer.deserialize_str(AssetPathVisitor)?;
     let untyped_handle = load_context
         .loader()
-        .with_asset_type_id(asset_type_id)
-        .untyped()
+        .with_dynamic_type(asset_type_id)
         .load(asset_path);
-    // this is actually a `Handle<LoadedUntypedAsset>`, not a `Handle<T>`
-    // we fix that in `crate::utils::asset`
-    Ok(Box::new(untyped_handle))
+    let typed_handle = handle_info.typed(untyped_handle);
+    Ok(typed_handle)
 }
 
 impl<'de> DeserializeSeed<'de> for AnimationNodeLoadDeserializer<'_, '_> {
@@ -181,7 +179,7 @@ impl<'de> DeserializeSeed<'de> for AnimationNodeLoadDeserializer<'_, '_> {
                 );
                 let inner = reflect_deserializer.deserialize(deserializer)?;
 
-                let inner = from_reflect.from_reflect(&*inner).unwrap_or_else(|| {
+                let inner = from_reflect.from_reflect(inner.as_partial_reflect()).unwrap_or_else(|| {
                         panic!(
                             "from reflect mismatch - reflecting from a `{}` into a `{ty}` - value: {inner:?}",
                             inner.reflect_type_path()

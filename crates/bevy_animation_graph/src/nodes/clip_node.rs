@@ -10,7 +10,6 @@ use crate::core::prelude::{DataSpec, DataValue};
 use crate::core::systems::get_keyframe;
 use crate::interpolation::prelude::InterpolateStep;
 use crate::prelude::{InterpolateLinear, PassContext, SpecContext};
-use crate::utils::asset::GetTypedExt;
 use bevy::asset::Handle;
 use bevy::reflect::prelude::*;
 
@@ -43,7 +42,7 @@ impl ClipNode {
         } else {
             ctx.resources
                 .graph_clip_assets
-                .get_typed(&self.clip, &ctx.resources.loaded_untyped_assets)
+                .get(&self.clip)
                 .unwrap()
                 .duration()
         }
@@ -59,11 +58,7 @@ impl NodeLike for ClipNode {
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
         let clip_duration = self.clip_duration(&ctx);
 
-        let Some(clip) = ctx
-            .resources
-            .graph_clip_assets
-            .get_typed(&self.clip, &ctx.resources.loaded_untyped_assets)
-        else {
+        let Some(clip) = ctx.resources.graph_clip_assets.get(&self.clip) else {
             // TODO: Should we propagate a GraphError instead?
             ctx.set_data_fwd(Self::OUT_POSE, DataValue::Pose(Pose::default()));
             return Ok(());
