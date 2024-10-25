@@ -913,7 +913,7 @@ impl AnimationGraphSerializer<'_> {
             default_parameters: graph.default_parameters.clone(),
             input_times: graph.input_times.clone(),
             output_parameters: graph.output_parameters.clone(),
-            output_time: graph.output_time.clone(),
+            output_time: graph.output_time,
             extra: graph.extra.clone(),
         };
 
@@ -982,11 +982,11 @@ impl<'a> Serialize for AnimationNodeSerializer<'a> {
             )))?;
         state.serialize_field("ty", type_path)?;
 
-        let mut processor = HandleProcessor;
+        let processor = HandleProcessor;
         let reflect_serializer = TypedReflectSerializer::new(
             self.inner.as_reflect(),
-            &self.type_registry,
-            Some(&mut processor),
+            self.type_registry,
+            Some(&processor),
         );
         state.serialize_field("inner", &reflect_serializer)?;
 

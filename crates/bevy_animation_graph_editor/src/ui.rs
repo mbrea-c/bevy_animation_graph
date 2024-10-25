@@ -1143,7 +1143,7 @@ impl TabViewer<'_> {
                         .map(|type_info| type_info.short.len())
                         .max()
                         .unwrap_or_default();
-                    types.sort_unstable_by(|a, b| a.path.cmp(&b.path));
+                    types.sort_unstable_by(|a, b| a.path.cmp(b.path));
 
                     let selected_text = types
                         .iter()
