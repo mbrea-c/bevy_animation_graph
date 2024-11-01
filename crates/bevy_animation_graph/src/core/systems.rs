@@ -90,7 +90,7 @@ pub fn run_animation_player(
 
     player.elapsed = player
         .elapsed
-        .update(TimeUpdate::Delta(time.delta_seconds()))
+        .update(TimeUpdate::Delta(time.delta_secs()))
         .update(player.pending_update);
     player.pending_update = None;
 

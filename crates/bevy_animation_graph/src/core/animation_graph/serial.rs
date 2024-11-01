@@ -2,7 +2,7 @@ use std::fmt;
 
 use super::{pin, AnimationGraph, Extra};
 use crate::{
-    prelude::{AnimationNode, DataSpec, DataValue, NodeLike, OrderedMap, ReflectNodeLike},
+    prelude::{AnimationNode, DataSpec, DataValue, NodeLike, ReflectNodeLike},
     utils::{
         reflect_de::{TypedReflectDeserializer, ValueProcessor},
         reflect_ser::{ReflectSerializerProcessor, TypedReflectSerializer},
@@ -354,9 +354,9 @@ pub struct AnimationGraphSerial {
     pub nodes: Vec<AnimationNode>,
     pub edges_inverted: HashMap<TargetPinSerial, SourcePinSerial>,
 
-    pub default_parameters: OrderedMap<PinIdSerial, DataValue>,
-    pub input_times: OrderedMap<PinIdSerial, ()>,
-    pub output_parameters: OrderedMap<PinIdSerial, DataSpec>,
+    pub default_parameters: HashMap<PinIdSerial, DataValue>,
+    pub input_times: HashMap<PinIdSerial, ()>,
+    pub output_parameters: HashMap<PinIdSerial, DataSpec>,
     pub output_time: Option<()>,
 
     pub extra: Extra,

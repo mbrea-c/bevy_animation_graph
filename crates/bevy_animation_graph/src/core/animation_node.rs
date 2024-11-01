@@ -171,32 +171,19 @@ impl Clone for AnimationNode {
     }
 }
 
-// Because AnimationNode stores a Box<dyn NodeLike>,
-// we can't just derive Reflect.
-//
-// Instead, we use a hack to implement the reflection traits,
-// based on https://github.com/bevyengine/bevy/pull/15282/files:
-// - add `#[derive(Reflect)]` to `AnimationNode`
-//   - this will fail to compile
-// - expand the macro
-// - copy it out here
-// - change parts to get it to compile
-// - mark the changed parts as "manual reflect impl",
-//   so that we know what changes were made if we need to
-//   regenerate macro
-// - remove the derive macro
-
 const _: () = {
     #[allow(unused_mut)]
     impl bevy::reflect::GetTypeRegistration for AnimationNode
     where
-        Self: ::core::any::Any + ::core::marker::Send + ::core::marker::Sync,
+        AnimationNode: ::core::any::Any + ::core::marker::Send + ::core::marker::Sync,
         String: bevy::reflect::FromReflect
             + bevy::reflect::TypePath
+            + bevy::reflect::MaybeTyped
             + bevy::reflect::__macro_exports::RegisterForReflection,
         /* manual reflect impl
         Box<dyn NodeLike>: bevy::reflect::FromReflect
             + bevy::reflect::TypePath
+            + bevy::reflect::MaybeTyped
             + bevy::reflect::__macro_exports::RegisterForReflection,
         */
     {
@@ -205,11 +192,9 @@ const _: () = {
             registration.insert::<bevy::reflect::ReflectFromPtr>(
                 bevy::reflect::FromType::<Self>::from_type(),
             );
-            /* manual reflect impl
             registration.insert::<bevy::reflect::ReflectFromReflect>(
                 bevy::reflect::FromType::<Self>::from_type(),
             );
-            */
             registration
         }
         #[inline(never)]
@@ -220,16 +205,19 @@ const _: () = {
     }
     impl bevy::reflect::Typed for AnimationNode
     where
-        Self: ::core::any::Any + ::core::marker::Send + ::core::marker::Sync,
+        AnimationNode: ::core::any::Any + ::core::marker::Send + ::core::marker::Sync,
         String: bevy::reflect::FromReflect
             + bevy::reflect::TypePath
+            + bevy::reflect::MaybeTyped
             + bevy::reflect::__macro_exports::RegisterForReflection,
         /* manual reflect impl
-                Box<dyn NodeLike>: bevy::reflect::FromReflect
-                    + bevy::reflect::TypePath
-                    + bevy::reflect::__macro_exports::RegisterForReflection,
+        Box<dyn NodeLike>: bevy::reflect::FromReflect
+            + bevy::reflect::TypePath
+            + bevy::reflect::MaybeTyped
+            + bevy::reflect::__macro_exports::RegisterForReflection,
         */
     {
+        #[inline]
         fn type_info() -> &'static bevy::reflect::TypeInfo {
             static CELL: bevy::reflect::utility::NonGenericTypeInfoCell =
                 bevy::reflect::utility::NonGenericTypeInfoCell::new();
@@ -244,7 +232,7 @@ const _: () = {
                             .with_custom_attributes(
                                 bevy::reflect::attributes::CustomAttributes::default(),
                             ),
-                            */
+                        */
                     ])
                     .with_custom_attributes(bevy::reflect::attributes::CustomAttributes::default()),
                 )
@@ -253,7 +241,7 @@ const _: () = {
     }
     impl bevy::reflect::TypePath for AnimationNode
     where
-        Self: ::core::any::Any + ::core::marker::Send + ::core::marker::Sync,
+        AnimationNode: ::core::any::Any + ::core::marker::Send + ::core::marker::Sync,
     {
         fn type_path() -> &'static str {
             ::core::concat!(
@@ -274,91 +262,20 @@ const _: () = {
             ::core::option::Option::Some(::core::module_path!())
         }
     }
-    impl bevy::reflect::Struct for AnimationNode
-    where
-        Self: ::core::any::Any + ::core::marker::Send + ::core::marker::Sync,
-        String: bevy::reflect::FromReflect
-            + bevy::reflect::TypePath
-            + bevy::reflect::__macro_exports::RegisterForReflection,
-        /* manual reflect impl
-        Box<dyn NodeLike>: bevy::reflect::FromReflect
-            + bevy::reflect::TypePath
-            + bevy::reflect::__macro_exports::RegisterForReflection,
-        */
-    {
-        fn field(&self, name: &str) -> ::core::option::Option<&dyn bevy::reflect::Reflect> {
-            match name {
-                "name" => ::core::option::Option::Some(&self.name),
-                "inner" => ::core::option::Option::Some(self.inner.as_reflect()), // manual reflect impl
-                _ => ::core::option::Option::None,
-            }
-        }
-        fn field_mut(
-            &mut self,
-            name: &str,
-        ) -> ::core::option::Option<&mut dyn bevy::reflect::Reflect> {
-            match name {
-                "name" => ::core::option::Option::Some(&mut self.name),
-                "inner" => ::core::option::Option::Some(self.inner.as_reflect_mut()), // manual reflect impl
-                _ => ::core::option::Option::None,
-            }
-        }
-        fn field_at(&self, index: usize) -> ::core::option::Option<&dyn bevy::reflect::Reflect> {
-            match index {
-                0usize => ::core::option::Option::Some(&self.name),
-                1usize => ::core::option::Option::Some(self.inner.as_reflect()), // manual reflect impl
-                _ => ::core::option::Option::None,
-            }
-        }
-        fn field_at_mut(
-            &mut self,
-            index: usize,
-        ) -> ::core::option::Option<&mut dyn bevy::reflect::Reflect> {
-            match index {
-                0usize => ::core::option::Option::Some(&mut self.name),
-                1usize => ::core::option::Option::Some(self.inner.as_reflect_mut()), // manual reflect impl
-                _ => ::core::option::Option::None,
-            }
-        }
-        fn name_at(&self, index: usize) -> ::core::option::Option<&str> {
-            match index {
-                0usize => ::core::option::Option::Some("name"),
-                1usize => ::core::option::Option::Some("inner"),
-                _ => ::core::option::Option::None,
-            }
-        }
-        fn field_len(&self) -> usize {
-            2usize
-        }
-        fn iter_fields(&self) -> bevy::reflect::FieldIter {
-            bevy::reflect::FieldIter::new(self)
-        }
-        fn clone_dynamic(&self) -> bevy::reflect::DynamicStruct {
-            let mut dynamic: bevy::reflect::DynamicStruct = ::core::default::Default::default();
-            dynamic.set_represented_type(bevy::reflect::Reflect::get_represented_type_info(self));
-            dynamic.insert_boxed("name", bevy::reflect::Reflect::clone_value(&self.name));
-            dynamic.insert_boxed("inner", bevy::reflect::Reflect::clone_value(&*self.inner));
-            dynamic
-        }
-    }
     impl bevy::reflect::Reflect for AnimationNode
     where
-        Self: ::core::any::Any + ::core::marker::Send + ::core::marker::Sync,
+        AnimationNode: ::core::any::Any + ::core::marker::Send + ::core::marker::Sync,
         String: bevy::reflect::FromReflect
             + bevy::reflect::TypePath
+            + bevy::reflect::MaybeTyped
             + bevy::reflect::__macro_exports::RegisterForReflection,
         /* manual reflect impl
         Box<dyn NodeLike>: bevy::reflect::FromReflect
             + bevy::reflect::TypePath
+            + bevy::reflect::MaybeTyped
             + bevy::reflect::__macro_exports::RegisterForReflection,
         */
     {
-        #[inline]
-        fn get_represented_type_info(
-            &self,
-        ) -> ::core::option::Option<&'static bevy::reflect::TypeInfo> {
-            ::core::option::Option::Some(<Self as bevy::reflect::Typed>::type_info())
-        }
         #[inline]
         fn into_any(self: ::std::boxed::Box<Self>) -> ::std::boxed::Box<dyn ::core::any::Any> {
             self
@@ -386,10 +303,6 @@ const _: () = {
             self
         }
         #[inline]
-        fn clone_value(&self) -> ::std::boxed::Box<dyn bevy::reflect::Reflect> {
-            ::std::boxed::Box::new(bevy::reflect::Struct::clone_dynamic(self))
-        }
-        #[inline]
         fn set(
             &mut self,
             value: ::std::boxed::Box<dyn bevy::reflect::Reflect>,
@@ -397,13 +310,123 @@ const _: () = {
             *self = <dyn bevy::reflect::Reflect>::take(value)?;
             ::core::result::Result::Ok(())
         }
+    }
+    impl bevy::reflect::Struct for AnimationNode
+    where
+        AnimationNode: ::core::any::Any + ::core::marker::Send + ::core::marker::Sync,
+        String: bevy::reflect::FromReflect
+            + bevy::reflect::TypePath
+            + bevy::reflect::MaybeTyped
+            + bevy::reflect::__macro_exports::RegisterForReflection,
+        /* manual reflect impl
+        Box<dyn NodeLike>: bevy::reflect::FromReflect
+            + bevy::reflect::TypePath
+            + bevy::reflect::MaybeTyped
+            + bevy::reflect::__macro_exports::RegisterForReflection,
+        */
+    {
+        fn field(&self, name: &str) -> ::core::option::Option<&dyn bevy::reflect::PartialReflect> {
+            match name {
+                "name" => ::core::option::Option::Some(&self.name),
+                // manual reflect impl
+                "inner" => ::core::option::Option::Some(self.inner.as_partial_reflect()),
+                _ => ::core::option::Option::None,
+            }
+        }
+        fn field_mut(
+            &mut self,
+            name: &str,
+        ) -> ::core::option::Option<&mut dyn bevy::reflect::PartialReflect> {
+            match name {
+                "name" => ::core::option::Option::Some(&mut self.name),
+                // manual reflect impl
+                "inner" => ::core::option::Option::Some(self.inner.as_partial_reflect_mut()),
+                _ => ::core::option::Option::None,
+            }
+        }
+        fn field_at(
+            &self,
+            index: usize,
+        ) -> ::core::option::Option<&dyn bevy::reflect::PartialReflect> {
+            match index {
+                0usize => ::core::option::Option::Some(&self.name),
+                // manual reflect impl
+                1usize => ::core::option::Option::Some(self.inner.as_partial_reflect()),
+                _ => ::core::option::Option::None,
+            }
+        }
+        fn field_at_mut(
+            &mut self,
+            index: usize,
+        ) -> ::core::option::Option<&mut dyn bevy::reflect::PartialReflect> {
+            match index {
+                0usize => ::core::option::Option::Some(&mut self.name),
+                // manual reflect impl
+                1usize => ::core::option::Option::Some(self.inner.as_partial_reflect_mut()),
+                _ => ::core::option::Option::None,
+            }
+        }
+        fn name_at(&self, index: usize) -> ::core::option::Option<&str> {
+            match index {
+                0usize => ::core::option::Option::Some("name"),
+                1usize => ::core::option::Option::Some("inner"),
+                _ => ::core::option::Option::None,
+            }
+        }
+        fn field_len(&self) -> usize {
+            2usize
+        }
+        fn iter_fields(&self) -> bevy::reflect::FieldIter {
+            bevy::reflect::FieldIter::new(self)
+        }
+        fn clone_dynamic(&self) -> bevy::reflect::DynamicStruct {
+            let mut dynamic: bevy::reflect::DynamicStruct = ::core::default::Default::default();
+            dynamic.set_represented_type(bevy::reflect::PartialReflect::get_represented_type_info(
+                self,
+            ));
+            dynamic.insert_boxed(
+                "name",
+                bevy::reflect::PartialReflect::clone_value(&self.name),
+            );
+            dynamic.insert_boxed(
+                "inner",
+                // manual reflect impl
+                bevy::reflect::PartialReflect::clone_value(&*self.inner),
+            );
+            dynamic
+        }
+    }
+    impl bevy::reflect::PartialReflect for AnimationNode
+    where
+        AnimationNode: ::core::any::Any + ::core::marker::Send + ::core::marker::Sync,
+        String: bevy::reflect::FromReflect
+            + bevy::reflect::TypePath
+            + bevy::reflect::MaybeTyped
+            + bevy::reflect::__macro_exports::RegisterForReflection,
+        /* manual reflect impl
+        Box<dyn NodeLike>: bevy::reflect::FromReflect
+            + bevy::reflect::TypePath
+            + bevy::reflect::MaybeTyped
+            + bevy::reflect::__macro_exports::RegisterForReflection,
+        */
+    {
+        #[inline]
+        fn get_represented_type_info(
+            &self,
+        ) -> ::core::option::Option<&'static bevy::reflect::TypeInfo> {
+            ::core::option::Option::Some(<Self as bevy::reflect::Typed>::type_info())
+        }
+        #[inline]
+        fn clone_value(&self) -> ::std::boxed::Box<dyn bevy::reflect::PartialReflect> {
+            ::std::boxed::Box::new(bevy::reflect::Struct::clone_dynamic(self))
+        }
         #[inline]
         fn try_apply(
             &mut self,
-            value: &dyn bevy::reflect::Reflect,
+            value: &dyn bevy::reflect::PartialReflect,
         ) -> ::core::result::Result<(), bevy::reflect::ApplyError> {
             if let bevy::reflect::ReflectRef::Struct(struct_value) =
-                bevy::reflect::Reflect::reflect_ref(value)
+                bevy::reflect::PartialReflect::reflect_ref(value)
             {
                 for (i, value) in ::core::iter::Iterator::enumerate(
                     bevy::reflect::Struct::iter_fields(struct_value),
@@ -412,12 +435,12 @@ const _: () = {
                     if let ::core::option::Option::Some(v) =
                         bevy::reflect::Struct::field_mut(self, name)
                     {
-                        bevy::reflect::Reflect::try_apply(v, value)?;
+                        bevy::reflect::PartialReflect::try_apply(v, value)?;
                     }
                 }
             } else {
                 return ::core::result::Result::Err(bevy::reflect::ApplyError::MismatchedKinds {
-                    from_kind: bevy::reflect::Reflect::reflect_kind(value),
+                    from_kind: bevy::reflect::PartialReflect::reflect_kind(value),
                     to_kind: bevy::reflect::ReflectKind::Struct,
                 });
             }
@@ -439,33 +462,70 @@ const _: () = {
         fn reflect_owned(self: ::std::boxed::Box<Self>) -> bevy::reflect::ReflectOwned {
             bevy::reflect::ReflectOwned::Struct(self)
         }
+        #[inline]
+        fn try_into_reflect(
+            self: ::std::boxed::Box<Self>,
+        ) -> ::core::result::Result<
+            ::std::boxed::Box<dyn bevy::reflect::Reflect>,
+            ::std::boxed::Box<dyn bevy::reflect::PartialReflect>,
+        > {
+            ::core::result::Result::Ok(self)
+        }
+        #[inline]
+        fn try_as_reflect(&self) -> ::core::option::Option<&dyn bevy::reflect::Reflect> {
+            ::core::option::Option::Some(self)
+        }
+        #[inline]
+        fn try_as_reflect_mut(
+            &mut self,
+        ) -> ::core::option::Option<&mut dyn bevy::reflect::Reflect> {
+            ::core::option::Option::Some(self)
+        }
+        #[inline]
+        fn into_partial_reflect(
+            self: ::std::boxed::Box<Self>,
+        ) -> ::std::boxed::Box<dyn bevy::reflect::PartialReflect> {
+            self
+        }
+        #[inline]
+        fn as_partial_reflect(&self) -> &dyn bevy::reflect::PartialReflect {
+            self
+        }
+        #[inline]
+        fn as_partial_reflect_mut(&mut self) -> &mut dyn bevy::reflect::PartialReflect {
+            self
+        }
         fn reflect_partial_eq(
             &self,
-            value: &dyn bevy::reflect::Reflect,
+            value: &dyn bevy::reflect::PartialReflect,
         ) -> ::core::option::Option<bool> {
-            bevy::reflect::struct_partial_eq(self, value)
+            (bevy::reflect::struct_partial_eq)(self, value)
         }
     }
     impl bevy::reflect::FromReflect for AnimationNode
     where
-        Self: ::core::any::Any + ::core::marker::Send + ::core::marker::Sync,
+        AnimationNode: ::core::any::Any + ::core::marker::Send + ::core::marker::Sync,
         String: bevy::reflect::FromReflect
             + bevy::reflect::TypePath
+            + bevy::reflect::MaybeTyped
             + bevy::reflect::__macro_exports::RegisterForReflection,
         /* manual reflect impl
         Box<dyn NodeLike>: bevy::reflect::FromReflect
             + bevy::reflect::TypePath
+            + bevy::reflect::MaybeTyped
             + bevy::reflect::__macro_exports::RegisterForReflection,
         */
     {
-        fn from_reflect(reflect: &dyn bevy::reflect::Reflect) -> ::core::option::Option<Self> {
+        fn from_reflect(
+            reflect: &dyn bevy::reflect::PartialReflect,
+        ) -> ::core::option::Option<Self> {
             // manual reflect impl start
-            Some(reflect.downcast_ref::<Self>()?.clone())
+            Some(reflect.try_downcast_ref::<Self>()?.clone())
             /*
             if let bevy::reflect::ReflectRef::Struct(__ref_struct) =
-                bevy::reflect::Reflect::reflect_ref(reflect)
+                bevy::reflect::PartialReflect::reflect_ref(reflect)
             {
-                ::core::option::Option::Some(Self {
+                let __this = Self {
                     name: (|| {
                         <String as bevy::reflect::FromReflect>::from_reflect(
                             bevy::reflect::Struct::field(__ref_struct, "name")?,
@@ -477,11 +537,11 @@ const _: () = {
                         )
                     })()?,
                     should_debug: ::core::default::Default::default(),
-                })
+                };
+                ::core::option::Option::Some(__this)
             } else {
                 ::core::option::Option::None
-            }
-            */
+            } */
             // manual reflect impl end
         }
     }

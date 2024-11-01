@@ -13,7 +13,6 @@ use crate::{
     prelude::{
         DataSpec, DataValue, DeferredGizmos, OptDataSpec, PassContext, SpecContext, SystemResources,
     },
-    utils::ordered_map::OrderedMap,
 };
 use bevy::{
     prelude::*,
@@ -168,7 +167,7 @@ impl Extra {
     }
 }
 
-pub type PinMap<V> = OrderedMap<PinId, V>;
+pub type PinMap<V> = HashMap<PinId, V>;
 
 #[derive(Debug, Clone, Asset, Reflect)]
 pub struct AnimationGraph {

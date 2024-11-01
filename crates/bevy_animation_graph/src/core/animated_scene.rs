@@ -1,7 +1,7 @@
 use super::{errors::AssetLoaderError, skeleton::Skeleton};
 use crate::prelude::{AnimationGraph, AnimationGraphPlayer};
 use bevy::{
-    asset::{io::Reader, Asset, AssetLoader, AsyncReadExt, Handle, LoadContext},
+    asset::{io::Reader, Asset, AssetLoader, Handle, LoadContext},
     core::Name,
     ecs::{bundle::Bundle, entity::Entity, query::Without},
     hierarchy::Children,
@@ -34,12 +34,15 @@ pub struct AnimatedSceneInstance {
     pub player_entity: Entity,
 }
 
+#[derive(Component, Default)]
+pub struct AnimatedSceneHandle(pub Handle<AnimatedScene>);
+
 #[derive(Component)]
 pub struct AnimatedSceneFailed;
 
 #[derive(Bundle, Default)]
 pub struct AnimatedSceneBundle {
-    pub animated_scene: Handle<AnimatedScene>,
+    pub animated_scene: AnimatedSceneHandle,
     /// Transform of the scene root entity.
     pub transform: Transform,
     /// Global transform of the scene root entity.
@@ -60,11 +63,11 @@ impl AssetLoader for AnimatedSceneLoader {
     type Settings = ();
     type Error = AssetLoaderError;
 
-    async fn load<'a>(
-        &'a self,
-        reader: &'a mut Reader<'_>,
-        _settings: &'a Self::Settings,
-        load_context: &'a mut LoadContext<'_>,
+    async fn load(
+        &self,
+        reader: &mut dyn Reader,
+        _settings: &Self::Settings,
+        load_context: &mut LoadContext<'_>,
     ) -> Result<Self::Asset, Self::Error> {
         let mut bytes = vec![];
         reader.read_to_end(&mut bytes).await?;
@@ -89,15 +92,17 @@ impl AssetLoader for AnimatedSceneLoader {
 
 pub(crate) fn spawn_animated_scenes(
     mut commands: Commands,
-    unloaded_scenes: Query<(Entity, &Handle<AnimatedScene>), Without<Handle<Scene>>>,
+    unloaded_scenes: Query<(Entity, &AnimatedSceneHandle), Without<SceneRoot>>,
     animated_scene_assets: Res<Assets<AnimatedScene>>,
 ) {
     for (entity, animscn_handle) in &unloaded_scenes {
-        let Some(animscn) = animated_scene_assets.get(animscn_handle) else {
+        let Some(animscn) = animated_scene_assets.get(&animscn_handle.0) else {
             continue;
         };
 
-        commands.entity(entity).insert(animscn.source.clone());
+        commands
+            .entity(entity)
+            .insert(SceneRoot(animscn.source.clone()));
     }
 }
 
@@ -105,7 +110,7 @@ pub(crate) fn spawn_animated_scenes(
 pub(crate) fn process_animated_scenes(
     mut commands: Commands,
     unloaded_scenes: Query<
-        (Entity, &Handle<AnimatedScene>, &SceneInstance),
+        (Entity, &AnimatedSceneHandle, &SceneInstance),
         (Without<AnimatedSceneInstance>, Without<AnimatedSceneFailed>),
     >,
     scene_spawner: Res<SceneSpawner>,
@@ -118,7 +123,7 @@ pub(crate) fn process_animated_scenes(
             continue;
         }
 
-        let Some(animscn) = animated_scene_assets.get(animscn_handle) else {
+        let Some(animscn) = animated_scene_assets.get(&animscn_handle.0) else {
             continue;
         };
 

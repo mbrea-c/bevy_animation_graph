@@ -1,7 +1,7 @@
 use super::{serial::AnimationGraphLoadDeserializer, AnimationGraph};
 use crate::core::{animation_clip::GraphClip, errors::AssetLoaderError};
 use bevy::{
-    asset::{io::Reader, AssetLoader, AsyncReadExt, LoadContext},
+    asset::{io::Reader, AssetLoader, LoadContext},
     gltf::Gltf,
     prelude::*,
     reflect::TypeRegistryArc,
@@ -30,11 +30,11 @@ impl AssetLoader for GraphClipLoader {
     type Settings = ();
     type Error = AssetLoaderError;
 
-    async fn load<'a>(
-        &'a self,
-        reader: &'a mut Reader<'_>,
-        _settings: &'a Self::Settings,
-        load_context: &'a mut LoadContext<'_>,
+    async fn load(
+        &self,
+        reader: &mut dyn Reader,
+        _settings: &Self::Settings,
+        load_context: &mut LoadContext<'_>,
     ) -> Result<Self::Asset, Self::Error> {
         let mut bytes = vec![];
         reader.read_to_end(&mut bytes).await?;
@@ -45,7 +45,12 @@ impl AssetLoader for GraphClipLoader {
                 path,
                 animation_name,
             } => {
-                let gltf_loaded_asset = load_context.loader().direct().untyped().load(path).await?;
+                let gltf_loaded_asset = load_context
+                    .loader()
+                    .immediate()
+                    .with_unknown_type()
+                    .load(path)
+                    .await?;
                 let gltf: &Gltf = gltf_loaded_asset.get().unwrap();
 
                 let Some(clip_handle) = gltf
@@ -101,11 +106,11 @@ impl AssetLoader for AnimationGraphLoader {
     type Settings = ();
     type Error = AssetLoaderError;
 
-    async fn load<'a>(
-        &'a self,
-        reader: &'a mut Reader<'_>,
-        _settings: &'a Self::Settings,
-        load_context: &'a mut LoadContext<'_>,
+    async fn load(
+        &self,
+        reader: &mut dyn Reader,
+        _settings: &Self::Settings,
+        load_context: &mut LoadContext<'_>,
     ) -> Result<Self::Asset, Self::Error> {
         let mut bytes = vec![];
         reader.read_to_end(&mut bytes).await?;
