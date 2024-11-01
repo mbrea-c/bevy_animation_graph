@@ -125,6 +125,10 @@ pub struct Extra {
     pub input_position: Vec2,
     /// Position in canvas of special outputs node
     pub output_position: Vec2,
+    /// Order of input pins in the editor
+    pub input_order: HashMap<PinId, i32>,
+    /// Order of output pins in the editor
+    pub output_order: HashMap<PinId, i32>,
 }
 
 impl Extra {
