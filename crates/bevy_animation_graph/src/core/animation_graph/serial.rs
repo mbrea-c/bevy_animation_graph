@@ -4,8 +4,8 @@ use super::{pin, AnimationGraph, Extra};
 use crate::{
     prelude::{AnimationNode, DataSpec, DataValue, NodeLike, ReflectNodeLike},
     utils::{
-        reflect_de::{TypedReflectDeserializer, ValueProcessor},
-        reflect_ser::{ReflectSerializerProcessor, TypedReflectSerializer},
+        de::TypedReflectDeserializer,
+        ser::{ReflectSerializerProcessor, TypedReflectSerializer},
     },
 };
 use bevy::{
@@ -172,7 +172,7 @@ impl<'de> DeserializeSeed<'de> for AnimationNodeLoadDeserializer<'_, '_> {
                         deserialize_handle(registration, deserializer, load_context)
                     }),
                 };
-                let reflect_deserializer = TypedReflectDeserializer::new_with_processor(
+                let reflect_deserializer = TypedReflectDeserializer::with_processor(
                     type_registration,
                     type_registry,
                     &mut processor,
