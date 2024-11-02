@@ -1,5 +1,3 @@
-#[cfg(feature = "debug_stack")]
-use crate::serde::ser::error_utils::TYPE_INFO_STACK;
 use bevy::reflect::{PartialReflect, ReflectRef, TypeRegistry};
 use serde::{ser::SerializeMap, Serialize, Serializer};
 
@@ -373,9 +371,6 @@ impl<'a> TypedReflectSerializer<'a, ()> {
     ///
     /// [`with_processor`]: Self::with_processor
     pub fn new(value: &'a dyn PartialReflect, registry: &'a TypeRegistry) -> Self {
-        #[cfg(feature = "debug_stack")]
-        TYPE_INFO_STACK.set(crate::type_info_stack::TypeInfoStack::new());
-
         Self {
             value,
             registry,
@@ -396,9 +391,6 @@ impl<'a, P> TypedReflectSerializer<'a, P> {
         registry: &'a TypeRegistry,
         processor: &'a P,
     ) -> Self {
-        #[cfg(feature = "debug_stack")]
-        TYPE_INFO_STACK.set(crate::type_info_stack::TypeInfoStack::new());
-
         Self {
             value,
             registry,
@@ -425,13 +417,6 @@ impl<P: ReflectSerializerProcessor> Serialize for TypedReflectSerializer<'_, P> 
     where
         S: Serializer,
     {
-        #[cfg(feature = "debug_stack")]
-        {
-            if let Some(info) = self.value.get_represented_type_info() {
-                TYPE_INFO_STACK.with_borrow_mut(|stack| stack.push(info));
-            }
-        }
-
         // First, check if our processor wants to serialize this type
         // This takes priority over any other serialization operations
         let serializer = if let Some(processor) = self.processor {
@@ -504,13 +489,8 @@ impl<P: ReflectSerializerProcessor> Serialize for TypedReflectSerializer<'_, P> 
                 processor: self.processor,
             }
             .serialize(serializer),
-            #[cfg(feature = "functions")]
-            ReflectRef::Function(_) => Err(make_custom_error("functions cannot be serialized")),
             ReflectRef::Opaque(_) => Err(error),
         };
-
-        #[cfg(feature = "debug_stack")]
-        TYPE_INFO_STACK.with_borrow_mut(crate::type_info_stack::TypeInfoStack::pop);
 
         output
     }

@@ -4,13 +4,14 @@ use super::{pin, AnimationGraph, Extra};
 use crate::{
     prelude::{AnimationNode, DataSpec, DataValue, NodeLike, ReflectNodeLike},
     utils::{
-        de::TypedReflectDeserializer,
+        de::{ReflectDeserializerProcessor, TypedReflectDeserializer},
         ser::{ReflectSerializerProcessor, TypedReflectSerializer},
     },
 };
 use bevy::{
     asset::{AssetPath, LoadContext, ReflectHandle},
-    reflect::{Reflect, ReflectFromReflect, TypeRegistration, TypeRegistry},
+    prelude::*,
+    reflect::{ReflectFromReflect, TypeRegistration, TypeRegistry},
     utils::HashMap,
 };
 use serde::{
@@ -70,56 +71,67 @@ pub struct AnimationNodeLoadDeserializer<'a, 'b> {
     pub load_context: &'a mut LoadContext<'b>,
 }
 
-fn deserialize_handle(
-    registration: &TypeRegistration,
-    deserializer: &mut dyn bevy::reflect::erased_serde::Deserializer,
-    load_context: &mut LoadContext,
-) -> Result<Box<dyn Reflect>, bevy::reflect::erased_serde::Error> {
-    struct AssetPathVisitor;
+struct HandleDeserializeProcessor<'a, 'b> {
+    load_context: &'a mut LoadContext<'b>,
+}
 
-    impl<'de> Visitor<'de> for AssetPathVisitor {
-        type Value = AssetPath<'de>;
+impl ReflectDeserializerProcessor for HandleDeserializeProcessor<'_, '_> {
+    fn try_deserialize<'de, D>(
+        &mut self,
+        registration: &TypeRegistration,
+        _registry: &TypeRegistry,
+        deserializer: D,
+    ) -> Result<Result<Box<dyn PartialReflect>, D>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct AssetPathVisitor;
 
-        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            formatter.write_str("asset path")
+        impl<'de> Visitor<'de> for AssetPathVisitor {
+            type Value = AssetPath<'de>;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("asset path")
+            }
+
+            fn visit_borrowed_str<E>(self, v: &'de str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                AssetPath::try_parse(v)
+                    .map_err(|err| de::Error::custom(format!("not a valid asset path: {err:#}")))
+            }
+
+            fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                AssetPath::try_parse(&v)
+                    .map(AssetPath::into_owned)
+                    .map_err(|err| de::Error::custom(format!("not a valid asset path: {err:#}")))
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                AssetPath::try_parse(v)
+                    .map(AssetPath::into_owned)
+                    .map_err(|err| de::Error::custom(format!("not a valid asset path: {err:#}")))
+            }
         }
 
-        fn visit_borrowed_str<E>(self, v: &'de str) -> Result<Self::Value, E>
-        where
-            E: de::Error,
-        {
-            AssetPath::try_parse(v)
-                .map_err(|err| de::Error::custom(format!("not a valid asset path: {err:#}")))
-        }
-
-        fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
-        where
-            E: de::Error,
-        {
-            AssetPath::try_parse(&v)
-                .map(AssetPath::into_owned)
-                .map_err(|err| de::Error::custom(format!("not a valid asset path: {err:#}")))
-        }
-
-        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-        where
-            E: de::Error,
-        {
-            AssetPath::try_parse(v)
-                .map(AssetPath::into_owned)
-                .map_err(|err| de::Error::custom(format!("not a valid asset path: {err:#}")))
-        }
+        let handle_info = registration.data::<ReflectHandle>().unwrap();
+        let asset_type_id = handle_info.asset_type_id();
+        let asset_path = deserializer.deserialize_str(AssetPathVisitor)?;
+        let untyped_handle = self
+            .load_context
+            .loader()
+            .with_dynamic_type(asset_type_id)
+            .load(asset_path);
+        let typed_handle = handle_info.typed(untyped_handle);
+        Ok(Ok(typed_handle.into_partial_reflect()))
     }
-
-    let handle_info = registration.data::<ReflectHandle>().unwrap();
-    let asset_type_id = handle_info.asset_type_id();
-    let asset_path = deserializer.deserialize_str(AssetPathVisitor)?;
-    let untyped_handle = load_context
-        .loader()
-        .with_dynamic_type(asset_type_id)
-        .load(asset_path);
-    let typed_handle = handle_info.typed(untyped_handle);
-    Ok(typed_handle)
 }
 
 impl<'de> DeserializeSeed<'de> for AnimationNodeLoadDeserializer<'_, '_> {
@@ -164,14 +176,7 @@ impl<'de> DeserializeSeed<'de> for AnimationNodeLoadDeserializer<'_, '_> {
                             "`{ty}` cannot be created from reflection"
                         )))?;
 
-                let mut processor = ValueProcessor {
-                    can_deserialize: Box::new(|registration| {
-                        registration.data::<ReflectHandle>().is_some()
-                    }),
-                    deserialize: Box::new(|registration, deserializer| {
-                        deserialize_handle(registration, deserializer, load_context)
-                    }),
-                };
+                let mut processor = HandleDeserializeProcessor { load_context };
                 let reflect_deserializer = TypedReflectDeserializer::with_processor(
                     type_registration,
                     type_registry,
@@ -827,7 +832,7 @@ const _: () = {
                 }
             }
             #[doc(hidden)]
-            const FIELDS: &'static [&'static str] = &[
+            const FIELDS: &[&str] = &[
                 "nodes",
                 "edges_inverted",
                 "default_parameters",
@@ -1409,15 +1414,20 @@ impl<'a> Serialize for AnimationNodeSerializer<'a> {
         impl ReflectSerializerProcessor for HandleProcessor {
             fn try_serialize<S>(
                 &self,
-                value: &dyn Reflect,
+                value: &dyn PartialReflect,
                 registry: &TypeRegistry,
                 serializer: S,
             ) -> Result<Result<S::Ok, S>, S::Error>
             where
                 S: serde::Serializer,
             {
+                let Some(value) = value.try_as_reflect() else {
+                    return Ok(Err(serializer));
+                };
+
+                let type_id = value.reflect_type_info().type_id();
                 let Some(untyped_handle) = registry
-                    .get_type_data::<ReflectHandle>(value.type_id())
+                    .get_type_data::<ReflectHandle>(type_id)
                     .and_then(|reflect_handle| {
                         reflect_handle.downcast_handle_untyped(value.as_any())
                     })
@@ -1455,10 +1465,10 @@ impl<'a> Serialize for AnimationNodeSerializer<'a> {
         state.serialize_field("ty", type_path)?;
 
         let processor = HandleProcessor;
-        let reflect_serializer = TypedReflectSerializer::new(
-            self.inner.as_reflect(),
+        let reflect_serializer = TypedReflectSerializer::with_processor(
+            self.inner.as_partial_reflect(),
             self.type_registry,
-            Some(&processor),
+            &processor,
         );
         state.serialize_field("inner", &reflect_serializer)?;
 

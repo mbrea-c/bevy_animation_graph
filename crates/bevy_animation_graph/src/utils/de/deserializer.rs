@@ -1,5 +1,3 @@
-#[cfg(feature = "debug_stack")]
-use crate::serde::de::error_utils::TYPE_INFO_STACK;
 use crate::utils::de::TypeRegistrationDeserializer;
 use bevy::reflect::{
     serde::SerializationData, PartialReflect, ReflectDeserialize, TypeInfo, TypePath,
@@ -280,9 +278,6 @@ impl<'a> TypedReflectDeserializer<'a, ()> {
     ///
     /// [`with_processor`]: Self::with_processor
     pub fn new(registration: &'a TypeRegistration, registry: &'a TypeRegistry) -> Self {
-        #[cfg(feature = "debug_stack")]
-        TYPE_INFO_STACK.set(crate::type_info_stack::TypeInfoStack::new());
-
         Self {
             registration,
             registry,
@@ -321,9 +316,6 @@ impl<'a, P: ReflectDeserializerProcessor> TypedReflectDeserializer<'a, P> {
         registry: &'a TypeRegistry,
         processor: &'a mut P,
     ) -> Self {
-        #[cfg(feature = "debug_stack")]
-        TYPE_INFO_STACK.set(crate::type_info_stack::TypeInfoStack::new());
-
         Self {
             registration,
             registry,
@@ -515,13 +507,7 @@ impl<'de, P: ReflectDeserializerProcessor> DeserializeSeed<'de>
             }
         };
 
-        #[cfg(feature = "debug_stack")]
-        TYPE_INFO_STACK.with_borrow_mut(|stack| stack.push(self.registration.type_info()));
-
         let output = deserialize_internal();
-
-        #[cfg(feature = "debug_stack")]
-        TYPE_INFO_STACK.with_borrow_mut(crate::type_info_stack::TypeInfoStack::pop);
 
         output
     }
