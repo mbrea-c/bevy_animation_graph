@@ -1,4 +1,4 @@
-use std::any::{type_name_of_val, TypeId};
+use std::any::TypeId;
 
 use crate::core::animation_clip::{GraphClip, Interpolation};
 use crate::core::animation_graph::PinMap;
@@ -122,7 +122,8 @@ enum CurveValue {
 
 /// Sample the animation at a particular time
 // HACK: We really need some API for sampling animation curves in Bevy outside of the builtin
-// animation flow
+// animation flow.
+// Currently, we use reflection as a _escape hatch_ to access private fields in the evaluator.
 fn sample_animation_curve(curve: &VariableCurve, time: f32) -> CurveValue {
     let mut evaluator = curve.0.create_evaluator();
     let evaluator_type_id = curve.0.evaluator_type();
@@ -215,8 +216,18 @@ fn sample_animation_curve(curve: &VariableCurve, time: f32) -> CurveValue {
     } else if evaluator_type_name
         .starts_with("bevy_animation::animation_curves::WeightsCurveEvaluator")
     {
-        todo!()
+        let w = evaluator
+            .as_reflect()
+            .reflect_ref()
+            .as_struct()
+            .unwrap()
+            .field("stack_morph_target_weights")
+            .unwrap()
+            .try_downcast_ref::<Vec<f32>>()
+            .unwrap()
+            .clone();
+        CurveValue::BoneWeights(w)
     } else {
-        panic!("Evaluator type not supported!");
+        panic!("Animatable curve type not yet supported!");
     }
 }
