@@ -121,7 +121,9 @@ impl ReflectDeserializerProcessor for HandleDeserializeProcessor<'_, '_> {
             }
         }
 
-        let handle_info = registration.data::<ReflectHandle>().unwrap();
+        let Some(handle_info) = registration.data::<ReflectHandle>() else {
+            return Ok(Err(deserializer));
+        };
         let asset_type_id = handle_info.asset_type_id();
         let asset_path = deserializer.deserialize_str(AssetPathVisitor)?;
         let untyped_handle = self

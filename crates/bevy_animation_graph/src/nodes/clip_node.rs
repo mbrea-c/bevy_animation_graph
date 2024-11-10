@@ -121,14 +121,13 @@ enum CurveValue {
 }
 
 /// Sample the animation at a particular time
-// HACK: We really need some API for sampling animation curves in Bevy
+// HACK: We really need some API for sampling animation curves in Bevy outside of the builtin
+// animation flow
 fn sample_animation_curve(curve: &VariableCurve, time: f32) -> CurveValue {
     let mut evaluator = curve.0.create_evaluator();
-    let evaluator_type_id = evaluator.type_id();
-    let evaluator_type_name = type_name_of_val(&evaluator);
+    let evaluator_type_id = curve.0.evaluator_type();
+    let evaluator_type_name = evaluator.reflect_type_info().type_path();
     let node_index = AnimationNodeIndex::default();
-
-    println!("Evaluator type name: {}", evaluator_type_name);
 
     curve
         .0
@@ -213,7 +212,9 @@ fn sample_animation_curve(curve: &VariableCurve, time: f32) -> CurveValue {
             .try_downcast_ref::<Vec3>()
             .unwrap();
         CurveValue::Scale(*s)
-    } else if evaluator_type_name.starts_with("WeightsCurveEvaluator") {
+    } else if evaluator_type_name
+        .starts_with("bevy_animation::animation_curves::WeightsCurveEvaluator")
+    {
         todo!()
     } else {
         panic!("Evaluator type not supported!");

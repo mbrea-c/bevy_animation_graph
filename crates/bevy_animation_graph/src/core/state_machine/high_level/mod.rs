@@ -11,7 +11,7 @@ use crate::core::{
     errors::GraphValidationError,
 };
 use bevy::{
-    asset::{Asset, Handle},
+    asset::{Asset, Handle, ReflectAsset},
     math::Vec2,
     prelude::ReflectDefault,
     reflect::Reflect,
@@ -99,6 +99,7 @@ pub struct Transition {
 
 /// Stateful data associated with an FSM node
 #[derive(Asset, Reflect, Debug, Default, Clone)]
+#[reflect(Asset)]
 pub struct StateMachine {
     pub start_state: StateId,
 

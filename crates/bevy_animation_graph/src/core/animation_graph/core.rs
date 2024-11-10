@@ -15,6 +15,7 @@ use crate::{
     },
 };
 use bevy::{
+    asset::ReflectAsset,
     prelude::*,
     utils::{HashMap, HashSet},
 };
@@ -126,8 +127,10 @@ pub struct Extra {
     /// Position in canvas of special outputs node
     pub output_position: Vec2,
     /// Order of input pins in the editor
+    #[serde(default)]
     pub input_order: HashMap<PinId, i32>,
     /// Order of output pins in the editor
+    #[serde(default)]
     pub output_order: HashMap<PinId, i32>,
 }
 
@@ -174,6 +177,7 @@ impl Extra {
 pub type PinMap<V> = HashMap<PinId, V>;
 
 #[derive(Debug, Clone, Asset, Reflect)]
+#[reflect(Asset)]
 pub struct AnimationGraph {
     #[reflect(ignore)]
     pub nodes: HashMap<String, AnimationNode>,

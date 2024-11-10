@@ -1,7 +1,7 @@
 use super::{errors::AssetLoaderError, skeleton::Skeleton};
 use crate::prelude::{AnimationGraph, AnimationGraphPlayer};
 use bevy::{
-    asset::{io::Reader, Asset, AssetLoader, Handle, LoadContext},
+    asset::{io::Reader, Asset, AssetLoader, Handle, LoadContext, ReflectAsset},
     core::Name,
     ecs::{bundle::Bundle, entity::Entity, query::Without},
     hierarchy::Children,
@@ -22,6 +22,7 @@ struct AnimatedSceneSerial {
 }
 
 #[derive(Clone, Asset, Reflect)]
+#[reflect(Asset)]
 pub struct AnimatedScene {
     pub(crate) source: Handle<Scene>,
     pub(crate) path_to_player: Vec<String>,

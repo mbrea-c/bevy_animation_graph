@@ -1,6 +1,6 @@
 use bevy::{
     animation::{AnimationCurves, AnimationTargetId},
-    asset::prelude::*,
+    asset::{prelude::*, ReflectAsset},
     core::prelude::*,
     reflect::prelude::*,
 };
@@ -142,6 +142,7 @@ impl<'de> Deserialize<'de> for EntityPath {
 
 /// A list of [`VariableCurve`], and the [`EntityPath`] to which they apply.
 #[derive(Asset, Reflect, Clone, Debug, Default)]
+#[reflect(Asset)]
 pub struct GraphClip {
     pub(crate) curves: AnimationCurves,
     pub(crate) duration: f32,
