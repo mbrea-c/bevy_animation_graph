@@ -249,42 +249,6 @@ pub struct ReflectSerializer<'a, P = ()> {
     processor: Option<&'a P>,
 }
 
-impl<'a> ReflectSerializer<'a, ()> {
-    /// Creates a serializer with no processor.
-    ///
-    /// If you want to add custom logic for serializing certain values, use
-    /// [`with_processor`].
-    ///
-    /// [`with_processor`]: Self::with_processor
-    pub fn new(value: &'a dyn PartialReflect, registry: &'a TypeRegistry) -> Self {
-        Self {
-            value,
-            registry,
-            processor: None,
-        }
-    }
-}
-
-impl<'a, P: ReflectSerializerProcessor> ReflectSerializer<'a, P> {
-    /// Creates a serializer with a processor.
-    ///
-    /// If you do not need any custom logic for handling certain values, use
-    /// [`new`].
-    ///
-    /// [`new`]: Self::new
-    pub fn with_processor(
-        value: &'a dyn PartialReflect,
-        registry: &'a TypeRegistry,
-        processor: &'a P,
-    ) -> Self {
-        Self {
-            value,
-            registry,
-            processor: Some(processor),
-        }
-    }
-}
-
 impl<P: ReflectSerializerProcessor> Serialize for ReflectSerializer<'_, P> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -361,22 +325,6 @@ pub struct TypedReflectSerializer<'a, P = ()> {
     value: &'a dyn PartialReflect,
     registry: &'a TypeRegistry,
     processor: Option<&'a P>,
-}
-
-impl<'a> TypedReflectSerializer<'a, ()> {
-    /// Creates a serializer with no processor.
-    ///
-    /// If you want to add custom logic for serializing certain values, use
-    /// [`with_processor`].
-    ///
-    /// [`with_processor`]: Self::with_processor
-    pub fn new(value: &'a dyn PartialReflect, registry: &'a TypeRegistry) -> Self {
-        Self {
-            value,
-            registry,
-            processor: None,
-        }
-    }
 }
 
 impl<'a, P> TypedReflectSerializer<'a, P> {

@@ -1,7 +1,7 @@
 use crate::utils::de::TypeRegistrationDeserializer;
 use bevy::reflect::{
-    serde::SerializationData, PartialReflect, ReflectDeserialize, TypeInfo, TypePath,
-    TypeRegistration, TypeRegistry,
+    serde::SerializationData, PartialReflect, ReflectDeserialize, TypeInfo, TypeRegistration,
+    TypeRegistry,
 };
 use core::{fmt, fmt::Formatter};
 use serde::de::{DeserializeSeed, Error, IgnoredAny, MapAccess, Visitor};
@@ -100,36 +100,6 @@ use super::{
 pub struct ReflectDeserializer<'a, P: ReflectDeserializerProcessor = ()> {
     registry: &'a TypeRegistry,
     processor: Option<&'a mut P>,
-}
-
-impl<'a> ReflectDeserializer<'a, ()> {
-    /// Creates a deserializer with no processor.
-    ///
-    /// If you want to add custom logic for deserializing certain types, use
-    /// [`with_processor`].
-    ///
-    /// [`with_processor`]: Self::with_processor
-    pub fn new(registry: &'a TypeRegistry) -> Self {
-        Self {
-            registry,
-            processor: None,
-        }
-    }
-}
-
-impl<'a, P: ReflectDeserializerProcessor> ReflectDeserializer<'a, P> {
-    /// Creates a deserializer with a processor.
-    ///
-    /// If you do not need any custom logic for handling certain types, use
-    /// [`new`].
-    ///
-    /// [`new`]: Self::new
-    pub fn with_processor(registry: &'a TypeRegistry, processor: &'a mut P) -> Self {
-        Self {
-            registry,
-            processor: Some(processor),
-        }
-    }
 }
 
 impl<'de, P: ReflectDeserializerProcessor> DeserializeSeed<'de> for ReflectDeserializer<'_, P> {
@@ -268,40 +238,6 @@ pub struct TypedReflectDeserializer<'a, P: ReflectDeserializerProcessor = ()> {
     registration: &'a TypeRegistration,
     registry: &'a TypeRegistry,
     processor: Option<&'a mut P>,
-}
-
-impl<'a> TypedReflectDeserializer<'a, ()> {
-    /// Creates a typed deserializer with no processor.
-    ///
-    /// If you want to add custom logic for deserializing certain types, use
-    /// [`with_processor`].
-    ///
-    /// [`with_processor`]: Self::with_processor
-    pub fn new(registration: &'a TypeRegistration, registry: &'a TypeRegistry) -> Self {
-        Self {
-            registration,
-            registry,
-            processor: None,
-        }
-    }
-
-    /// Creates a new [`TypedReflectDeserializer`] for the given type `T`
-    /// without a processor.
-    ///
-    /// # Panics
-    ///
-    /// Panics if `T` is not registered in the given [`TypeRegistry`].
-    pub fn of<T: TypePath>(registry: &'a TypeRegistry) -> Self {
-        let registration = registry
-            .get(core::any::TypeId::of::<T>())
-            .unwrap_or_else(|| panic!("no registration found for type `{}`", T::type_path()));
-
-        Self {
-            registration,
-            registry,
-            processor: None,
-        }
-    }
 }
 
 impl<'a, P: ReflectDeserializerProcessor> TypedReflectDeserializer<'a, P> {

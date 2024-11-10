@@ -7,7 +7,6 @@ mod enums;
 mod error_utils;
 mod lists;
 mod maps;
-mod serializable;
 mod serialize_with_registry;
 mod serializer;
 mod sets;
