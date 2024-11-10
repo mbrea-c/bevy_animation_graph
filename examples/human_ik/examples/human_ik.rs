@@ -48,40 +48,40 @@ fn setup(
     mut materials: ResMut<Assets<StandardMaterial>>,
 ) {
     // Camera
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(3., 3., 3.).looking_at(Vec3::new(0.0, 0.875, 0.0), Vec3::Y),
-        ..default()
-    });
+    commands.spawn((
+        Camera3d::default(),
+        Transform::from_xyz(3., 3., 3.).looking_at(Vec3::new(0.0, 0.875, 0.0), Vec3::Y),
+    ));
 
     // Plane
-    commands.spawn(PbrBundle {
-        mesh: meshes.add(Plane3d::new(Vec3::Y, Vec2::new(5., 5.)).mesh().build()),
-        material: materials.add(Color::from(LinearRgba::rgb(0.3, 0.5, 0.3))),
-        ..default()
-    });
+    commands.spawn((
+        Mesh3d(meshes.add(Plane3d::new(Vec3::Y, Vec2::new(5., 5.)).mesh().build())),
+        MeshMaterial3d(materials.add(Color::from(LinearRgba::rgb(0.3, 0.5, 0.3)))),
+    ));
 
     // Light
-    commands.spawn(DirectionalLightBundle {
-        transform: Transform::from_rotation(Quat::from_euler(EulerRot::ZYX, 0.0, 1.0, -PI / 4.)),
-        directional_light: DirectionalLight {
+    commands.spawn((
+        Transform::from_rotation(Quat::from_euler(EulerRot::ZYX, 0.0, 1.0, -PI / 4.)),
+        DirectionalLight {
             shadows_enabled: true,
             ..default()
         },
-        cascade_shadow_config: CascadeShadowConfigBuilder {
+        CascadeShadowConfigBuilder {
             first_cascade_far_bound: 10.0,
             num_cascades: 3,
             minimum_distance: 0.3,
             maximum_distance: 100.0,
             ..default()
         }
-        .into(),
-        ..default()
-    });
+        .build(),
+    ));
 
     // Animated character
     commands.spawn((
         AnimatedSceneBundle {
-            animated_scene: asset_server.load("animated_scenes/human_ik.animscn.ron"),
+            animated_scene: AnimatedSceneHandle(
+                asset_server.load("animated_scenes/human_ik.animscn.ron"),
+            ),
             transform: Transform::from_xyz(0., 0., 0.),
             ..default()
         },
@@ -122,10 +122,10 @@ fn keyboard_animation_control(
     }
 
     if keyboard_input.pressed(KeyCode::ArrowUp) {
-        params.speed += 0.5 * time.delta_seconds();
+        params.speed += 0.5 * time.delta_secs();
     }
     if keyboard_input.pressed(KeyCode::ArrowDown) {
-        params.speed -= 0.5 * time.delta_seconds();
+        params.speed -= 0.5 * time.delta_secs();
     }
 
     if params.direction == Vec3::ZERO {
@@ -134,11 +134,11 @@ fn keyboard_animation_control(
 
     if keyboard_input.pressed(KeyCode::ArrowRight) {
         params.direction =
-            (Quat::from_rotation_y(1. * time.delta_seconds()) * params.direction).normalize();
+            (Quat::from_rotation_y(1. * time.delta_secs()) * params.direction).normalize();
     }
     if keyboard_input.pressed(KeyCode::ArrowLeft) {
         params.direction =
-            (Quat::from_rotation_y(-1. * time.delta_seconds()) * params.direction).normalize();
+            (Quat::from_rotation_y(-1. * time.delta_secs()) * params.direction).normalize();
     }
 
     player.set_input_parameter("Target Speed", params.speed.into());
