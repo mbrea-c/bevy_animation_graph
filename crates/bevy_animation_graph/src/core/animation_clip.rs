@@ -140,10 +140,11 @@ impl<'de> Deserialize<'de> for EntityPath {
     }
 }
 
-/// A list of [`VariableCurve`], and the [`EntityPath`] to which they apply.
-#[derive(Asset, Reflect, Clone, Debug, Default)]
+#[derive(Asset, Clone, Debug, Default, Reflect)]
 #[reflect(Asset)]
 pub struct GraphClip {
+    // AnimationCurves are non-reflectable
+    #[reflect(ignore)]
     pub(crate) curves: AnimationCurves,
     pub(crate) duration: f32,
     pub(crate) skeleton: Handle<Skeleton>,

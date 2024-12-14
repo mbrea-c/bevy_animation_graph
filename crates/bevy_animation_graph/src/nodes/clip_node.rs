@@ -11,10 +11,10 @@ use crate::prelude::{PassContext, SpecContext};
 use bevy::asset::Handle;
 use bevy::math::{Quat, Vec3};
 use bevy::prelude::{
-    AnimationNodeIndex, RotationCurveEvaluator, ScaleCurveEvaluator, TranslationCurveEvaluator,
-    VariableCurve,
+    Animatable, AnimatableProperty, AnimationNodeIndex, EvaluatorId, Transform, VariableCurve,
 };
 use bevy::reflect::prelude::*;
+use bevy::utils::Hashed;
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default, NodeLike)]
@@ -113,6 +113,7 @@ impl NodeLike for ClipNode {
     }
 }
 
+#[allow(dead_code)]
 enum CurveValue {
     Translation(Vec3),
     Rotation(Quat),
@@ -123,111 +124,95 @@ enum CurveValue {
 /// Sample the animation at a particular time
 // HACK: We really need some API for sampling animation curves in Bevy outside of the builtin
 // animation flow.
-// Currently, we use reflection as a _escape hatch_ to access private fields in the evaluator.
 fn sample_animation_curve(curve: &VariableCurve, time: f32) -> CurveValue {
+    let evaluator_id = curve.0.evaluator_id();
     let mut evaluator = curve.0.create_evaluator();
-    let evaluator_type_id = curve.0.evaluator_type();
-    let evaluator_type_name = evaluator.reflect_type_info().type_path();
+
     let node_index = AnimationNodeIndex::default();
+
+    let translation_evaluator_id = Hashed::new((TypeId::of::<Transform>(), 0));
+    let rotation_evaluator_id = Hashed::new((TypeId::of::<Transform>(), 1));
+    let scale_evaluator_id = Hashed::new((TypeId::of::<Transform>(), 2));
 
     curve
         .0
         .apply(evaluator.as_mut(), time, 1., node_index)
         .unwrap();
 
-    if evaluator_type_id == TypeId::of::<TranslationCurveEvaluator>() {
-        let t = evaluator
-            .as_reflect()
-            .reflect_ref()
-            .as_struct()
-            .unwrap()
-            .field("evaluator")
-            .unwrap()
-            .reflect_ref()
-            .as_struct()
-            .unwrap()
-            .field("stack")
-            .unwrap()
-            .reflect_ref()
-            .as_list()
-            .unwrap()
-            .get(0)
-            .unwrap()
-            .reflect_ref()
-            .as_struct()
-            .unwrap()
-            .field("value")
-            .unwrap()
-            .try_downcast_ref::<Vec3>()
-            .unwrap();
-        CurveValue::Translation(*t)
-    } else if evaluator_type_id == TypeId::of::<RotationCurveEvaluator>() {
-        let r = evaluator
-            .as_reflect()
-            .reflect_ref()
-            .as_struct()
-            .unwrap()
-            .field("evaluator")
-            .unwrap()
-            .reflect_ref()
-            .as_struct()
-            .unwrap()
-            .field("stack")
-            .unwrap()
-            .reflect_ref()
-            .as_list()
-            .unwrap()
-            .get(0)
-            .unwrap()
-            .reflect_ref()
-            .as_struct()
-            .unwrap()
-            .field("value")
-            .unwrap()
-            .try_downcast_ref::<Quat>()
-            .unwrap();
-        CurveValue::Rotation(*r)
-    } else if evaluator_type_id == TypeId::of::<ScaleCurveEvaluator>() {
-        let s = evaluator
-            .as_reflect()
-            .reflect_ref()
-            .as_struct()
-            .unwrap()
-            .field("evaluator")
-            .unwrap()
-            .reflect_ref()
-            .as_struct()
-            .unwrap()
-            .field("stack")
-            .unwrap()
-            .reflect_ref()
-            .as_list()
-            .unwrap()
-            .get(0)
-            .unwrap()
-            .reflect_ref()
-            .as_struct()
-            .unwrap()
-            .field("value")
-            .unwrap()
-            .try_downcast_ref::<Vec3>()
-            .unwrap();
-        CurveValue::Scale(*s)
-    } else if evaluator_type_name
-        .starts_with("bevy_animation::animation_curves::WeightsCurveEvaluator")
-    {
-        let w = evaluator
-            .as_reflect()
-            .reflect_ref()
-            .as_struct()
-            .unwrap()
-            .field("stack_morph_target_weights")
-            .unwrap()
-            .try_downcast_ref::<Vec<f32>>()
-            .unwrap()
-            .clone();
-        CurveValue::BoneWeights(w)
-    } else {
-        panic!("Animatable curve type not yet supported!");
+    match evaluator_id {
+        EvaluatorId::ComponentField(id) => {
+            // SAFETY: We only have a pointer to the evaluator, but we want to access private
+            // fields. We're essentially telling the compiler: "Hey, operate on this block of
+            // memory from somewhere else as if it had this type".
+            // I would rather not do this, but we don't have sampling APIs yet.
+            if id == &translation_evaluator_id {
+                let animatable_evaluator: &AnimatableCurveEvaluator<Vec3> = unsafe {
+                    std::mem::transmute(
+                    evaluator
+                        .downcast_ref::<bevy::animation::prelude::AnimatableCurveEvaluator<Vec3>>()
+                        .unwrap(),
+                 )
+                };
+                let value = animatable_evaluator.evaluator.stack[0].value;
+                CurveValue::Translation(value)
+            } else if id == &rotation_evaluator_id {
+                let animatable_evaluator: &AnimatableCurveEvaluator<Quat> = unsafe {
+                    std::mem::transmute(
+                    evaluator
+                        .downcast_ref::<bevy::animation::prelude::AnimatableCurveEvaluator<Quat>>()
+                        .unwrap(),
+                 )
+                };
+                let value = animatable_evaluator.evaluator.stack[0].value;
+                CurveValue::Rotation(value)
+            } else if id == &scale_evaluator_id {
+                let animatable_evaluator: &AnimatableCurveEvaluator<Vec3> = unsafe {
+                    std::mem::transmute(
+                    evaluator
+                        .downcast_ref::<bevy::animation::prelude::AnimatableCurveEvaluator<Vec3>>()
+                        .unwrap(),
+                 )
+                };
+                let value = animatable_evaluator.evaluator.stack[0].value;
+                CurveValue::Scale(value)
+            } else {
+                todo!()
+            }
+        }
+        EvaluatorId::Type(_id) => todo!(),
     }
+}
+
+// Why is this here?
+//
+// We need to access private fields in the evaluators in order to "extract" the
+// sampled values. The evaluator trait no longer implements reflect, so our only option
+// is to do a bit of unsafe memory shenanigans.
+// We will transmute a reference of type `&bevy::animation::prelude::AnimatableCurveEvaluator` to
+// `&AnimatableCurveEvaluator`, essentially telling the compiler "operate on the memory pointed to
+// by this reference as if it had this custom type".
+//
+// We should aim to have a better animation curve sampling API in 0.16 in order to avoid having to
+// do this.
+
+pub struct AnimatableCurveEvaluator<A: Animatable> {
+    evaluator: BasicAnimationCurveEvaluator<A>,
+    _property: Box<dyn AnimatableProperty<Property = A>>,
+}
+
+struct BasicAnimationCurveEvaluator<A>
+where
+    A: Animatable,
+{
+    stack: Vec<BasicAnimationCurveEvaluatorStackElement<A>>,
+    _blend_register: Option<(A, f32)>,
+}
+
+struct BasicAnimationCurveEvaluatorStackElement<A>
+where
+    A: Animatable,
+{
+    value: A,
+    _weight: f32,
+    _graph_node: AnimationNodeIndex,
 }
