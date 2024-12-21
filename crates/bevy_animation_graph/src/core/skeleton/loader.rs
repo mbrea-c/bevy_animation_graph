@@ -2,7 +2,7 @@ use super::Skeleton;
 use crate::core::{animation_clip::EntityPath, errors::AssetLoaderError};
 use bevy::{
     animation::AnimationPlayer,
-    asset::{io::Reader, AssetLoader, AsyncReadExt, LoadContext, LoadedAsset},
+    asset::{io::Reader, AssetLoader, LoadContext, LoadedAsset},
     core::Name,
     gltf::Gltf,
     hierarchy::Children,
@@ -30,18 +30,19 @@ impl AssetLoader for SkeletonLoader {
     type Settings = ();
     type Error = AssetLoaderError;
 
-    async fn load<'a>(
-        &'a self,
-        reader: &'a mut Reader<'_>,
-        _settings: &'a Self::Settings,
-        load_context: &'a mut LoadContext<'_>,
+    async fn load(
+        &self,
+        reader: &mut dyn Reader,
+        _settings: &Self::Settings,
+        load_context: &mut LoadContext<'_>,
     ) -> Result<Self::Asset, Self::Error> {
         let mut bytes = vec![];
         reader.read_to_end(&mut bytes).await?;
         let serial: SkeletonSerial = ron::de::from_bytes(&bytes)?;
         let skeleton: Skeleton = match serial.source {
             SkeletonSource::Gltf { source, label } => {
-                let gltf: LoadedAsset<Gltf> = load_context.loader().direct().load(source).await?;
+                let gltf: LoadedAsset<Gltf> =
+                    load_context.loader().immediate().load(source).await?;
                 let scn = gltf.get_labeled(label).unwrap().get::<Scene>().unwrap();
                 build_skeleton(&scn.world)?
             }

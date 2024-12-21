@@ -1,5 +1,5 @@
 use crate::core::animation_graph::{AnimationGraph, InputOverlay, PinMap, TargetPin};
-use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
+use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::context::CacheWriteFilter;
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
@@ -7,7 +7,7 @@ use crate::prelude::{PassContext, SpecContext};
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
-#[reflect(Default)]
+#[reflect(Default, NodeLike)]
 pub struct GraphNode {
     pub(crate) graph: Handle<AnimationGraph>,
 }
@@ -16,19 +16,13 @@ impl GraphNode {
     pub fn new(graph: Handle<AnimationGraph>) -> Self {
         Self { graph }
     }
-
-    pub fn wrapped(self, name: impl Into<String>) -> AnimationNode {
-        AnimationNode::new_from_nodetype(name.into(), AnimationNodeType::Graph(self))
-    }
 }
 
 impl NodeLike for GraphNode {
     fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let graph = ctx
-            .resources
-            .animation_graph_assets
-            .get(&self.graph)
-            .unwrap();
+        let Some(graph) = ctx.resources.animation_graph_assets.get(&self.graph) else {
+            return Ok(());
+        };
 
         let input_overlay = InputOverlay::default();
 
@@ -44,11 +38,9 @@ impl NodeLike for GraphNode {
     }
 
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let graph = ctx
-            .resources
-            .animation_graph_assets
-            .get(&self.graph)
-            .unwrap();
+        let Some(graph) = ctx.resources.animation_graph_assets.get(&self.graph) else {
+            return Ok(());
+        };
 
         let input_overlay = InputOverlay::default();
 

@@ -4,23 +4,18 @@ use super::{
     errors::GraphError,
 };
 use crate::{
-    nodes::{
-        AbsF32, AddF32, BlendNode, BuildVec3Node, ChainNode, ClampF32, ClipNode, CompareF32,
-        ConstBool, ConstEntityPath, ConstF32, ConstVec3Node, DecomposeVec3Node, DivF32, DummyNode,
-        FSMNode, FireEventNode, FlipLRNode, FromEulerNode, GraphNode, IntoEulerNode,
-        InvertQuatNode, LengthVec3Node, LerpVec3Node, LoopNode, MulF32, MulQuatNode,
-        NormalizeVec3Node, PaddingNode, RotationArcNode, RotationNode, SelectF32, SlerpQuatNode,
-        SpeedNode, SubF32, TwoBoneIKNode,
-    },
+    nodes::DummyNode,
     prelude::{PassContext, SpecContext},
 };
-use bevy::{reflect::prelude::*, utils::HashMap};
-use std::{
-    ops::{Deref, DerefMut},
-    sync::{Arc, Mutex},
+use bevy::{
+    prelude::{Deref, DerefMut},
+    reflect::{prelude::*, FromType},
+    utils::HashMap,
 };
+use std::{any::TypeId, fmt::Debug};
 
-pub trait NodeLike: Send + Sync + Reflect {
+#[reflect_trait]
+pub trait NodeLike: NodeLikeClone + Send + Sync + Debug + Reflect {
     fn duration(&self, _ctx: PassContext) -> Result<(), GraphError> {
         Ok(())
     }
@@ -50,345 +45,504 @@ pub trait NodeLike: Send + Sync + Reflect {
     fn display_name(&self) -> String;
 
     /// The order of the input pins. This way, you can mix time and data pins in the UI.
-    fn input_pin_ordering(&self) -> PinOrdering {
+    fn input_pin_ordering(&self, _ctx: SpecContext) -> PinOrdering {
         PinOrdering::default()
     }
 
     /// The order of the output pins. This way, you can mix time and data pins in the UI.
-    fn output_pin_ordering(&self) -> PinOrdering {
+    fn output_pin_ordering(&self, _ctx: SpecContext) -> PinOrdering {
         PinOrdering::default()
     }
 }
 
-#[derive(Clone, Reflect, Debug, Default)]
-pub struct PinOrdering {
-    keys: HashMap<PinId, usize>,
+pub trait NodeLikeClone {
+    fn clone_node_like(&self) -> Box<dyn NodeLike>;
 }
 
-impl PinOrdering {
-    pub fn new(keys: impl Into<HashMap<PinId, usize>>) -> Self {
-        Self { keys: keys.into() }
+impl<T> NodeLikeClone for T
+where
+    T: 'static + NodeLike + Clone,
+{
+    fn clone_node_like(&self) -> Box<dyn NodeLike> {
+        Box::new(self.clone())
     }
+}
 
-    pub fn pin_key(&self, pin_id: &PinId) -> usize {
-        self.keys.get(pin_id).copied().unwrap_or(0)
+impl Clone for Box<dyn NodeLike> {
+    fn clone(&self) -> Self {
+        self.clone_node_like()
     }
 }
 
 #[derive(Clone)]
-pub struct CustomNode {
-    pub node: Arc<Mutex<dyn NodeLike>>,
+pub struct ReflectEditProxy {
+    pub proxy_type_id: TypeId,
+    pub from_proxy: fn(&dyn Reflect) -> Box<dyn NodeLike>,
+    pub to_proxy: fn(&dyn NodeLike) -> Box<dyn Reflect>,
 }
 
-impl CustomNode {
-    pub fn new(node: impl NodeLike + 'static) -> Self {
+impl<T> FromType<T> for ReflectEditProxy
+where
+    T: EditProxy + NodeLike,
+{
+    fn from_type() -> Self {
         Self {
-            node: Arc::new(Mutex::new(node)),
+            proxy_type_id: TypeId::of::<<T as EditProxy>::Proxy>(),
+            from_proxy: from_proxy::<T>,
+            to_proxy: to_proxy::<T>,
         }
     }
 }
 
-impl Default for CustomNode {
-    fn default() -> Self {
-        Self {
-            node: Arc::new(Mutex::new(DummyNode::new())),
-        }
+fn from_proxy<T: EditProxy + NodeLike>(proxy: &dyn Reflect) -> Box<dyn NodeLike> {
+    if proxy.type_id() == TypeId::of::<T::Proxy>() {
+        let proxy = proxy.downcast_ref::<T::Proxy>().unwrap();
+        Box::new(T::update_from_proxy(proxy))
+    } else {
+        panic!("Type mismatch")
     }
 }
 
-impl std::fmt::Debug for CustomNode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "CustomNode")
+fn to_proxy<T: EditProxy + NodeLike>(node: &dyn NodeLike) -> Box<dyn Reflect> {
+    if node.type_id() == TypeId::of::<T>() {
+        let node = node.as_any().downcast_ref::<T>().unwrap();
+        Box::new(T::make_proxy(node))
+    } else {
+        panic!("Type mismatch")
     }
 }
 
-#[derive(Reflect, Clone, Debug, Default)]
+pub trait EditProxy {
+    type Proxy: Reflect;
+
+    fn update_from_proxy(proxy: &Self::Proxy) -> Self;
+    fn make_proxy(&self) -> Self::Proxy;
+}
+
+#[derive(Clone, Reflect, Debug, Default)]
+pub struct PinOrdering {
+    keys: HashMap<PinId, i32>,
+}
+
+impl PinOrdering {
+    pub fn new(keys: impl Into<HashMap<PinId, i32>>) -> Self {
+        Self { keys: keys.into() }
+    }
+
+    pub fn pin_key(&self, pin_id: &PinId) -> i32 {
+        self.keys.get(pin_id).copied().unwrap_or(0)
+    }
+}
+
+#[derive(Debug, Deref, DerefMut)]
+// #[derive(Reflect)] // manual reflect impl (see below)
 pub struct AnimationNode {
     pub name: String,
-    pub node: AnimationNodeType,
-    #[reflect(ignore)]
+    #[deref]
+    pub inner: Box<dyn NodeLike>,
+    // #[reflect(ignore)] // manual reflect impl (see below)
     pub should_debug: bool,
 }
 
 impl AnimationNode {
-    pub fn new_from_nodetype(name: String, node: AnimationNodeType) -> Self {
+    #[must_use]
+    pub fn new(name: impl Into<String>, inner: Box<dyn NodeLike>) -> Self {
         Self {
-            name,
-            node,
+            name: name.into(),
+            inner,
             should_debug: false,
         }
     }
 }
 
-impl NodeLike for AnimationNode {
-    fn duration(&self, ctx: PassContext) -> Result<(), GraphError> {
-        self.node.map(|n| n.duration(ctx))
-    }
-
-    fn update(&self, ctx: PassContext) -> Result<(), GraphError> {
-        self.node.map(|n| n.update(ctx))
-    }
-
-    fn data_input_spec(&self, ctx: SpecContext) -> PinMap<DataSpec> {
-        self.node.map(|n| n.data_input_spec(ctx))
-    }
-
-    fn data_output_spec(&self, ctx: SpecContext) -> PinMap<DataSpec> {
-        self.node.map(|n| n.data_output_spec(ctx))
-    }
-
-    fn time_input_spec(&self, ctx: SpecContext) -> PinMap<()> {
-        self.node.map(|n| n.time_input_spec(ctx))
-    }
-
-    fn time_output_spec(&self, ctx: SpecContext) -> Option<()> {
-        self.node.map(|n| n.time_output_spec(ctx))
-    }
-
-    fn display_name(&self) -> String {
-        self.node.map(|n| n.display_name())
-    }
-}
-
-#[derive(Reflect, Clone, Debug)]
-#[reflect(Default)]
-pub enum AnimationNodeType {
-    // --- Dummy (default no-op node)
-    // ------------------------------------------------
-    Dummy(DummyNode),
-    // ------------------------------------------------
-
-    // --- Pose Nodes
-    // ------------------------------------------------
-    Clip(ClipNode),
-    Chain(ChainNode),
-    Blend(BlendNode),
-    FlipLR(FlipLRNode),
-    Loop(LoopNode),
-    Padding(PaddingNode),
-    Speed(SpeedNode),
-    Rotation(RotationNode),
-    // ------------------------------------------------
-
-    // --- Pose space conversion
-    // ------------------------------------------------
-    // IntoBoneSpace(IntoBoneSpaceNode),
-    // IntoCharacterSpace(IntoCharacterSpaceNode),
-    // IntoGlobalSpace(IntoGlobalSpaceNode),
-    // ExtendSkeleton(ExtendSkeleton),
-    // ------------------------------------------------
-
-    // --- IK space conversion
-    // ------------------------------------------------
-    TwoBoneIK(TwoBoneIKNode),
-    // ------------------------------------------------
-
-    // --- Constant nodes
-    // ------------------------------------------------
-    ConstBool(ConstBool),
-    ConstF32(ConstF32),
-    ConstVec3(ConstVec3Node),
-    ConstEntityPath(ConstEntityPath),
-    // ------------------------------------------------
-
-    // --- F32 arithmetic nodes
-    // ------------------------------------------------
-    AddF32(AddF32),
-    MulF32(MulF32),
-    DivF32(DivF32),
-    SubF32(SubF32),
-    ClampF32(ClampF32),
-    AbsF32(AbsF32),
-    CompareF32(CompareF32),
-    SelectF32(SelectF32),
-    // ------------------------------------------------
-
-    // --- Bool nodes
-    // ------------------------------------------------
-    // ------------------------------------------------
-
-    // --- EventQueue nodes
-    // ------------------------------------------------
-    FireEvent(FireEventNode),
-    // ------------------------------------------------
-
-    // --- Vec3 arithmetic nodes
-    // ------------------------------------------------
-    RotationArc(RotationArcNode),
-    BuildVec3(BuildVec3Node),
-    DecomposeVec3(DecomposeVec3Node),
-    LerpVec3(LerpVec3Node),
-    NormalizeVec3(NormalizeVec3Node),
-    LengthVec3(LengthVec3Node),
-    // ------------------------------------------------
-
-    // --- Quat arithmetic nodes
-    // ------------------------------------------------
-    SlerpQuat(SlerpQuatNode),
-    FromEuler(FromEulerNode),
-    IntoEuler(IntoEulerNode),
-    MulQuat(MulQuatNode),
-    InvertQuat(InvertQuatNode),
-    // ------------------------------------------------
-    Fsm(#[reflect(ignore)] FSMNode),
-    // HACK: needs to be ignored for now due to:
-    // https://github.com/bevyengine/bevy/issues/8965
-    // Recursive reference causes reflection to fail
-    Graph(#[reflect(ignore)] GraphNode),
-    Custom(#[reflect(ignore)] CustomNode),
-}
-
-impl Default for AnimationNodeType {
+impl Default for AnimationNode {
     fn default() -> Self {
-        Self::Dummy(DummyNode::new())
+        Self::new("", Box::new(DummyNode))
     }
 }
 
-impl AnimationNodeType {
-    pub fn map<O, F>(&self, f: F) -> O
-    where
-        F: FnOnce(&dyn NodeLike) -> O,
-    {
-        match self {
-            AnimationNodeType::Clip(n) => f(n),
-            AnimationNodeType::Chain(n) => f(n),
-            AnimationNodeType::Blend(n) => f(n),
-            AnimationNodeType::FlipLR(n) => f(n),
-            AnimationNodeType::Loop(n) => f(n),
-            AnimationNodeType::Padding(n) => f(n),
-            AnimationNodeType::Speed(n) => f(n),
-            AnimationNodeType::Rotation(n) => f(n),
-            AnimationNodeType::ConstF32(n) => f(n),
-            AnimationNodeType::AddF32(n) => f(n),
-            AnimationNodeType::MulF32(n) => f(n),
-            AnimationNodeType::DivF32(n) => f(n),
-            AnimationNodeType::SubF32(n) => f(n),
-            AnimationNodeType::ClampF32(n) => f(n),
-            AnimationNodeType::CompareF32(n) => f(n),
-            AnimationNodeType::SelectF32(n) => f(n),
-            AnimationNodeType::AbsF32(n) => f(n),
-            AnimationNodeType::ConstBool(n) => f(n),
-            AnimationNodeType::BuildVec3(n) => f(n),
-            AnimationNodeType::DecomposeVec3(n) => f(n),
-            AnimationNodeType::LerpVec3(n) => f(n),
-            AnimationNodeType::SlerpQuat(n) => f(n),
-            AnimationNodeType::FromEuler(n) => f(n),
-            AnimationNodeType::IntoEuler(n) => f(n),
-            AnimationNodeType::MulQuat(n) => f(n),
-            AnimationNodeType::InvertQuat(n) => f(n),
-            AnimationNodeType::RotationArc(n) => f(n),
-            AnimationNodeType::Fsm(n) => f(n),
-            AnimationNodeType::Graph(n) => f(n),
-            // AnimationNodeType::IntoBoneSpace(n) => f(n),
-            // AnimationNodeType::IntoCharacterSpace(n) => f(n),
-            // AnimationNodeType::IntoGlobalSpace(n) => f(n),
-            // AnimationNodeType::ExtendSkeleton(n) => f(n),
-            AnimationNodeType::TwoBoneIK(n) => f(n),
-            AnimationNodeType::FireEvent(n) => f(n),
-            AnimationNodeType::Dummy(n) => f(n),
-            AnimationNodeType::Custom(n) => f(n.node.lock().unwrap().deref()),
-            AnimationNodeType::ConstEntityPath(n) => f(n),
-            AnimationNodeType::NormalizeVec3(n) => f(n),
-            AnimationNodeType::LengthVec3(n) => f(n),
-            AnimationNodeType::ConstVec3(n) => f(n),
+impl Clone for AnimationNode {
+    fn clone(&self) -> Self {
+        Self {
+            name: self.name.clone(),
+            inner: self.inner.clone(),
+            should_debug: self.should_debug,
         }
     }
+}
 
-    pub fn map_mut<O, F>(&mut self, mut f: F) -> O
+const _: () = {
+    #[allow(unused_mut)]
+    impl bevy::reflect::GetTypeRegistration for AnimationNode
     where
-        F: FnMut(&mut dyn NodeLike) -> O,
+        AnimationNode: ::core::any::Any + ::core::marker::Send + ::core::marker::Sync,
+        String: bevy::reflect::FromReflect
+            + bevy::reflect::TypePath
+            + bevy::reflect::MaybeTyped
+            + bevy::reflect::__macro_exports::RegisterForReflection,
+        /* manual reflect impl
+        Box<dyn NodeLike>: bevy::reflect::FromReflect
+            + bevy::reflect::TypePath
+            + bevy::reflect::MaybeTyped
+            + bevy::reflect::__macro_exports::RegisterForReflection,
+        */
     {
-        match self {
-            AnimationNodeType::Clip(n) => f(n),
-            AnimationNodeType::Chain(n) => f(n),
-            AnimationNodeType::Blend(n) => f(n),
-            AnimationNodeType::FlipLR(n) => f(n),
-            AnimationNodeType::Loop(n) => f(n),
-            AnimationNodeType::Padding(n) => f(n),
-            AnimationNodeType::Speed(n) => f(n),
-            AnimationNodeType::Rotation(n) => f(n),
-            AnimationNodeType::ConstF32(n) => f(n),
-            AnimationNodeType::AddF32(n) => f(n),
-            AnimationNodeType::MulF32(n) => f(n),
-            AnimationNodeType::DivF32(n) => f(n),
-            AnimationNodeType::SubF32(n) => f(n),
-            AnimationNodeType::ClampF32(n) => f(n),
-            AnimationNodeType::CompareF32(n) => f(n),
-            AnimationNodeType::SelectF32(n) => f(n),
-            AnimationNodeType::AbsF32(n) => f(n),
-            AnimationNodeType::ConstBool(n) => f(n),
-            AnimationNodeType::BuildVec3(n) => f(n),
-            AnimationNodeType::DecomposeVec3(n) => f(n),
-            AnimationNodeType::LerpVec3(n) => f(n),
-            AnimationNodeType::SlerpQuat(n) => f(n),
-            AnimationNodeType::FromEuler(n) => f(n),
-            AnimationNodeType::IntoEuler(n) => f(n),
-            AnimationNodeType::MulQuat(n) => f(n),
-            AnimationNodeType::InvertQuat(n) => f(n),
-            AnimationNodeType::RotationArc(n) => f(n),
-            AnimationNodeType::Fsm(n) => f(n),
-            AnimationNodeType::Graph(n) => f(n),
-            // AnimationNodeType::IntoBoneSpace(n) => f(n),
-            // AnimationNodeType::IntoCharacterSpace(n) => f(n),
-            // AnimationNodeType::IntoGlobalSpace(n) => f(n),
-            // AnimationNodeType::ExtendSkeleton(n) => f(n),
-            AnimationNodeType::TwoBoneIK(n) => f(n),
-            AnimationNodeType::FireEvent(n) => f(n),
-            AnimationNodeType::Dummy(n) => f(n),
-            AnimationNodeType::Custom(n) => {
-                let mut nod = n.node.lock().unwrap();
-                f(nod.deref_mut())
+        fn get_type_registration() -> bevy::reflect::TypeRegistration {
+            let mut registration = bevy::reflect::TypeRegistration::of::<Self>();
+            registration.insert::<bevy::reflect::ReflectFromPtr>(
+                bevy::reflect::FromType::<Self>::from_type(),
+            );
+            registration.insert::<bevy::reflect::ReflectFromReflect>(
+                bevy::reflect::FromType::<Self>::from_type(),
+            );
+            registration
+        }
+        #[inline(never)]
+        fn register_type_dependencies(registry: &mut bevy::reflect::TypeRegistry) {
+            <String as bevy::reflect::__macro_exports::RegisterForReflection>::__register(registry);
+            // <Box<dyn NodeLike>as bevy::reflect::__macro_exports::RegisterForReflection> ::__register(registry); // manual reflect impl
+        }
+    }
+    impl bevy::reflect::Typed for AnimationNode
+    where
+        AnimationNode: ::core::any::Any + ::core::marker::Send + ::core::marker::Sync,
+        String: bevy::reflect::FromReflect
+            + bevy::reflect::TypePath
+            + bevy::reflect::MaybeTyped
+            + bevy::reflect::__macro_exports::RegisterForReflection,
+        /* manual reflect impl
+        Box<dyn NodeLike>: bevy::reflect::FromReflect
+            + bevy::reflect::TypePath
+            + bevy::reflect::MaybeTyped
+            + bevy::reflect::__macro_exports::RegisterForReflection,
+        */
+    {
+        #[inline]
+        fn type_info() -> &'static bevy::reflect::TypeInfo {
+            static CELL: bevy::reflect::utility::NonGenericTypeInfoCell =
+                bevy::reflect::utility::NonGenericTypeInfoCell::new();
+            CELL.get_or_set(|| {
+                bevy::reflect::TypeInfo::Struct(
+                    bevy::reflect::StructInfo::new::<Self>(&[
+                        bevy::reflect::NamedField::new::<String>("name").with_custom_attributes(
+                            bevy::reflect::attributes::CustomAttributes::default(),
+                        ),
+                        /* manual reflect impl
+                        bevy::reflect::NamedField::new::<Box<dyn NodeLike>>("inner")
+                            .with_custom_attributes(
+                                bevy::reflect::attributes::CustomAttributes::default(),
+                            ),
+                        */
+                    ])
+                    .with_custom_attributes(bevy::reflect::attributes::CustomAttributes::default()),
+                )
+            })
+        }
+    }
+    impl bevy::reflect::TypePath for AnimationNode
+    where
+        AnimationNode: ::core::any::Any + ::core::marker::Send + ::core::marker::Sync,
+    {
+        fn type_path() -> &'static str {
+            ::core::concat!(
+                ::core::concat!(::core::module_path!(), "::"),
+                "AnimationNode"
+            )
+        }
+        fn short_type_path() -> &'static str {
+            "AnimationNode"
+        }
+        fn type_ident() -> Option<&'static str> {
+            ::core::option::Option::Some("AnimationNode")
+        }
+        fn crate_name() -> Option<&'static str> {
+            ::core::option::Option::Some(::core::module_path!().split(':').next().unwrap())
+        }
+        fn module_path() -> Option<&'static str> {
+            ::core::option::Option::Some(::core::module_path!())
+        }
+    }
+    impl bevy::reflect::Reflect for AnimationNode
+    where
+        AnimationNode: ::core::any::Any + ::core::marker::Send + ::core::marker::Sync,
+        String: bevy::reflect::FromReflect
+            + bevy::reflect::TypePath
+            + bevy::reflect::MaybeTyped
+            + bevy::reflect::__macro_exports::RegisterForReflection,
+        /* manual reflect impl
+        Box<dyn NodeLike>: bevy::reflect::FromReflect
+            + bevy::reflect::TypePath
+            + bevy::reflect::MaybeTyped
+            + bevy::reflect::__macro_exports::RegisterForReflection,
+        */
+    {
+        #[inline]
+        fn into_any(self: ::std::boxed::Box<Self>) -> ::std::boxed::Box<dyn ::core::any::Any> {
+            self
+        }
+        #[inline]
+        fn as_any(&self) -> &dyn ::core::any::Any {
+            self
+        }
+        #[inline]
+        fn as_any_mut(&mut self) -> &mut dyn ::core::any::Any {
+            self
+        }
+        #[inline]
+        fn into_reflect(
+            self: ::std::boxed::Box<Self>,
+        ) -> ::std::boxed::Box<dyn bevy::reflect::Reflect> {
+            self
+        }
+        #[inline]
+        fn as_reflect(&self) -> &dyn bevy::reflect::Reflect {
+            self
+        }
+        #[inline]
+        fn as_reflect_mut(&mut self) -> &mut dyn bevy::reflect::Reflect {
+            self
+        }
+        #[inline]
+        fn set(
+            &mut self,
+            value: ::std::boxed::Box<dyn bevy::reflect::Reflect>,
+        ) -> ::core::result::Result<(), ::std::boxed::Box<dyn bevy::reflect::Reflect>> {
+            *self = <dyn bevy::reflect::Reflect>::take(value)?;
+            ::core::result::Result::Ok(())
+        }
+    }
+    impl bevy::reflect::Struct for AnimationNode
+    where
+        AnimationNode: ::core::any::Any + ::core::marker::Send + ::core::marker::Sync,
+        String: bevy::reflect::FromReflect
+            + bevy::reflect::TypePath
+            + bevy::reflect::MaybeTyped
+            + bevy::reflect::__macro_exports::RegisterForReflection,
+        /* manual reflect impl
+        Box<dyn NodeLike>: bevy::reflect::FromReflect
+            + bevy::reflect::TypePath
+            + bevy::reflect::MaybeTyped
+            + bevy::reflect::__macro_exports::RegisterForReflection,
+        */
+    {
+        fn field(&self, name: &str) -> ::core::option::Option<&dyn bevy::reflect::PartialReflect> {
+            match name {
+                "name" => ::core::option::Option::Some(&self.name),
+                // manual reflect impl
+                "inner" => ::core::option::Option::Some(self.inner.as_partial_reflect()),
+                _ => ::core::option::Option::None,
             }
-            AnimationNodeType::ConstEntityPath(n) => f(n),
-            AnimationNodeType::NormalizeVec3(n) => f(n),
-            AnimationNodeType::LengthVec3(n) => f(n),
-            AnimationNodeType::ConstVec3(n) => f(n),
+        }
+        fn field_mut(
+            &mut self,
+            name: &str,
+        ) -> ::core::option::Option<&mut dyn bevy::reflect::PartialReflect> {
+            match name {
+                "name" => ::core::option::Option::Some(&mut self.name),
+                // manual reflect impl
+                "inner" => ::core::option::Option::Some(self.inner.as_partial_reflect_mut()),
+                _ => ::core::option::Option::None,
+            }
+        }
+        fn field_at(
+            &self,
+            index: usize,
+        ) -> ::core::option::Option<&dyn bevy::reflect::PartialReflect> {
+            match index {
+                0usize => ::core::option::Option::Some(&self.name),
+                // manual reflect impl
+                1usize => ::core::option::Option::Some(self.inner.as_partial_reflect()),
+                _ => ::core::option::Option::None,
+            }
+        }
+        fn field_at_mut(
+            &mut self,
+            index: usize,
+        ) -> ::core::option::Option<&mut dyn bevy::reflect::PartialReflect> {
+            match index {
+                0usize => ::core::option::Option::Some(&mut self.name),
+                // manual reflect impl
+                1usize => ::core::option::Option::Some(self.inner.as_partial_reflect_mut()),
+                _ => ::core::option::Option::None,
+            }
+        }
+        fn name_at(&self, index: usize) -> ::core::option::Option<&str> {
+            match index {
+                0usize => ::core::option::Option::Some("name"),
+                1usize => ::core::option::Option::Some("inner"),
+                _ => ::core::option::Option::None,
+            }
+        }
+        fn field_len(&self) -> usize {
+            2usize
+        }
+        fn iter_fields(&self) -> bevy::reflect::FieldIter {
+            bevy::reflect::FieldIter::new(self)
+        }
+        fn clone_dynamic(&self) -> bevy::reflect::DynamicStruct {
+            let mut dynamic: bevy::reflect::DynamicStruct = ::core::default::Default::default();
+            dynamic.set_represented_type(bevy::reflect::PartialReflect::get_represented_type_info(
+                self,
+            ));
+            dynamic.insert_boxed(
+                "name",
+                bevy::reflect::PartialReflect::clone_value(&self.name),
+            );
+            dynamic.insert_boxed(
+                "inner",
+                // manual reflect impl
+                bevy::reflect::PartialReflect::clone_value(&*self.inner),
+            );
+            dynamic
         }
     }
-
-    pub fn inner_reflect(&mut self) -> &mut dyn Reflect {
-        match self {
-            AnimationNodeType::Clip(n) => n,
-            AnimationNodeType::Chain(n) => n,
-            AnimationNodeType::Blend(n) => n,
-            AnimationNodeType::FlipLR(n) => n,
-            AnimationNodeType::Loop(n) => n,
-            AnimationNodeType::Padding(n) => n,
-            AnimationNodeType::Speed(n) => n,
-            AnimationNodeType::Rotation(n) => n,
-            // AnimationNodeType::IntoBoneSpace(n) => n,
-            // AnimationNodeType::IntoCharacterSpace(n) => n,
-            // AnimationNodeType::IntoGlobalSpace(n) => n,
-            // AnimationNodeType::ExtendSkeleton(n) => n,
-            AnimationNodeType::TwoBoneIK(n) => n,
-            AnimationNodeType::FireEvent(n) => n,
-            AnimationNodeType::ConstF32(n) => n,
-            AnimationNodeType::AddF32(n) => n,
-            AnimationNodeType::MulF32(n) => n,
-            AnimationNodeType::DivF32(n) => n,
-            AnimationNodeType::SubF32(n) => n,
-            AnimationNodeType::ClampF32(n) => n,
-            AnimationNodeType::CompareF32(n) => n,
-            AnimationNodeType::AbsF32(n) => n,
-            AnimationNodeType::SelectF32(n) => n,
-            AnimationNodeType::ConstBool(n) => n,
-            AnimationNodeType::BuildVec3(n) => n,
-            AnimationNodeType::DecomposeVec3(n) => n,
-            AnimationNodeType::LerpVec3(n) => n,
-            AnimationNodeType::SlerpQuat(n) => n,
-            AnimationNodeType::FromEuler(n) => n,
-            AnimationNodeType::IntoEuler(n) => n,
-            AnimationNodeType::MulQuat(n) => n,
-            AnimationNodeType::InvertQuat(n) => n,
-            AnimationNodeType::RotationArc(n) => n,
-            AnimationNodeType::Fsm(n) => n,
-            AnimationNodeType::Graph(n) => n,
-            AnimationNodeType::Dummy(n) => n,
-            AnimationNodeType::Custom(_) => todo!(),
-            AnimationNodeType::ConstEntityPath(n) => n,
-            AnimationNodeType::NormalizeVec3(n) => n,
-            AnimationNodeType::LengthVec3(n) => n,
-            AnimationNodeType::ConstVec3(n) => n,
+    impl bevy::reflect::PartialReflect for AnimationNode
+    where
+        AnimationNode: ::core::any::Any + ::core::marker::Send + ::core::marker::Sync,
+        String: bevy::reflect::FromReflect
+            + bevy::reflect::TypePath
+            + bevy::reflect::MaybeTyped
+            + bevy::reflect::__macro_exports::RegisterForReflection,
+        /* manual reflect impl
+        Box<dyn NodeLike>: bevy::reflect::FromReflect
+            + bevy::reflect::TypePath
+            + bevy::reflect::MaybeTyped
+            + bevy::reflect::__macro_exports::RegisterForReflection,
+        */
+    {
+        #[inline]
+        fn get_represented_type_info(
+            &self,
+        ) -> ::core::option::Option<&'static bevy::reflect::TypeInfo> {
+            ::core::option::Option::Some(<Self as bevy::reflect::Typed>::type_info())
+        }
+        #[inline]
+        fn clone_value(&self) -> ::std::boxed::Box<dyn bevy::reflect::PartialReflect> {
+            ::std::boxed::Box::new(bevy::reflect::Struct::clone_dynamic(self))
+        }
+        #[inline]
+        fn try_apply(
+            &mut self,
+            value: &dyn bevy::reflect::PartialReflect,
+        ) -> ::core::result::Result<(), bevy::reflect::ApplyError> {
+            if let bevy::reflect::ReflectRef::Struct(struct_value) =
+                bevy::reflect::PartialReflect::reflect_ref(value)
+            {
+                for (i, value) in ::core::iter::Iterator::enumerate(
+                    bevy::reflect::Struct::iter_fields(struct_value),
+                ) {
+                    let name = bevy::reflect::Struct::name_at(struct_value, i).unwrap();
+                    if let ::core::option::Option::Some(v) =
+                        bevy::reflect::Struct::field_mut(self, name)
+                    {
+                        bevy::reflect::PartialReflect::try_apply(v, value)?;
+                    }
+                }
+            } else {
+                return ::core::result::Result::Err(bevy::reflect::ApplyError::MismatchedKinds {
+                    from_kind: bevy::reflect::PartialReflect::reflect_kind(value),
+                    to_kind: bevy::reflect::ReflectKind::Struct,
+                });
+            }
+            ::core::result::Result::Ok(())
+        }
+        #[inline]
+        fn reflect_kind(&self) -> bevy::reflect::ReflectKind {
+            bevy::reflect::ReflectKind::Struct
+        }
+        #[inline]
+        fn reflect_ref(&self) -> bevy::reflect::ReflectRef {
+            bevy::reflect::ReflectRef::Struct(self)
+        }
+        #[inline]
+        fn reflect_mut(&mut self) -> bevy::reflect::ReflectMut {
+            bevy::reflect::ReflectMut::Struct(self)
+        }
+        #[inline]
+        fn reflect_owned(self: ::std::boxed::Box<Self>) -> bevy::reflect::ReflectOwned {
+            bevy::reflect::ReflectOwned::Struct(self)
+        }
+        #[inline]
+        fn try_into_reflect(
+            self: ::std::boxed::Box<Self>,
+        ) -> ::core::result::Result<
+            ::std::boxed::Box<dyn bevy::reflect::Reflect>,
+            ::std::boxed::Box<dyn bevy::reflect::PartialReflect>,
+        > {
+            ::core::result::Result::Ok(self)
+        }
+        #[inline]
+        fn try_as_reflect(&self) -> ::core::option::Option<&dyn bevy::reflect::Reflect> {
+            ::core::option::Option::Some(self)
+        }
+        #[inline]
+        fn try_as_reflect_mut(
+            &mut self,
+        ) -> ::core::option::Option<&mut dyn bevy::reflect::Reflect> {
+            ::core::option::Option::Some(self)
+        }
+        #[inline]
+        fn into_partial_reflect(
+            self: ::std::boxed::Box<Self>,
+        ) -> ::std::boxed::Box<dyn bevy::reflect::PartialReflect> {
+            self
+        }
+        #[inline]
+        fn as_partial_reflect(&self) -> &dyn bevy::reflect::PartialReflect {
+            self
+        }
+        #[inline]
+        fn as_partial_reflect_mut(&mut self) -> &mut dyn bevy::reflect::PartialReflect {
+            self
+        }
+        fn reflect_partial_eq(
+            &self,
+            value: &dyn bevy::reflect::PartialReflect,
+        ) -> ::core::option::Option<bool> {
+            (bevy::reflect::struct_partial_eq)(self, value)
         }
     }
-}
+    impl bevy::reflect::FromReflect for AnimationNode
+    where
+        AnimationNode: ::core::any::Any + ::core::marker::Send + ::core::marker::Sync,
+        String: bevy::reflect::FromReflect
+            + bevy::reflect::TypePath
+            + bevy::reflect::MaybeTyped
+            + bevy::reflect::__macro_exports::RegisterForReflection,
+        /* manual reflect impl
+        Box<dyn NodeLike>: bevy::reflect::FromReflect
+            + bevy::reflect::TypePath
+            + bevy::reflect::MaybeTyped
+            + bevy::reflect::__macro_exports::RegisterForReflection,
+        */
+    {
+        fn from_reflect(
+            reflect: &dyn bevy::reflect::PartialReflect,
+        ) -> ::core::option::Option<Self> {
+            // manual reflect impl start
+            Some(reflect.try_downcast_ref::<Self>()?.clone())
+            /*
+            if let bevy::reflect::ReflectRef::Struct(__ref_struct) =
+                bevy::reflect::PartialReflect::reflect_ref(reflect)
+            {
+                let __this = Self {
+                    name: (|| {
+                        <String as bevy::reflect::FromReflect>::from_reflect(
+                            bevy::reflect::Struct::field(__ref_struct, "name")?,
+                        )
+                    })()?,
+                    inner: (|| {
+                        <Box<dyn NodeLike> as bevy::reflect::FromReflect>::from_reflect(
+                            bevy::reflect::Struct::field(__ref_struct, "inner")?,
+                        )
+                    })()?,
+                    should_debug: ::core::default::Default::default(),
+                };
+                ::core::option::Option::Some(__this)
+            } else {
+                ::core::option::Option::None
+            } */
+            // manual reflect impl end
+        }
+    }
+};

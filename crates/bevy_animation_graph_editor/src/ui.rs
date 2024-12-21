@@ -1,4 +1,6 @@
-use std::hash::{Hash, Hasher};
+use core::hash::Hasher;
+use std::any::TypeId;
+use std::hash::Hash;
 use std::path::PathBuf;
 
 use crate::asset_saving::{SaveFsm, SaveGraph};
@@ -34,6 +36,7 @@ use bevy_animation_graph::core::edge_data::AnimationEvent;
 use bevy_animation_graph::core::state_machine::high_level::{
     State, StateId, StateMachine, Transition, TransitionId,
 };
+use bevy_animation_graph::prelude::{AnimatedSceneHandle, ReflectEditProxy, ReflectNodeLike};
 use bevy_egui::EguiContext;
 use bevy_inspector_egui::bevy_egui::EguiUserTextures;
 use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
@@ -317,9 +320,9 @@ impl egui_dock::TabViewer for TabViewer<'_> {
         }
 
         while !self.graph_changes.is_empty() {
-            let must_regen_indices = self.world.resource_scope::<Assets<AnimationGraph>, bool>(
+            let must_regen_indices = self.world.resource_scope::<Assets<AnimationGraph>, _>(
                 |world, mut graph_assets| {
-                    world.resource_scope::<Assets<StateMachine>, bool>(|_, fsm_assets| {
+                    world.resource_scope::<Assets<StateMachine>, _>(|_, fsm_assets| {
                         update_graph(self.graph_changes.clone(), &mut graph_assets, &fsm_assets)
                     })
                 },
@@ -452,8 +455,8 @@ impl TabViewer<'_> {
             return;
         };
 
-        world.resource_scope::<Assets<AnimationGraph>, ()>(|world, mut graph_assets| {
-            world.resource_scope::<Assets<StateMachine>, ()>(|world, fsm_assets| {
+        world.resource_scope::<Assets<AnimationGraph>, _>(|world, mut graph_assets| {
+            world.resource_scope::<Assets<StateMachine>, _>(|world, fsm_assets| {
                 if !graph_assets.contains(graph_selection.graph) {
                     return;
                 }
@@ -648,8 +651,10 @@ impl TabViewer<'_> {
                         &mut selection.scene,
                         list_graph_contexts(world, |ctx| {
                             let graph_id = ctx.get_graph_id();
-                            let graph = graph_assets.get(graph_id).unwrap();
-                            graph.contains_state_machine(fsm_selection.fsm).is_some()
+                            graph_assets
+                                .get(graph_id)
+                                .map(|graph| graph.contains_state_machine(fsm_selection.fsm))
+                                .is_some()
                         }),
                     ) {
                         if scene
@@ -1052,24 +1057,139 @@ impl TabViewer<'_> {
                 .0
                 .clone()
         };
-
         let type_registry = type_registry.read();
+
         let mut queue = CommandQueue::default();
         let mut cx = Context {
             world: Some(unsafe { unsafe_world.world_mut() }.into()),
             queue: Some(&mut queue),
         };
-        let mut env = InspectorUi::for_bevy(&type_registry, &mut cx);
 
-        let mut hasher = std::collections::hash_map::DefaultHasher::new();
-        "Create node".hash(&mut hasher);
-        let node_creator_id = egui::Id::new(hasher.finish());
-        env.ui_for_reflect_with_options(
-            &mut selection.node_creation.node,
-            ui,
-            node_creator_id,
-            &(),
-        );
+        let original_type_id = selection.node_creation.node.inner.type_id();
+        let mut type_id = original_type_id;
+        egui::Grid::new("node creator fields")
+            .num_columns(2)
+            .show(ui, |ui| {
+                ui.label("Name");
+                ui.text_edit_singleline(&mut selection.node_creation.node.name);
+                ui.end_row();
+
+                ui.label("Type");
+                {
+                    struct TypeInfo<'a> {
+                        id: TypeId,
+                        path: &'a str,
+                        segments: Vec<&'a str>,
+                        short: String,
+                    }
+
+                    let mut segments_found = HashMap::<Vec<&str>, usize>::new();
+                    let mut types = type_registry
+                        .iter_with_data::<ReflectNodeLike>()
+                        .map(|(registration, _)| {
+                            let path = registration.type_info().type_path();
+
+                            // `bevy_animation_graph::node::f32::Add` ->
+                            // - `Add`
+                            // - `f32::Add`
+                            // - `node::f32::Add`
+                            // - `bevy_animation_graph::node::f32::Add`
+                            let mut segments = Vec::new();
+                            for segment in path.rsplit("::") {
+                                segments.insert(0, segment);
+                                *segments_found.entry(segments.clone()).or_default() += 1;
+                            }
+
+                            TypeInfo {
+                                id: registration.type_id(),
+                                path,
+                                segments,
+                                short: String::new(),
+                            }
+                        })
+                        .collect::<Vec<_>>();
+                    for type_info in &mut types {
+                        let mut segments = Vec::new();
+                        for segment in type_info.segments.iter().rev() {
+                            segments.insert(0, *segment);
+                            if segments_found.get(&segments).copied().unwrap_or_default() <= 1 {
+                                // we've found the shortest unique path starting from the right
+                                type_info.short = segments.join("::");
+                                break;
+                            }
+                        }
+
+                        debug_assert!(
+                            !type_info.short.is_empty(),
+                            "should have found a short type path for `{}`",
+                            type_info.path
+                        );
+                    }
+                    let longest_short_name = types
+                        .iter()
+                        .map(|type_info| type_info.short.len())
+                        .max()
+                        .unwrap_or_default();
+                    types.sort_unstable_by(|a, b| a.path.cmp(b.path));
+
+                    let selected_text = types
+                        .iter()
+                        .find(|type_info| type_info.id == type_id)
+                        .map(|type_info| type_info.short.clone())
+                        .unwrap_or_else(|| "(?)".into());
+                    egui::ComboBox::from_id_salt("node creator type")
+                        .selected_text(egui::RichText::new(selected_text).monospace())
+                        .show_ui(ui, |ui| {
+                            for node_type in types {
+                                let padding =
+                                    " ".repeat(longest_short_name - node_type.short.len());
+                                let name =
+                                    format!("{}{padding}  {}", node_type.short, node_type.path);
+                                let name = egui::RichText::new(name).monospace();
+                                ui.selectable_value(&mut type_id, node_type.id, name);
+                            }
+                        });
+                }
+                ui.end_row();
+
+                ui.label("Node");
+                {
+                    let mut env = InspectorUi::for_bevy(&type_registry, &mut cx);
+
+                    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+                    "Create node".hash(&mut hasher);
+                    let node_creator_id = egui::Id::new(Hasher::finish(&hasher));
+                    env.ui_for_reflect_with_options(
+                        selection.node_creation.node.inner.as_partial_reflect_mut(),
+                        ui,
+                        node_creator_id,
+                        &(),
+                    );
+                }
+                ui.end_row();
+            });
+
+        if type_id != original_type_id {
+            // TODO actual error handling
+            let result = (|| {
+                let reflect_default = type_registry
+                    .get_type_data::<ReflectDefault>(type_id)
+                    .ok_or("type doesn't `#[reflect(Default)]`")?;
+                let node_like = type_registry
+                    .get_type_data::<ReflectNodeLike>(type_id)
+                    .ok_or("type doesn't `#[reflect(NodeLike)]`")?;
+                let inner = node_like
+                    .get_boxed(reflect_default.default())
+                    .map_err(|_| "default-created value is not a `NodeLike`")?;
+                selection.node_creation.node.inner = inner;
+                Ok::<_, &str>(())
+            })();
+
+            if let Err(err) = result {
+                warn!("Failed to start creating node of type {type_id:?}: {err}");
+            }
+        }
+
         let submit_response = ui.button("Create node");
 
         if submit_response.clicked() && selection.graph_editor.is_some() {
@@ -1105,6 +1225,7 @@ impl TabViewer<'_> {
                 .0
                 .clone()
         };
+
         let mut graph_assets = unsafe {
             unsafe_world
                 .get_resource_mut::<Assets<AnimationGraph>>()
@@ -1135,8 +1256,23 @@ impl TabViewer<'_> {
         };
         let mut env = InspectorUi::for_bevy(&type_registry, &mut cx);
 
-        let inner = node.node.inner_reflect();
-        let changed = env.ui_for_reflect(inner, ui);
+        // TODO: Make node update into a GraphChange
+        // (eventually we want all graph mutations to go through GraphChange, this
+        // will enable easier undo/redo support)
+        let changed = if let Some(edit_proxy) =
+            type_registry.get_type_data::<ReflectEditProxy>(node.inner.type_id())
+        {
+            let mut proxy = (edit_proxy.to_proxy)(node.inner.as_ref());
+            let changed = env.ui_for_reflect(proxy.as_partial_reflect_mut(), ui);
+            if changed {
+                let inner = (edit_proxy.from_proxy)(proxy.as_ref());
+                node.inner = inner;
+            }
+            changed
+        } else {
+            let changed = env.ui_for_reflect(node.inner.as_partial_reflect_mut(), ui);
+            changed
+        };
 
         if changed {
             changes.push(GraphChange {
@@ -1407,8 +1543,8 @@ impl TabViewer<'_> {
     }
 
     fn update_graph(world: &mut World, changes: Vec<GraphChange>) -> bool {
-        world.resource_scope::<Assets<AnimationGraph>, bool>(|world, mut graph_assets| {
-            world.resource_scope::<Assets<StateMachine>, bool>(|_, fsm_assets| {
+        world.resource_scope::<Assets<AnimationGraph>, _>(|world, mut graph_assets| {
+            world.resource_scope::<Assets<StateMachine>, _>(|_, fsm_assets| {
                 update_graph(changes, &mut graph_assets, &fsm_assets)
             })
         })
@@ -1437,31 +1573,26 @@ impl TabViewer<'_> {
         world: &mut World,
         graph_id: AssetId<AnimationGraph>,
     ) -> Result<GraphIndices, Vec<GraphChange>> {
-        world.resource_scope::<Assets<AnimationGraph>, Result<GraphIndices, Vec<GraphChange>>>(
-            |world, graph_assets| {
-                world
-                    .resource_scope::<Assets<StateMachine>, Result<GraphIndices, Vec<GraphChange>>>(
-                        |_, fsm_assets| {
-                            let graph = graph_assets.get(graph_id).unwrap();
-                            let spec_context = SpecContext {
-                                graph_assets: &graph_assets,
-                                fsm_assets: &fsm_assets,
-                            };
+        world.resource_scope::<Assets<AnimationGraph>, _>(|world, graph_assets| {
+            world.resource_scope::<Assets<StateMachine>, _>(|_, fsm_assets| {
+                let graph = graph_assets.get(graph_id).unwrap();
+                let spec_context = SpecContext {
+                    graph_assets: &graph_assets,
+                    fsm_assets: &fsm_assets,
+                };
 
-                            match make_graph_indices(graph, spec_context) {
-                                Err(targets) => Err(targets
-                                    .into_iter()
-                                    .map(|t| GraphChange {
-                                        graph: graph_id,
-                                        change: Change::LinkRemoved(t),
-                                    })
-                                    .collect()),
-                                Ok(indices) => Ok(indices),
-                            }
-                        },
-                    )
-            },
-        )
+                match make_graph_indices(graph, spec_context) {
+                    Err(targets) => Err(targets
+                        .into_iter()
+                        .map(|t| GraphChange {
+                            graph: graph_id,
+                            change: Change::LinkRemoved(t),
+                        })
+                        .collect()),
+                    Ok(indices) => Ok(indices),
+                }
+            })
+        })
     }
 }
 
@@ -1557,16 +1688,16 @@ pub struct PreviewScene;
 
 pub fn scene_spawner_system(
     mut commands: Commands,
-    mut query: Query<(Entity, &Handle<AnimatedScene>), With<PreviewScene>>,
+    mut query: Query<(Entity, &AnimatedSceneHandle), With<PreviewScene>>,
     mut ui_state: ResMut<UiState>,
 ) {
-    if let Ok((entity, scene_handle)) = query.get_single_mut() {
+    if let Ok((entity, AnimatedSceneHandle(scene_handle))) = query.get_single_mut() {
         if let Some(scene_selection) = &mut ui_state.selection.scene {
             if scene_selection.respawn || &scene_selection.scene != scene_handle {
                 commands.entity(entity).despawn_recursive();
                 commands
                     .spawn(AnimatedSceneBundle {
-                        animated_scene: scene_selection.scene.clone(),
+                        animated_scene: AnimatedSceneHandle(scene_selection.scene.clone()),
                         ..default()
                     })
                     .insert(PreviewScene);
@@ -1578,7 +1709,7 @@ pub fn scene_spawner_system(
     } else if let Some(scene_selection) = &mut ui_state.selection.scene {
         commands
             .spawn(AnimatedSceneBundle {
-                animated_scene: scene_selection.scene.clone(),
+                animated_scene: AnimatedSceneHandle(scene_selection.scene.clone()),
                 ..default()
             })
             .insert(PreviewScene);
@@ -1660,23 +1791,22 @@ pub fn setup_system(
 
     // Light
     // NOTE: Currently lights are shared between passes - see https://github.com/bevyengine/bevy/issues/3462
-    commands.spawn(PointLightBundle {
-        transform: Transform::from_translation(Vec3::new(0.0, 0.0, 10.0)),
-        ..default()
-    });
+    commands.spawn((
+        PointLight::default(),
+        Transform::from_translation(Vec3::new(0.0, 0.0, 10.0)),
+    ));
 
-    commands.spawn(Camera3dBundle {
-        camera: Camera {
+    commands.spawn((
+        Camera3d::default(),
+        Camera {
             // render before the "main pass" camera
             order: -1,
             clear_color: ClearColorConfig::Custom(Color::from(LinearRgba::new(1.0, 1.0, 1.0, 0.0))),
             target: RenderTarget::Image(image_handle),
             ..default()
         },
-        transform: Transform::from_translation(Vec3::new(0.0, 2.0, 3.0))
-            .looking_at(Vec3::Y, Vec3::Y),
-        ..default()
-    });
+        Transform::from_translation(Vec3::new(0.0, 2.0, 3.0)).looking_at(Vec3::Y, Vec3::Y),
+    ));
 }
 
 fn get_animation_graph_player(world: &mut World) -> Option<&AnimationGraphPlayer> {

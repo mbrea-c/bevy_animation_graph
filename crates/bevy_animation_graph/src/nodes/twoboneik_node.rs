@@ -2,7 +2,7 @@ use crate::{
     core::{
         animation_clip::EntityPath,
         animation_graph::PinMap,
-        animation_node::{AnimationNode, AnimationNodeType, NodeLike},
+        animation_node::{NodeLike, ReflectNodeLike},
         errors::GraphError,
         pose::Pose,
         prelude::DataSpec,
@@ -19,8 +19,8 @@ use bevy::{
 };
 
 #[derive(Reflect, Clone, Debug, Default)]
-#[reflect(Default)]
-pub struct TwoBoneIKNode {}
+#[reflect(Default, NodeLike)]
+pub struct TwoBoneIKNode;
 
 impl TwoBoneIKNode {
     pub const IN_TIME: &'static str = "time";
@@ -31,10 +31,6 @@ impl TwoBoneIKNode {
 
     pub fn new() -> Self {
         Self {}
-    }
-
-    pub fn wrapped(self, name: impl Into<String>) -> AnimationNode {
-        AnimationNode::new_from_nodetype(name.into(), AnimationNodeType::TwoBoneIK(self))
     }
 }
 

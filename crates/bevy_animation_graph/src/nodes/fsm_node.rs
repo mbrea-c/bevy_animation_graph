@@ -1,6 +1,6 @@
 use crate::core::{
     animation_graph::PinMap,
-    animation_node::{AnimationNode, AnimationNodeType, NodeLike},
+    animation_node::{NodeLike, ReflectNodeLike},
     context::{PassContext, SpecContext},
     edge_data::DataSpec,
     errors::GraphError,
@@ -9,7 +9,7 @@ use crate::core::{
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
-#[reflect(Default)]
+#[reflect(Default, NodeLike)]
 pub struct FSMNode {
     pub fsm: Handle<StateMachine>,
 }
@@ -20,10 +20,6 @@ impl FSMNode {
     pub fn new(fsm: Handle<StateMachine>) -> Self {
         Self { fsm }
     }
-
-    pub fn wrapped(self, name: impl Into<String>) -> AnimationNode {
-        AnimationNode::new_from_nodetype(name.into(), AnimationNodeType::Fsm(self))
-    }
 }
 
 impl NodeLike for FSMNode {
@@ -32,7 +28,6 @@ impl NodeLike for FSMNode {
     }
 
     fn update(&self, ctx: PassContext) -> Result<(), GraphError> {
-        // TODO: Replace with graph error ?
         let fsm = ctx.resources.state_machine_assets.get(&self.fsm).unwrap();
         fsm.get_low_level_fsm().update(ctx)?;
 
@@ -40,7 +35,10 @@ impl NodeLike for FSMNode {
     }
 
     fn data_input_spec(&self, ctx: SpecContext) -> PinMap<DataSpec> {
-        let fsm = ctx.fsm_assets.get(&self.fsm).unwrap();
+        let fsm = ctx
+            .fsm_assets
+            .get(&self.fsm)
+            .unwrap_or_else(|| panic!("no FSM asset `{:?}`", self.fsm));
         let fsm_args = fsm
             .input_data
             .iter()

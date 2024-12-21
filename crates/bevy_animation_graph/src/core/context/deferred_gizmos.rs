@@ -7,7 +7,7 @@ use crate::core::{
 use bevy::{
     color::LinearRgba,
     gizmos::gizmos::Gizmos,
-    math::{Quat, Vec3},
+    math::{Isometry3d, Quat, Vec3},
     reflect::Reflect,
 };
 
@@ -63,7 +63,14 @@ impl DeferredGizmoCommand {
     pub fn apply(self, gizmos: &mut Gizmos) {
         match self {
             DeferredGizmoCommand::Sphere(position, rotation, radius, color) => {
-                gizmos.sphere(position, rotation, radius, color);
+                gizmos.sphere(
+                    Isometry3d {
+                        rotation,
+                        translation: position.into(),
+                    },
+                    radius,
+                    color,
+                );
             }
             DeferredGizmoCommand::Ray(origin, direction, color) => {
                 gizmos.ray(origin, direction, color);

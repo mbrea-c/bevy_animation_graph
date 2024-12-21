@@ -1,5 +1,5 @@
 use crate::core::animation_graph::PinMap;
-use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
+use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
 use crate::prelude::{PassContext, SpecContext};
@@ -7,8 +7,8 @@ use crate::utils::unwrap::UnwrapVal;
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
-#[reflect(Default)]
-pub struct BuildVec3Node {}
+#[reflect(Default, NodeLike)]
+pub struct BuildVec3Node;
 
 impl BuildVec3Node {
     pub const INPUT_X: &'static str = "x";
@@ -17,11 +17,7 @@ impl BuildVec3Node {
     pub const OUTPUT: &'static str = "vec";
 
     pub fn new() -> Self {
-        Self {}
-    }
-
-    pub fn wrapped(self, name: impl Into<String>) -> AnimationNode {
-        AnimationNode::new_from_nodetype(name.into(), AnimationNodeType::BuildVec3(self))
+        Self
     }
 }
 

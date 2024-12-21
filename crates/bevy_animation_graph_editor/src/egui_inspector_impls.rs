@@ -2,8 +2,8 @@ use bevy::{
     app::Plugin,
     asset::{Asset, AssetServer, Assets, Handle, UntypedAssetId},
     ecs::{prelude::AppTypeRegistry, system::Resource},
-    prelude::App,
-    reflect::{FromReflect, Reflect, TypePath, TypeRegistry},
+    prelude::{App, Reflect},
+    reflect::{FromReflect, PartialReflect, TypePath, TypeRegistry},
     utils::HashMap,
 };
 use bevy_animation_graph::{
@@ -14,28 +14,66 @@ use bevy_animation_graph::{
         state_machine::high_level::StateMachine,
     },
     flipping::config::{PatternMapper, PatternMapperSerial},
-    prelude::OrderedMap,
 };
 use bevy_inspector_egui::{
-    egui, inspector_egui_impls::InspectorEguiImpl, reflect_inspector::InspectorUi,
+    egui,
+    inspector_egui_impls::InspectorEguiImpl,
+    reflect_inspector::{InspectorUi, ProjectorReflect},
     restricted_world_view::RestrictedWorldView,
 };
+use core::default::Default;
 use std::{
     any::{Any, TypeId},
     hash::{Hash, Hasher},
     path::PathBuf,
 };
 
+#[derive(Clone, Reflect, Debug)]
+pub struct OrderedMap<K, V> {
+    pub order: HashMap<K, i32>,
+    pub values: HashMap<K, V>,
+}
+
+impl<K, V> Default for OrderedMap<K, V> {
+    fn default() -> Self {
+        OrderedMap {
+            order: Default::default(),
+            values: Default::default(),
+        }
+    }
+}
+
+impl<K: Clone + Eq + Hash, V: Clone> OrderedMap<K, V> {
+    pub fn to_vec(&self) -> Vec<(K, V)> {
+        let mut vals: Vec<(K, V)> = self.values.clone().into_iter().collect();
+
+        vals.sort_by_key(|(k, _)| self.order.get(k).copied().unwrap_or(0));
+
+        vals
+    }
+
+    pub fn from_vec(vec: &[(K, V)]) -> Self {
+        let mut order_map = OrderedMap::default();
+
+        for (i, (k, v)) in vec.iter().enumerate() {
+            order_map.order.insert(k.clone(), i as i32);
+            order_map.values.insert(k.clone(), v.clone());
+        }
+
+        order_map
+    }
+}
+
 pub struct BetterInspectorPlugin;
 impl Plugin for BetterInspectorPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(EguiInspectorBuffers::<
-            HashMap<EntityPath, f32>,
-            Vec<(EntityPath, f32)>,
-        >::default());
-        app.insert_resource(EguiInspectorBuffers::<
             OrderedMap<PinId, DataValue>,
             Vec<(PinId, DataValue)>,
+        >::default());
+        app.insert_resource(EguiInspectorBuffers::<
+            OrderedMap<EntityPath, f32>,
+            Vec<(EntityPath, f32)>,
         >::default());
         app.insert_resource(EguiInspectorBuffers::<
             OrderedMap<PinId, DataSpec>,
@@ -100,10 +138,19 @@ impl Plugin for BetterInspectorPlugin {
     }
 }
 
-#[derive(Resource, Default)]
+#[derive(Resource)]
 struct EguiInspectorBuffers<T, B = T> {
     bufs: HashMap<egui::Id, B>,
     _marker: std::marker::PhantomData<T>,
+}
+
+impl<T, B> Default for EguiInspectorBuffers<T, B> {
+    fn default() -> Self {
+        Self {
+            bufs: HashMap::default(),
+            _marker: std::marker::PhantomData,
+        }
+    }
 }
 
 fn get_buffered<'w, T, B>(
@@ -140,8 +187,8 @@ fn many_unimplemented(
     _options: &dyn Any,
     _id: egui::Id,
     _env: InspectorUi<'_, '_>,
-    _values: &mut [&mut dyn Reflect],
-    _projector: &dyn Fn(&mut dyn Reflect) -> &mut dyn Reflect,
+    _values: &mut [&mut dyn PartialReflect],
+    _projector: &dyn ProjectorReflect,
 ) -> bool {
     false
 }
@@ -294,44 +341,63 @@ pub fn animation_graph_mut(
     id: egui::Id,
     mut env: InspectorUi<'_, '_>,
 ) -> bool {
-    let value = value.downcast_mut::<AnimationGraph>().unwrap();
+    let value: &mut AnimationGraph = value.downcast_mut::<AnimationGraph>().unwrap();
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     hasher.write_u64(unsafe { std::mem::transmute_copy(&id) });
     hasher.write_usize(0);
-    let default_params_id = egui::Id::new(hasher.finish());
+    let default_params_id = egui::Id::new(Hasher::finish(&hasher));
     hasher.write_usize(0);
-    let output_params_id = egui::Id::new(hasher.finish());
+    let output_params_id = egui::Id::new(Hasher::finish(&hasher));
     hasher.write_usize(0);
-    let input_poses_id = egui::Id::new(hasher.finish());
+    let input_poses_id = egui::Id::new(Hasher::finish(&hasher));
     hasher.write_usize(0);
-    let output_pose_id = egui::Id::new(hasher.finish());
+    let output_pose_id = egui::Id::new(Hasher::finish(&hasher));
 
     let mut default_params_changed = false;
     let mut output_params_changed = false;
     let mut input_poses_changed = false;
     let mut output_pose_changed = false;
     //ui.heading("Default input parameters");
-    ui.collapsing("Default input parameters", |ui| {
-        default_params_changed = env.ui_for_reflect_with_options(
-            &mut value.default_parameters,
-            ui,
-            default_params_id,
-            &(),
-        );
+    let mut default_params = OrderedMap {
+        order: value.extra.input_param_order.clone(),
+        values: value.default_parameters.clone(),
+    };
+    ui.collapsing("Default input data", |ui| {
+        default_params_changed =
+            env.ui_for_reflect_with_options(&mut default_params, ui, default_params_id, &());
     });
-    ui.collapsing("Output parameters", |ui| {
-        output_params_changed = env.ui_for_reflect_with_options(
-            &mut value.output_parameters,
-            ui,
-            output_params_id,
-            &(),
-        );
+    if default_params_changed {
+        value.default_parameters = default_params.values.clone();
+        value.extra.input_param_order = default_params.order.clone();
+    }
+
+    let mut output_params = OrderedMap {
+        order: value.extra.output_data_order.clone(),
+        values: value.output_parameters.clone(),
+    };
+    ui.collapsing("Output data", |ui| {
+        output_params_changed =
+            env.ui_for_reflect_with_options(&mut output_params, ui, output_params_id, &());
     });
-    ui.collapsing("Input poses", |ui| {
+    if output_params_changed {
+        value.output_parameters = output_params.values.clone();
+        value.extra.output_data_order = output_params.order.clone();
+    }
+
+    let mut input_times = OrderedMap {
+        order: value.extra.input_time_order.clone(),
+        values: value.input_times.clone(),
+    };
+    ui.collapsing("Input times", |ui| {
         input_poses_changed =
-            env.ui_for_reflect_with_options(&mut value.input_times, ui, input_poses_id, &());
+            env.ui_for_reflect_with_options(&mut input_times, ui, input_poses_id, &());
     });
-    ui.collapsing("Output pose", |ui| {
+    if input_poses_changed {
+        value.input_times = input_times.values.clone();
+        value.extra.input_time_order = input_times.order.clone();
+    }
+
+    ui.collapsing("Output time", |ui| {
         output_pose_changed =
             env.ui_for_reflect_with_options(&mut value.output_time, ui, output_pose_id, &());
     });
@@ -356,7 +422,7 @@ pub fn bone_mask_ui_mut(
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     hasher.write_u64(unsafe { std::mem::transmute_copy(&id) });
     hasher.write_usize(0);
-    let bones_id = egui::Id::new(hasher.finish());
+    let bones_id = egui::Id::new(Hasher::finish(&hasher));
 
     let mut new_val = curr_val;
 
@@ -431,9 +497,9 @@ pub fn better_hashmap<
                 let mut hasher = std::collections::hash_map::DefaultHasher::new();
                 hasher.write_u64(unsafe { std::mem::transmute_copy(&id) });
                 hasher.write_usize(i);
-                let key_id = egui::Id::new(hasher.finish());
+                let key_id = egui::Id::new(Hasher::finish(&hasher));
                 hasher.write_usize(0);
-                let value_id = egui::Id::new(hasher.finish());
+                let value_id = egui::Id::new(Hasher::finish(&hasher));
 
                 ui.horizontal(|ui| {
                     ui.label("Key");
@@ -486,11 +552,11 @@ pub fn better_ordered_map<
     id: egui::Id,
     mut env: InspectorUi<'_, '_>,
 ) -> bool {
-    let value = value.downcast_mut::<OrderedMap<K, T>>().unwrap();
+    let value: &mut OrderedMap<K, T> = value.downcast_mut::<OrderedMap<K, T>>().unwrap();
     let buffered = get_buffered::<OrderedMap<K, T>, Vec<(K, T)>>(
         env.context.world.as_mut().unwrap(),
         id,
-        || value.clone().into_iter().collect(),
+        || value.to_vec(),
     );
 
     let mut should_write_back = false;
@@ -517,9 +583,9 @@ pub fn better_ordered_map<
                 let mut hasher = std::collections::hash_map::DefaultHasher::new();
                 hasher.write_u64(unsafe { std::mem::transmute_copy(&id) });
                 hasher.write_usize(i);
-                let key_id = egui::Id::new(hasher.finish());
+                let key_id = egui::Id::new(Hasher::finish(&hasher));
                 hasher.write_usize(0);
-                let value_id = egui::Id::new(hasher.finish());
+                let value_id = egui::Id::new(Hasher::finish(&hasher));
 
                 ui.horizontal(|ui| {
                     ui.label("Key");
@@ -565,8 +631,8 @@ pub fn better_ordered_map<
     });
 
     if should_write_back {
-        *value = buffered.clone().into_iter().collect();
-        *buffered = value.clone().into_iter().collect();
+        *value = OrderedMap::from_vec(buffered);
+        *buffered = value.to_vec();
         true
     } else {
         false
@@ -593,7 +659,7 @@ pub fn asset_picker_ui<T: Asset>(
     let (asset_server, _) = world.split_off_resource_typed::<AssetServer>().unwrap();
 
     let mut selected = value_id;
-    egui::ComboBox::from_id_source(id)
+    egui::ComboBox::from_id_salt(id)
         .selected_text(if t_assets.contains(selected) {
             asset_server
                 .get_path(selected)

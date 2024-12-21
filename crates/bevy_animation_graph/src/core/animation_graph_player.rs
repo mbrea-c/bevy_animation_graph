@@ -162,13 +162,13 @@ impl AnimationGraphPlayer {
 
         let mut bones = std::mem::take(&mut self.debug_draw_bones);
 
-        let skeleton_id = self.skeleton.id();
+        let skeleton_handle = self.skeleton.clone();
 
         let mut ctx = self
             .get_pass_context(system_resources, root_entity)
             .with_debugging(true);
 
-        let Some(skeleton) = ctx.resources.skeleton_assets.get(skeleton_id) else {
+        let Some(skeleton) = ctx.resources.skeleton_assets.get(&skeleton_handle) else {
             return;
         };
 

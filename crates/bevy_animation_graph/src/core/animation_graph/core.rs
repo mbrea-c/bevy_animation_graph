@@ -1,20 +1,21 @@
 use super::pin;
 use crate::{
     core::{
-        animation_node::{AnimationNode, NodeLike},
+        animation_node::AnimationNode,
         context::{CacheReadFilter, CacheWriteFilter},
         duration_data::DurationData,
         errors::{GraphError, GraphValidationError},
         pose::{BoneId, Pose},
-        prelude::{AnimationNodeType, GraphContextArena},
+        prelude::GraphContextArena,
         state_machine::high_level::StateMachine,
     },
+    nodes::FSMNode,
     prelude::{
         DataSpec, DataValue, DeferredGizmos, OptDataSpec, PassContext, SpecContext, SystemResources,
     },
-    utils::ordered_map::OrderedMap,
 };
 use bevy::{
+    asset::ReflectAsset,
     prelude::*,
     utils::{HashMap, HashSet},
 };
@@ -125,6 +126,18 @@ pub struct Extra {
     pub input_position: Vec2,
     /// Position in canvas of special outputs node
     pub output_position: Vec2,
+    /// Order of input pins in the editor
+    #[serde(default)]
+    pub input_param_order: HashMap<PinId, i32>,
+    /// Order of input pins in the editor
+    #[serde(default)]
+    pub input_time_order: HashMap<PinId, i32>,
+    /// Order of input pins in the editor
+    #[serde(default)]
+    pub output_data_order: HashMap<PinId, i32>,
+    /// Order of output pins in the editor
+    #[serde(default)]
+    pub output_pose_order: HashMap<PinId, i32>,
 }
 
 impl Extra {
@@ -167,9 +180,10 @@ impl Extra {
     }
 }
 
-pub type PinMap<V> = OrderedMap<PinId, V>;
+pub type PinMap<V> = HashMap<PinId, V>;
 
 #[derive(Debug, Clone, Asset, Reflect)]
+#[reflect(Asset)]
 pub struct AnimationGraph {
     #[reflect(ignore)]
     pub nodes: HashMap<String, AnimationNode>,
@@ -492,17 +506,15 @@ impl AnimationGraph {
         let fsm_id = fsm.into();
         self.nodes
             .values()
-            .filter_map(|n| match &n.node {
-                AnimationNodeType::Fsm(m) => Some((n.name.clone(), m)),
-                _ => None,
-            })
-            .fold(None, |acc, (name, m)| {
-                acc.or(if m.fsm.id() == fsm_id {
-                    Some(name)
+            .filter_map(|node| {
+                let fsm = node.inner.as_any().downcast_ref::<FSMNode>()?;
+                if fsm.fsm.id() == fsm_id {
+                    Some(node.name.clone())
                 } else {
                     None
-                })
+                }
             })
+            .next()
     }
 
     fn extract_target_param_spec(

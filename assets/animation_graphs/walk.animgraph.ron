@@ -2,13 +2,15 @@
     nodes: [
         (
             name: "chain walk",
-            node: Chain(
+            ty: "bevy_animation_graph::nodes::chain_node::ChainNode",
+            inner: (
                 interpolation_period: 0.5,
             ),
         ),
         (
             name: "flip walk",
-            node: FlipLR(
+            ty: "bevy_animation_graph::nodes::flip_lr_node::FlipLRNode",
+            inner: (
                 config: (
                     name_mapper: Pattern((
                         key_1: "L",
@@ -21,19 +23,27 @@
         ),
         (
             name: "walk clip 1",
-            node: Clip("animations/human_walk.anim.ron", None, None),
+            ty: "bevy_animation_graph::nodes::clip_node::ClipNode",
+            inner: (
+                clip: "animations/human_walk.anim.ron",
+            ),
         ),
         (
             name: "walk clip 2",
-            node: Clip("animations/human_walk.anim.ron", None, None),
+            ty: "bevy_animation_graph::nodes::clip_node::ClipNode",
+            inner: (
+                clip: "animations/human_walk.anim.ron",
+            ),
         ),
         (
             name: "speed",
-            node: Speed,
+            ty: "bevy_animation_graph::nodes::speed_node::SpeedNode",
+            inner: (),
         ),
         (
             name: "loop",
-            node: Loop(
+            ty: "bevy_animation_graph::nodes::loop_node::LoopNode",
+            inner: (
                 interpolation_period: 0.5,
             ),
         ),

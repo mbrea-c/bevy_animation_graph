@@ -4,6 +4,11 @@ use thiserror::Error;
 use super::GraphValidationError;
 
 /// Possible errors that can be produced by a custom asset loader
+// TODO: clean this up
+// https://rust-lang.github.io/api-guidelines/interoperability.html?highlight=error#examples-of-error-messages
+// - lowercase error messages
+// - don't print sources exclusively
+// - avoid mega error enums
 #[non_exhaustive]
 #[derive(Debug, Error)]
 pub enum AssetLoaderError {

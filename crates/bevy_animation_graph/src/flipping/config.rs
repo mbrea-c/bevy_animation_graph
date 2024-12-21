@@ -4,9 +4,12 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Default, Reflect, Clone, Serialize, Deserialize)]
 #[reflect(Default)]
-pub struct FlipConfig {
-    pub name_mapper: FlipNameMapper,
+pub struct FlipConfigOuter<P: Reflect + Default> {
+    pub name_mapper: FlipNameMapper<P>,
 }
+
+pub type FlipConfig = FlipConfigOuter<PatternMapper>;
+pub type FlipConfigProxy = FlipConfigOuter<PatternMapperSerial>;
 
 #[derive(Debug, Reflect, Clone)]
 #[reflect(Default)]
@@ -21,6 +24,28 @@ pub struct PatternMapper {
 
 pub fn default_regex() -> Regex {
     Regex::new("").unwrap()
+}
+
+impl From<FlipConfig> for FlipConfigProxy {
+    fn from(value: FlipConfig) -> Self {
+        match value.name_mapper {
+            FlipNameMapper::Pattern(pm) => Self {
+                name_mapper: FlipNameMapper::Pattern(pm.into()),
+            },
+        }
+    }
+}
+
+impl TryFrom<FlipConfigProxy> for FlipConfig {
+    type Error = regex::Error;
+
+    fn try_from(value: FlipConfigProxy) -> Result<Self, Self::Error> {
+        Ok(match value.name_mapper {
+            FlipNameMapper::Pattern(pm) => Self {
+                name_mapper: FlipNameMapper::Pattern(pm.try_into()?),
+            },
+        })
+    }
 }
 
 impl TryFrom<PatternMapperSerial> for PatternMapper {
@@ -121,17 +146,17 @@ impl Default for PatternMapperSerial {
 
 #[derive(Debug, Reflect, Clone, Serialize, Deserialize)]
 #[reflect(Default)]
-pub enum FlipNameMapper {
-    Pattern(PatternMapper),
+pub enum FlipNameMapper<P: Reflect + Default> {
+    Pattern(P),
 }
 
-impl Default for FlipNameMapper {
+impl<P: Reflect + Default> Default for FlipNameMapper<P> {
     fn default() -> Self {
-        Self::Pattern(PatternMapper::default())
+        Self::Pattern(P::default())
     }
 }
 
-impl FlipNameMapper {
+impl FlipNameMapper<PatternMapper> {
     pub fn flip(&self, input: &str) -> Option<String> {
         match self {
             Self::Pattern(pattern) => pattern.flip(input),

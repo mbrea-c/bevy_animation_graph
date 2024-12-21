@@ -1,5 +1,5 @@
 use crate::core::animation_graph::PinMap;
-use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
+use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
 use crate::prelude::{PassContext, SpecContext};
@@ -7,8 +7,8 @@ use crate::utils::unwrap::UnwrapVal;
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
-#[reflect(Default)]
-pub struct RotationArcNode {}
+#[reflect(Default, NodeLike)]
+pub struct RotationArcNode;
 
 impl RotationArcNode {
     pub const INPUT_1: &'static str = "Vec3 In 1";
@@ -16,11 +16,7 @@ impl RotationArcNode {
     pub const OUTPUT: &'static str = "Quat Out";
 
     pub fn new() -> Self {
-        Self {}
-    }
-
-    pub fn wrapped(self, name: impl Into<String>) -> AnimationNode {
-        AnimationNode::new_from_nodetype(name.into(), AnimationNodeType::RotationArc(self))
+        Self
     }
 }
 

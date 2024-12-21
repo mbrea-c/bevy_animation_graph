@@ -6,8 +6,8 @@ use crate::egui_nodes::{
 };
 use bevy::utils::HashMap;
 use bevy_animation_graph::core::{
-    animation_graph::{AnimationGraph, SourcePin, TargetPin},
-    animation_node::{AnimationNode, NodeLike},
+    animation_graph::{AnimationGraph, PinId, SourcePin, TargetPin},
+    animation_node::AnimationNode,
     context::{GraphContext, SpecContext},
     edge_data::DataSpec,
 };
@@ -315,7 +315,7 @@ pub fn make_graph_indices(
         graph_indices.node_indices.add_mapping(node.name.clone());
 
         // add pins
-        for (name, _) in node.data_input_spec(ctx).iter() {
+        for (name, _) in node.inner.data_input_spec(ctx).iter() {
             graph_indices
                 .pin_indices
                 .add_mapping(Pin::Target(TargetPin::NodeData(
@@ -466,19 +466,26 @@ impl GraphReprSpec {
                 ..Default::default()
             };
 
+            // We first insert into a temporary store so that we can sort pins
+            let mut input_tmp_store: Vec<(PinId, PinSpec)> = vec![];
+            let mut output_tmp_store: Vec<(PinId, PinSpec)> = vec![];
+
             // parameter input pins
             for (name, spec) in node.data_input_spec(ctx).iter() {
                 let (pin_style, _) = param_spec_to_colors(*spec);
                 let pin = Pin::Target(TargetPin::NodeData(node.name.clone(), name.clone()));
                 let pin_id = indices.pin_indices.id(&pin).unwrap();
                 let name = name.clone();
-                constructor.attributes.push(PinSpec {
-                    id: pin_id,
-                    kind: PinType::Input,
-                    name,
-                    style_args: pin_style,
-                    ..Default::default()
-                });
+                input_tmp_store.push((
+                    name.clone(),
+                    PinSpec {
+                        id: pin_id,
+                        kind: PinType::Input,
+                        name,
+                        style_args: pin_style,
+                        ..Default::default()
+                    },
+                ));
             }
             // parameter output pins
             for (name, spec) in node.data_output_spec(ctx).iter() {
@@ -486,13 +493,16 @@ impl GraphReprSpec {
                 let pin = Pin::Source(SourcePin::NodeData(node.name.clone(), name.clone()));
                 let pin_id = indices.pin_indices.id(&pin).unwrap();
                 let name = name.clone();
-                constructor.attributes.push(PinSpec {
-                    id: pin_id,
-                    kind: PinType::Output,
-                    name,
-                    style_args: pin_style,
-                    ..Default::default()
-                });
+                output_tmp_store.push((
+                    name.clone(),
+                    PinSpec {
+                        id: pin_id,
+                        kind: PinType::Output,
+                        name,
+                        style_args: pin_style,
+                        ..Default::default()
+                    },
+                ));
             }
             // time input pins
             for (name, _) in node.time_input_spec(ctx).iter() {
@@ -500,27 +510,46 @@ impl GraphReprSpec {
                 let pin = Pin::Target(TargetPin::NodeTime(node.name.clone(), name.clone()));
                 let pin_id = indices.pin_indices.id(&pin).unwrap();
                 let name = name.clone();
-                constructor.attributes.push(PinSpec {
-                    id: pin_id,
-                    kind: PinType::Input,
-                    name,
-                    style_args: pin_style,
-                    ..Default::default()
-                });
+                input_tmp_store.push((
+                    name.clone(),
+                    PinSpec {
+                        id: pin_id,
+                        kind: PinType::Input,
+                        name,
+                        style_args: pin_style,
+                        ..Default::default()
+                    },
+                ));
             }
             // time input pin
             if node.time_output_spec(ctx).is_some() {
                 let (pin_style, _) = time_colors();
                 let pin = Pin::Source(SourcePin::NodeTime(node.name.clone()));
                 let pin_id = indices.pin_indices.id(&pin).unwrap();
-                constructor.attributes.push(PinSpec {
-                    id: pin_id,
-                    kind: PinType::Output,
-                    name: "time".into(),
-                    style_args: pin_style,
-                    ..Default::default()
-                });
+                output_tmp_store.push((
+                    "___time_out".into(),
+                    PinSpec {
+                        id: pin_id,
+                        kind: PinType::Output,
+                        name: "time".into(),
+                        style_args: pin_style,
+                        ..Default::default()
+                    },
+                ));
             }
+
+            let input_order = node.input_pin_ordering(ctx);
+            let output_order = node.output_pin_ordering(ctx);
+
+            input_tmp_store.sort_by_key(|(k, _)| input_order.pin_key(k));
+            output_tmp_store.sort_by_key(|(k, _)| output_order.pin_key(k));
+
+            constructor
+                .attributes
+                .extend(input_tmp_store.into_iter().map(|p| p.1));
+            constructor
+                .attributes
+                .extend(output_tmp_store.into_iter().map(|p| p.1));
 
             self.nodes.push(constructor);
         }
@@ -541,6 +570,11 @@ impl GraphReprSpec {
             origin: graph.extra.input_position.to_array().into(),
             ..Default::default()
         };
+
+        let mut input_data_store: Vec<(PinId, PinSpec)> = vec![];
+        let mut input_time_store: Vec<(PinId, PinSpec)> = vec![];
+        let mut output_data_store: Vec<(PinId, PinSpec)> = vec![];
+
         for (name, p) in graph.default_parameters.iter() {
             let spec = DataSpec::from(p);
             let (pin_style, _) = param_spec_to_colors(spec);
@@ -548,13 +582,16 @@ impl GraphReprSpec {
             let pin_id = indices.pin_indices.id(&pin).unwrap();
             let name = name.clone();
 
-            input_node_contructor.attributes.push(PinSpec {
-                id: pin_id,
-                kind: PinType::Output,
-                name,
-                style_args: pin_style,
-                ..Default::default()
-            });
+            input_data_store.push((
+                name.clone(),
+                PinSpec {
+                    id: pin_id,
+                    kind: PinType::Output,
+                    name,
+                    style_args: pin_style,
+                    ..Default::default()
+                },
+            ));
         }
 
         for (name, _) in graph.input_times.iter() {
@@ -562,14 +599,29 @@ impl GraphReprSpec {
             let pin = Pin::Source(SourcePin::InputTime(name.clone()));
             let pin_id = indices.pin_indices.id(&pin).unwrap();
             let name = name.clone();
-            input_node_contructor.attributes.push(PinSpec {
-                id: pin_id,
-                kind: PinType::Output,
-                name,
-                style_args: pin_style,
-                ..Default::default()
-            });
+            input_time_store.push((
+                name.clone(),
+                PinSpec {
+                    id: pin_id,
+                    kind: PinType::Output,
+                    name,
+                    style_args: pin_style,
+                    ..Default::default()
+                },
+            ));
         }
+
+        input_data_store
+            .sort_by_key(|(k, _)| graph.extra.input_param_order.get(k).copied().unwrap_or(0));
+        input_time_store
+            .sort_by_key(|(k, _)| graph.extra.input_time_order.get(k).copied().unwrap_or(0));
+
+        input_node_contructor
+            .attributes
+            .extend(input_data_store.into_iter().map(|p| p.1));
+        input_node_contructor
+            .attributes
+            .extend(input_time_store.into_iter().map(|p| p.1));
 
         self.nodes.push(input_node_contructor);
         // ---------------------------------------------------
@@ -593,13 +645,16 @@ impl GraphReprSpec {
             let pin = Pin::Target(TargetPin::OutputData(name.clone()));
             let pin_id = indices.pin_indices.id(&pin).unwrap();
             let name = name.clone();
-            output_node_contructor.attributes.push(PinSpec {
-                id: pin_id,
-                kind: PinType::Input,
-                name,
-                style_args: pin_style,
-                ..Default::default()
-            });
+            output_data_store.push((
+                name.clone(),
+                PinSpec {
+                    id: pin_id,
+                    kind: PinType::Input,
+                    name,
+                    style_args: pin_style,
+                    ..Default::default()
+                },
+            ));
         }
 
         if graph.output_time.is_some() {
@@ -609,11 +664,17 @@ impl GraphReprSpec {
             output_node_contructor.attributes.push(PinSpec {
                 id: pin_id,
                 kind: PinType::Input,
-                name: "Pose".into(),
+                name: "time".into(),
                 style_args: pin_style,
                 ..Default::default()
             });
         }
+
+        output_data_store
+            .sort_by_key(|(k, _)| graph.extra.output_data_order.get(k).copied().unwrap_or(0));
+        output_node_contructor
+            .attributes
+            .extend(output_data_store.into_iter().map(|p| p.1));
 
         self.nodes.push(output_node_contructor);
         // ---------------------------------------------------

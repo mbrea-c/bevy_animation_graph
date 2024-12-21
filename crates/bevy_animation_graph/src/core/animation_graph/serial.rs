@@ -1,240 +1,1484 @@
+use std::fmt;
+
 use super::{pin, AnimationGraph, Extra};
 use crate::{
-    core::{
-        animation_clip::{EntityPath, Interpolation},
-        edge_data::AnimationEvent,
+    prelude::{AnimationNode, DataSpec, DataValue, NodeLike, ReflectNodeLike},
+    utils::{
+        de::{ReflectDeserializerProcessor, TypedReflectDeserializer},
+        ser::{ReflectSerializerProcessor, TypedReflectSerializer},
     },
-    flipping::config::FlipConfig,
-    nodes::{BlendMode, BlendSyncMode, ChainDecay, CompareOp, RotationMode, RotationSpace},
-    prelude::{AnimationNode, AnimationNodeType, DataSpec, DataValue},
-    utils::ordered_map::OrderedMap,
 };
 use bevy::{
-    math::{EulerRot, Vec3},
+    asset::{AssetPath, LoadContext, ReflectHandle},
+    prelude::*,
+    reflect::{ReflectFromReflect, TypeRegistration, TypeRegistry},
     utils::HashMap,
 };
-use serde::{Deserialize, Serialize};
-//     pub nodes: HashMap<String, AnimationNode>,
-//     /// Inverted, indexed by output node name.
-//     pub edges: HashMap<TargetPin, SourcePin>,
-//     pub default_output: Option<String>,
+use serde::{
+    de::{self, DeserializeSeed, IgnoredAny, Visitor},
+    ser::SerializeStruct,
+    Deserialize, Deserializer, Serialize,
+};
+
+// What's up with the `AnimationNodeLoadDeserializer`?
 //
-//     pub default_parameters: HashMap<PinId, ParamValue>,
-//     pub input_poses: HashMap<PinId, PoseSpec>,
-//     pub output_parameters: HashMap<PinId, ParamSpec>,
-//     pub output_pose: Option<PoseSpec>,
+// When initially deserializing the graph asset file, we don't know the type of
+// node in `nodes` that we are deserializing. We figure that out after we have
+// `ty`, access to the `TypeRegistry`, and the `LoadContext`. So how do we
+// deserialize something we don't know the type of?
 //
-//     pub extra: Extra,
+// The first approach is to deserialize the entire graph in one go, and store
+// RON ASTs instead of the actual node value. So instead of seeing a
+// `GraphNode`, we first see a `ron::Value`, and then once we know that we want
+// to deserialize a `GraphNode`, we deserialize the value as that node.
+//
+// This would be the simplest and most understandable approach... if it wasn't
+// for the fact that `ron::Value` doesn't actually store the AST properly. It
+// can't handle enum variants, which means that `impl NodeLike`s would not be
+// allowed to use enums, which is a massive drawback.
+// (see https://github.com/ron-rs/ron/issues/496 - "round-tripping Value")
+//
+// The second approach is to write a custom deserializer which is almost
+// identical to the `serde::Deserialize` derive macro, but we add custom logic
+// specifically for `inner`. We use `DeserializeSeed` so that we can pass in the
+// type registry and load context that we use. This approach *does* work
+// properly, but introduces a ton of boilerplate code.
+//
+// To hopefully get the best of both worlds, the process for writing the
+// node deserialize code below is:
+// - uncomment the `AnimationNodeSerial` struct
+// - expand the `Deserialize` macro output
+// - use that to write the `DeserializeSeed` impl manually - try and follow it
+//   as closely as possible, until we get to deserializing `inner`
+// - recomment the `AnimationNodeSerial`
+//
+// For the graph deserialize, we do something similar, but copy the macro
+// directly and just make changes (marked with `manual impl` comments), since
+// there's less to change. We also leave the `AnimationGraphSerial` in, since
+// it isn't exactly the same as `AnimationGraph` (could we change this?)
+//
+// Why, `ron`, why??
+
+// #[derive(Deserialize)]
+// struct AnimationNodeSerial {
+//     name: String,
+//     ty: String,
+//     inner: ron::Value,
+// }
+
+pub struct AnimationNodeLoadDeserializer<'a, 'b> {
+    pub type_registry: &'a TypeRegistry,
+    pub load_context: &'a mut LoadContext<'b>,
+}
+
+struct HandleDeserializeProcessor<'a, 'b> {
+    load_context: &'a mut LoadContext<'b>,
+}
+
+impl ReflectDeserializerProcessor for HandleDeserializeProcessor<'_, '_> {
+    fn try_deserialize<'de, D>(
+        &mut self,
+        registration: &TypeRegistration,
+        _registry: &TypeRegistry,
+        deserializer: D,
+    ) -> Result<Result<Box<dyn PartialReflect>, D>, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct AssetPathVisitor;
+
+        impl<'de> Visitor<'de> for AssetPathVisitor {
+            type Value = AssetPath<'de>;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                formatter.write_str("asset path")
+            }
+
+            fn visit_borrowed_str<E>(self, v: &'de str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                AssetPath::try_parse(v)
+                    .map_err(|err| de::Error::custom(format!("not a valid asset path: {err:#}")))
+            }
+
+            fn visit_string<E>(self, v: String) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                AssetPath::try_parse(&v)
+                    .map(AssetPath::into_owned)
+                    .map_err(|err| de::Error::custom(format!("not a valid asset path: {err:#}")))
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: de::Error,
+            {
+                AssetPath::try_parse(v)
+                    .map(AssetPath::into_owned)
+                    .map_err(|err| de::Error::custom(format!("not a valid asset path: {err:#}")))
+            }
+        }
+
+        let Some(handle_info) = registration.data::<ReflectHandle>() else {
+            return Ok(Err(deserializer));
+        };
+        let asset_type_id = handle_info.asset_type_id();
+        let asset_path = deserializer.deserialize_str(AssetPathVisitor)?;
+        let untyped_handle = self
+            .load_context
+            .loader()
+            .with_dynamic_type(asset_type_id)
+            .load(asset_path);
+        let typed_handle = handle_info.typed(untyped_handle);
+        Ok(Ok(typed_handle.into_partial_reflect()))
+    }
+}
+
+impl<'de> DeserializeSeed<'de> for AnimationNodeLoadDeserializer<'_, '_> {
+    type Value = AnimationNode;
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        struct NodeInnerDeserializer<'a, 'b, 'c> {
+            type_registry: &'a TypeRegistry,
+            load_context: &'a mut LoadContext<'b>,
+            ty: &'c str,
+        }
+
+        impl<'de> DeserializeSeed<'de> for NodeInnerDeserializer<'_, '_, '_> {
+            type Value = Box<dyn NodeLike>;
+
+            fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+            where
+                D: Deserializer<'de>,
+            {
+                let Self {
+                    type_registry,
+                    load_context,
+                    ty,
+                } = self;
+
+                let type_registration =
+                    type_registry
+                        .get_with_type_path(self.ty)
+                        .ok_or(de::Error::custom(format!(
+                            "no type registration for `{ty}`"
+                        )))?;
+                let node_like = type_registration
+                    .data::<ReflectNodeLike>()
+                    .ok_or(de::Error::custom(format!("`{ty}` is not a `NodeLike`")))?;
+                let from_reflect =
+                    type_registration
+                        .data::<ReflectFromReflect>()
+                        .ok_or(de::Error::custom(format!(
+                            "`{ty}` cannot be created from reflection"
+                        )))?;
+
+                let mut processor = HandleDeserializeProcessor { load_context };
+                let reflect_deserializer = TypedReflectDeserializer::with_processor(
+                    type_registration,
+                    type_registry,
+                    &mut processor,
+                );
+                let inner = reflect_deserializer.deserialize(deserializer)?;
+
+                let inner = from_reflect.from_reflect(inner.as_partial_reflect()).unwrap_or_else(|| {
+                        panic!(
+                            "from reflect mismatch - reflecting from a `{}` into a `{ty}` - value: {inner:?}",
+                            inner.reflect_type_path()
+                        )
+                    });
+                let inner = node_like.get_boxed(inner).unwrap_or_else(|value| {
+                    panic!("value of type `{ty}` should be a `NodeLike` - value: {value:?}")
+                });
+
+                Ok(inner)
+            }
+        }
+
+        const NAME: &str = "name";
+        const TY: &str = "ty";
+        const INNER: &str = "inner";
+
+        enum Field {
+            Name,
+            Ty,
+            Inner,
+            _Ignore,
+        }
+
+        struct FieldVisitor;
+
+        impl Visitor<'_> for FieldVisitor {
+            type Value = Field;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                write!(formatter, "field identifier")
+            }
+
+            fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                match v {
+                    0 => Ok(Field::Name),
+                    1 => Ok(Field::Ty),
+                    2 => Ok(Field::Inner),
+                    _ => Ok(Field::_Ignore),
+                }
+            }
+
+            fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+            where
+                E: serde::de::Error,
+            {
+                match v {
+                    NAME => Ok(Field::Name),
+                    TY => Ok(Field::Ty),
+                    INNER => Ok(Field::Inner),
+                    _ => Ok(Field::_Ignore),
+                }
+            }
+        }
+
+        impl<'de> Deserialize<'de> for Field {
+            fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+            where
+                D: serde::Deserializer<'de>,
+            {
+                deserializer.deserialize_identifier(FieldVisitor)
+            }
+        }
+
+        struct ValueVisitor<'a, 'b> {
+            type_registry: &'a TypeRegistry,
+            load_context: &'a mut LoadContext<'b>,
+        }
+
+        impl<'de> Visitor<'de> for ValueVisitor<'_, '_> {
+            type Value = AnimationNode;
+
+            fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                write!(formatter, "struct AnimationNode")
+            }
+
+            fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+            where
+                A: serde::de::SeqAccess<'de>,
+            {
+                const INVALID_LENGTH: &str = "struct AnimationNode with 3 elements";
+
+                let name = seq
+                    .next_element::<String>()?
+                    .ok_or(de::Error::invalid_length(0, &INVALID_LENGTH))?;
+                let ty = seq
+                    .next_element::<&str>()?
+                    .ok_or(de::Error::invalid_length(1, &INVALID_LENGTH))?;
+                let inner = seq
+                    .next_element_seed(NodeInnerDeserializer {
+                        type_registry: self.type_registry,
+                        load_context: self.load_context,
+                        ty,
+                    })?
+                    .ok_or(de::Error::invalid_length(2, &INVALID_LENGTH))?;
+
+                Ok(AnimationNode {
+                    name,
+                    inner,
+                    should_debug: false,
+                })
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: de::MapAccess<'de>,
+            {
+                // unfortunately, this code is field-order-dependent
+                // `ty` MUST be defined before `inner`
+                let mut name = None::<String>;
+                let mut ty = None::<&str>;
+                let mut inner = None::<Box<dyn NodeLike>>;
+                while let Some(key) = map.next_key::<Field>()? {
+                    match key {
+                        Field::Name => {
+                            if name.is_some() {
+                                return Err(de::Error::duplicate_field(NAME));
+                            }
+                            name = Some(map.next_value::<String>()?);
+                        }
+                        Field::Ty => {
+                            if ty.is_some() {
+                                return Err(de::Error::duplicate_field(TY));
+                            }
+                            ty = Some(map.next_value::<&str>()?);
+                        }
+                        Field::Inner => {
+                            if inner.is_some() {
+                                return Err(de::Error::duplicate_field(INNER));
+                            }
+
+                            inner = Some(map.next_value_seed(NodeInnerDeserializer {
+                                type_registry: self.type_registry,
+                                load_context: self.load_context,
+                                ty: ty.ok_or(de::Error::custom(
+                                    "`ty` must be defined before `inner`",
+                                ))?,
+                            })?);
+                        }
+                        _ => {
+                            let _ = map.next_value::<IgnoredAny>();
+                        }
+                    }
+                }
+
+                Ok(AnimationNode {
+                    name: name.ok_or(de::Error::missing_field(NAME))?,
+                    inner: inner.ok_or(de::Error::missing_field(INNER))?,
+                    should_debug: false,
+                })
+            }
+        }
+
+        let visitor = ValueVisitor {
+            type_registry: self.type_registry,
+            load_context: self.load_context,
+        };
+        deserializer.deserialize_struct("AnimationNode", &[NAME, TY, INNER], visitor)
+    }
+}
 
 pub type NodeIdSerial = String;
 pub type PinIdSerial = String;
 pub type TargetPinSerial = pin::TargetPin<NodeIdSerial, PinIdSerial>;
 pub type SourcePinSerial = pin::SourcePin<NodeIdSerial, PinIdSerial>;
 
-#[derive(Serialize, Deserialize, Clone)]
+// #[derive(Deserialize)]
 pub struct AnimationGraphSerial {
-    #[serde(default)]
-    pub nodes: Vec<AnimationNodeSerial>,
-    #[serde(default)]
+    pub nodes: Vec<AnimationNode>,
     pub edges_inverted: HashMap<TargetPinSerial, SourcePinSerial>,
 
-    #[serde(default)]
-    pub default_parameters: OrderedMap<PinIdSerial, DataValue>,
-    #[serde(default)]
-    pub input_times: OrderedMap<PinIdSerial, ()>,
-    #[serde(default)]
-    pub output_parameters: OrderedMap<PinIdSerial, DataSpec>,
-    #[serde(default)]
+    pub default_parameters: HashMap<PinIdSerial, DataValue>,
+    pub input_times: HashMap<PinIdSerial, ()>,
+    pub output_parameters: HashMap<PinIdSerial, DataSpec>,
     pub output_time: Option<()>,
 
-    // for editor
-    #[serde(default)]
     pub extra: Extra,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
-pub struct AnimationNodeSerial {
+pub struct AnimationGraphLoadDeserializer<'a, 'b> {
+    pub type_registry: &'a TypeRegistry,
+    pub load_context: &'a mut LoadContext<'b>,
+}
+
+// auto-generated by macro, manually modified in "manual impl" comment blocks
+
+#[doc(hidden)]
+#[allow(
+    non_upper_case_globals,
+    unused_attributes,
+    unused_qualifications,
+    clippy::manual_unwrap_or_default
+)]
+const _: () = {
+    #[allow(unused_extern_crates, clippy::useless_attribute)]
+    extern crate serde as _serde;
+    #[automatically_derived]
+    // manual impl start
+    impl<'de> _serde::de::DeserializeSeed<'de> for AnimationGraphLoadDeserializer<'_, '_> {
+        type Value = AnimationGraphSerial;
+        fn deserialize<__D>(
+            self,
+            __deserializer: __D,
+        ) -> _serde::__private::Result<Self::Value, __D::Error>
+        where
+            __D: _serde::Deserializer<'de>,
+        {
+            struct NodesDeserializer<'a, 'b> {
+                type_registry: &'a TypeRegistry,
+                load_context: &'a mut LoadContext<'b>,
+            }
+
+            impl<'de> DeserializeSeed<'de> for NodesDeserializer<'_, '_> {
+                type Value = Vec<AnimationNode>;
+
+                fn deserialize<D>(mut self, deserializer: D) -> Result<Self::Value, D::Error>
+                where
+                    D: Deserializer<'de>,
+                {
+                    struct NodeVisitor<'a, 'b, 'c> {
+                        de: &'c mut NodesDeserializer<'a, 'b>,
+                    }
+
+                    impl<'de> Visitor<'de> for NodeVisitor<'_, '_, '_> {
+                        type Value = Vec<AnimationNode>;
+
+                        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+                            write!(formatter, "AnimationNode")
+                        }
+
+                        fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+                        where
+                            A: de::SeqAccess<'de>,
+                        {
+                            let mut nodes = Vec::new();
+                            while let Some(node) =
+                                seq.next_element_seed(AnimationNodeLoadDeserializer {
+                                    type_registry: self.de.type_registry,
+                                    load_context: self.de.load_context,
+                                })?
+                            {
+                                nodes.push(node);
+                            }
+                            Ok(nodes)
+                        }
+                    }
+
+                    deserializer.deserialize_seq(NodeVisitor { de: &mut self })
+                }
+            }
+            // manual impl end
+            #[allow(non_camel_case_types)]
+            #[doc(hidden)]
+            enum __Field {
+                __field0,
+                __field1,
+                __field2,
+                __field3,
+                __field4,
+                __field5,
+                __field6,
+                __ignore,
+            }
+            #[doc(hidden)]
+            struct __FieldVisitor;
+
+            impl _serde::de::Visitor<'_> for __FieldVisitor {
+                type Value = __Field;
+                fn expecting(
+                    &self,
+                    __formatter: &mut _serde::__private::Formatter,
+                ) -> _serde::__private::fmt::Result {
+                    _serde::__private::Formatter::write_str(__formatter, "field identifier")
+                }
+                fn visit_u64<__E>(self, __value: u64) -> _serde::__private::Result<Self::Value, __E>
+                where
+                    __E: _serde::de::Error,
+                {
+                    match __value {
+                        0u64 => _serde::__private::Ok(__Field::__field0),
+                        1u64 => _serde::__private::Ok(__Field::__field1),
+                        2u64 => _serde::__private::Ok(__Field::__field2),
+                        3u64 => _serde::__private::Ok(__Field::__field3),
+                        4u64 => _serde::__private::Ok(__Field::__field4),
+                        5u64 => _serde::__private::Ok(__Field::__field5),
+                        6u64 => _serde::__private::Ok(__Field::__field6),
+                        _ => _serde::__private::Ok(__Field::__ignore),
+                    }
+                }
+                fn visit_str<__E>(
+                    self,
+                    __value: &str,
+                ) -> _serde::__private::Result<Self::Value, __E>
+                where
+                    __E: _serde::de::Error,
+                {
+                    match __value {
+                        "nodes" => _serde::__private::Ok(__Field::__field0),
+                        "edges_inverted" => _serde::__private::Ok(__Field::__field1),
+                        "default_parameters" => _serde::__private::Ok(__Field::__field2),
+                        "input_times" => _serde::__private::Ok(__Field::__field3),
+                        "output_parameters" => _serde::__private::Ok(__Field::__field4),
+                        "output_time" => _serde::__private::Ok(__Field::__field5),
+                        "extra" => _serde::__private::Ok(__Field::__field6),
+                        _ => _serde::__private::Ok(__Field::__ignore),
+                    }
+                }
+                fn visit_bytes<__E>(
+                    self,
+                    __value: &[u8],
+                ) -> _serde::__private::Result<Self::Value, __E>
+                where
+                    __E: _serde::de::Error,
+                {
+                    match __value {
+                        b"nodes" => _serde::__private::Ok(__Field::__field0),
+                        b"edges_inverted" => _serde::__private::Ok(__Field::__field1),
+                        b"default_parameters" => _serde::__private::Ok(__Field::__field2),
+                        b"input_times" => _serde::__private::Ok(__Field::__field3),
+                        b"output_parameters" => _serde::__private::Ok(__Field::__field4),
+                        b"output_time" => _serde::__private::Ok(__Field::__field5),
+                        b"extra" => _serde::__private::Ok(__Field::__field6),
+                        _ => _serde::__private::Ok(__Field::__ignore),
+                    }
+                }
+            }
+            impl<'de> _serde::Deserialize<'de> for __Field {
+                #[inline]
+                fn deserialize<__D>(
+                    __deserializer: __D,
+                ) -> _serde::__private::Result<Self, __D::Error>
+                where
+                    __D: _serde::Deserializer<'de>,
+                {
+                    _serde::Deserializer::deserialize_identifier(__deserializer, __FieldVisitor)
+                }
+            }
+            // manual impl start - add seed fields
+            #[doc(hidden)]
+            struct __Visitor<'de, 'a, 'b> {
+                marker: _serde::__private::PhantomData<AnimationGraphSerial>,
+                lifetime: _serde::__private::PhantomData<&'de ()>,
+                type_registry: &'a TypeRegistry,
+                load_context: &'a mut LoadContext<'b>,
+            }
+            impl<'de> _serde::de::Visitor<'de> for __Visitor<'de, '_, '_> {
+                // manual impl end
+                type Value = AnimationGraphSerial;
+                fn expecting(
+                    &self,
+                    __formatter: &mut _serde::__private::Formatter,
+                ) -> _serde::__private::fmt::Result {
+                    _serde::__private::Formatter::write_str(
+                        __formatter,
+                        "struct AnimationGraphSerial",
+                    )
+                }
+                #[inline]
+                fn visit_seq<__A>(
+                    self,
+                    mut __seq: __A,
+                ) -> _serde::__private::Result<Self::Value, __A::Error>
+                where
+                    __A: _serde::de::SeqAccess<'de>,
+                {
+                    // manual impl start - use seed fields
+                    let __field0 = match _serde::de::SeqAccess::next_element_seed(
+                        &mut __seq,
+                        NodesDeserializer {
+                            type_registry: self.type_registry,
+                            load_context: self.load_context,
+                        },
+                    )? {
+                        // manual impl end
+                        _serde::__private::Some(__value) => __value,
+                        _serde::__private::None => {
+                            return _serde::__private::Err(_serde::de::Error::invalid_length(
+                                0usize,
+                                &"struct AnimationGraphSerial with 7 elements",
+                            ))
+                        }
+                    };
+                    let __field1 = match _serde::de::SeqAccess::next_element::<
+                        HashMap<TargetPinSerial, SourcePinSerial>,
+                    >(&mut __seq)?
+                    {
+                        _serde::__private::Some(__value) => __value,
+                        _serde::__private::None => {
+                            return _serde::__private::Err(_serde::de::Error::invalid_length(
+                                1usize,
+                                &"struct AnimationGraphSerial with 7 elements",
+                            ))
+                        }
+                    };
+                    let __field2 = match _serde::de::SeqAccess::next_element::<
+                        HashMap<PinIdSerial, DataValue>,
+                    >(&mut __seq)?
+                    {
+                        _serde::__private::Some(__value) => __value,
+                        _serde::__private::None => {
+                            return _serde::__private::Err(_serde::de::Error::invalid_length(
+                                2usize,
+                                &"struct AnimationGraphSerial with 7 elements",
+                            ))
+                        }
+                    };
+                    let __field3 = match _serde::de::SeqAccess::next_element::<
+                        HashMap<PinIdSerial, ()>,
+                    >(&mut __seq)?
+                    {
+                        _serde::__private::Some(__value) => __value,
+                        _serde::__private::None => {
+                            return _serde::__private::Err(_serde::de::Error::invalid_length(
+                                3usize,
+                                &"struct AnimationGraphSerial with 7 elements",
+                            ))
+                        }
+                    };
+                    let __field4 = match _serde::de::SeqAccess::next_element::<
+                        HashMap<PinIdSerial, DataSpec>,
+                    >(&mut __seq)?
+                    {
+                        _serde::__private::Some(__value) => __value,
+                        _serde::__private::None => {
+                            return _serde::__private::Err(_serde::de::Error::invalid_length(
+                                4usize,
+                                &"struct AnimationGraphSerial with 7 elements",
+                            ))
+                        }
+                    };
+                    let __field5 =
+                        match _serde::de::SeqAccess::next_element::<Option<()>>(&mut __seq)? {
+                            _serde::__private::Some(__value) => __value,
+                            _serde::__private::None => {
+                                return _serde::__private::Err(_serde::de::Error::invalid_length(
+                                    5usize,
+                                    &"struct AnimationGraphSerial with 7 elements",
+                                ))
+                            }
+                        };
+                    let __field6 = match _serde::de::SeqAccess::next_element::<Extra>(&mut __seq)? {
+                        _serde::__private::Some(__value) => __value,
+                        _serde::__private::None => {
+                            return _serde::__private::Err(_serde::de::Error::invalid_length(
+                                6usize,
+                                &"struct AnimationGraphSerial with 7 elements",
+                            ))
+                        }
+                    };
+                    _serde::__private::Ok(AnimationGraphSerial {
+                        nodes: __field0,
+                        edges_inverted: __field1,
+                        default_parameters: __field2,
+                        input_times: __field3,
+                        output_parameters: __field4,
+                        output_time: __field5,
+                        extra: __field6,
+                    })
+                }
+                #[inline]
+                fn visit_map<__A>(
+                    self,
+                    mut __map: __A,
+                ) -> _serde::__private::Result<Self::Value, __A::Error>
+                where
+                    __A: _serde::de::MapAccess<'de>,
+                {
+                    let mut __field0: _serde::__private::Option<Vec<AnimationNode>> =
+                        _serde::__private::None;
+                    let mut __field1: _serde::__private::Option<
+                        HashMap<TargetPinSerial, SourcePinSerial>,
+                    > = _serde::__private::None;
+                    let mut __field2: _serde::__private::Option<HashMap<PinIdSerial, DataValue>> =
+                        _serde::__private::None;
+                    let mut __field3: _serde::__private::Option<HashMap<PinIdSerial, ()>> =
+                        _serde::__private::None;
+                    let mut __field4: _serde::__private::Option<HashMap<PinIdSerial, DataSpec>> =
+                        _serde::__private::None;
+                    let mut __field5: _serde::__private::Option<Option<()>> =
+                        _serde::__private::None;
+                    let mut __field6: _serde::__private::Option<Extra> = _serde::__private::None;
+                    while let _serde::__private::Some(__key) =
+                        _serde::de::MapAccess::next_key::<__Field>(&mut __map)?
+                    {
+                        match __key {
+                            __Field::__field0 => {
+                                if _serde::__private::Option::is_some(&__field0) {
+                                    return _serde::__private::Err(
+                                        <__A::Error as _serde::de::Error>::duplicate_field("nodes"),
+                                    );
+                                }
+                                __field0 =
+                                    // manual impl start - use seed
+                                     _serde::__private::Some(_serde::de::MapAccess::next_value_seed(
+                                         &mut __map,
+                                         NodesDeserializer {
+                                             type_registry: self.type_registry,
+                                             load_context: self.load_context,
+                                         }
+                                     )?);
+                                // manual impl end
+                            }
+                            __Field::__field1 => {
+                                if _serde::__private::Option::is_some(&__field1) {
+                                    return _serde::__private::Err(
+                                        <__A::Error as _serde::de::Error>::duplicate_field(
+                                            "edges_inverted",
+                                        ),
+                                    );
+                                }
+                                __field1 =
+                                    _serde::__private::Some(_serde::de::MapAccess::next_value::<
+                                        HashMap<TargetPinSerial, SourcePinSerial>,
+                                    >(
+                                        &mut __map
+                                    )?);
+                            }
+                            __Field::__field2 => {
+                                if _serde::__private::Option::is_some(&__field2) {
+                                    return _serde::__private::Err(
+                                        <__A::Error as _serde::de::Error>::duplicate_field(
+                                            "default_parameters",
+                                        ),
+                                    );
+                                }
+                                __field2 =
+                                    _serde::__private::Some(_serde::de::MapAccess::next_value::<
+                                        HashMap<PinIdSerial, DataValue>,
+                                    >(
+                                        &mut __map
+                                    )?);
+                            }
+                            __Field::__field3 => {
+                                if _serde::__private::Option::is_some(&__field3) {
+                                    return _serde::__private::Err(
+                                        <__A::Error as _serde::de::Error>::duplicate_field(
+                                            "input_times",
+                                        ),
+                                    );
+                                }
+                                __field3 =
+                                    _serde::__private::Some(_serde::de::MapAccess::next_value::<
+                                        HashMap<PinIdSerial, ()>,
+                                    >(
+                                        &mut __map
+                                    )?);
+                            }
+                            __Field::__field4 => {
+                                if _serde::__private::Option::is_some(&__field4) {
+                                    return _serde::__private::Err(
+                                        <__A::Error as _serde::de::Error>::duplicate_field(
+                                            "output_parameters",
+                                        ),
+                                    );
+                                }
+                                __field4 =
+                                    _serde::__private::Some(_serde::de::MapAccess::next_value::<
+                                        HashMap<PinIdSerial, DataSpec>,
+                                    >(
+                                        &mut __map
+                                    )?);
+                            }
+                            __Field::__field5 => {
+                                if _serde::__private::Option::is_some(&__field5) {
+                                    return _serde::__private::Err(
+                                        <__A::Error as _serde::de::Error>::duplicate_field(
+                                            "output_time",
+                                        ),
+                                    );
+                                }
+                                __field5 =
+                                    _serde::__private::Some(_serde::de::MapAccess::next_value::<
+                                        Option<()>,
+                                    >(
+                                        &mut __map
+                                    )?);
+                            }
+                            __Field::__field6 => {
+                                if _serde::__private::Option::is_some(&__field6) {
+                                    return _serde::__private::Err(
+                                        <__A::Error as _serde::de::Error>::duplicate_field("extra"),
+                                    );
+                                }
+                                __field6 =
+                                    _serde::__private::Some(_serde::de::MapAccess::next_value::<
+                                        Extra,
+                                    >(
+                                        &mut __map
+                                    )?);
+                            }
+                            _ => {
+                                let _ = _serde::de::MapAccess::next_value::<_serde::de::IgnoredAny>(
+                                    &mut __map,
+                                )?;
+                            }
+                        }
+                    }
+                    let __field0 = match __field0 {
+                        _serde::__private::Some(__field0) => __field0,
+                        // manual impl start
+                        _serde::__private::None => Default::default(),
+                        // manual impl end
+                    };
+                    let __field1 = match __field1 {
+                        _serde::__private::Some(__field1) => __field1,
+                        _serde::__private::None => {
+                            _serde::__private::de::missing_field("edges_inverted")?
+                        }
+                    };
+                    let __field2 = match __field2 {
+                        _serde::__private::Some(__field2) => __field2,
+                        _serde::__private::None => {
+                            _serde::__private::de::missing_field("default_parameters")?
+                        }
+                    };
+                    let __field3 = match __field3 {
+                        _serde::__private::Some(__field3) => __field3,
+                        _serde::__private::None => {
+                            _serde::__private::de::missing_field("input_times")?
+                        }
+                    };
+                    let __field4 = match __field4 {
+                        _serde::__private::Some(__field4) => __field4,
+                        _serde::__private::None => {
+                            _serde::__private::de::missing_field("output_parameters")?
+                        }
+                    };
+                    let __field5 = match __field5 {
+                        _serde::__private::Some(__field5) => __field5,
+                        _serde::__private::None => {
+                            _serde::__private::de::missing_field("output_time")?
+                        }
+                    };
+                    let __field6 = match __field6 {
+                        _serde::__private::Some(__field6) => __field6,
+                        _serde::__private::None => _serde::__private::de::missing_field("extra")?,
+                    };
+                    _serde::__private::Ok(AnimationGraphSerial {
+                        nodes: __field0,
+                        edges_inverted: __field1,
+                        default_parameters: __field2,
+                        input_times: __field3,
+                        output_parameters: __field4,
+                        output_time: __field5,
+                        extra: __field6,
+                    })
+                }
+            }
+            #[doc(hidden)]
+            const FIELDS: &[&str] = &[
+                "nodes",
+                "edges_inverted",
+                "default_parameters",
+                "input_times",
+                "output_parameters",
+                "output_time",
+                "extra",
+            ];
+            _serde::Deserializer::deserialize_struct(
+                __deserializer,
+                "AnimationGraphSerial",
+                FIELDS,
+                __Visitor {
+                    marker: _serde::__private::PhantomData::<AnimationGraphSerial>,
+                    lifetime: _serde::__private::PhantomData,
+                    // manual impl start - add seed fields
+                    load_context: self.load_context,
+                    type_registry: self.type_registry,
+                    // manual impl end
+                },
+            )
+        }
+    }
+};
+
+// #[doc(hidden)]
+// #[allow(
+//     non_upper_case_globals,
+//     unused_attributes,
+//     unused_qualifications,
+//     clippy::redundant_static_lifetimes,
+//     clippy::manual_unwrap_or_default,
+//     clippy::useless_conversion
+// )]
+// const _: () = {
+//     #[allow(unused_extern_crates, clippy::useless_attribute)]
+//     extern crate serde as _serde;
+//     #[automatically_derived]
+//     impl<'de> _serde::de::DeserializeSeed<'de> for AnimationGraphLoadDeserializer<'_, '_> {
+//         type Value = AnimationGraphSerial;
+//         fn deserialize<__D>(
+//             self,
+//             __deserializer: __D,
+//         ) -> _serde::__private::Result<Self::Value, __D::Error>
+//         where
+//             __D: _serde::Deserializer<'de>,
+//         {
+//             struct NodesDeserializer<'a, 'b> {
+//                 type_registry: &'a TypeRegistry,
+//                 load_context: &'a mut LoadContext<'b>,
+//             }
+//
+//             impl<'de> DeserializeSeed<'de> for NodesDeserializer<'_, '_> {
+//                 type Value = Vec<AnimationNode>;
+//
+//                 fn deserialize<D>(mut self, deserializer: D) -> Result<Self::Value, D::Error>
+//                 where
+//                     D: Deserializer<'de>,
+//                 {
+//                     struct NodeVisitor<'a, 'b, 'c> {
+//                         de: &'c mut NodesDeserializer<'a, 'b>,
+//                     }
+//
+//                     impl<'de> Visitor<'de> for NodeVisitor<'_, '_, '_> {
+//                         type Value = Vec<AnimationNode>;
+//
+//                         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+//                             write!(formatter, "AnimationNode")
+//                         }
+//
+//                         fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+//                         where
+//                             A: de::SeqAccess<'de>,
+//                         {
+//                             let mut nodes = Vec::new();
+//                             while let Some(node) =
+//                                 seq.next_element_seed(AnimationNodeLoadDeserializer {
+//                                     type_registry: self.de.type_registry,
+//                                     load_context: self.de.load_context,
+//                                 })?
+//                             {
+//                                 nodes.push(node);
+//                             }
+//                             Ok(nodes)
+//                         }
+//                     }
+//
+//                     deserializer.deserialize_seq(NodeVisitor { de: &mut self })
+//                 }
+//             }
+//
+//             #[allow(non_camel_case_types)]
+//             #[doc(hidden)]
+//             enum __Field {
+//                 __field0,
+//                 __field1,
+//                 __field2,
+//                 __field3,
+//                 __field4,
+//                 __field5,
+//                 __field6,
+//                 __ignore,
+//             }
+//             #[doc(hidden)]
+//             struct __FieldVisitor;
+//
+//             impl<'de> _serde::de::Visitor<'de> for __FieldVisitor {
+//                 type Value = __Field;
+//                 fn expecting(
+//                     &self,
+//                     __formatter: &mut _serde::__private::Formatter,
+//                 ) -> _serde::__private::fmt::Result {
+//                     _serde::__private::Formatter::write_str(__formatter, "field identifier")
+//                 }
+//                 fn visit_u64<__E>(self, __value: u64) -> _serde::__private::Result<Self::Value, __E>
+//                 where
+//                     __E: _serde::de::Error,
+//                 {
+//                     match __value {
+//                         0u64 => _serde::__private::Ok(__Field::__field0),
+//                         1u64 => _serde::__private::Ok(__Field::__field1),
+//                         2u64 => _serde::__private::Ok(__Field::__field2),
+//                         3u64 => _serde::__private::Ok(__Field::__field3),
+//                         4u64 => _serde::__private::Ok(__Field::__field4),
+//                         5u64 => _serde::__private::Ok(__Field::__field5),
+//                         6u64 => _serde::__private::Ok(__Field::__field6),
+//                         _ => _serde::__private::Ok(__Field::__ignore),
+//                     }
+//                 }
+//                 fn visit_str<__E>(
+//                     self,
+//                     __value: &str,
+//                 ) -> _serde::__private::Result<Self::Value, __E>
+//                 where
+//                     __E: _serde::de::Error,
+//                 {
+//                     match __value {
+//                         "nodes" => _serde::__private::Ok(__Field::__field0),
+//                         "edges_inverted" => _serde::__private::Ok(__Field::__field1),
+//                         "default_parameters" => _serde::__private::Ok(__Field::__field2),
+//                         "input_times" => _serde::__private::Ok(__Field::__field3),
+//                         "output_parameters" => _serde::__private::Ok(__Field::__field4),
+//                         "output_time" => _serde::__private::Ok(__Field::__field5),
+//                         "extra" => _serde::__private::Ok(__Field::__field6),
+//                         _ => _serde::__private::Ok(__Field::__ignore),
+//                     }
+//                 }
+//                 fn visit_bytes<__E>(
+//                     self,
+//                     __value: &[u8],
+//                 ) -> _serde::__private::Result<Self::Value, __E>
+//                 where
+//                     __E: _serde::de::Error,
+//                 {
+//                     match __value {
+//                         b"nodes" => _serde::__private::Ok(__Field::__field0),
+//                         b"edges_inverted" => _serde::__private::Ok(__Field::__field1),
+//                         b"default_parameters" => _serde::__private::Ok(__Field::__field2),
+//                         b"input_times" => _serde::__private::Ok(__Field::__field3),
+//                         b"output_parameters" => _serde::__private::Ok(__Field::__field4),
+//                         b"output_time" => _serde::__private::Ok(__Field::__field5),
+//                         b"extra" => _serde::__private::Ok(__Field::__field6),
+//                         _ => _serde::__private::Ok(__Field::__ignore),
+//                     }
+//                 }
+//             }
+//             impl<'de> _serde::Deserialize<'de> for __Field {
+//                 #[inline]
+//                 fn deserialize<__D>(
+//                     __deserializer: __D,
+//                 ) -> _serde::__private::Result<Self, __D::Error>
+//                 where
+//                     __D: _serde::Deserializer<'de>,
+//                 {
+//                     _serde::Deserializer::deserialize_identifier(__deserializer, __FieldVisitor)
+//                 }
+//             }
+//             #[doc(hidden)]
+//             struct __Visitor<'de, 'a, 'b> {
+//                 marker: _serde::__private::PhantomData<AnimationGraphSerial>,
+//                 lifetime: _serde::__private::PhantomData<&'de ()>,
+//                 type_registry: &'a TypeRegistry,
+//                 load_context: &'a mut LoadContext<'b>,
+//             }
+//             impl<'de> _serde::de::Visitor<'de> for __Visitor<'de, '_, '_> {
+//                 type Value = AnimationGraphSerial;
+//                 fn expecting(
+//                     &self,
+//                     __formatter: &mut _serde::__private::Formatter,
+//                 ) -> _serde::__private::fmt::Result {
+//                     _serde::__private::Formatter::write_str(
+//                         __formatter,
+//                         "struct AnimationGraphSerial",
+//                     )
+//                 }
+//                 #[inline]
+//                 fn visit_seq<__A>(
+//                     self,
+//                     mut __seq: __A,
+//                 ) -> _serde::__private::Result<Self::Value, __A::Error>
+//                 where
+//                     __A: _serde::de::SeqAccess<'de>,
+//                 {
+//                     let __field0 = match _serde::de::SeqAccess::next_element_seed(
+//                         &mut __seq,
+//                         NodesDeserializer {
+//                             type_registry: self.type_registry,
+//                             load_context: self.load_context,
+//                         },
+//                     )? {
+//                         _serde::__private::Some(__value) => __value,
+//                         _serde::__private::None => {
+//                             return _serde::__private::Err(_serde::de::Error::invalid_length(
+//                                 0usize,
+//                                 &"struct AnimationGraphSerial with 7 elements",
+//                             ))
+//                         }
+//                     };
+//                     let __field1 = match _serde::de::SeqAccess::next_element::<
+//                         HashMap<TargetPinSerial, SourcePinSerial>,
+//                     >(&mut __seq)?
+//                     {
+//                         _serde::__private::Some(__value) => __value,
+//                         _serde::__private::None => {
+//                             return _serde::__private::Err(_serde::de::Error::invalid_length(
+//                                 1usize,
+//                                 &"struct AnimationGraphSerial with 7 elements",
+//                             ))
+//                         }
+//                     };
+//                     let __field2 = match _serde::de::SeqAccess::next_element::<
+//                         OrderedMap<PinIdSerial, DataValue>,
+//                     >(&mut __seq)?
+//                     {
+//                         _serde::__private::Some(__value) => __value,
+//                         _serde::__private::None => {
+//                             return _serde::__private::Err(_serde::de::Error::invalid_length(
+//                                 2usize,
+//                                 &"struct AnimationGraphSerial with 7 elements",
+//                             ))
+//                         }
+//                     };
+//                     let __field3 = match _serde::de::SeqAccess::next_element::<
+//                         OrderedMap<PinIdSerial, ()>,
+//                     >(&mut __seq)?
+//                     {
+//                         _serde::__private::Some(__value) => __value,
+//                         _serde::__private::None => {
+//                             return _serde::__private::Err(_serde::de::Error::invalid_length(
+//                                 3usize,
+//                                 &"struct AnimationGraphSerial with 7 elements",
+//                             ))
+//                         }
+//                     };
+//                     let __field4 = match _serde::de::SeqAccess::next_element::<
+//                         OrderedMap<PinIdSerial, DataSpec>,
+//                     >(&mut __seq)?
+//                     {
+//                         _serde::__private::Some(__value) => __value,
+//                         _serde::__private::None => {
+//                             return _serde::__private::Err(_serde::de::Error::invalid_length(
+//                                 4usize,
+//                                 &"struct AnimationGraphSerial with 7 elements",
+//                             ))
+//                         }
+//                     };
+//                     let __field5 =
+//                         match _serde::de::SeqAccess::next_element::<Option<()>>(&mut __seq)? {
+//                             _serde::__private::Some(__value) => __value,
+//                             _serde::__private::None => {
+//                                 return _serde::__private::Err(_serde::de::Error::invalid_length(
+//                                     5usize,
+//                                     &"struct AnimationGraphSerial with 7 elements",
+//                                 ))
+//                             }
+//                         };
+//                     let __field6 = match _serde::de::SeqAccess::next_element::<Extra>(&mut __seq)? {
+//                         _serde::__private::Some(__value) => __value,
+//                         _serde::__private::None => {
+//                             return _serde::__private::Err(_serde::de::Error::invalid_length(
+//                                 6usize,
+//                                 &"struct AnimationGraphSerial with 7 elements",
+//                             ))
+//                         }
+//                     };
+//                     _serde::__private::Ok(AnimationGraphSerial {
+//                         nodes: __field0,
+//                         edges_inverted: __field1,
+//                         default_parameters: __field2,
+//                         input_times: __field3,
+//                         output_parameters: __field4,
+//                         output_time: __field5,
+//                         extra: __field6,
+//                     })
+//                 }
+//                 #[inline]
+//                 fn visit_map<__A>(
+//                     self,
+//                     mut __map: __A,
+//                 ) -> _serde::__private::Result<Self::Value, __A::Error>
+//                 where
+//                     __A: _serde::de::MapAccess<'de>,
+//                 {
+//                     let mut __field0: _serde::__private::Option<Vec<AnimationNode>> =
+//                         _serde::__private::None;
+//                     let mut __field1: _serde::__private::Option<
+//                         HashMap<TargetPinSerial, SourcePinSerial>,
+//                     > = _serde::__private::None;
+//                     let mut __field2: _serde::__private::Option<
+//                         OrderedMap<PinIdSerial, DataValue>,
+//                     > = _serde::__private::None;
+//                     let mut __field3: _serde::__private::Option<OrderedMap<PinIdSerial, ()>> =
+//                         _serde::__private::None;
+//                     let mut __field4: _serde::__private::Option<OrderedMap<PinIdSerial, DataSpec>> =
+//                         _serde::__private::None;
+//                     let mut __field5: _serde::__private::Option<Option<()>> =
+//                         _serde::__private::None;
+//                     let mut __field6: _serde::__private::Option<Extra> = _serde::__private::None;
+//                     while let _serde::__private::Some(__key) =
+//                         _serde::de::MapAccess::next_key::<__Field>(&mut __map)?
+//                     {
+//                         match __key {
+//                             __Field::__field0 => {
+//                                 if _serde::__private::Option::is_some(&__field0) {
+//                                     return _serde::__private::Err(
+//                                         <__A::Error as _serde::de::Error>::duplicate_field("nodes"),
+//                                     );
+//                                 }
+//                                 __field0 =
+//                                     _serde::__private::Some(_serde::de::MapAccess::next_value_seed(
+//                                         &mut __map,
+//                                         NodesDeserializer {
+//                                             type_registry: self.type_registry,
+//                                             load_context: self.load_context,
+//                                         }
+//                                     )?);
+//                             }
+//                             __Field::__field1 => {
+//                                 if _serde::__private::Option::is_some(&__field1) {
+//                                     return _serde::__private::Err(
+//                                         <__A::Error as _serde::de::Error>::duplicate_field(
+//                                             "edges_inverted",
+//                                         ),
+//                                     );
+//                                 }
+//                                 __field1 =
+//                                     _serde::__private::Some(_serde::de::MapAccess::next_value::<
+//                                         HashMap<TargetPinSerial, SourcePinSerial>,
+//                                     >(
+//                                         &mut __map
+//                                     )?);
+//                             }
+//                             __Field::__field2 => {
+//                                 if _serde::__private::Option::is_some(&__field2) {
+//                                     return _serde::__private::Err(
+//                                         <__A::Error as _serde::de::Error>::duplicate_field(
+//                                             "default_parameters",
+//                                         ),
+//                                     );
+//                                 }
+//                                 __field2 =
+//                                     _serde::__private::Some(_serde::de::MapAccess::next_value::<
+//                                         OrderedMap<PinIdSerial, DataValue>,
+//                                     >(
+//                                         &mut __map
+//                                     )?);
+//                             }
+//                             __Field::__field3 => {
+//                                 if _serde::__private::Option::is_some(&__field3) {
+//                                     return _serde::__private::Err(
+//                                         <__A::Error as _serde::de::Error>::duplicate_field(
+//                                             "input_times",
+//                                         ),
+//                                     );
+//                                 }
+//                                 __field3 =
+//                                     _serde::__private::Some(_serde::de::MapAccess::next_value::<
+//                                         OrderedMap<PinIdSerial, ()>,
+//                                     >(
+//                                         &mut __map
+//                                     )?);
+//                             }
+//                             __Field::__field4 => {
+//                                 if _serde::__private::Option::is_some(&__field4) {
+//                                     return _serde::__private::Err(
+//                                         <__A::Error as _serde::de::Error>::duplicate_field(
+//                                             "output_parameters",
+//                                         ),
+//                                     );
+//                                 }
+//                                 __field4 =
+//                                     _serde::__private::Some(_serde::de::MapAccess::next_value::<
+//                                         OrderedMap<PinIdSerial, DataSpec>,
+//                                     >(
+//                                         &mut __map
+//                                     )?);
+//                             }
+//                             __Field::__field5 => {
+//                                 if _serde::__private::Option::is_some(&__field5) {
+//                                     return _serde::__private::Err(
+//                                         <__A::Error as _serde::de::Error>::duplicate_field(
+//                                             "output_time",
+//                                         ),
+//                                     );
+//                                 }
+//                                 __field5 =
+//                                     _serde::__private::Some(_serde::de::MapAccess::next_value::<
+//                                         Option<()>,
+//                                     >(
+//                                         &mut __map
+//                                     )?);
+//                             }
+//                             __Field::__field6 => {
+//                                 if _serde::__private::Option::is_some(&__field6) {
+//                                     return _serde::__private::Err(
+//                                         <__A::Error as _serde::de::Error>::duplicate_field("extra"),
+//                                     );
+//                                 }
+//                                 __field6 =
+//                                     _serde::__private::Some(_serde::de::MapAccess::next_value::<
+//                                         Extra,
+//                                     >(
+//                                         &mut __map
+//                                     )?);
+//                             }
+//                             _ => {
+//                                 let _ = _serde::de::MapAccess::next_value::<_serde::de::IgnoredAny>(
+//                                     &mut __map,
+//                                 )?;
+//                             }
+//                         }
+//                     }
+//                     let __field0 = match __field0 {
+//                         _serde::__private::Some(__field0) => __field0,
+//                         _serde::__private::None => Default::default(),
+//                     };
+//                     let __field1 = match __field1 {
+//                         _serde::__private::Some(__field1) => __field1,
+//                         _serde::__private::None => {
+//                             _serde::__private::de::missing_field("edges_inverted")?
+//                         }
+//                     };
+//                     let __field2 = match __field2 {
+//                         _serde::__private::Some(__field2) => __field2,
+//                         _serde::__private::None => {
+//                             _serde::__private::de::missing_field("default_parameters")?
+//                         }
+//                     };
+//                     let __field3 = match __field3 {
+//                         _serde::__private::Some(__field3) => __field3,
+//                         _serde::__private::None => {
+//                             _serde::__private::de::missing_field("input_times")?
+//                         }
+//                     };
+//                     let __field4 = match __field4 {
+//                         _serde::__private::Some(__field4) => __field4,
+//                         _serde::__private::None => {
+//                             _serde::__private::de::missing_field("output_parameters")?
+//                         }
+//                     };
+//                     let __field5 = match __field5 {
+//                         _serde::__private::Some(__field5) => __field5,
+//                         _serde::__private::None => {
+//                             _serde::__private::de::missing_field("output_time")?
+//                         }
+//                     };
+//                     let __field6 = match __field6 {
+//                         _serde::__private::Some(__field6) => __field6,
+//                         _serde::__private::None => _serde::__private::de::missing_field("extra")?,
+//                     };
+//                     _serde::__private::Ok(AnimationGraphSerial {
+//                         nodes: __field0,
+//                         edges_inverted: __field1,
+//                         default_parameters: __field2,
+//                         input_times: __field3,
+//                         output_parameters: __field4,
+//                         output_time: __field5,
+//                         extra: __field6,
+//                     })
+//                 }
+//             }
+//             #[doc(hidden)]
+//             const FIELDS: &'static [&'static str] = &[
+//                 "nodes",
+//                 "edges_inverted",
+//                 "default_parameters",
+//                 "input_times",
+//                 "output_parameters",
+//                 "output_time",
+//                 "extra",
+//             ];
+//             _serde::Deserializer::deserialize_struct(
+//                 __deserializer,
+//                 "AnimationGraphSerial",
+//                 FIELDS,
+//                 __Visitor {
+//                     marker: _serde::__private::PhantomData::<AnimationGraphSerial>,
+//                     lifetime: _serde::__private::PhantomData,
+//                     // manual impl start - add seed fields
+//                     load_context: self.load_context,
+//                     type_registry: self.type_registry,
+//                     // manual impl end
+//                 },
+//             )
+//         }
+//     }
+// };
+
+// For serialization, we make an `AnimationNode` wrapper that contains
+// a reference to the type registry. Then, we wrap that new type in an
+// `AnimationGraphSerializer` type that mirrors the structure of `AnimationGraph`.
+// We only need to write custom serialization logic for the `AnimationNode` serializer type,
+// we get the `AnimationGraph` serialization "for free".
+
+pub struct AnimationNodeSerializer<'a> {
+    pub type_registry: &'a TypeRegistry,
     pub name: String,
-    pub node: AnimationNodeTypeSerial,
+    pub inner: Box<dyn NodeLike>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
-pub enum AnimationNodeTypeSerial {
-    Clip(String, Option<f32>, #[serde(default)] Option<Interpolation>),
-    Chain {
-        #[serde(default)]
-        interpolation_period: f32,
-    },
-    Blend {
-        #[serde(default)]
-        mode: BlendMode,
-        #[serde(default)]
-        sync_mode: BlendSyncMode,
-    },
-    FlipLR {
-        #[serde(default)]
-        config: FlipConfig,
-    },
-    Loop {
-        #[serde(default)]
-        interpolation_period: f32,
-    },
-    Padding {
-        interpolation_period: f32,
-    },
-    Speed,
-    Rotation(
-        RotationMode,
-        RotationSpace,
-        ChainDecay,
-        usize,
-        #[serde(default)] f32,
-    ),
-    ConstF32(f32),
-    AddF32,
-    SubF32,
-    MulF32,
-    DivF32,
-    ClampF32,
-    CompareF32(CompareOp),
-    SelectF32,
-    AbsF32,
-    ConstBool(bool),
-    BuildVec3,
-    DecomposeVec3,
-    LerpVec3,
-    SlerpQuat,
-    FromEuler(EulerRot),
-    IntoEuler(EulerRot),
-    MulQuat,
-    InvertQuat,
-    RotationArc,
-    FireEvent(AnimationEvent),
-    // IntoBoneSpace,
-    // IntoCharacterSpace,
-    // IntoGlobalSpace,
-    // ExtendSkeleton,
-    TwoBoneIK,
-    Dummy,
-    Fsm(String),
-    Graph(String),
-    ConstEntityPath(EntityPath),
-    NormalizeVec3,
-    LengthVec3,
-    ConstVec3(Vec3),
-}
-
-impl From<&AnimationGraph> for AnimationGraphSerial {
-    fn from(value: &AnimationGraph) -> Self {
-        Self {
-            nodes: value.nodes.values().map(|v| v.into()).collect(),
-            edges_inverted: value
-                .edges
-                .clone()
-                .into_iter()
-                .map(|(k, v)| (k.map_into(), v.map_into()))
-                .collect(),
-            default_parameters: value
-                .default_parameters
-                .iter()
-                .map(|(k, v)| (k.into(), v.clone()))
-                .collect(),
-            input_times: value
-                .input_times
-                .iter()
-                .map(|(k, v)| (k.into(), *v))
-                .collect(),
-            output_parameters: value
-                .output_parameters
-                .iter()
-                .map(|(k, v)| (k.into(), *v))
-                .collect(),
-            output_time: value.output_time,
-            extra: value.extra.clone(),
+impl AnimationNodeSerializer<'_> {
+    pub fn new<'a>(
+        node: &AnimationNode,
+        type_registry: &'a TypeRegistry,
+    ) -> AnimationNodeSerializer<'a> {
+        AnimationNodeSerializer {
+            type_registry,
+            name: node.name.clone(),
+            inner: node.inner.clone(),
         }
     }
 }
 
-impl From<&AnimationNode> for AnimationNodeSerial {
-    fn from(value: &AnimationNode) -> Self {
-        Self {
-            name: value.name.clone(),
-            node: (&value.node).into(),
+#[derive(Serialize)]
+pub struct AnimationGraphSerializer<'a> {
+    pub nodes: Vec<AnimationNodeSerializer<'a>>,
+    pub edges_inverted: HashMap<TargetPinSerial, SourcePinSerial>,
+
+    pub default_parameters: HashMap<PinIdSerial, DataValue>,
+    pub input_times: HashMap<PinIdSerial, ()>,
+    pub output_parameters: HashMap<PinIdSerial, DataSpec>,
+    pub output_time: Option<()>,
+
+    pub extra: Extra,
+}
+
+impl AnimationGraphSerializer<'_> {
+    pub fn new<'a>(
+        graph: &AnimationGraph,
+        type_registry: &'a TypeRegistry,
+    ) -> AnimationGraphSerializer<'a> {
+        let mut serial = AnimationGraphSerializer {
+            nodes: Vec::new(),
+            edges_inverted: graph.edges.clone(),
+            default_parameters: graph.default_parameters.clone(),
+            input_times: graph.input_times.clone(),
+            output_parameters: graph.output_parameters.clone(),
+            output_time: graph.output_time,
+            extra: graph.extra.clone(),
+        };
+
+        for node in graph.nodes.values() {
+            serial
+                .nodes
+                .push(AnimationNodeSerializer::new(node, type_registry));
         }
+
+        serial
     }
 }
 
-impl From<&AnimationNodeType> for AnimationNodeTypeSerial {
-    fn from(value: &AnimationNodeType) -> Self {
-        match value {
-            AnimationNodeType::Clip(n) => AnimationNodeTypeSerial::Clip(
-                n.clip.path().unwrap().to_string(),
-                n.override_duration,
-                n.override_interpolation,
-            ),
-            AnimationNodeType::Dummy(_) => AnimationNodeTypeSerial::Dummy,
-            AnimationNodeType::Chain(n) => AnimationNodeTypeSerial::Chain {
-                interpolation_period: n.interpolation_period,
-            },
-            AnimationNodeType::Blend(n) => AnimationNodeTypeSerial::Blend {
-                mode: n.mode,
-                sync_mode: n.sync_mode,
-            },
-            AnimationNodeType::FlipLR(n) => AnimationNodeTypeSerial::FlipLR {
-                config: n.config.clone(),
-            },
-            AnimationNodeType::Loop(n) => AnimationNodeTypeSerial::Loop {
-                interpolation_period: n.interpolation_period,
-            },
-            AnimationNodeType::Speed(_) => AnimationNodeTypeSerial::Speed,
-            AnimationNodeType::Rotation(n) => AnimationNodeTypeSerial::Rotation(
-                n.application_mode,
-                n.rotation_space,
-                n.chain_decay,
-                n.chain_length,
-                n.base_weight,
-            ),
-            // AnimationNodeType::IntoBoneSpace(_) => AnimationNodeTypeSerial::IntoBoneSpace,
-            // AnimationNodeType::IntoCharacterSpace(_) => AnimationNodeTypeSerial::IntoCharacterSpace,
-            // AnimationNodeType::IntoGlobalSpace(_) => AnimationNodeTypeSerial::IntoGlobalSpace,
-            // AnimationNodeType::ExtendSkeleton(_) => AnimationNodeTypeSerial::ExtendSkeleton,
-            AnimationNodeType::TwoBoneIK(_) => AnimationNodeTypeSerial::TwoBoneIK,
-            AnimationNodeType::ConstF32(n) => AnimationNodeTypeSerial::ConstF32(n.constant),
-            AnimationNodeType::AddF32(_) => AnimationNodeTypeSerial::AddF32,
-            AnimationNodeType::MulF32(_) => AnimationNodeTypeSerial::MulF32,
-            AnimationNodeType::DivF32(_) => AnimationNodeTypeSerial::DivF32,
-            AnimationNodeType::SubF32(_) => AnimationNodeTypeSerial::SubF32,
-            AnimationNodeType::ClampF32(_) => AnimationNodeTypeSerial::ClampF32,
-            AnimationNodeType::CompareF32(n) => AnimationNodeTypeSerial::CompareF32(n.op),
-            AnimationNodeType::AbsF32(_) => AnimationNodeTypeSerial::AbsF32,
-            AnimationNodeType::ConstBool(n) => AnimationNodeTypeSerial::ConstBool(n.constant),
-            AnimationNodeType::BuildVec3(_) => AnimationNodeTypeSerial::BuildVec3,
-            AnimationNodeType::DecomposeVec3(_) => AnimationNodeTypeSerial::DecomposeVec3,
-            AnimationNodeType::LerpVec3(_) => AnimationNodeTypeSerial::LerpVec3,
-            AnimationNodeType::SlerpQuat(_) => AnimationNodeTypeSerial::SlerpQuat,
-            AnimationNodeType::FromEuler(n) => AnimationNodeTypeSerial::FromEuler(n.mode),
-            AnimationNodeType::IntoEuler(n) => AnimationNodeTypeSerial::IntoEuler(n.mode),
-            AnimationNodeType::MulQuat(_) => AnimationNodeTypeSerial::MulQuat,
-            AnimationNodeType::InvertQuat(_) => AnimationNodeTypeSerial::InvertQuat,
-            AnimationNodeType::RotationArc(_) => AnimationNodeTypeSerial::RotationArc,
-            AnimationNodeType::Fsm(n) => {
-                AnimationNodeTypeSerial::Fsm(n.fsm.path().unwrap().to_string())
+impl Serialize for AnimationNodeSerializer<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        struct HandleProcessor;
+
+        impl ReflectSerializerProcessor for HandleProcessor {
+            fn try_serialize<S>(
+                &self,
+                value: &dyn PartialReflect,
+                registry: &TypeRegistry,
+                serializer: S,
+            ) -> Result<Result<S::Ok, S>, S::Error>
+            where
+                S: serde::Serializer,
+            {
+                let Some(value) = value.try_as_reflect() else {
+                    return Ok(Err(serializer));
+                };
+
+                let type_id = value.reflect_type_info().type_id();
+                let Some(untyped_handle) = registry
+                    .get_type_data::<ReflectHandle>(type_id)
+                    .and_then(|reflect_handle| {
+                        reflect_handle.downcast_handle_untyped(value.as_any())
+                    })
+                else {
+                    return Ok(Err(serializer));
+                };
+
+                let Some(path) = untyped_handle.path() else {
+                    return Err(serde::ser::Error::custom(
+                        "asset handle does not have a path",
+                    ));
+                };
+                let Some(path) = path.path().to_str() else {
+                    return Err(serde::ser::Error::custom(
+                        "asset handle has a non-UTF-8 path",
+                    ));
+                };
+
+                serializer.serialize_str(path).map(Ok)
             }
-            AnimationNodeType::FireEvent(n) => AnimationNodeTypeSerial::FireEvent(n.event.clone()),
-            AnimationNodeType::Graph(n) => {
-                AnimationNodeTypeSerial::Graph(n.graph.path().unwrap().to_string())
-            }
-            AnimationNodeType::Custom(_) => panic!("Cannot serialize custom node!"),
-            AnimationNodeType::Padding(n) => AnimationNodeTypeSerial::Padding {
-                interpolation_period: n.interpolation_period,
-            },
-            AnimationNodeType::SelectF32(_) => AnimationNodeTypeSerial::SelectF32,
-            AnimationNodeType::ConstEntityPath(n) => {
-                AnimationNodeTypeSerial::ConstEntityPath(n.path.clone())
-            }
-            AnimationNodeType::NormalizeVec3(_) => AnimationNodeTypeSerial::NormalizeVec3,
-            AnimationNodeType::LengthVec3(_) => AnimationNodeTypeSerial::LengthVec3,
-            AnimationNodeType::ConstVec3(n) => AnimationNodeTypeSerial::ConstVec3(n.constant),
         }
+
+        let mut state = serializer.serialize_struct("AnimationNodeSerializer", 3)?;
+
+        state.serialize_field("name", &self.name)?;
+
+        let type_path = self
+            .type_registry
+            .get_type_info(self.inner.type_id())
+            .map(|t| t.type_path())
+            .ok_or(serde::ser::Error::custom(format!(
+                "no type registration for `{}`",
+                self.inner.reflect_type_path()
+            )))?;
+        state.serialize_field("ty", type_path)?;
+
+        let processor = HandleProcessor;
+        let reflect_serializer = TypedReflectSerializer::with_processor(
+            self.inner.as_partial_reflect(),
+            self.type_registry,
+            &processor,
+        );
+        state.serialize_field("inner", &reflect_serializer)?;
+
+        state.end()
     }
 }

@@ -1,5 +1,5 @@
 use crate::core::animation_graph::PinMap;
-use crate::core::animation_node::{AnimationNode, AnimationNodeType, NodeLike};
+use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
 use crate::prelude::{PassContext, SpecContext};
@@ -7,7 +7,7 @@ use crate::utils::unwrap::UnwrapVal;
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
-#[reflect(Default)]
+#[reflect(Default, NodeLike)]
 pub struct IntoEulerNode {
     pub mode: EulerRot,
 }
@@ -18,10 +18,6 @@ impl IntoEulerNode {
 
     pub fn new(mode: EulerRot) -> Self {
         Self { mode }
-    }
-
-    pub fn wrapped(self, name: impl Into<String>) -> AnimationNode {
-        AnimationNode::new_from_nodetype(name.into(), AnimationNodeType::IntoEuler(self))
     }
 }
 

@@ -90,7 +90,7 @@ pub fn run_animation_player(
 
     player.elapsed = player
         .elapsed
-        .update(TimeUpdate::Delta(time.delta_seconds()))
+        .update(TimeUpdate::Delta(time.delta_secs()))
         .update(player.pending_update);
     player.pending_update = None;
 
@@ -153,19 +153,4 @@ fn apply_morph_weights(weights: &mut [f32], new_weights: &[f32]) {
     for (morph_weight, keyframe) in zipped {
         *morph_weight = *keyframe;
     }
-}
-
-/// Extract a keyframe from a list of keyframes by index.
-///
-/// # Panics
-///
-/// When `key_index * target_count` is larger than `keyframes`
-///
-/// This happens when `keyframes` is not formatted as described in
-/// [`Keyframes::Weights`]. A possible cause is [`AnimationClip`] not being
-/// meant to be used for the [`MorphWeights`] of the entity it's being applied to.
-pub(crate) fn get_keyframe(target_count: usize, keyframes: &[f32], key_index: usize) -> &[f32] {
-    let start = target_count * key_index;
-    let end = target_count * (key_index + 1);
-    &keyframes[start..end]
 }

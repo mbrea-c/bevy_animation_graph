@@ -17,12 +17,12 @@ use super::{
 };
 use crate::nodes::{
     AbsF32, AddF32, BlendMode, BlendNode, BlendSyncMode, ChainNode, ClampF32, ClipNode, CompareF32,
-    DivF32, DummyNode, FireEventNode, FlipLRNode, GraphNode, LoopNode, MulF32, PaddingNode,
-    RotationArcNode, RotationNode, SpeedNode, SubF32, TwoBoneIKNode,
+    DivF32, DummyNode, FSMNode, FireEventNode, FlipLRNode, GraphNode, LoopNode, MulF32,
+    PaddingNode, RotationArcNode, RotationNode, SpeedNode, SubF32, TwoBoneIKNode,
 };
 use crate::prelude::{
     config::{FlipConfig, FlipNameMapper, PatternMapper, PatternMapperSerial},
-    AnimationGraph, AnimationGraphPlayer, AnimationNodeType,
+    AnimationGraph, AnimationGraphPlayer,
 };
 use crate::{core::animation_clip::EntityPath, prelude::AnimationNode};
 use bevy::{prelude::*, transform::TransformSystem};
@@ -33,18 +33,9 @@ pub struct AnimationGraphPlugin;
 
 impl Plugin for AnimationGraphPlugin {
     fn build(&self, app: &mut App) {
+        self.register_assets(app);
         self.register_types(app);
         app //
-            .init_asset::<GraphClip>()
-            .init_asset_loader::<GraphClipLoader>()
-            .init_asset::<AnimationGraph>()
-            .init_asset_loader::<AnimationGraphLoader>()
-            .init_asset::<AnimatedScene>()
-            .init_asset_loader::<AnimatedSceneLoader>()
-            .init_asset::<StateMachine>()
-            .init_asset_loader::<StateMachineLoader>()
-            .init_asset::<Skeleton>()
-            .init_asset_loader::<SkeletonLoader>()
             .add_systems(PreUpdate, (spawn_animated_scenes, process_animated_scenes))
             .add_systems(
                 PostUpdate,
@@ -60,16 +51,27 @@ impl Plugin for AnimationGraphPlugin {
 }
 
 impl AnimationGraphPlugin {
+    fn register_assets(&self, app: &mut App) {
+        app //
+            .init_asset::<GraphClip>()
+            .init_asset_loader::<GraphClipLoader>()
+            .init_asset::<AnimationGraph>()
+            .init_asset_loader::<AnimationGraphLoader>()
+            .init_asset::<AnimatedScene>()
+            .init_asset_loader::<AnimatedSceneLoader>()
+            .init_asset::<StateMachine>()
+            .init_asset_loader::<StateMachineLoader>()
+            .init_asset::<Skeleton>()
+            .init_asset_loader::<SkeletonLoader>();
+    }
+
     fn register_types(&self, app: &mut App) {
         app //
-            .register_type::<AnimationGraph>()
             .register_asset_reflect::<AnimationGraph>()
-            .register_type::<StateMachine>()
             .register_asset_reflect::<StateMachine>()
-            .register_type::<GraphClip>()
             .register_asset_reflect::<GraphClip>()
-            .register_type::<AnimatedScene>()
             .register_asset_reflect::<AnimatedScene>()
+            .register_asset_reflect::<Skeleton>()
             .register_type::<Interpolation>()
             .register_type::<AnimationGraphPlayer>()
             .register_type::<EntityPath>()
@@ -83,9 +85,9 @@ impl AnimationGraphPlugin {
             .register_type::<DataValue>()
             .register_type::<DataSpec>()
             .register_type::<AnimationNode>()
-            .register_type::<AnimationNodeType>()
             .register_type::<FlipConfig>()
-            .register_type::<FlipNameMapper>()
+            .register_type::<FlipNameMapper<PatternMapper>>()
+            .register_type::<FlipNameMapper<PatternMapperSerial>>()
             .register_type::<PatternMapper>()
             .register_type::<PatternMapperSerial>()
             .register_type::<BlendMode>()
@@ -115,6 +117,7 @@ impl AnimationGraphPlugin {
             .register_type::<CompareF32>()
             .register_type::<FireEventNode>()
             .register_type::<RotationArcNode>()
+            .register_type::<FSMNode>()
             // .register_type::<ExtendSkeleton>()
             // .register_type::<IntoBoneSpaceNode>()
             // .register_type::<IntoGlobalSpaceNode>()

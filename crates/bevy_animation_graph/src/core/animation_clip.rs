@@ -1,57 +1,12 @@
 use bevy::{
-    animation::AnimationTargetId,
-    asset::prelude::*,
+    animation::{AnimationCurves, AnimationTargetId},
+    asset::{prelude::*, ReflectAsset},
     core::prelude::*,
-    math::prelude::*,
     reflect::prelude::*,
-    utils::{hashbrown::HashMap, NoOpHash},
 };
 use serde::{Deserialize, Serialize};
 
 use super::{id, skeleton::Skeleton};
-
-/// List of keyframes for one of the attribute of a [`Transform`].
-///
-/// [`Transform`]: bevy::transform::prelude::Transform
-#[derive(Reflect, Clone, Debug)]
-pub enum Keyframes {
-    /// Keyframes for rotation.
-    Rotation(Vec<Quat>),
-    /// Keyframes for translation.
-    Translation(Vec<Vec3>),
-    /// Keyframes for scale.
-    Scale(Vec<Vec3>),
-    /// Keyframes for morph target weights.
-    ///
-    /// Note that in `.0`, each contiguous `target_count` values is a single
-    /// keyframe representing the weight values at given keyframe.
-    ///
-    /// This follows the [glTF design].
-    ///
-    /// [glTF design]: https://registry.khronos.org/glTF/specs/2.0/glTF-2.0.html#animations
-    Weights(Vec<f32>),
-}
-
-/// Describes how an attribute of a [`Transform`] or morph weights should be animated.
-///
-/// `keyframe_timestamps` and `keyframes` should have the same length.
-///
-/// [`Transform`]: bevy::transform::prelude::Transform
-#[derive(Reflect, Clone, Debug)]
-pub struct VariableCurve {
-    /// Timestamp for each of the keyframes.
-    pub keyframe_timestamps: Vec<f32>,
-    /// List of the keyframes.
-    ///
-    /// The representation will depend on the interpolation type of this curve:
-    ///
-    /// - for `Interpolation::Step` and `Interpolation::Linear`, each keyframe is a single value
-    /// - for `Interpolation::CubicSpline`, each keyframe is made of three values for `tangent_in`,
-    ///   `keyframe_value` and `tangent_out`
-    pub keyframes: Keyframes,
-    /// Interpolation method to use between keyframes
-    pub interpolation: Interpolation,
-}
 
 /// Interpolation method to use between keyframes.
 #[derive(Reflect, Serialize, Deserialize, Clone, Copy, Debug, Default)]
@@ -69,7 +24,7 @@ pub enum Interpolation {
 
 /// Path to an entity, with [`Name`]s. Each entity in a path must have a name.
 #[derive(Reflect, Clone, Debug, Hash, PartialEq, Eq, Default)]
-#[reflect(Default)]
+#[reflect(Default, Serialize, Deserialize)]
 pub struct EntityPath {
     /// Parts of the path
     pub parts: Vec<Name>,
@@ -125,7 +80,7 @@ struct InterpretEscapedString<'a> {
     s: std::str::Chars<'a>,
 }
 
-impl<'a> Iterator for InterpretEscapedString<'a> {
+impl Iterator for InterpretEscapedString<'_> {
     type Item = String;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -185,98 +140,53 @@ impl<'de> Deserialize<'de> for EntityPath {
     }
 }
 
-/// A list of [`VariableCurve`], and the [`EntityPath`] to which they apply.
-#[derive(Asset, Reflect, Clone, Debug, Default)]
+#[derive(Asset, Clone, Debug, Default, Reflect)]
+#[reflect(Asset)]
 pub struct GraphClip {
+    // AnimationCurves are non-reflectable
+    #[reflect(ignore)]
     pub(crate) curves: AnimationCurves,
     pub(crate) duration: f32,
     pub(crate) skeleton: Handle<Skeleton>,
 }
 
-/// This is a helper type to "steal" the data from a `bevy_animation::AnimationClip` into our
-/// `GraphClip`, since the internal fields of `bevy_animation::AnimationClip` are not public and we
-/// need to do a hackery.
-struct TempGraphClip {
-    curves: AnimationCurves,
-    duration: f32,
-}
-
-/// A mapping from [`AnimationTargetId`] (e.g. bone in a skinned mesh) to the
-/// animation curves.
-pub type AnimationCurves = HashMap<AnimationTargetId, Vec<VariableCurve>, NoOpHash>;
-
 impl GraphClip {
-    #[inline]
     /// [`VariableCurve`]s for each animation target. Indexed by the [`AnimationTargetId`].
     pub fn curves(&self) -> &AnimationCurves {
         &self.curves
     }
 
-    #[inline]
     /// Get mutable references of [`VariableCurve`]s for each animation target. Indexed by the [`AnimationTargetId`].
     pub fn curves_mut(&mut self) -> &mut AnimationCurves {
         &mut self.curves
     }
 
-    /// Gets the curves for a single animation target.
-    ///
-    /// Returns `None` if this clip doesn't animate the target.
-    #[inline]
-    pub fn curves_for_target(
-        &self,
-        target_id: AnimationTargetId,
-    ) -> Option<&'_ Vec<VariableCurve>> {
-        self.curves.get(&target_id)
-    }
-
-    /// Gets mutable references of the curves for a single animation target.
-    ///
-    /// Returns `None` if this clip doesn't animate the target.
-    #[inline]
-    pub fn curves_for_target_mut(
-        &mut self,
-        target_id: AnimationTargetId,
-    ) -> Option<&'_ mut Vec<VariableCurve>> {
-        self.curves.get_mut(&target_id)
-    }
-
     /// Duration of the clip, represented in seconds.
-    #[inline]
     pub fn duration(&self) -> f32 {
         self.duration
     }
 
     /// Set the duration of the clip in seconds.
-    #[inline]
     pub fn set_duration(&mut self, duration_sec: f32) {
         self.duration = duration_sec;
     }
 
-    /// Adds a [`VariableCurve`] to an [`AnimationTarget`] named by an
-    /// [`AnimationTargetId`].
-    ///
-    /// If the curve extends beyond the current duration of this clip, this
-    /// method lengthens this clip to include the entire time span that the
-    /// curve covers.
-    pub fn add_curve_to_target(&mut self, target_id: AnimationTargetId, curve: VariableCurve) {
-        // Update the duration of the animation by this curve duration if it's longer
-        self.duration = self
-            .duration
-            .max(*curve.keyframe_timestamps.last().unwrap_or(&0.0));
-        self.curves.entry(target_id).or_default().push(curve);
+    pub fn skeleton(&self) -> &Handle<Skeleton> {
+        &self.skeleton
+    }
+
+    pub fn set_skeleton(&mut self, skeleton: Handle<Skeleton>) {
+        self.skeleton = skeleton;
     }
 
     pub fn from_bevy_clip(
         bevy_clip: bevy::animation::AnimationClip,
-        skelington: Handle<Skeleton>,
+        skeleton: Handle<Skeleton>,
     ) -> Self {
-        // HACK: to get the corret type, since bevy's AnimationClip
-        // does not expose its internals
-        let tmp_clip: TempGraphClip = unsafe { std::mem::transmute(bevy_clip) };
         Self {
-            curves: tmp_clip.curves,
-            duration: tmp_clip.duration,
-            skeleton: skelington,
+            curves: bevy_clip.curves().clone(),
+            duration: bevy_clip.duration(),
+            skeleton,
         }
     }
 }

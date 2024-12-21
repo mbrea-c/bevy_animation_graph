@@ -1,24 +1,12 @@
-use super::{
-    serial::{AnimationGraphSerial, AnimationNodeTypeSerial},
-    AnimationGraph,
-};
-use crate::{
-    core::{animation_clip::GraphClip, errors::AssetLoaderError},
-    nodes::{
-        AbsF32, AddF32, BlendNode, BuildVec3Node, ChainNode, ClampF32, ClipNode, CompareF32,
-        ConstBool, ConstEntityPath, ConstF32, ConstVec3Node, DecomposeVec3Node, DivF32, FSMNode,
-        FireEventNode, FlipLRNode, FromEulerNode, GraphNode, IntoEulerNode, InvertQuatNode,
-        LengthVec3Node, LerpVec3Node, LoopNode, MulF32, MulQuatNode, NormalizeVec3Node,
-        PaddingNode, RotationArcNode, RotationNode, SelectF32, SlerpQuatNode, SpeedNode, SubF32,
-        TwoBoneIKNode,
-    },
-    prelude::DummyNode,
-};
+use super::{serial::AnimationGraphLoadDeserializer, AnimationGraph};
+use crate::core::{animation_clip::GraphClip, errors::AssetLoaderError};
 use bevy::{
-    asset::{io::Reader, AssetLoader, AsyncReadExt, LoadContext},
+    asset::{io::Reader, AssetLoader, LoadContext},
     gltf::Gltf,
+    prelude::*,
+    reflect::TypeRegistryArc,
 };
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeSeed, Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub enum GraphClipSource {
@@ -42,11 +30,11 @@ impl AssetLoader for GraphClipLoader {
     type Settings = ();
     type Error = AssetLoaderError;
 
-    async fn load<'a>(
-        &'a self,
-        reader: &'a mut Reader<'_>,
-        _settings: &'a Self::Settings,
-        load_context: &'a mut LoadContext<'_>,
+    async fn load(
+        &self,
+        reader: &mut dyn Reader,
+        _settings: &Self::Settings,
+        load_context: &mut LoadContext<'_>,
     ) -> Result<Self::Asset, Self::Error> {
         let mut bytes = vec![];
         reader.read_to_end(&mut bytes).await?;
@@ -57,7 +45,12 @@ impl AssetLoader for GraphClipLoader {
                 path,
                 animation_name,
             } => {
-                let gltf_loaded_asset = load_context.loader().direct().untyped().load(path).await?;
+                let gltf_loaded_asset = load_context
+                    .loader()
+                    .immediate()
+                    .with_unknown_type()
+                    .load(path)
+                    .await?;
                 let gltf: &Gltf = gltf_loaded_asset.get().unwrap();
 
                 let Some(clip_handle) = gltf
@@ -94,23 +87,45 @@ impl AssetLoader for GraphClipLoader {
     }
 }
 
-#[derive(Default)]
-pub struct AnimationGraphLoader;
+#[derive(Debug, Clone)]
+pub struct AnimationGraphLoader {
+    type_registry: TypeRegistryArc,
+}
+
+impl FromWorld for AnimationGraphLoader {
+    fn from_world(world: &mut World) -> Self {
+        let type_registry = world.resource::<AppTypeRegistry>();
+        AnimationGraphLoader {
+            type_registry: type_registry.0.clone(),
+        }
+    }
+}
 
 impl AssetLoader for AnimationGraphLoader {
     type Asset = AnimationGraph;
     type Settings = ();
     type Error = AssetLoaderError;
 
-    async fn load<'a>(
-        &'a self,
-        reader: &'a mut Reader<'_>,
-        _settings: &'a Self::Settings,
-        load_context: &'a mut LoadContext<'_>,
+    async fn load(
+        &self,
+        reader: &mut dyn Reader,
+        _settings: &Self::Settings,
+        load_context: &mut LoadContext<'_>,
     ) -> Result<Self::Asset, Self::Error> {
         let mut bytes = vec![];
         reader.read_to_end(&mut bytes).await?;
-        let serial: AnimationGraphSerial = ron::de::from_bytes(&bytes)?;
+
+        // TODO: what's stopping us from removing the AnimationGraphSerial
+        // intermediary, and just deserializing to an AnimationGraph?
+
+        let mut ron_deserializer = ron::de::Deserializer::from_bytes(&bytes)?;
+        let graph_deserializer = AnimationGraphLoadDeserializer {
+            type_registry: &self.type_registry.read(),
+            load_context,
+        };
+        let serial = graph_deserializer
+            .deserialize(&mut ron_deserializer)
+            .map_err(|err| ron_deserializer.span_error(err))?;
 
         let mut graph = AnimationGraph::new();
 
@@ -123,115 +138,7 @@ impl AssetLoader for AnimationGraphLoader {
 
         // --- Add nodes
         // ------------------------------------------------------------------------------------
-        for serial_node in &serial.nodes {
-            let node = match &serial_node.node {
-                AnimationNodeTypeSerial::Clip(
-                    clip_name,
-                    override_duration,
-                    override_interpolation,
-                ) => ClipNode::new(
-                    load_context.load(clip_name),
-                    *override_duration,
-                    *override_interpolation,
-                )
-                .wrapped(&serial_node.name),
-                AnimationNodeTypeSerial::Blend { mode, sync_mode } => {
-                    BlendNode::new(*mode, *sync_mode).wrapped(&serial_node.name)
-                }
-                AnimationNodeTypeSerial::Chain {
-                    interpolation_period,
-                } => ChainNode::new(*interpolation_period).wrapped(&serial_node.name),
-                AnimationNodeTypeSerial::FlipLR { config } => {
-                    FlipLRNode::new(config.clone()).wrapped(&serial_node.name)
-                }
-                AnimationNodeTypeSerial::Loop {
-                    interpolation_period,
-                } => LoopNode::new(*interpolation_period).wrapped(&serial_node.name),
-                AnimationNodeTypeSerial::Speed => SpeedNode::new().wrapped(&serial_node.name),
-                AnimationNodeTypeSerial::Rotation(mode, space, decay, length, base_weight) => {
-                    RotationNode::new(*mode, *space, *decay, *length, *base_weight)
-                        .wrapped(&serial_node.name)
-                }
-                AnimationNodeTypeSerial::FireEvent(ev) => {
-                    FireEventNode::new(ev.clone()).wrapped(&serial_node.name)
-                }
-                AnimationNodeTypeSerial::ConstF32(n) => {
-                    ConstF32::new(*n).wrapped(&serial_node.name)
-                }
-                AnimationNodeTypeSerial::AddF32 => AddF32::new().wrapped(&serial_node.name),
-                AnimationNodeTypeSerial::SubF32 => SubF32::new().wrapped(&serial_node.name),
-                AnimationNodeTypeSerial::MulF32 => MulF32::new().wrapped(&serial_node.name),
-                AnimationNodeTypeSerial::DivF32 => DivF32::new().wrapped(&serial_node.name),
-                AnimationNodeTypeSerial::ClampF32 => ClampF32::new().wrapped(&serial_node.name),
-                AnimationNodeTypeSerial::CompareF32(op) => {
-                    CompareF32::new(*op).wrapped(&serial_node.name)
-                }
-                AnimationNodeTypeSerial::AbsF32 => AbsF32::new().wrapped(&serial_node.name),
-                AnimationNodeTypeSerial::ConstBool(b) => {
-                    ConstBool::new(*b).wrapped(&serial_node.name)
-                }
-                AnimationNodeTypeSerial::RotationArc => {
-                    RotationArcNode::new().wrapped(&serial_node.name)
-                }
-                AnimationNodeTypeSerial::Fsm(fsm_name) => {
-                    FSMNode::new(load_context.load(fsm_name)).wrapped(&serial_node.name)
-                }
-                AnimationNodeTypeSerial::Graph(graph_name) => {
-                    GraphNode::new(load_context.load(graph_name)).wrapped(&serial_node.name)
-                }
-                // AnimationNodeTypeSerial::IntoBoneSpace => {
-                //     IntoBoneSpaceNode::new().wrapped(&serial_node.name)
-                // }
-                // AnimationNodeTypeSerial::IntoCharacterSpace => {
-                //     IntoCharacterSpaceNode::new().wrapped(&serial_node.name)
-                // }
-                // AnimationNodeTypeSerial::ExtendSkeleton => {
-                //     ExtendSkeleton::new().wrapped(&serial_node.name)
-                // }
-                AnimationNodeTypeSerial::TwoBoneIK => {
-                    TwoBoneIKNode::new().wrapped(&serial_node.name)
-                }
-                // AnimationNodeTypeSerial::IntoGlobalSpace => {
-                //     IntoGlobalSpaceNode::new().wrapped(&serial_node.name)
-                // }
-                AnimationNodeTypeSerial::Dummy => DummyNode::new().wrapped(&serial_node.name),
-                AnimationNodeTypeSerial::Padding {
-                    interpolation_period,
-                } => PaddingNode::new(*interpolation_period).wrapped(&serial_node.name),
-                AnimationNodeTypeSerial::BuildVec3 => {
-                    BuildVec3Node::new().wrapped(&serial_node.name)
-                }
-                AnimationNodeTypeSerial::DecomposeVec3 => {
-                    DecomposeVec3Node::new().wrapped(&serial_node.name)
-                }
-                AnimationNodeTypeSerial::LerpVec3 => LerpVec3Node::new().wrapped(&serial_node.name),
-                AnimationNodeTypeSerial::SlerpQuat => {
-                    SlerpQuatNode::new().wrapped(&serial_node.name)
-                }
-                AnimationNodeTypeSerial::FromEuler(mode) => {
-                    FromEulerNode::new(*mode).wrapped(&serial_node.name)
-                }
-                AnimationNodeTypeSerial::IntoEuler(mode) => {
-                    IntoEulerNode::new(*mode).wrapped(&serial_node.name)
-                }
-                AnimationNodeTypeSerial::MulQuat => MulQuatNode::new().wrapped(&serial_node.name),
-                AnimationNodeTypeSerial::InvertQuat => {
-                    InvertQuatNode::new().wrapped(&serial_node.name)
-                }
-                AnimationNodeTypeSerial::SelectF32 => SelectF32::new().wrapped(&serial_node.name),
-                AnimationNodeTypeSerial::ConstEntityPath(n) => {
-                    ConstEntityPath::new(n.clone()).wrapped(&serial_node.name)
-                }
-                AnimationNodeTypeSerial::NormalizeVec3 => {
-                    NormalizeVec3Node::new().wrapped(&serial_node.name)
-                }
-                AnimationNodeTypeSerial::LengthVec3 => {
-                    LengthVec3Node::new().wrapped(&serial_node.name)
-                }
-                AnimationNodeTypeSerial::ConstVec3(n) => {
-                    ConstVec3Node::new(*n).wrapped(&serial_node.name)
-                }
-            };
+        for node in serial.nodes {
             graph.add_node(node);
         }
         // ------------------------------------------------------------------------------------
