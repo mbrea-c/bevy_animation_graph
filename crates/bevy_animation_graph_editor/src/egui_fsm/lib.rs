@@ -192,10 +192,10 @@ impl FsmUiContext {
         self.links.clear();
 
         ui.set_min_size(self.frame_state.canvas_rect_screen_space.size());
-        let mut ui = ui.child_ui(
-            self.frame_state.canvas_rect_screen_space,
-            egui::Layout::top_down(egui::Align::Center),
-            None,
+        let mut ui = ui.new_child(
+            egui::UiBuilder::default()
+                .max_rect(self.frame_state.canvas_rect_screen_space)
+                .layout(egui::Layout::top_down(egui::Align::Center)),
         );
         // Setup and draw canvas, add links and nodes
         // This also draws text for attributes
@@ -395,8 +395,11 @@ impl FsmUiContext {
         let node_size = node.state.size;
         let title_space = node.state.layout_style.padding.y;
 
-        let response = ui.allocate_ui_at_rect(
-            egui::Rect::from_min_size(self.grid_space_to_screen_space(node_origin), node_size),
+        let response = ui.allocate_new_ui(
+            egui::UiBuilder::default().max_rect(egui::Rect::from_min_size(
+                self.grid_space_to_screen_space(node_origin),
+                node_size,
+            )),
             |ui| {
                 let mut title_info = None;
                 let titlebar_shape = ui.painter().add(egui::Shape::Noop);

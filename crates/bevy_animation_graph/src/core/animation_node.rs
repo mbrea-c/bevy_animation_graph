@@ -45,12 +45,12 @@ pub trait NodeLike: NodeLikeClone + Send + Sync + Debug + Reflect {
     fn display_name(&self) -> String;
 
     /// The order of the input pins. This way, you can mix time and data pins in the UI.
-    fn input_pin_ordering(&self) -> PinOrdering {
+    fn input_pin_ordering(&self, _ctx: SpecContext) -> PinOrdering {
         PinOrdering::default()
     }
 
     /// The order of the output pins. This way, you can mix time and data pins in the UI.
-    fn output_pin_ordering(&self) -> PinOrdering {
+    fn output_pin_ordering(&self, _ctx: SpecContext) -> PinOrdering {
         PinOrdering::default()
     }
 }
@@ -121,15 +121,15 @@ pub trait EditProxy {
 
 #[derive(Clone, Reflect, Debug, Default)]
 pub struct PinOrdering {
-    keys: HashMap<PinId, usize>,
+    keys: HashMap<PinId, i32>,
 }
 
 impl PinOrdering {
-    pub fn new(keys: impl Into<HashMap<PinId, usize>>) -> Self {
+    pub fn new(keys: impl Into<HashMap<PinId, i32>>) -> Self {
         Self { keys: keys.into() }
     }
 
-    pub fn pin_key(&self, pin_id: &PinId) -> usize {
+    pub fn pin_key(&self, pin_id: &PinId) -> i32 {
         self.keys.get(pin_id).copied().unwrap_or(0)
     }
 }

@@ -1,5 +1,6 @@
+use core::hash::Hasher;
 use std::any::TypeId;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use std::path::PathBuf;
 
 use crate::asset_saving::{SaveFsm, SaveGraph};
@@ -35,7 +36,7 @@ use bevy_animation_graph::core::edge_data::AnimationEvent;
 use bevy_animation_graph::core::state_machine::high_level::{
     State, StateId, StateMachine, Transition, TransitionId,
 };
-use bevy_animation_graph::prelude::{ReflectEditProxy, ReflectNodeLike};
+use bevy_animation_graph::prelude::{AnimatedSceneHandle, ReflectEditProxy, ReflectNodeLike};
 use bevy_egui::EguiContext;
 use bevy_inspector_egui::bevy_egui::EguiUserTextures;
 use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
@@ -1136,7 +1137,7 @@ impl TabViewer<'_> {
                         .find(|type_info| type_info.id == type_id)
                         .map(|type_info| type_info.short.clone())
                         .unwrap_or_else(|| "(?)".into());
-                    egui::ComboBox::from_id_source("node creator type")
+                    egui::ComboBox::from_id_salt("node creator type")
                         .selected_text(egui::RichText::new(selected_text).monospace())
                         .show_ui(ui, |ui| {
                             for node_type in types {
@@ -1157,9 +1158,9 @@ impl TabViewer<'_> {
 
                     let mut hasher = std::collections::hash_map::DefaultHasher::new();
                     "Create node".hash(&mut hasher);
-                    let node_creator_id = egui::Id::new(hasher.finish());
+                    let node_creator_id = egui::Id::new(Hasher::finish(&hasher));
                     env.ui_for_reflect_with_options(
-                        selection.node_creation.node.inner.as_reflect_mut(),
+                        selection.node_creation.node.inner.as_partial_reflect_mut(),
                         ui,
                         node_creator_id,
                         &(),
@@ -1262,14 +1263,14 @@ impl TabViewer<'_> {
             type_registry.get_type_data::<ReflectEditProxy>(node.inner.type_id())
         {
             let mut proxy = (edit_proxy.to_proxy)(node.inner.as_ref());
-            let changed = env.ui_for_reflect(proxy.as_reflect_mut(), ui);
+            let changed = env.ui_for_reflect(proxy.as_partial_reflect_mut(), ui);
             if changed {
                 let inner = (edit_proxy.from_proxy)(proxy.as_ref());
                 node.inner = inner;
             }
             changed
         } else {
-            let changed = env.ui_for_reflect(node.inner.as_reflect_mut(), ui);
+            let changed = env.ui_for_reflect(node.inner.as_partial_reflect_mut(), ui);
             changed
         };
 
@@ -1687,16 +1688,16 @@ pub struct PreviewScene;
 
 pub fn scene_spawner_system(
     mut commands: Commands,
-    mut query: Query<(Entity, &Handle<AnimatedScene>), With<PreviewScene>>,
+    mut query: Query<(Entity, &AnimatedSceneHandle), With<PreviewScene>>,
     mut ui_state: ResMut<UiState>,
 ) {
-    if let Ok((entity, scene_handle)) = query.get_single_mut() {
+    if let Ok((entity, AnimatedSceneHandle(scene_handle))) = query.get_single_mut() {
         if let Some(scene_selection) = &mut ui_state.selection.scene {
             if scene_selection.respawn || &scene_selection.scene != scene_handle {
                 commands.entity(entity).despawn_recursive();
                 commands
                     .spawn(AnimatedSceneBundle {
-                        animated_scene: scene_selection.scene.clone(),
+                        animated_scene: AnimatedSceneHandle(scene_selection.scene.clone()),
                         ..default()
                     })
                     .insert(PreviewScene);
@@ -1708,7 +1709,7 @@ pub fn scene_spawner_system(
     } else if let Some(scene_selection) = &mut ui_state.selection.scene {
         commands
             .spawn(AnimatedSceneBundle {
-                animated_scene: scene_selection.scene.clone(),
+                animated_scene: AnimatedSceneHandle(scene_selection.scene.clone()),
                 ..default()
             })
             .insert(PreviewScene);
@@ -1790,23 +1791,22 @@ pub fn setup_system(
 
     // Light
     // NOTE: Currently lights are shared between passes - see https://github.com/bevyengine/bevy/issues/3462
-    commands.spawn(PointLightBundle {
-        transform: Transform::from_translation(Vec3::new(0.0, 0.0, 10.0)),
-        ..default()
-    });
+    commands.spawn((
+        PointLight::default(),
+        Transform::from_translation(Vec3::new(0.0, 0.0, 10.0)),
+    ));
 
-    commands.spawn(Camera3dBundle {
-        camera: Camera {
+    commands.spawn((
+        Camera3d::default(),
+        Camera {
             // render before the "main pass" camera
             order: -1,
             clear_color: ClearColorConfig::Custom(Color::from(LinearRgba::new(1.0, 1.0, 1.0, 0.0))),
             target: RenderTarget::Image(image_handle),
             ..default()
         },
-        transform: Transform::from_translation(Vec3::new(0.0, 2.0, 3.0))
-            .looking_at(Vec3::Y, Vec3::Y),
-        ..default()
-    });
+        Transform::from_translation(Vec3::new(0.0, 2.0, 3.0)).looking_at(Vec3::Y, Vec3::Y),
+    ));
 }
 
 fn get_animation_graph_player(world: &mut World) -> Option<&AnimationGraphPlayer> {

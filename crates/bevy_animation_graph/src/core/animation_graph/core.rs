@@ -128,10 +128,16 @@ pub struct Extra {
     pub output_position: Vec2,
     /// Order of input pins in the editor
     #[serde(default)]
-    pub input_order: HashMap<PinId, i32>,
+    pub input_param_order: HashMap<PinId, i32>,
+    /// Order of input pins in the editor
+    #[serde(default)]
+    pub input_time_order: HashMap<PinId, i32>,
+    /// Order of input pins in the editor
+    #[serde(default)]
+    pub output_data_order: HashMap<PinId, i32>,
     /// Order of output pins in the editor
     #[serde(default)]
-    pub output_order: HashMap<PinId, i32>,
+    pub output_pose_order: HashMap<PinId, i32>,
 }
 
 impl Extra {
