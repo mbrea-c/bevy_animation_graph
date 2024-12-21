@@ -1,6 +1,7 @@
 [package]
 name = "human"
 publish = false
+edition = { workspace = true }
 
 [dependencies]
 bevy = { workspace = true }
