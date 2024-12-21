@@ -52,12 +52,12 @@ impl<K: Clone + Eq + Hash, V: Clone> OrderedMap<K, V> {
         vals
     }
 
-    pub fn from_vec(vec: &Vec<(K, V)>) -> Self {
+    pub fn from_vec(vec: &[(K, V)]) -> Self {
         let mut order_map = OrderedMap::default();
 
-        for (i, (k, v)) in vec.clone().into_iter().enumerate() {
+        for (i, (k, v)) in vec.iter().enumerate() {
             order_map.order.insert(k.clone(), i as i32);
-            order_map.values.insert(k, v);
+            order_map.values.insert(k.clone(), v.clone());
         }
 
         order_map
@@ -148,7 +148,7 @@ impl<T, B> Default for EguiInspectorBuffers<T, B> {
     fn default() -> Self {
         Self {
             bufs: HashMap::default(),
-            _marker: std::marker::PhantomData::default(),
+            _marker: std::marker::PhantomData,
         }
     }
 }
