@@ -31,7 +31,7 @@ impl<'a, 'de> DeserializeSeed<'de> for TypeRegistrationDeserializer<'a> {
     {
         struct TypeRegistrationVisitor<'a>(&'a TypeRegistry);
 
-        impl<'de, 'a> Visitor<'de> for TypeRegistrationVisitor<'a> {
+        impl<'a> Visitor<'_> for TypeRegistrationVisitor<'a> {
             type Value = &'a TypeRegistration;
 
             fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {

@@ -8,5 +8,5 @@ use serde::ser::Error;
 ///
 /// [type info stack]: crate::type_info_stack::TypeInfoStack
 pub(super) fn make_custom_error<E: Error>(msg: impl Display) -> E {
-    return E::custom(msg);
+    E::custom(msg)
 }

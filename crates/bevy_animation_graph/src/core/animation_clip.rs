@@ -80,7 +80,7 @@ struct InterpretEscapedString<'a> {
     s: std::str::Chars<'a>,
 }
 
-impl<'a> Iterator for InterpretEscapedString<'a> {
+impl Iterator for InterpretEscapedString<'_> {
     type Item = String;
 
     fn next(&mut self) -> Option<Self::Item> {

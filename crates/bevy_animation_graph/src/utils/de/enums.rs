@@ -103,7 +103,7 @@ impl<'de> DeserializeSeed<'de> for VariantDeserializer {
     {
         struct VariantVisitor(&'static EnumInfo);
 
-        impl<'de> Visitor<'de> for VariantVisitor {
+        impl Visitor<'_> for VariantVisitor {
             type Value = &'static VariantInfo;
 
             fn expecting(&self, formatter: &mut Formatter) -> fmt::Result {

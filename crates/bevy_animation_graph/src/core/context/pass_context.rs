@@ -306,7 +306,7 @@ impl<'a> PassContext<'a> {
     }
 }
 
-impl<'a> PassContext<'a> {
+impl PassContext<'_> {
     /// Request an input parameter from the graph
     pub fn data_back(&mut self, pin_id: impl Into<PinId>) -> Result<DataValue, GraphError> {
         let node_ctx = self.node_context.unwrap();

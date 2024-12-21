@@ -49,6 +49,7 @@ pub trait DeserializeWithRegistry<'de>: PartialReflect + Sized {
 
 /// Type data used to deserialize a [`PartialReflect`] type with a custom [`DeserializeWithRegistry`] implementation.
 #[derive(Clone)]
+#[allow(clippy::type_complexity)]
 pub struct ReflectDeserializeWithRegistry {
     deserialize: fn(
         deserializer: &mut dyn erased_serde::Deserializer,

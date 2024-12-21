@@ -9,6 +9,7 @@ use super::{error_utils::make_custom_error, ReflectSerializeWithRegistry};
 ///
 /// On success, returns the result of the serialization.
 /// On failure, returns the original serializer and the error that occurred.
+#[allow(clippy::type_complexity)]
 pub(super) fn try_custom_serialize<S: Serializer>(
     value: &dyn PartialReflect,
     type_registry: &TypeRegistry,

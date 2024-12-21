@@ -13,90 +13,6 @@ use super::{
     ReflectDeserializerProcessor,
 };
 
-/// A general purpose deserializer for reflected types.
-///
-/// This is the deserializer counterpart to [`ReflectSerializer`].
-///
-/// See [`TypedReflectDeserializer`] for a deserializer that expects a known type.
-///
-/// # Input
-///
-/// This deserializer expects a map with a single entry,
-/// where the key is the _full_ [type path] of the reflected type
-/// and the value is the serialized data.
-///
-/// # Output
-///
-/// This deserializer will return a [`Box<dyn Reflect>`] containing the deserialized data.
-///
-/// For opaque types (i.e. [`ReflectKind::Opaque`]) or types that register [`ReflectDeserialize`] type data,
-/// this `Box` will contain the expected type.
-/// For example, deserializing an `i32` will return a `Box<i32>` (as a `Box<dyn Reflect>`).
-///
-/// Otherwise, this `Box` will contain the dynamic equivalent.
-/// For example, a deserialized struct might return a [`Box<DynamicStruct>`]
-/// and a deserialized `Vec` might return a [`Box<DynamicList>`].
-///
-/// This means that if the actual type is needed, these dynamic representations will need to
-/// be converted to the concrete type using [`FromReflect`] or [`ReflectFromReflect`].
-///
-/// If you want to override deserialization for a specific [`TypeRegistration`],
-/// you can pass in a reference to a [`ReflectDeserializerProcessor`] which will
-/// take priority over all other deserialization methods - see [`with_processor`].
-///
-/// # Example
-///
-/// ```
-/// # use serde::de::DeserializeSeed;
-/// # use bevy_reflect::prelude::*;
-/// # use bevy_reflect::{DynamicStruct, TypeRegistry, serde::ReflectDeserializer};
-/// #[derive(Reflect, PartialEq, Debug)]
-/// #[type_path = "my_crate"]
-/// struct MyStruct {
-///   value: i32
-/// }
-///
-/// let mut registry = TypeRegistry::default();
-/// registry.register::<MyStruct>();
-///
-/// let input = r#"{
-///   "my_crate::MyStruct": (
-///     value: 123
-///   )
-/// }"#;
-///
-/// let mut deserializer = ron::Deserializer::from_str(input).unwrap();
-/// let reflect_deserializer = ReflectDeserializer::new(&registry);
-///
-/// let output: Box<dyn PartialReflect> = reflect_deserializer.deserialize(&mut deserializer).unwrap();
-///
-/// // Since `MyStruct` is not an opaque type and does not register `ReflectDeserialize`,
-/// // we know that its deserialized value will be a `DynamicStruct`,
-/// // although it will represent `MyStruct`.
-/// assert!(output.as_partial_reflect().represents::<MyStruct>());
-///
-/// // We can convert back to `MyStruct` using `FromReflect`.
-/// let value: MyStruct = <MyStruct as FromReflect>::from_reflect(output.as_partial_reflect()).unwrap();
-/// assert_eq!(value, MyStruct { value: 123 });
-///
-/// // We can also do this dynamically with `ReflectFromReflect`.
-/// let type_id = output.get_represented_type_info().unwrap().type_id();
-/// let reflect_from_reflect = registry.get_type_data::<ReflectFromReflect>(type_id).unwrap();
-/// let value: Box<dyn Reflect> = reflect_from_reflect.from_reflect(output.as_partial_reflect()).unwrap();
-/// assert!(value.is::<MyStruct>());
-/// assert_eq!(value.take::<MyStruct>().unwrap(), MyStruct { value: 123 });
-/// ```
-///
-/// [`ReflectSerializer`]: crate::serde::ReflectSerializer
-/// [type path]: crate::TypePath::type_path
-/// [`Box<dyn Reflect>`]: crate::Reflect
-/// [`ReflectKind::Opaque`]: crate::ReflectKind::Opaque
-/// [`ReflectDeserialize`]: crate::ReflectDeserialize
-/// [`Box<DynamicStruct>`]: crate::DynamicStruct
-/// [`Box<DynamicList>`]: crate::DynamicList
-/// [`FromReflect`]: crate::FromReflect
-/// [`ReflectFromReflect`]: crate::ReflectFromReflect
-/// [`with_processor`]: Self::with_processor
 pub struct ReflectDeserializer<'a, P: ReflectDeserializerProcessor = ()> {
     registry: &'a TypeRegistry,
     processor: Option<&'a mut P>,
@@ -153,87 +69,6 @@ impl<'de, P: ReflectDeserializerProcessor> DeserializeSeed<'de> for ReflectDeser
     }
 }
 
-/// A deserializer for reflected types whose [`TypeRegistration`] is known.
-///
-/// This is the deserializer counterpart to [`TypedReflectSerializer`].
-///
-/// See [`ReflectDeserializer`] for a deserializer that expects an unknown type.
-///
-/// # Input
-///
-/// Since the type is already known, the input is just the serialized data.
-///
-/// # Output
-///
-/// This deserializer will return a [`Box<dyn Reflect>`] containing the deserialized data.
-///
-/// For opaque types (i.e. [`ReflectKind::Opaque`]) or types that register [`ReflectDeserialize`] type data,
-/// this `Box` will contain the expected type.
-/// For example, deserializing an `i32` will return a `Box<i32>` (as a `Box<dyn Reflect>`).
-///
-/// Otherwise, this `Box` will contain the dynamic equivalent.
-/// For example, a deserialized struct might return a [`Box<DynamicStruct>`]
-/// and a deserialized `Vec` might return a [`Box<DynamicList>`].
-///
-/// This means that if the actual type is needed, these dynamic representations will need to
-/// be converted to the concrete type using [`FromReflect`] or [`ReflectFromReflect`].
-///
-/// If you want to override deserialization for a specific [`TypeRegistration`],
-/// you can pass in a reference to a [`ReflectDeserializerProcessor`] which will
-/// take priority over all other deserialization methods - see [`with_processor`].
-///
-/// # Example
-///
-/// ```
-/// # use std::any::TypeId;
-/// # use serde::de::DeserializeSeed;
-/// # use bevy_reflect::prelude::*;
-/// # use bevy_reflect::{DynamicStruct, TypeRegistry, serde::TypedReflectDeserializer};
-/// #[derive(Reflect, PartialEq, Debug)]
-/// struct MyStruct {
-///   value: i32
-/// }
-///
-/// let mut registry = TypeRegistry::default();
-/// registry.register::<MyStruct>();
-///
-/// let input = r#"(
-///   value: 123
-/// )"#;
-///
-/// let registration = registry.get(TypeId::of::<MyStruct>()).unwrap();
-///
-/// let mut deserializer = ron::Deserializer::from_str(input).unwrap();
-/// let reflect_deserializer = TypedReflectDeserializer::new(registration, &registry);
-///
-/// let output: Box<dyn PartialReflect> = reflect_deserializer.deserialize(&mut deserializer).unwrap();
-///
-/// // Since `MyStruct` is not an opaque type and does not register `ReflectDeserialize`,
-/// // we know that its deserialized value will be a `DynamicStruct`,
-/// // although it will represent `MyStruct`.
-/// assert!(output.as_partial_reflect().represents::<MyStruct>());
-///
-/// // We can convert back to `MyStruct` using `FromReflect`.
-/// let value: MyStruct = <MyStruct as FromReflect>::from_reflect(output.as_partial_reflect()).unwrap();
-/// assert_eq!(value, MyStruct { value: 123 });
-///
-/// // We can also do this dynamically with `ReflectFromReflect`.
-/// let type_id = output.get_represented_type_info().unwrap().type_id();
-/// let reflect_from_reflect = registry.get_type_data::<ReflectFromReflect>(type_id).unwrap();
-/// let value: Box<dyn Reflect> = reflect_from_reflect.from_reflect(output.as_partial_reflect()).unwrap();
-/// assert!(value.is::<MyStruct>());
-/// assert_eq!(value.take::<MyStruct>().unwrap(), MyStruct { value: 123 });
-/// ```
-///
-/// [`TypedReflectSerializer`]: crate::serde::TypedReflectSerializer
-/// [`Box<dyn Reflect>`]: crate::Reflect
-/// [`ReflectKind::Opaque`]: crate::ReflectKind::Opaque
-/// [`ReflectDeserialize`]: crate::ReflectDeserialize
-/// [`Box<DynamicStruct>`]: crate::DynamicStruct
-/// [`Box<DynamicList>`]: crate::DynamicList
-/// [`FromReflect`]: crate::FromReflect
-/// [`ReflectFromReflect`]: crate::ReflectFromReflect
-/// [`with_processor`]: Self::with_processor
 pub struct TypedReflectDeserializer<'a, P: ReflectDeserializerProcessor = ()> {
     registration: &'a TypeRegistration,
     registry: &'a TypeRegistry,
@@ -443,8 +278,6 @@ impl<'de, P: ReflectDeserializerProcessor> DeserializeSeed<'de>
             }
         };
 
-        let output = deserialize_internal();
-
-        output
+        deserialize_internal()
     }
 }
