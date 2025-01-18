@@ -2104,6 +2104,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "editor_as_a_plugin"
+version = "0.0.0"
+dependencies = [
+ "bevy",
+ "bevy_animation_graph",
+ "bevy_animation_graph_editor",
+ "rand",
+]
+
+[[package]]
 name = "egui"
 version = "0.29.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"

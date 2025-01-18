@@ -1,0 +1,42 @@
+(
+    nodes: [
+        (
+            name: "Custom node",
+            ty: "editor_as_a_plugin::MyCustomNode",
+            inner: (),
+        ),
+        (
+            name: "Human animation",
+            ty: "bevy_animation_graph::nodes::graph_node::GraphNode",
+            inner: (
+                graph: "animation_graphs/human_new.animgraph.ron",
+            ),
+        ),
+    ],
+    edges_inverted: {
+        NodeTime("Custom node", "time"): NodeTime("Human animation"),
+        OutputTime: NodeTime("Custom node"),
+        NodeData("Custom node", "pose"): NodeData("Human animation", "pose"),
+        OutputData("pose"): NodeData("Custom node", "pose"),
+    },
+    default_parameters: {},
+    input_times: {},
+    output_parameters: {
+        "pose": Pose,
+    },
+    output_time: Some(()),
+    extra: (
+        node_positions: {
+            "Custom node": (357.23087, 492.0),
+            "Human animation": (152.3077, 421.84613),
+        },
+        input_position: (-0.92308044, 500.30765),
+        output_position: (515.07697, 513.2307),
+        input_param_order: {},
+        input_time_order: {},
+        output_data_order: {
+            "pose": 0,
+        },
+        output_pose_order: {},
+    ),
+)
