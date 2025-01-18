@@ -158,13 +158,6 @@ impl ColorStyle {
 }
 
 /// The style used by a context
-/// Example:
-/// ``` rust
-/// # use egui_nodes::{Context, Style, ColorStyle};
-/// let mut ctx = Context::default();
-/// let style = Style { colors: ColorStyle::colors_classic(), ..Default::default() };
-/// ctx.style = style;
-/// ```
 #[derive(Debug)]
 pub struct Style {
     pub grid_spacing: f32,
