@@ -1,0 +1,10 @@
+[package]
+name = "editor_as_a_plugin"
+publish = false
+edition = { workspace = true }
+
+[dependencies]
+bevy = { workspace = true }
+bevy_animation_graph = { path = "../../crates/bevy_animation_graph" }
+bevy_animation_graph_editor = { path = "../../crates/bevy_animation_graph_editor" }
+rand = "0.8"

@@ -11,10 +11,10 @@ use serde::{Deserialize, Serialize};
 /// [`Transform`]: bevy::transform::prelude::Transform
 #[derive(Asset, Reflect, Clone, Debug, Default, Serialize, Deserialize)]
 pub struct BonePose {
-    pub(crate) rotation: Option<Quat>,
-    pub(crate) translation: Option<Vec3>,
-    pub(crate) scale: Option<Vec3>,
-    pub(crate) weights: Option<Vec<f32>>,
+    pub rotation: Option<Quat>,
+    pub translation: Option<Vec3>,
+    pub scale: Option<Vec3>,
+    pub weights: Option<Vec<f32>>,
 }
 
 impl BonePose {
@@ -69,11 +69,11 @@ impl BonePose {
 #[derive(Asset, Reflect, Clone, Debug, Default, Serialize, Deserialize)]
 #[reflect(Default)]
 pub struct Pose {
-    pub(crate) bones: Vec<BonePose>,
-    pub(crate) paths: HashMap<BoneId, usize>,
-    pub(crate) timestamp: f32,
+    pub bones: Vec<BonePose>,
+    pub paths: HashMap<BoneId, usize>,
+    pub timestamp: f32,
     #[serde(skip)]
-    pub(crate) skeleton: Handle<Skeleton>,
+    pub skeleton: Handle<Skeleton>,
 }
 
 impl Pose {

@@ -151,7 +151,7 @@ impl InteractionState {
             left_mouse_clicked && !(self.left_mouse_clicked || self.left_mouse_dragging);
 
         let alt_mouse_clicked = emulate_three_button_mouse.is_active(&io.modifiers)
-            || alt_mouse_button.map_or(false, |x| io.pointer.button_down(x));
+            || alt_mouse_button.is_some_and(|x| io.pointer.button_down(x));
 
         new_state.alt_mouse_dragging =
             (self.alt_mouse_clicked || self.alt_mouse_dragging) && alt_mouse_clicked;
@@ -1080,7 +1080,7 @@ impl NodesContext {
             return false;
         }
 
-        if duplicate_link.map_or(false, |x| Some(x) != self.frame_state.snap_link_idx) {
+        if duplicate_link.is_some_and(|x| Some(x) != self.frame_state.snap_link_idx) {
             return false;
         }
         true
@@ -1218,7 +1218,7 @@ impl NodesContext {
                     )
                 });
 
-                let should_snap = self.frame_state.hovered_pin_index.map_or(false, |idx| {
+                let should_snap = self.frame_state.hovered_pin_index.is_some_and(|idx| {
                     let start_pin = &self.pins[&self
                         .state
                         .click_interaction_state
@@ -1232,7 +1232,7 @@ impl NodesContext {
                     .click_interaction_state
                     .link_creation
                     .end_pin_index
-                    .map_or(false, |idx| self.frame_state.hovered_pin_index != Some(idx));
+                    .is_some_and(|idx| self.frame_state.hovered_pin_index != Some(idx));
 
                 if snapping_pin_changed && self.frame_state.snap_link_idx.is_some() {
                     self.begin_link_detach(
@@ -1271,12 +1271,10 @@ impl NodesContext {
                     self.settings.style.colors[ColorStyle::Link as usize],
                 )));
 
-                let link_creation_on_snap =
-                    self.frame_state.hovered_pin_index.map_or(false, |idx| {
-                        (self.pins[&idx].spec.flags
-                            & AttributeFlags::EnableLinkCreationOnSnap as usize)
-                            != 0
-                    });
+                let link_creation_on_snap = self.frame_state.hovered_pin_index.is_some_and(|idx| {
+                    (self.pins[&idx].spec.flags & AttributeFlags::EnableLinkCreationOnSnap as usize)
+                        != 0
+                });
 
                 if !should_snap {
                     self.state
