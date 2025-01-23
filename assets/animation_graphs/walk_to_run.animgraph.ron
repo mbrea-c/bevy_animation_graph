@@ -1,24 +1,27 @@
 (
     nodes: [
-        (
-            name: "Done",
-            ty: "bevy_animation_graph::nodes::arithmetic::event_queue::fire_event::FireEventNode",
-            inner: (
+    (
+        name: "Done",
+        inner: {
+            "bevy_animation_graph::nodes::arithmetic::event_queue::fire_event::FireEventNode": (
                 event: EndTransition,
             ),
-        ),
-        (
-            name: "Blend",
-            ty: "bevy_animation_graph::nodes::blend_node::BlendNode",
-            inner: (),
-        ),
-        (
-            name: "Is it done?",
-            ty: "bevy_animation_graph::nodes::arithmetic::f32::compare_f32::CompareF32",
-            inner: (
+        },
+    ),
+    (
+        name: "Blend",
+        inner: {
+            "bevy_animation_graph::nodes::blend_node::BlendNode": (),
+        },
+    ),
+    (
+        name: "Is it done?",
+        inner: {
+            "bevy_animation_graph::nodes::arithmetic::f32::compare_f32::CompareF32": (
                 op: MoreEqual,
             ),
-        ),
+        },
+    ),
     ],
     edges_inverted: {
         NodeData("Is it done?", "F32 In 2"): InputData("1"),

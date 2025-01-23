@@ -1,18 +1,20 @@
 (
-    nodes: [
-        (
-            name: "Custom node",
-            ty: "editor_as_a_plugin::MyCustomNode",
-            inner: (),
-        ),
-        (
-            name: "Human animation",
-            ty: "bevy_animation_graph::nodes::graph_node::GraphNode",
-            inner: (
+nodes: [
+    (
+        name: "Custom node",
+        inner: {
+            "editor_as_a_plugin::MyCustomNode": (),
+        },
+    ),
+    (
+        name: "Human animation",
+        inner: {
+            "bevy_animation_graph::nodes::graph_node::GraphNode": (
                 graph: "animation_graphs/human_new.animgraph.ron",
             ),
-        ),
-    ],
+        },
+    ),
+],
     edges_inverted: {
         NodeTime("Custom node", "time"): NodeTime("Human animation"),
         OutputTime: NodeTime("Custom node"),
