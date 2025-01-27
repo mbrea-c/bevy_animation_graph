@@ -4,7 +4,7 @@ use crate::{
     utils::unwrap::UnwrapVal,
 };
 use bevy::{
-    math::{Quat, Vec3},
+    math::{Quat, Vec2, Vec3},
     reflect::{std_traits::ReflectDefault, Reflect},
 };
 use serde::{Deserialize, Serialize};
@@ -38,6 +38,7 @@ pub enum DataSpec {
     #[default]
     F32,
     Bool,
+    Vec2,
     Vec3,
     EntityPath,
     Quat,
@@ -51,6 +52,7 @@ pub enum DataValue {
     // trivial copy
     F32(f32),
     Bool(bool),
+    Vec2(Vec2),
     Vec3(Vec3),
     Quat(Quat),
     // non-trivial copy
@@ -93,6 +95,19 @@ impl DataValue {
     #[must_use]
     pub fn into_bool(self) -> Option<bool> {
         self.as_bool()
+    }
+    #[must_use]
+
+    pub const fn as_vec2(&self) -> Option<Vec2> {
+        match self {
+            &Self::Vec2(x) => Some(x),
+            _ => None,
+        }
+    }
+
+    #[must_use]
+    pub fn into_vec2(self) -> Option<Vec2> {
+        self.as_vec2()
     }
 
     #[must_use]
@@ -201,6 +216,15 @@ impl UnwrapVal<Quat> for DataValue {
     }
 }
 
+impl UnwrapVal<Vec2> for DataValue {
+    fn val(self) -> Vec2 {
+        match self {
+            DataValue::Vec2(v) => v,
+            _ => panic!("Expected Vec2, found {:?}", DataSpec::from(&self)),
+        }
+    }
+}
+
 impl UnwrapVal<Vec3> for DataValue {
     fn val(self) -> Vec3 {
         match self {
@@ -277,6 +301,7 @@ impl From<&DataValue> for DataSpec {
     fn from(value: &DataValue) -> Self {
         match value {
             DataValue::F32(_) => DataSpec::F32,
+            DataValue::Vec2(_) => DataSpec::Vec2,
             DataValue::Vec3(_) => DataSpec::Vec3,
             DataValue::EntityPath(_) => DataSpec::EntityPath,
             DataValue::Quat(_) => DataSpec::Quat,

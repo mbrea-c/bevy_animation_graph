@@ -13,6 +13,7 @@ use bevy_animation_graph::core::{
 };
 use bevy_inspector_egui::egui::Color32;
 
+// TODO: Come up with better colors
 /// returns (base, hovered, selected)
 fn param_spec_to_colors(spec: DataSpec) -> (PinStyleArgs, LinkStyleArgs) {
     match spec {
@@ -20,6 +21,25 @@ fn param_spec_to_colors(spec: DataSpec) -> (PinStyleArgs, LinkStyleArgs) {
             let base = Color32::from_rgb(140, 28, 3);
             let hovered = Color32::from_rgb(184, 99, 74);
             let selected = Color32::from_rgb(184, 99, 74);
+
+            (
+                PinStyleArgs {
+                    background: Some(base),
+                    hovered: Some(hovered),
+                    shape: Some(PinShape::CircleFilled),
+                },
+                LinkStyleArgs {
+                    base: Some(base),
+                    hovered: Some(hovered),
+                    selected: Some(selected),
+                    thickness: None,
+                },
+            )
+        }
+        DataSpec::Vec2 => {
+            let base = Color32::from_rgb(50, 103, 29);
+            let hovered = Color32::from_rgb(111, 147, 93);
+            let selected = Color32::from_rgb(111, 147, 93);
 
             (
                 PinStyleArgs {

@@ -1,0 +1,75 @@
+use bevy::{math::Vec2, reflect::Reflect};
+
+use super::geometry::{CachedTriangle, Triangle, Vertex, VertexId};
+
+#[derive(Default, Reflect, Clone, Debug)]
+pub struct Triangulation {
+    triangles: Vec<CachedTriangle>,
+}
+
+impl Triangulation {
+    pub fn from_points_delaunay(points: Vec<Vec2>) -> Self {
+        let vertices = points
+            .into_iter()
+            .enumerate()
+            .map(|(i, v)| Vertex::new(v, VertexId::Index(i)))
+            .collect::<Vec<_>>();
+        let super_triangle = Triangle::super_triangle(&vertices);
+        let mut triangles = vec![CachedTriangle::from_triangle(super_triangle.clone())];
+        for vertex in vertices {
+            triangles = add_vertex(triangles, vertex);
+        }
+
+        Triangulation {
+            triangles: triangles
+                .into_iter()
+                .filter(|triangle| triangle.inner().has_vertices_in_common(&super_triangle))
+                .collect(),
+        }
+    }
+
+    pub fn find_linear_combination(&self, p: Vec2) -> [(Vertex, f32); 3] {
+        let (i, (closest_p, _)) = self
+            .triangles
+            .iter()
+            .enumerate()
+            .map(|(i, t)| (i, t.distance_to_point(p)))
+            .min_by(|(_, (_, d0)), (_, (_, d1))| d0.partial_cmp(d1).unwrap())
+            .unwrap();
+
+        let triangle = self.triangles[i].inner();
+        let bary = triangle.barycentric_coordinates(closest_p);
+
+        [
+            (triangle.p, bary.x),
+            (triangle.q, bary.y),
+            (triangle.r, bary.z),
+        ]
+    }
+}
+
+fn add_vertex(mut triangles: Vec<CachedTriangle>, vertex: Vertex) -> Vec<CachedTriangle> {
+    let mut edges = vec![];
+
+    triangles = triangles
+        .into_iter()
+        .filter(|triangle| {
+            if triangle.in_circumcircle(vertex.val).unwrap_or(true) {
+                edges.extend(triangle.inner().edges());
+                false
+            } else {
+                true
+            }
+        })
+        .collect();
+
+    edges.dedup();
+
+    edges.into_iter().for_each(|edge| {
+        triangles.push(CachedTriangle::from_triangle(Triangle::new(
+            edge.p, edge.q, vertex,
+        )))
+    });
+
+    triangles
+}

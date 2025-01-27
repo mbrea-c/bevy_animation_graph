@@ -15,6 +15,7 @@ use super::{
     state_machine::high_level::{loader::StateMachineLoader, StateMachine},
     systems::{animation_player, animation_player_deferred_gizmos},
 };
+use crate::nodes::blend_space_node::BlendSpaceNode;
 use crate::nodes::{
     AbsF32, AddF32, BlendMode, BlendNode, BlendSyncMode, ChainNode, ClampF32, ClipNode, CompareF32,
     DivF32, DummyNode, FSMNode, FireEventNode, FlipLRNode, GraphNode, LoopNode, MulF32,
@@ -101,6 +102,7 @@ impl AnimationGraphPlugin {
             .register_type::<DummyNode>()
             .register_type::<ChainNode>()
             .register_type::<BlendNode>()
+            .register_type::<BlendSpaceNode>()
             .register_type::<FlipLRNode>()
             .register_type::<GraphNode>()
             .register_type::<LoopNode>()
