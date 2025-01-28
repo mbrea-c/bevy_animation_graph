@@ -1,11 +1,9 @@
-use crate::core::animation_graph::{PinMap, TimeUpdate};
+use crate::core::animation_graph::PinMap;
 use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
-use crate::core::pose::Pose;
 use crate::core::prelude::DataSpec;
-use crate::prelude::{EditProxy, InterpolateLinear, PassContext, SpecContext};
+use crate::prelude::{EditProxy, PassContext, ReflectEditProxy, SpecContext};
 use crate::utils::delaunay::Triangulation;
-use crate::utils::unwrap::UnwrapVal;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -28,6 +26,13 @@ pub enum BlendSyncMode {
     NoSync,
 }
 
+#[derive(Reflect, Clone, Debug, Default, Serialize, Deserialize)]
+#[reflect(Default, Serialize, Deserialize)]
+pub struct PointElement {
+    pub id: String,
+    pub point: Vec2,
+}
+
 /// Allows you to map input poses to points in a 2D plane. A Delaunay triangulation of these points
 /// will be computed at load time, and at runtime the poses assigned to the vertices of closest triangle
 /// to the "position" input will be interpolated based on the barycentric coordinates of the
@@ -37,45 +42,61 @@ pub enum BlendSyncMode {
 /// This node is useful, for example, to blend between directional movement and strafe animations
 /// in a shooter game.
 #[derive(Reflect, Clone, Debug, Default)]
-#[reflect(Default, NodeLike)]
+#[reflect(Default, NodeLike, EditProxy)]
 pub struct BlendSpaceNode {
     pub mode: BlendMode,
     pub sync_mode: BlendSyncMode,
-    pub points: Vec<(String, Vec2)>,
+    pub points: Vec<PointElement>,
     pub triangulation: Triangulation,
 }
 
 impl BlendSpaceNode {
     /// 2D position in the blend space to sample
     pub const POSITION: &'static str = "position";
-    pub const IN_POSE_A: &'static str = "pose A";
-    pub const IN_TIME_A: &'static str = "time A";
-    pub const IN_POSE_B: &'static str = "pose B";
-    pub const IN_TIME_B: &'static str = "time B";
     pub const OUT_POSE: &'static str = "pose";
 
-    pub fn new(mode: BlendMode, sync_mode: BlendSyncMode, points: Vec<(String, Vec2)>) -> Self {
+    pub fn new(mode: BlendMode, sync_mode: BlendSyncMode, points: Vec<PointElement>) -> Self {
         Self {
             mode,
             sync_mode,
             points: points.clone(),
             triangulation: Triangulation::from_points_delaunay(
-                points.into_iter().map(|x| x.1).collect(),
+                points.into_iter().map(|x| x.point).collect(),
             ),
         }
+    }
+
+    pub fn pose_pin_id(key: &str) -> String {
+        format!("pose {}", key)
+    }
+
+    pub fn time_pin_id(key: &str) -> String {
+        format!("time {}", key)
+    }
+
+    fn vertex_key(&self, id: usize) -> &str {
+        &self.points[id].id
     }
 }
 
 impl NodeLike for BlendSpaceNode {
     fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let duration_1 = ctx.duration_back(Self::IN_TIME_A)?;
-        let duration_2 = ctx.duration_back(Self::IN_TIME_B)?;
+        let position = ctx.data_back(Self::POSITION)?.as_vec2().unwrap();
+        let [(v0, _), (v1, _), (v2, _)] = self.triangulation.find_linear_combination(position);
 
-        let out_duration = match (duration_1, duration_2) {
-            (Some(duration_1), Some(duration_2)) => Some(duration_1.max(duration_2)),
-            (Some(duration_1), None) => Some(duration_1),
-            (None, Some(duration_2)) => Some(duration_2),
-            (None, None) => None,
+        let duration_0 = ctx.duration_back(Self::time_pin_id(self.vertex_key(v0.id.index())))?;
+        let duration_1 = ctx.duration_back(Self::time_pin_id(self.vertex_key(v1.id.index())))?;
+        let duration_2 = ctx.duration_back(Self::time_pin_id(self.vertex_key(v2.id.index())))?;
+
+        let out_duration = if duration_0.is_none() && duration_1.is_none() && duration_2.is_none() {
+            None
+        } else {
+            Some(
+                duration_0
+                    .unwrap_or(0.)
+                    .max(duration_1.unwrap_or(0.))
+                    .max(duration_2.unwrap_or(0.)),
+            )
         };
 
         ctx.set_duration_fwd(out_duration);
@@ -85,37 +106,63 @@ impl NodeLike for BlendSpaceNode {
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
         let input = ctx.time_update_fwd()?;
 
-        ctx.set_time_update_back(Self::IN_TIME_A, input);
-        let in_frame_1: Pose = ctx.data_back(Self::IN_POSE_A)?.val();
+        let position = ctx.data_back(Self::POSITION)?.as_vec2().unwrap();
+        let [(v0, f0), (v1, f1), (v2, f2)] = self.triangulation.find_linear_combination(position);
 
-        match self.sync_mode {
-            BlendSyncMode::Absolute => {
-                ctx.set_time_update_back(
-                    Self::IN_TIME_B,
-                    TimeUpdate::Absolute(in_frame_1.timestamp),
-                );
-            }
-            BlendSyncMode::NoSync => {
-                ctx.set_time_update_back(Self::IN_TIME_B, input);
-            }
-        };
+        ctx.set_time_update_back(Self::time_pin_id(self.vertex_key(v0.id.index())), input);
+        ctx.set_time_update_back(Self::time_pin_id(self.vertex_key(v1.id.index())), input);
+        ctx.set_time_update_back(Self::time_pin_id(self.vertex_key(v2.id.index())), input);
 
-        let in_frame_2: Pose = ctx.data_back(Self::IN_POSE_B)?.val();
+        let pose_0 = ctx
+            .data_back(Self::pose_pin_id(self.vertex_key(v0.id.index())))?
+            .into_pose()
+            .unwrap();
+        let pose_1 = ctx
+            .data_back(Self::pose_pin_id(self.vertex_key(v1.id.index())))?
+            .into_pose()
+            .unwrap();
+        let pose_2 = ctx
+            .data_back(Self::pose_pin_id(self.vertex_key(v2.id.index())))?
+            .into_pose()
+            .unwrap();
 
-        let out = match self.mode {
-            BlendMode::LinearInterpolate => {
-                let alpha = ctx.data_back(Self::POSITION)?.unwrap_f32();
-                in_frame_1.interpolate_linear(&in_frame_2, alpha)
-            }
-            BlendMode::Additive => {
-                let alpha = ctx.data_back(Self::POSITION)?.unwrap_f32();
-                in_frame_1.additive_blend(&in_frame_2, alpha)
-            }
-            BlendMode::Difference => in_frame_1.difference(&in_frame_2),
-        };
+        // We do a linearized weighted average.
+        // While this is not the mathematically correct way of averaging quaternions,
+        // it's fast and in practice provides decent results.
+        let out_pose = pose_0
+            .scalar_mult(f0)
+            .linear_add(&pose_1.scalar_mult(f1))
+            .linear_add(&pose_2.scalar_mult(f2))
+            .normalize_quat();
 
-        ctx.set_time(out.timestamp);
-        ctx.set_data_fwd(Self::OUT_POSE, out);
+        // TODO: Find master animation track and sync according to sync_mode
+        // match self.sync_mode {
+        //     BlendSyncMode::Absolute => {
+        //         ctx.set_time_update_back(
+        //             Self::IN_TIME_B,
+        //             TimeUpdate::Absolute(in_frame_1.timestamp),
+        //         );
+        //     }
+        //     BlendSyncMode::NoSync => {
+        //         ctx.set_time_update_back(Self::IN_TIME_B, input);
+        //     }
+        // };
+
+        // TODO: Blend according to blend_mode
+        // let out = match self.mode {
+        //     BlendMode::LinearInterpolate => {
+        //         let alpha = ctx.data_back(Self::POSITION)?.unwrap_f32();
+        //         in_frame_1.interpolate_linear(&in_frame_2, alpha)
+        //     }
+        //     BlendMode::Additive => {
+        //         let alpha = ctx.data_back(Self::POSITION)?.unwrap_f32();
+        //         in_frame_1.additive_blend(&in_frame_2, alpha)
+        //     }
+        //     BlendMode::Difference => in_frame_1.difference(&in_frame_2),
+        // };
+
+        ctx.set_time(out_pose.timestamp);
+        ctx.set_data_fwd(Self::OUT_POSE, out_pose);
 
         Ok(())
     }
@@ -126,7 +173,7 @@ impl NodeLike for BlendSpaceNode {
         input_spec.extend(
             self.points
                 .iter()
-                .map(|(key, _)| (format!("pose {}", key), DataSpec::Pose)),
+                .map(|p| (Self::pose_pin_id(&p.id), DataSpec::Pose)),
         );
 
         input_spec
@@ -139,11 +186,7 @@ impl NodeLike for BlendSpaceNode {
     fn time_input_spec(&self, _: SpecContext) -> PinMap<()> {
         let mut input_spec = PinMap::new();
 
-        input_spec.extend(
-            self.points
-                .iter()
-                .map(|(key, _)| (format!("time {}", key), ())),
-        );
+        input_spec.extend(self.points.iter().map(|p| (Self::time_pin_id(&p.id), ())));
 
         input_spec
     }
@@ -157,11 +200,11 @@ impl NodeLike for BlendSpaceNode {
     }
 }
 
-#[derive(Clone, Reflect)]
+#[derive(Clone, Reflect, Serialize, Deserialize)]
 pub struct FlipLRProxy {
     pub mode: BlendMode,
     pub sync_mode: BlendSyncMode,
-    pub points: Vec<(String, Vec2)>,
+    pub points: Vec<PointElement>,
 }
 
 impl EditProxy for BlendSpaceNode {
@@ -173,7 +216,7 @@ impl EditProxy for BlendSpaceNode {
             sync_mode: proxy.sync_mode,
             points: proxy.points.clone(),
             triangulation: Triangulation::from_points_delaunay(
-                proxy.points.clone().into_iter().map(|x| x.1).collect(),
+                proxy.points.clone().into_iter().map(|x| x.point).collect(),
             ),
         }
     }

@@ -61,6 +61,38 @@ impl BonePose {
             }),
         }
     }
+
+    pub fn linear_add(&self, other: &BonePose) -> Self {
+        Self {
+            rotation: either_or_mix(self.rotation, other.rotation, |a, b| a + b),
+            translation: either_or_mix(self.translation, other.translation, |a, b| a + b),
+            scale: either_or_mix(self.scale, other.scale, |a, b| a + b),
+            weights: either_or_mix(self.weights.clone(), other.weights.clone(), |a, b| {
+                a.into_iter().zip(b).map(|(a, b)| a + b).collect()
+            }),
+        }
+    }
+
+    pub fn scalar_mult(&self, alpha: f32) -> Self {
+        Self {
+            rotation: self.rotation.map(|r| r * alpha),
+            translation: self.translation.map(|t| alpha * t),
+            scale: self.scale.map(|s| alpha * s),
+            weights: self
+                .weights
+                .clone()
+                .map(|w| w.into_iter().map(|a| alpha * a).collect()),
+        }
+    }
+
+    pub fn normalize_quat(&self) -> Self {
+        Self {
+            rotation: self.rotation.map(|r| r.normalize()),
+            translation: self.translation,
+            scale: self.scale,
+            weights: self.weights.clone(),
+        }
+    }
 }
 
 /// Vertical slice of an [`GraphClip`]
@@ -91,6 +123,18 @@ impl Pose {
         self.combine(other, |l, r| l.difference(r))
     }
 
+    pub fn linear_add(&self, other: &Pose) -> Self {
+        self.combine(other, |l, r| l.linear_add(r))
+    }
+
+    pub fn scalar_mult(&self, alpha: f32) -> Self {
+        self.map_bones(|bone| bone.scalar_mult(alpha))
+    }
+
+    pub fn normalize_quat(&self) -> Self {
+        self.map_bones(|bone| bone.normalize_quat())
+    }
+
     pub fn combine(&self, other: &Self, func: impl Fn(&BonePose, &BonePose) -> BonePose) -> Self {
         let mut result = Pose::default();
 
@@ -110,6 +154,19 @@ impl Pose {
                 continue;
             }
             result.add_bone(other.bones[*bone_id].clone(), *path);
+        }
+
+        result.timestamp = self.timestamp;
+        result.skeleton = self.skeleton.clone();
+
+        result
+    }
+
+    pub fn map_bones(&self, func: impl Fn(&BonePose) -> BonePose) -> Self {
+        let mut result = Pose::default();
+
+        for (path, bone_id) in self.paths.iter() {
+            result.add_bone(func(&self.bones[*bone_id]), *path);
         }
 
         result.timestamp = self.timestamp;

@@ -9,6 +9,19 @@ pub enum VertexId {
     Index(usize),
 }
 
+impl VertexId {
+    pub fn index(&self) -> usize {
+        self.as_index().unwrap()
+    }
+
+    pub fn as_index(&self) -> Option<usize> {
+        match self {
+            &VertexId::Index(idx) => Some(idx),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Default, Clone, Copy, Reflect, Debug, PartialEq)]
 pub struct Vertex {
     pub val: Vec2,
