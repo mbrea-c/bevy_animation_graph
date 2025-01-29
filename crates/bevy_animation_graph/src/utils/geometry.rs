@@ -177,6 +177,12 @@ impl Triangle {
 
         bary.x >= 0. && bary.y >= 0. && bary.z >= 0.
     }
+
+    pub fn all_vertices_have_index(&self) -> bool {
+        matches!(self.p.id, VertexId::Index(_))
+            && matches!(self.q.id, VertexId::Index(_))
+            && matches!(self.r.id, VertexId::Index(_))
+    }
 }
 
 #[derive(Default, Reflect, Clone, Debug)]

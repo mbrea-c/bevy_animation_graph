@@ -338,7 +338,7 @@ impl PassContext<'_> {
         let temp_cache = self.temp_cache;
         self.caches_mut().set(
             move |c| {
-                c.set_parameter(
+                c.set_data(
                     SourcePin::NodeData(node_ctx.node_id.clone(), pin_id.into()),
                     data.into(),
                 )

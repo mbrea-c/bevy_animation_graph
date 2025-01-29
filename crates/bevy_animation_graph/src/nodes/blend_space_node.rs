@@ -168,7 +168,7 @@ impl NodeLike for BlendSpaceNode {
     }
 
     fn data_input_spec(&self, _: SpecContext) -> PinMap<DataSpec> {
-        let mut input_spec = PinMap::from([(Self::POSITION.into(), DataSpec::F32)]);
+        let mut input_spec = PinMap::from([(Self::POSITION.into(), DataSpec::Vec2)]);
 
         input_spec.extend(
             self.points
@@ -196,7 +196,7 @@ impl NodeLike for BlendSpaceNode {
     }
 
     fn display_name(&self) -> String {
-        "∑ Blend".into()
+        "∑ Blend space 2D".into()
     }
 }
 

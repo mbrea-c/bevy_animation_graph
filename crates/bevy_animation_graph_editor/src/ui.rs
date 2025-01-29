@@ -28,7 +28,7 @@ use bevy_animation_graph::core::animated_scene::{
     AnimatedScene, AnimatedSceneBundle, AnimatedSceneInstance,
 };
 use bevy_animation_graph::core::animation_clip::EntityPath;
-use bevy_animation_graph::core::animation_graph::{AnimationGraph, NodeId};
+use bevy_animation_graph::core::animation_graph::{AnimationGraph, NodeId, PinMap};
 use bevy_animation_graph::core::animation_graph_player::AnimationGraphPlayer;
 use bevy_animation_graph::core::animation_node::AnimationNode;
 use bevy_animation_graph::core::context::{GraphContext, GraphContextId, SpecContext};
@@ -36,7 +36,9 @@ use bevy_animation_graph::core::edge_data::AnimationEvent;
 use bevy_animation_graph::core::state_machine::high_level::{
     State, StateId, StateMachine, Transition, TransitionId,
 };
-use bevy_animation_graph::prelude::{AnimatedSceneHandle, ReflectEditProxy, ReflectNodeLike};
+use bevy_animation_graph::prelude::{
+    AnimatedSceneHandle, DataSpec, ReflectEditProxy, ReflectNodeLike,
+};
 use bevy_egui::EguiContext;
 use bevy_inspector_egui::bevy_egui::EguiUserTextures;
 use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
@@ -220,6 +222,8 @@ enum EguiWindow {
     GraphSelector,
     SceneSelector,
     FsmSelector,
+    /// Allows access to cached outputs from nodes
+    Debugger,
     Inspector,
     EventSender,
     GraphSaver(AssetId<AnimationGraph>, String, bool),
@@ -241,6 +245,7 @@ impl EguiWindow {
             EguiWindow::FsmEditor => "FSM Editor".into(),
             EguiWindow::Inspector => "Inspector".into(),
             EguiWindow::EventSender => "Send events".into(),
+            EguiWindow::Debugger => "Debugger".into(),
         }
     }
 }
@@ -317,6 +322,7 @@ impl egui_dock::TabViewer for TabViewer<'_> {
                 }
             },
             EguiWindow::EventSender => Self::event_sender(self.world, ui, self.selection),
+            EguiWindow::Debugger => Self::debugger(self.world, ui, self.selection),
         }
 
         while !self.graph_changes.is_empty() {
@@ -1417,14 +1423,38 @@ impl TabViewer<'_> {
         preview_image: &Handle<Image>,
         selection: &mut EditorSelection,
     ) {
-        if ui.button("Close Preview").clicked() {
-            selection.scene = None;
-        }
-
         let cube_preview_texture_id =
             world.resource_scope::<EguiUserTextures, egui::TextureId>(|_, user_textures| {
                 user_textures.image_id(preview_image).unwrap()
             });
+
+        let mut query = world.query::<(&AnimatedSceneInstance, &PreviewScene)>();
+        let Ok((instance, _)) = query.get_single(world) else {
+            return;
+        };
+        let entity = instance.player_entity;
+        let mut query = world.query::<&mut AnimationGraphPlayer>();
+        let Ok(mut player) = query.get_mut(world, entity) else {
+            return;
+        };
+
+        ui.horizontal(|ui| {
+            if ui.button("X").on_hover_text("Close preview").clicked() {
+                selection.scene = None;
+            }
+
+            if ui.button("||").on_hover_text("Pause").clicked() {
+                player.pause()
+            }
+
+            if ui.button(">").on_hover_text("Play").clicked() {
+                player.resume()
+            }
+
+            if ui.button("||>").on_hover_text("Play one frame").clicked() {
+                player.play_one_frame()
+            }
+        });
 
         let available_size = ui.available_size();
         let e3d_size = Extent3d {
@@ -1467,10 +1497,86 @@ impl TabViewer<'_> {
             });
         }
     }
+
+    /// Has some UI for showing access to cached output from currently selected node
+    fn debugger(world: &mut World, ui: &mut egui::Ui, selection: &mut EditorSelection) {
+        if selection.scene.is_none() {
+            return;
+        };
+        let mut query = world.query::<(&AnimatedSceneInstance, &PreviewScene)>();
+        let Ok((instance, _)) = query.get_single(world) else {
+            return;
+        };
+        let entity = instance.player_entity;
+        let mut query = world.query::<&AnimationGraphPlayer>();
+        let Ok(player) = query.get(world, entity) else {
+            return;
+        };
+
+        let Some(graph_selection) = &selection.graph_editor else {
+            return;
+        };
+
+        let Some(graph_context) = selection
+            .scene
+            .as_ref()
+            .and_then(|s| s.active_context.get(&graph_selection.graph.untyped()))
+            .and_then(|id| Some(id).zip(player.get_context_arena()))
+            .and_then(|(id, ca)| ca.get_context(*id))
+        else {
+            return;
+        };
+
+        let InspectorSelection::Node(node_selection) = &selection.inspector_selection else {
+            return;
+        };
+
+        let Some(data_pin_map) =
+            Self::get_node_output_data_pins(world, node_selection.graph, &node_selection.node)
+        else {
+            return;
+        };
+
+        // Select data to display cached value of
+        let curr_val = "".to_string();
+        let mut new_val = curr_val.clone();
+        egui::ComboBox::new("cache debugger window", "Pin")
+            .selected_text(curr_val)
+            .show_ui(ui, |ui| {
+                for (id, spec) in data_pin_map.iter() {
+                    ui.selectable_value(&mut new_val, id.clone(), id)
+                        .on_hover_ui(|ui| {
+                            ui.label(format!("{:?}", spec));
+                        });
+                }
+            });
+
+        // Now get the selected value and display it!
+
+        // graph_context.caches.get_primary(|s|);
+    }
 }
 
 /// Helper functions
 impl TabViewer<'_> {
+    fn get_node_output_data_pins(
+        world: &mut World,
+        graph_id: AssetId<AnimationGraph>,
+        node_id: &NodeId,
+    ) -> Option<PinMap<DataSpec>> {
+        world.resource_scope::<Assets<AnimationGraph>, _>(|world, graph_assets| {
+            world.resource_scope::<Assets<StateMachine>, _>(|_, fsm_assets| {
+                let graph = graph_assets.get(graph_id).unwrap();
+                let spec_context = SpecContext {
+                    graph_assets: &graph_assets,
+                    fsm_assets: &fsm_assets,
+                };
+                let node = graph.nodes.get(node_id)?;
+                Some(node.inner.data_output_spec(spec_context))
+            })
+        })
+    }
+
     fn create_saver_window(world: &mut World, save_request: RequestSave) -> EguiWindow {
         world.resource_scope::<AssetServer, EguiWindow>(|_, asset_server| match save_request {
             RequestSave::Graph(graph) => {

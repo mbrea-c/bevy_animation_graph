@@ -23,7 +23,7 @@ impl Triangulation {
         Triangulation {
             triangles: triangles
                 .into_iter()
-                .filter(|triangle| triangle.inner().has_vertices_in_common(&super_triangle))
+                .filter(|triangle| triangle.inner().all_vertices_have_index())
                 .collect(),
         }
     }
@@ -72,4 +72,40 @@ fn add_vertex(mut triangles: Vec<CachedTriangle>, vertex: Vertex) -> Vec<CachedT
     });
 
     triangles
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn test_basic_triangulation() {
+        let triangulation = Triangulation::from_points_delaunay(vec![
+            Vec2::new(0., 0.),
+            Vec2::new(1., 0.),
+            Vec2::new(0., 1.),
+        ]);
+
+        println!("{:#?}", triangulation);
+
+        assert!(false);
+    }
+
+    #[test]
+    fn test_linear_combination() {
+        let triangulation = Triangulation::from_points_delaunay(vec![
+            Vec2::new(0., 0.),
+            Vec2::new(1., 0.),
+            Vec2::new(0., 1.),
+        ]);
+
+        let linear_combination = triangulation.find_linear_combination(Vec2::new(0.1, 0.1));
+
+        println!("{:#?}", linear_combination);
+        assert_eq!(
+            1.,
+            linear_combination[0].1 + linear_combination[1].1 + linear_combination[2].1
+        );
+        assert!(false);
+    }
 }
