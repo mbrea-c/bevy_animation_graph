@@ -64,6 +64,35 @@ impl<K: Clone + Eq + Hash, V: Clone> OrderedMap<K, V> {
     }
 }
 
+pub trait EguiInspectorExtension {
+    type Base: Sized + Send + Sync + 'static;
+    type Buffer: Default + Send + Sync + 'static;
+
+    fn register(app: &mut App) {
+        app.insert_resource(EguiInspectorBuffers::<Self::Base, Self::Buffer>::default());
+        let type_registry = app.world().resource::<AppTypeRegistry>();
+        let mut type_registry = type_registry.write();
+        let type_registry = &mut type_registry;
+        add_no_many::<Self::Base>(type_registry, Self::mutable, Self::readonly);
+    }
+
+    fn mutable(
+        value: &mut dyn Any,
+        ui: &mut egui::Ui,
+        options: &dyn Any,
+        id: egui::Id,
+        env: InspectorUi<'_, '_>,
+    ) -> bool;
+
+    fn readonly(
+        value: &dyn Any,
+        ui: &mut egui::Ui,
+        options: &dyn Any,
+        id: egui::Id,
+        env: InspectorUi<'_, '_>,
+    );
+}
+
 pub struct BetterInspectorPlugin;
 impl Plugin for BetterInspectorPlugin {
     fn build(&self, app: &mut App) {
@@ -280,18 +309,14 @@ pub fn entity_path_readonly(
     ui.label(slashed_path);
 }
 
+#[derive(Default)]
 pub struct PatternMapperInspector;
 
-impl PatternMapperInspector {
-    pub fn register(app: &mut App) {
-        app.insert_resource(EguiInspectorBuffers::<PatternMapper, PatternMapperSerial>::default());
-        let type_registry = app.world().resource::<AppTypeRegistry>();
-        let mut type_registry = type_registry.write();
-        let type_registry = &mut type_registry;
-        add_no_many::<PatternMapper>(type_registry, Self::mutable, Self::readonly);
-    }
+impl EguiInspectorExtension for PatternMapperInspector {
+    type Base = PatternMapper;
+    type Buffer = Self;
 
-    pub fn mutable(
+    fn mutable(
         value: &mut dyn Any,
         ui: &mut egui::Ui,
         _options: &dyn Any,
@@ -317,7 +342,7 @@ impl PatternMapperInspector {
         }
     }
 
-    pub fn readonly(
+    fn readonly(
         value: &dyn Any,
         ui: &mut egui::Ui,
         _options: &dyn Any,
