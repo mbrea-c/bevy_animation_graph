@@ -4,10 +4,15 @@ use bevy::render::camera::RenderTarget;
 use bevy::render::render_resource::{
     Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
 };
+use bevy::render::view::RenderLayers;
+use bevy::utils::HashMap;
 use bevy_animation_graph::core::animated_scene::{AnimatedSceneBundle, AnimatedSceneInstance};
 use bevy_animation_graph::core::animation_graph_player::AnimationGraphPlayer;
 use bevy_animation_graph::prelude::AnimatedSceneHandle;
 use bevy_inspector_egui::bevy_egui;
+use egui_dock::egui;
+use rand::rngs::StdRng;
+use rand::{Rng, SeedableRng};
 
 use super::UiState;
 
@@ -135,4 +140,109 @@ pub fn setup_system(
         },
         Transform::from_translation(Vec3::new(0.0, 2.0, 3.0)).looking_at(Vec3::Y, Vec3::Y),
     ));
+}
+
+/// Keeps track of "subscenes" spawned in order to render
+/// in a texture shown in the UI.
+#[derive(Resource)]
+pub struct SubScenes {
+    /// The map is from renderlayer to scene data
+    pub scenes: HashMap<usize, SubSceneData>,
+}
+
+pub struct SubSceneData {
+    /// This will be decremented every update, if it reaches 0 it will be despawned.
+    /// Therefore it should be updated if being rendered.
+    retain: u32,
+}
+
+/// Indicates that this entity is part of a subscene with the given render layer
+#[derive(Component)]
+pub struct PartOfSubScene(usize);
+
+pub fn setup_textured_render(
+    In(widget_id): In<egui::Id>,
+    mut egui_user_textures: ResMut<bevy_egui::EguiUserTextures>,
+    mut commands: Commands,
+    mut images: ResMut<Assets<Image>>,
+) -> Handle<Image> {
+    let size = Extent3d {
+        width: 512,
+        height: 512,
+        ..default()
+    };
+
+    let layer = {
+        let seed: u64 = widget_id.value(); // Your arbitrary seed value
+        let mut rng = StdRng::seed_from_u64(seed);
+
+        rng.random::<u32>() as usize // Generate a random usize
+    };
+
+    // This is the texture that will be rendered to.
+    let mut image = Image {
+        texture_descriptor: TextureDescriptor {
+            label: None,
+            size,
+            dimension: TextureDimension::D2,
+            format: TextureFormat::Bgra8UnormSrgb,
+            mip_level_count: 1,
+            sample_count: 1,
+            usage: TextureUsages::TEXTURE_BINDING
+                | TextureUsages::COPY_DST
+                | TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
+        },
+        ..default()
+    };
+
+    // fill image.data with zeroes
+    image.resize(size);
+
+    let image_handle = images.add(image);
+
+    egui_user_textures.add_image(image_handle.clone());
+
+    // Light
+    commands.spawn((
+        PointLight::default(),
+        Transform::from_translation(Vec3::new(0.0, 0.0, 10.0)),
+        RenderLayers::layer(layer),
+        PartOfSubScene(layer),
+    ));
+
+    commands.spawn((
+        Camera3d::default(),
+        Camera {
+            // render before the "main pass" camera
+            order: -1,
+            clear_color: ClearColorConfig::Custom(Color::from(LinearRgba::new(1.0, 1.0, 1.0, 0.0))),
+            target: RenderTarget::Image(image_handle.clone()),
+            ..default()
+        },
+        Transform::from_translation(Vec3::new(0.0, 2.0, 3.0)).looking_at(Vec3::Y, Vec3::Y),
+        RenderLayers::layer(layer),
+        PartOfSubScene(layer),
+    ));
+
+    image_handle
+}
+
+pub fn cleanup_render_layer(
+    In(widget_id): In<egui::Id>,
+    mut commands: Commands,
+    query: Query<(Entity, &PartOfSubScene)>,
+) {
+    let layer = {
+        let seed: u64 = widget_id.value(); // Your arbitrary seed value
+        let mut rng = StdRng::seed_from_u64(seed);
+
+        rng.random::<u32>() as usize // Generate a random usize
+    };
+
+    for (entity, &PartOfSubScene(entity_layer)) in &query {
+        if layer == entity_layer {
+            commands.entity(entity).despawn_recursive();
+        }
+    }
 }

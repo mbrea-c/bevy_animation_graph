@@ -4,6 +4,7 @@ use crate::fsm_show::{make_fsm_indices, FsmIndices};
 use crate::graph_show::{make_graph_indices, GraphIndices};
 use crate::graph_update::{update_graph_asset, Change, GraphChange};
 use crate::tree::{Tree, TreeInternal, TreeResult};
+use bevy::asset::UntypedAssetId;
 use bevy::prelude::*;
 use bevy_animation_graph::core::animation_graph::{AnimationGraph, NodeId, PinMap};
 use bevy_animation_graph::core::context::SpecContext;
@@ -279,4 +280,10 @@ pub(crate) fn get_animation_graph_player_mut(
         .get_mut(world, entity)
         .ok()
         .map(|player| player.into_inner())
+}
+
+pub fn handle_path(handle: UntypedAssetId, asset_server: &AssetServer) -> PathBuf {
+    asset_server
+        .get_path(handle)
+        .map_or("Unsaved Asset".into(), |p| p.path().to_owned())
 }

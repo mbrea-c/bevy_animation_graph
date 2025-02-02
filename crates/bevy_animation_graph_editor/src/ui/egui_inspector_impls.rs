@@ -1,6 +1,6 @@
 use bevy::{
     app::Plugin,
-    asset::{Asset, AssetServer, Assets, Handle, UntypedAssetId},
+    asset::{Asset, AssetServer, Assets, Handle},
     ecs::{prelude::AppTypeRegistry, system::Resource},
     prelude::{App, Reflect},
     reflect::{FromReflect, PartialReflect, TypePath, TypeRegistry},
@@ -25,7 +25,6 @@ use core::default::Default;
 use std::{
     any::{Any, TypeId},
     hash::{Hash, Hasher},
-    path::PathBuf,
 };
 
 #[derive(Clone, Reflect, Debug)]
@@ -725,10 +724,4 @@ pub fn todo_readonly_ui(
     mut _env: InspectorUi<'_, '_>,
 ) {
     ui.label("TODO: Asset picker readonly. If you see this please report an issue.");
-}
-
-pub fn handle_path(handle: UntypedAssetId, asset_server: &AssetServer) -> PathBuf {
-    asset_server
-        .get_path(handle)
-        .map_or("Unsaved Asset".into(), |p| p.path().to_owned())
 }

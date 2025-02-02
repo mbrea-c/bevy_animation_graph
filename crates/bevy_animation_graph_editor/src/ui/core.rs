@@ -37,7 +37,6 @@ use bevy_inspector_egui::{bevy_egui, egui};
 use egui_dock::{DockArea, DockState, NodeIndex, Style};
 use egui_notify::{Anchor, Toasts};
 
-use super::egui_inspector_impls::handle_path;
 use super::scenes::PreviewScene;
 use super::utils;
 
@@ -782,7 +781,7 @@ impl TabViewer<'_> {
                 assets.sort();
                 let paths = assets
                     .into_iter()
-                    .map(|id| (handle_path(id.untyped(), &asset_server), id))
+                    .map(|id| (utils::handle_path(id.untyped(), &asset_server), id))
                     .collect();
                 if let TreeResult::Leaf(id) = utils::path_selector(ui, paths) {
                     chosen_id = Some(id);
@@ -821,7 +820,7 @@ impl TabViewer<'_> {
                 assets.sort();
                 let paths = assets
                     .into_iter()
-                    .map(|id| (handle_path(id.untyped(), &asset_server), id))
+                    .map(|id| (utils::handle_path(id.untyped(), &asset_server), id))
                     .collect();
                 let chosen_id = utils::path_selector(ui, paths);
                 if let TreeResult::Leaf(id) = chosen_id {
@@ -864,7 +863,7 @@ impl TabViewer<'_> {
                 assets.sort();
                 let paths = assets
                     .into_iter()
-                    .map(|id| (handle_path(id.untyped(), &asset_server), id))
+                    .map(|id| (utils::handle_path(id.untyped(), &asset_server), id))
                     .collect();
                 if let TreeResult::Leaf(id) = utils::path_selector(ui, paths) {
                     chosen_id = Some(id);
