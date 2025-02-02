@@ -1,6 +1,5 @@
 mod asset_saving;
 mod egui_fsm;
-mod egui_inspector_impls;
 mod egui_nodes;
 mod fsm_show;
 mod graph_show;
@@ -15,9 +14,9 @@ use bevy_animation_graph::core::plugin::AnimationGraphPlugin;
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::{bevy_egui, DefaultInspectorConfigPlugin};
 use clap::Parser;
-use egui_inspector_impls::BetterInspectorPlugin;
 use scanner::ScannerPlugin;
 use std::path::PathBuf;
+use ui::egui_inspector_impls::BetterInspectorPlugin;
 use ui::{graph_debug_draw_bone_system, UiState};
 
 #[derive(Parser, Resource)]

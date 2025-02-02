@@ -1,6 +1,6 @@
 use bevy::{
     app::Plugin,
-    asset::{Asset, AssetServer, Assets, Handle, UntypedAssetId},
+    asset::{Asset, AssetServer, Assets, Handle},
     ecs::{prelude::AppTypeRegistry, system::Resource},
     prelude::{App, Reflect},
     reflect::{FromReflect, PartialReflect, TypePath, TypeRegistry},
@@ -25,7 +25,6 @@ use core::default::Default;
 use std::{
     any::{Any, TypeId},
     hash::{Hash, Hasher},
-    path::PathBuf,
 };
 
 #[derive(Clone, Reflect, Debug)]
@@ -62,6 +61,35 @@ impl<K: Clone + Eq + Hash, V: Clone> OrderedMap<K, V> {
 
         order_map
     }
+}
+
+pub trait EguiInspectorExtension {
+    type Base: Sized + Send + Sync + 'static;
+    type Buffer: Default + Send + Sync + 'static;
+
+    fn register(app: &mut App) {
+        app.insert_resource(EguiInspectorBuffers::<Self::Base, Self::Buffer>::default());
+        let type_registry = app.world().resource::<AppTypeRegistry>();
+        let mut type_registry = type_registry.write();
+        let type_registry = &mut type_registry;
+        add_no_many::<Self::Base>(type_registry, Self::mutable, Self::readonly);
+    }
+
+    fn mutable(
+        value: &mut dyn Any,
+        ui: &mut egui::Ui,
+        options: &dyn Any,
+        id: egui::Id,
+        env: InspectorUi<'_, '_>,
+    ) -> bool;
+
+    fn readonly(
+        value: &dyn Any,
+        ui: &mut egui::Ui,
+        options: &dyn Any,
+        id: egui::Id,
+        env: InspectorUi<'_, '_>,
+    );
 }
 
 pub struct BetterInspectorPlugin;
@@ -280,18 +308,14 @@ pub fn entity_path_readonly(
     ui.label(slashed_path);
 }
 
+#[derive(Default)]
 pub struct PatternMapperInspector;
 
-impl PatternMapperInspector {
-    pub fn register(app: &mut App) {
-        app.insert_resource(EguiInspectorBuffers::<PatternMapper, PatternMapperSerial>::default());
-        let type_registry = app.world().resource::<AppTypeRegistry>();
-        let mut type_registry = type_registry.write();
-        let type_registry = &mut type_registry;
-        add_no_many::<PatternMapper>(type_registry, Self::mutable, Self::readonly);
-    }
+impl EguiInspectorExtension for PatternMapperInspector {
+    type Base = PatternMapper;
+    type Buffer = Self;
 
-    pub fn mutable(
+    fn mutable(
         value: &mut dyn Any,
         ui: &mut egui::Ui,
         _options: &dyn Any,
@@ -317,7 +341,7 @@ impl PatternMapperInspector {
         }
     }
 
-    pub fn readonly(
+    fn readonly(
         value: &dyn Any,
         ui: &mut egui::Ui,
         _options: &dyn Any,
@@ -700,10 +724,4 @@ pub fn todo_readonly_ui(
     mut _env: InspectorUi<'_, '_>,
 ) {
     ui.label("TODO: Asset picker readonly. If you see this please report an issue.");
-}
-
-pub fn handle_path(handle: UntypedAssetId, asset_server: &AssetServer) -> PathBuf {
-    asset_server
-        .get_path(handle)
-        .map_or("Unsaved Asset".into(), |p| p.path().to_owned())
 }

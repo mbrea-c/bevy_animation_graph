@@ -13,11 +13,25 @@ use bevy::{
     utils::HashMap,
 };
 
+#[derive(Default, Reflect, Clone, Copy)]
+pub enum PlaybackState {
+    Paused,
+    #[default]
+    Play,
+    PlayOneFrame,
+}
+
+impl PlaybackState {
+    pub fn is_paused(&self) -> bool {
+        matches!(self, PlaybackState::Paused)
+    }
+}
+
 /// Animation controls
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
 pub struct AnimationGraphPlayer {
-    pub(crate) paused: bool,
+    pub(crate) playback_state: PlaybackState,
     pub(crate) animation: Option<Handle<AnimationGraph>>,
     pub(crate) skeleton: Handle<Skeleton>,
     pub(crate) context_arena: Option<GraphContextArena>,
@@ -80,7 +94,7 @@ impl AnimationGraphPlayer {
         self.context_arena = Some(GraphContextArena::new(handle.id()));
         self.animation = Some(handle);
         self.elapsed = TimeState::default();
-        self.paused = false;
+        self.playback_state = PlaybackState::Play;
         self
     }
 
@@ -177,23 +191,28 @@ impl AnimationGraphPlayer {
         }
     }
 
-    pub fn pause(&mut self) -> &mut Self {
-        self.paused = true;
-        self
+    pub fn pause(&mut self) {
+        self.playback_state = PlaybackState::Paused;
     }
 
-    pub fn resume(&mut self) -> &mut Self {
-        self.paused = false;
-        self
+    pub fn resume(&mut self) {
+        self.playback_state = PlaybackState::Play;
     }
 
     pub fn is_paused(&self) -> bool {
-        self.paused
+        self.playback_state.is_paused()
     }
 
-    pub fn reset(&mut self) -> &mut Self {
+    pub fn playback_state(&self) -> PlaybackState {
+        self.playback_state
+    }
+
+    pub fn play_one_frame(&mut self) {
+        self.playback_state = PlaybackState::PlayOneFrame;
+    }
+
+    pub fn reset(&mut self) {
         self.pending_update = Some(TimeUpdate::Absolute(0.));
-        self
     }
 
     pub fn get_animation_graph(&self) -> Option<Handle<AnimationGraph>> {

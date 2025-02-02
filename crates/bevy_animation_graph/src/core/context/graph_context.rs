@@ -2,7 +2,6 @@ use crate::{
     core::{
         animation_graph::{NodeId, SourcePin, TargetPin, TimeUpdate},
         duration_data::DurationData,
-        pose::Pose,
         prelude::AnimationGraph,
         state_machine::low_level::FSMState,
     },
@@ -85,11 +84,10 @@ impl TimeCache {
 
 #[derive(Reflect, Debug, Default)]
 pub struct GraphState {
-    pub parameters: HashMap<SourcePin, DataValue>,
+    pub data: HashMap<SourcePin, DataValue>,
     pub durations: HashMap<SourcePin, DurationData>,
     pub time_updates: HashMap<SourcePin, TimeUpdate>,
     pub time_updates_back: HashMap<TargetPin, TimeUpdate>,
-    pub poses: HashMap<SourcePin, Pose>,
     pub times: TimeCache,
     pub updated: HashSet<NodeId>,
     pub fsm_state: HashMap<NodeId, FSMState>,
@@ -99,20 +97,19 @@ impl GraphState {
     pub fn next_frame(&mut self) {
         self.times.next_frame();
 
-        self.parameters.clear();
+        self.data.clear();
         self.durations.clear();
         self.time_updates.clear();
         self.time_updates_back.clear();
-        self.poses.clear();
         self.updated.clear();
     }
 
-    pub fn get_parameter(&self, source_pin: &SourcePin) -> Option<&DataValue> {
-        self.parameters.get(source_pin)
+    pub fn get_data(&self, source_pin: &SourcePin) -> Option<&DataValue> {
+        self.data.get(source_pin)
     }
 
-    pub fn set_parameter(&mut self, source_pin: SourcePin, value: DataValue) -> Option<DataValue> {
-        self.parameters.insert(source_pin, value)
+    pub fn set_data(&mut self, source_pin: SourcePin, value: DataValue) -> Option<DataValue> {
+        self.data.insert(source_pin, value)
     }
 
     pub fn get_duration(&self, source_pin: &SourcePin) -> Option<DurationData> {
@@ -151,14 +148,6 @@ impl GraphState {
         self.time_updates_back.insert(target_pin, value)
     }
 
-    pub fn get_pose(&self, source_pin: &SourcePin) -> Option<&Pose> {
-        self.poses.get(source_pin)
-    }
-
-    pub fn set_pose(&mut self, source_pin: SourcePin, value: Pose) -> Option<Pose> {
-        self.poses.insert(source_pin, value)
-    }
-
     pub fn get_time(&self, source_pin: &SourcePin) -> Option<f32> {
         self.times.get(source_pin)
     }
@@ -192,7 +181,6 @@ impl GraphState {
 // Might reduce the amount of cloning between frames.
 #[derive(Reflect, Debug, Default)]
 pub struct GraphStateStack {
-    /// Caches are double buffered
     primary_cache: GraphState,
     temp_cache: GraphState,
 }
