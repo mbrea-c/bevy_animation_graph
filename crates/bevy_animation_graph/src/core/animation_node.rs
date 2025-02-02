@@ -134,7 +134,7 @@ impl PinOrdering {
     }
 }
 
-#[derive(Debug, Deref, DerefMut)]
+#[derive(Debug, Clone, Deref, DerefMut)]
 // #[derive(Reflect)] // manual reflect impl (see below)
 pub struct AnimationNode {
     pub name: String,
@@ -158,16 +158,6 @@ impl AnimationNode {
 impl Default for AnimationNode {
     fn default() -> Self {
         Self::new("", Box::new(DummyNode))
-    }
-}
-
-impl Clone for AnimationNode {
-    fn clone(&self) -> Self {
-        Self {
-            name: self.name.clone(),
-            inner: self.inner.clone(),
-            should_debug: self.should_debug,
-        }
     }
 }
 

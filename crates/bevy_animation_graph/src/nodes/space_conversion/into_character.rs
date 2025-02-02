@@ -15,7 +15,7 @@ use bevy::reflect::{std_traits::ReflectDefault, Reflect};
 pub struct IntoCharacterSpaceNode {}
 
 impl IntoCharacterSpaceNode {
-    pub const POSE_IN: &'static str = "Pose In";
+    pub const POSE_IN: &'static str = "pose_in";
 
     pub fn new() -> Self {
         Self {}

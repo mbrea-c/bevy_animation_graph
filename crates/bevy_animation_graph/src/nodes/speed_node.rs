@@ -16,7 +16,7 @@ impl SpeedNode {
     pub const IN_POSE: &'static str = "pose";
     pub const IN_TIME: &'static str = "time";
     pub const OUT_POSE: &'static str = "pose";
-    pub const SPEED: &'static str = "Speed";
+    pub const SPEED: &'static str = "speed";
 
     pub fn new() -> Self {
         Self

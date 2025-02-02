@@ -16,10 +16,10 @@ pub struct ChainNode {
 }
 
 impl ChainNode {
-    pub const IN_POSE_A: &'static str = "pose A";
-    pub const IN_TIME_A: &'static str = "time A";
-    pub const IN_POSE_B: &'static str = "pose B";
-    pub const IN_TIME_B: &'static str = "time B";
+    pub const IN_POSE_A: &'static str = "pose_a";
+    pub const IN_TIME_A: &'static str = "time_a";
+    pub const IN_POSE_B: &'static str = "pose_b";
+    pub const IN_TIME_B: &'static str = "time_b";
     pub const OUT_POSE: &'static str = "pose";
 
     pub fn new(interpolation_period: f32) -> Self {

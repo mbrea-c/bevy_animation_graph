@@ -2,35 +2,38 @@
     nodes: [
         (
             name: "Done",
-            ty: "bevy_animation_graph::nodes::arithmetic::event_queue::fire_event::FireEventNode",
-            inner: (
-                event: EndTransition,
-            ),
+            inner: {
+                "bevy_animation_graph::nodes::arithmetic::event_queue::fire_event::FireEventNode": (
+                    event: EndTransition,
+                ),
+            },
         ),
         (
             name: "Blend",
-            ty: "bevy_animation_graph::nodes::blend_node::BlendNode",
-            inner: (),
+            inner: {
+                "bevy_animation_graph::nodes::blend_node::BlendNode": (),
+            },
         ),
         (
             name: "Is it done?",
-            ty: "bevy_animation_graph::nodes::arithmetic::f32::compare_f32::CompareF32",
-            inner: (
-                op: MoreEqual,
-            ),
+            inner: {
+                "bevy_animation_graph::nodes::arithmetic::f32::compare_f32::CompareF32": (
+                    op: MoreEqual,
+                ),
+            },
         ),
     ],
     edges_inverted: {
-        NodeData("Is it done?", "F32 In 2"): InputData("1"),
-        NodeTime("Blend", "time A"): InputTime("source time"),
+        NodeData("Is it done?", "in_b"): InputData("1"),
+        NodeTime("Blend", "time_a"): InputTime("source time"),
         OutputData("pose"): NodeData("Blend", "pose"),
-        NodeData("Done", "condition"): NodeData("Is it done?", "Bool Out"),
-        NodeData("Is it done?", "F32 In 1"): InputData("elapsed percent"),
-        NodeTime("Blend", "time B"): InputTime("target time"),
+        NodeData("Done", "condition"): NodeData("Is it done?", "out"),
+        NodeData("Is it done?", "in_a"): InputData("elapsed percent"),
+        NodeTime("Blend", "time_b"): InputTime("target time"),
         OutputTime: NodeTime("Blend"),
-        NodeData("Blend", "pose B"): InputData("target pose"),
+        NodeData("Blend", "pose_b"): InputData("target pose"),
         NodeData("Blend", "factor"): InputData("elapsed percent"),
-        NodeData("Blend", "pose A"): InputData("source pose"),
+        NodeData("Blend", "pose_a"): InputData("source pose"),
         OutputData("driver events"): NodeData("Done", "event"),
     },
     default_parameters: {

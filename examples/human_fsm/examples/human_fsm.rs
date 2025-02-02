@@ -132,5 +132,5 @@ fn keyboard_animation_control(
         params.direction = Vec3::Z;
     }
 
-    player.set_input_parameter("Target Speed", params.speed.into());
+    player.set_input_parameter("target_speed", params.speed.into());
 }

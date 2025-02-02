@@ -23,9 +23,9 @@ pub struct CompareF32 {
 }
 
 impl CompareF32 {
-    pub const INPUT_1: &'static str = "F32 In 1";
-    pub const INPUT_2: &'static str = "F32 In 2";
-    pub const OUTPUT: &'static str = "Bool Out";
+    pub const INPUT_1: &'static str = "in_a";
+    pub const INPUT_2: &'static str = "in_b";
+    pub const OUTPUT: &'static str = "out";
 
     pub fn new(op: CompareOp) -> Self {
         Self { op }
