@@ -141,6 +141,6 @@ fn keyboard_animation_control(
             (Quat::from_rotation_y(-1. * time.delta_secs()) * params.direction).normalize();
     }
 
-    player.set_input_parameter("Target Speed", params.speed.into());
-    player.set_input_parameter("Target Direction", params.direction.into());
+    player.set_input_parameter("target_speed", params.speed.into());
+    player.set_input_parameter("target_direction", params.direction.into());
 }

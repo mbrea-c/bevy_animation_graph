@@ -58,8 +58,8 @@ impl Default for RotationNode {
 }
 
 impl RotationNode {
-    pub const TARGET: &'static str = "Bone Mask";
-    pub const ROTATION: &'static str = "Rotation";
+    pub const TARGET: &'static str = "bone_mask";
+    pub const ROTATION: &'static str = "rotation";
     pub const IN_TIME: &'static str = "time";
     pub const IN_POSE: &'static str = "pose";
     pub const OUT_POSE: &'static str = "pose";

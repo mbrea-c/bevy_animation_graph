@@ -10,8 +10,8 @@ use bevy::prelude::*;
 pub struct AbsF32;
 
 impl AbsF32 {
-    pub const INPUT: &'static str = "F32 In";
-    pub const OUTPUT: &'static str = "F32 Out";
+    pub const INPUT: &'static str = "in";
+    pub const OUTPUT: &'static str = "out";
 
     pub fn new() -> Self {
         Self

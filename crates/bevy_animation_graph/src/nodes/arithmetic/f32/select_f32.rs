@@ -12,8 +12,8 @@ pub struct SelectF32;
 
 impl SelectF32 {
     pub const INPUT_BOOL: &'static str = "bool";
-    pub const INPUT_FALSE: &'static str = "if false";
-    pub const INPUT_TRUE: &'static str = "if true";
+    pub const INPUT_FALSE: &'static str = "if_false";
+    pub const INPUT_TRUE: &'static str = "if_true";
     pub const OUTPUT: &'static str = "out";
 
     pub fn new() -> Self {
