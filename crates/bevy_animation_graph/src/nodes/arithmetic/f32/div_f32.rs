@@ -10,9 +10,9 @@ use bevy::prelude::*;
 pub struct DivF32;
 
 impl DivF32 {
-    pub const INPUT_1: &'static str = "F32 In 1";
-    pub const INPUT_2: &'static str = "F32 In 2";
-    pub const OUTPUT: &'static str = "F32 Out";
+    pub const INPUT_1: &'static str = "in_a";
+    pub const INPUT_2: &'static str = "in_b";
+    pub const OUTPUT: &'static str = "out";
 
     pub fn new() -> Self {
         Self

@@ -2,30 +2,32 @@
     nodes: [
         (
             name: "base anim",
-            ty: "bevy_animation_graph::nodes::graph_node::GraphNode",
-            inner: (
-                graph: "animation_graphs/human_new.animgraph.ron",
-            )
+            inner: {
+                "bevy_animation_graph::nodes::graph_node::GraphNode": (
+                    graph: "animation_graphs/human_new.animgraph.ron",
+                )
+            }
         ),
         (
             name: "arm ik",
-            ty: "bevy_animation_graph::nodes::twoboneik_node::TwoBoneIKNode",
-            inner: (),
+            inner: {
+                "bevy_animation_graph::nodes::twoboneik_node::TwoBoneIKNode": ()
+            }
         ),
     ],
     edges_inverted: {
-        NodeData("arm ik", "Target Path"): InputData("right hand path"),
-        NodeData("base anim", "Target Speed"): InputData("Target Speed"),
+        NodeData("arm ik", "target_path"): InputData("right hand path"),
+        NodeData("base anim", "target_speed"): InputData("target_speed"),
         OutputTime: NodeTime("arm ik"),
-        NodeData("base anim", "Target Direction"): InputData("Target Direction"),
+        NodeData("base anim", "target_direction"): InputData("target_direction"),
         OutputData("pose"): NodeData("arm ik", "pose"),
         NodeData("arm ik", "pose"): NodeData("base anim", "pose"),
-        NodeData("arm ik", "Target Position"): InputData("target hand pos"),
+        NodeData("arm ik", "target_position"): InputData("target hand pos"),
         NodeTime("arm ik", "time"): NodeTime("base anim"),
     },
     default_parameters: {
-        "Target Speed": F32(1.0),
-        "Target Direction": Vec3((1.0, 0.0, 0.0)),
+        "target_speed": F32(1.0),
+        "target_direction": Vec3((1.0, 0.0, 0.0)),
         "right hand path": EntityPath([
             "metarig",
             "spine",

@@ -26,8 +26,8 @@ impl TwoBoneIKNode {
     pub const IN_TIME: &'static str = "time";
     pub const IN_POSE: &'static str = "pose";
     pub const OUT_POSE: &'static str = "pose";
-    pub const TARGETBONE: &'static str = "Target Path";
-    pub const TARGETPOS: &'static str = "Target Position";
+    pub const TARGETBONE: &'static str = "target_path";
+    pub const TARGETPOS: &'static str = "target_position";
 
     pub fn new() -> Self {
         Self {}

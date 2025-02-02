@@ -11,9 +11,9 @@ use bevy::prelude::*;
 pub struct RotationArcNode;
 
 impl RotationArcNode {
-    pub const INPUT_1: &'static str = "Vec3 In 1";
-    pub const INPUT_2: &'static str = "Vec3 In 2";
-    pub const OUTPUT: &'static str = "Quat Out";
+    pub const INPUT_1: &'static str = "in_a";
+    pub const INPUT_2: &'static str = "in_b";
+    pub const OUTPUT: &'static str = "out";
 
     pub fn new() -> Self {
         Self

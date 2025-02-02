@@ -2,66 +2,72 @@
     nodes: [
         (
             name: "flip run",
-            ty: "bevy_animation_graph::nodes::flip_lr_node::FlipLRNode",
-            inner: (
-                config: (
-                    name_mapper: Pattern((
-                        key_1: "L",
-                        key_2: "R",
-                        pattern_before: "^.*",
-                        pattern_after: "$",
-                    )),
+            inner: {
+                "bevy_animation_graph::nodes::flip_lr_node::FlipLRNode": (
+                    config: (
+                        name_mapper: Pattern((
+                            key_1: "L",
+                            key_2: "R",
+                            pattern_before: "^.*",
+                            pattern_after: "$",
+                        )),
+                    ),
                 ),
-            ),
+            },
         ),
         (
             name: "chain run",
-            ty: "bevy_animation_graph::nodes::chain_node::ChainNode",
-            inner: (
-                interpolation_period: 0.5,
-            ),
+            inner: {
+                "bevy_animation_graph::nodes::chain_node::ChainNode": (
+                    interpolation_period: 0.5,
+                ),
+            },
         ),
         (
             name: "speed",
-            ty: "bevy_animation_graph::nodes::speed_node::SpeedNode",
-            inner: (),
+            inner: {
+                "bevy_animation_graph::nodes::speed_node::SpeedNode": (),
+            },
         ),
         (
             name: "run clip 1",
-            ty: "bevy_animation_graph::nodes::clip_node::ClipNode",
-            inner: (
-                clip: "animations/human_run.anim.ron",
-            ),
+            inner: {
+                "bevy_animation_graph::nodes::clip_node::ClipNode": (
+                    clip: "animations/human_run.anim.ron",
+                ),
+            },
         ),
         (
             name: "loop",
-            ty: "bevy_animation_graph::nodes::loop_node::LoopNode",
-            inner: (
-                interpolation_period: 0.5,
-            ),
+            inner: {
+                "bevy_animation_graph::nodes::loop_node::LoopNode": (
+                    interpolation_period: 0.5,
+                ),
+            },
         ),
         (
             name: "run clip 2",
-            ty: "bevy_animation_graph::nodes::clip_node::ClipNode",
-            inner: (
-                clip: "animations/human_run.anim.ron",
-            ),
+            inner: {
+                "bevy_animation_graph::nodes::clip_node::ClipNode": (
+                    clip: "animations/human_run.anim.ron",
+                ),
+            },
         ),
     ],
     edges_inverted: {
         NodeData("speed", "pose"): NodeData("loop", "pose"),
         NodeTime("flip run", "time"): NodeTime("run clip 2"),
         NodeTime("loop", "time"): NodeTime("chain run"),
-        NodeTime("chain run", "time B"): NodeTime("flip run"),
+        NodeTime("chain run", "time_b"): NodeTime("flip run"),
         OutputTime: NodeTime("speed"),
         NodeData("flip run", "pose"): NodeData("run clip 2", "pose"),
-        NodeData("chain run", "pose B"): NodeData("flip run", "pose"),
+        NodeData("chain run", "pose_b"): NodeData("flip run", "pose"),
         OutputData("pose"): NodeData("speed", "pose"),
         NodeTime("speed", "time"): NodeTime("loop"),
         NodeData("loop", "pose"): NodeData("chain run", "pose"),
-        NodeData("speed", "Speed"): InputData("speed"),
-        NodeTime("chain run", "time A"): NodeTime("run clip 1"),
-        NodeData("chain run", "pose A"): NodeData("run clip 1", "pose"),
+        NodeData("speed", "speed"): InputData("speed"),
+        NodeTime("chain run", "time_a"): NodeTime("run clip 1"),
+        NodeData("chain run", "pose_a"): NodeData("run clip 1", "pose"),
     },
     default_parameters: {
         "blend": F32(0.2),
