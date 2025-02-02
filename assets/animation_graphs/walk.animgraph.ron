@@ -1,58 +1,58 @@
 (
     nodes: [
-    (
-        name: "chain walk",
-        inner: {
-            "bevy_animation_graph::nodes::chain_node::ChainNode": (
-                interpolation_period: 0.5,
-            ),
-        },
-    ),
-    (
-        name: "flip walk",
-        inner: {
-            "bevy_animation_graph::nodes::flip_lr_node::FlipLRNode": (
-                config: (
-                    name_mapper: Pattern((
-                        key_1: "L",
-                        key_2: "R",
-                        pattern_before: "^.*",
-                        pattern_after: "$",
-                    )),
+        (
+            name: "chain walk",
+            inner: {
+                "bevy_animation_graph::nodes::chain_node::ChainNode": (
+                    interpolation_period: 0.5,
                 ),
-            ),
-        },
-    ),
-    (
-        name: "walk clip 1",
-        inner: {
-            "bevy_animation_graph::nodes::clip_node::ClipNode": (
-                clip: "animations/human_walk.anim.ron",
-            ),
-        },
-    ),
-    (
-        name: "walk clip 2",
-        inner: {
-            "bevy_animation_graph::nodes::clip_node::ClipNode": (
-                clip: "animations/human_walk.anim.ron",
-            ),
-        },
-    ),
-    (
-        name: "speed",
-        inner: {
-            "bevy_animation_graph::nodes::speed_node::SpeedNode": (),
-        },
-    ),
-    (
-        name: "loop",
-        inner: {
-            "bevy_animation_graph::nodes::loop_node::LoopNode": (
-                interpolation_period: 0.5,
-            ),
-        },
-    ),
+            },
+        ),
+        (
+            name: "flip walk",
+            inner: {
+                "bevy_animation_graph::nodes::flip_lr_node::FlipLRNode": (
+                    config: (
+                        name_mapper: Pattern((
+                            key_1: "L",
+                            key_2: "R",
+                            pattern_before: "^.*",
+                            pattern_after: "$",
+                        )),
+                    ),
+                ),
+            },
+        ),
+        (
+            name: "walk clip 1",
+            inner: {
+                "bevy_animation_graph::nodes::clip_node::ClipNode": (
+                    clip: "animations/human_walk.anim.ron",
+                ),
+            },
+        ),
+        (
+            name: "walk clip 2",
+            inner: {
+                "bevy_animation_graph::nodes::clip_node::ClipNode": (
+                    clip: "animations/human_walk.anim.ron",
+                ),
+            },
+        ),
+        (
+            name: "speed",
+            inner: {
+                "bevy_animation_graph::nodes::speed_node::SpeedNode": (),
+            },
+        ),
+        (
+            name: "loop",
+            inner: {
+                "bevy_animation_graph::nodes::loop_node::LoopNode": (
+                    interpolation_period: 0.5,
+                ),
+            },
+        ),
     ],
     edges_inverted: {
         NodeData("loop", "pose"): NodeData("chain walk", "pose"),

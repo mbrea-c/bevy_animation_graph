@@ -1,13 +1,13 @@
 (
     nodes: [
-    (
-        name: "Locomotion FSM",
-        inner: {
-            "bevy_animation_graph::nodes::fsm_node::FSMNode": (
-                fsm: "fsm/locomotion.fsm.ron",
-            ),
-        },
-    ),
+        (
+            name: "Locomotion FSM",
+            inner: {
+                "bevy_animation_graph::nodes::fsm_node::FSMNode": (
+                    fsm: "fsm/locomotion.fsm.ron",
+                ),
+            },
+        ),
     ],
     edges_inverted: {
         OutputData("pose"): NodeData("Locomotion FSM", "pose"),

@@ -1,163 +1,163 @@
 (
     nodes: [
-    (
-        name: "speed",
-        inner: {
-            "bevy_animation_graph::nodes::speed_node::SpeedNode": (),
-        },
-    ),
-    (
-        name: "walk clip 1",
-        inner: {
-            "bevy_animation_graph::nodes::clip_node::ClipNode": (
-                clip: "animations/human_walk.anim.ron",
-            ),
-        },
-    ),
-    (
-        name: "Rotate",
-        inner: {
-            "bevy_animation_graph::nodes::rotation_node::RotationNode": (
-                application_mode: Compose,
-                rotation_space: Character,
-                chain_decay: Linear,
-                chain_length: 1,
-                base_weight: 1.0,
-            ),
-        },
-    ),
-    (
-        name: "flip walk",
-        inner: {
-            "bevy_animation_graph::nodes::flip_lr_node::FlipLRNode": (
-                config: (
-                    name_mapper: Pattern((
-                        key_1: "L",
-                        key_2: "R",
-                        pattern_before: "^.*",
-                        pattern_after: "$",
-                    )),
+        (
+            name: "speed",
+            inner: {
+                "bevy_animation_graph::nodes::speed_node::SpeedNode": (),
+            },
+        ),
+        (
+            name: "walk clip 1",
+            inner: {
+                "bevy_animation_graph::nodes::clip_node::ClipNode": (
+                    clip: "animations/human_walk.anim.ron",
                 ),
-            ),
-        },
-    ),
-    (
-        name: "wave additive",
-        inner: {
-            "bevy_animation_graph::nodes::blend_node::BlendNode": (
-                mode: Additive,
-            ),
-        },
-    ),
-    (
-        name: "flip run",
-        inner: {
-            "bevy_animation_graph::nodes::flip_lr_node::FlipLRNode": (
-                config: (
-                    name_mapper: Pattern((
-                        key_1: "L",
-                        key_2: "R",
-                        pattern_before: "^.*",
-                        pattern_after: "$",
-                    )),
+            },
+        ),
+        (
+            name: "Rotate",
+            inner: {
+                "bevy_animation_graph::nodes::rotation_node::RotationNode": (
+                    application_mode: Compose,
+                    rotation_space: Character,
+                    chain_decay: Linear,
+                    chain_length: 1,
+                    base_weight: 1.0,
                 ),
-            ),
-        },
-    ),
-    (
-        name: "run clip 2",
-        inner: {
-            "bevy_animation_graph::nodes::clip_node::ClipNode": (
-                clip: "animations/human_run.anim.ron",
-            ),
-        },
-    ),
-    (
-        name: "blend",
-        inner: {
-            "bevy_animation_graph::nodes::blend_node::BlendNode": (
-                mode: LinearInterpolate,
-            ),
-        },
-    ),
-    (
-        name: "loop",
-        inner: {
-            "bevy_animation_graph::nodes::loop_node::LoopNode": (
-                interpolation_period: 0.5,
-            ),
-        },
-    ),
-    (
-        name: "stand",
-        inner: {
-            "bevy_animation_graph::nodes::clip_node::ClipNode": (
-                clip: "animations/human_stand.anim.ron",
-            ),
-        },
-    ),
-    (
-        name: "chain walk",
-        inner: {
-            "bevy_animation_graph::nodes::chain_node::ChainNode": (
-                interpolation_period: 0.5,
-            ),
-        },
-    ),
-    (
-        name: "Parameters",
-        inner: {
-            "bevy_animation_graph::nodes::graph_node::GraphNode": (
-                graph: "animation_graphs/velocity_to_params.animgraph.ron",
-            ),
-        },
-    ),
-    (
-        name: "chain run",
-        inner: {
-            "bevy_animation_graph::nodes::chain_node::ChainNode": (
-                interpolation_period: 0.5,
-            ),
-        },
-    ),
-    (
-        name: "run clip 1",
-        inner: {
-            "bevy_animation_graph::nodes::clip_node::ClipNode": (
-                clip: "animations/human_run.anim.ron",
-            ),
-        },
-    ),
-    (
-        name: "wave diff",
-        inner: {
-            "bevy_animation_graph::nodes::blend_node::BlendNode": (
-                mode: Difference,
-            ),
-        },
-    ),
-    (
-        name: "wave",
-        inner: {
-            "bevy_animation_graph::nodes::clip_node::ClipNode": (
-                clip: "animations/human_wave.anim.ron",
-            ),
-        },
-    ),
-    (
-        name: "walk clip 2",
-        inner: {
-            "bevy_animation_graph::nodes::clip_node::ClipNode": (
-                clip: "animations/human_walk.anim.ron",
-            ),
-        },
-    ),
-    (
-        name: "Make Rotation",
-        inner: {
-            "bevy_animation_graph::nodes::arithmetic::vec3::rotation_arc::RotationArcNode": (),
-        },
-    ),
+            },
+        ),
+        (
+            name: "flip walk",
+            inner: {
+                "bevy_animation_graph::nodes::flip_lr_node::FlipLRNode": (
+                    config: (
+                        name_mapper: Pattern((
+                            key_1: "L",
+                            key_2: "R",
+                            pattern_before: "^.*",
+                            pattern_after: "$",
+                        )),
+                    ),
+                ),
+            },
+        ),
+        (
+            name: "wave additive",
+            inner: {
+                "bevy_animation_graph::nodes::blend_node::BlendNode": (
+                    mode: Additive,
+                ),
+            },
+        ),
+        (
+            name: "flip run",
+            inner: {
+                "bevy_animation_graph::nodes::flip_lr_node::FlipLRNode": (
+                    config: (
+                        name_mapper: Pattern((
+                            key_1: "L",
+                            key_2: "R",
+                            pattern_before: "^.*",
+                            pattern_after: "$",
+                        )),
+                    ),
+                ),
+            },
+        ),
+        (
+            name: "run clip 2",
+            inner: {
+                "bevy_animation_graph::nodes::clip_node::ClipNode": (
+                    clip: "animations/human_run.anim.ron",
+                ),
+            },
+        ),
+        (
+            name: "blend",
+            inner: {
+                "bevy_animation_graph::nodes::blend_node::BlendNode": (
+                    mode: LinearInterpolate,
+                ),
+            },
+        ),
+        (
+            name: "loop",
+            inner: {
+                "bevy_animation_graph::nodes::loop_node::LoopNode": (
+                    interpolation_period: 0.5,
+                ),
+            },
+        ),
+        (
+            name: "stand",
+            inner: {
+                "bevy_animation_graph::nodes::clip_node::ClipNode": (
+                    clip: "animations/human_stand.anim.ron",
+                ),
+            },
+        ),
+        (
+            name: "chain walk",
+            inner: {
+                "bevy_animation_graph::nodes::chain_node::ChainNode": (
+                    interpolation_period: 0.5,
+                ),
+            },
+        ),
+        (
+            name: "Parameters",
+            inner: {
+                "bevy_animation_graph::nodes::graph_node::GraphNode": (
+                    graph: "animation_graphs/velocity_to_params.animgraph.ron",
+                ),
+            },
+        ),
+        (
+            name: "chain run",
+            inner: {
+                "bevy_animation_graph::nodes::chain_node::ChainNode": (
+                    interpolation_period: 0.5,
+                ),
+            },
+        ),
+        (
+            name: "run clip 1",
+            inner: {
+                "bevy_animation_graph::nodes::clip_node::ClipNode": (
+                    clip: "animations/human_run.anim.ron",
+                ),
+            },
+        ),
+        (
+            name: "wave diff",
+            inner: {
+                "bevy_animation_graph::nodes::blend_node::BlendNode": (
+                    mode: Difference,
+                ),
+            },
+        ),
+        (
+            name: "wave",
+            inner: {
+                "bevy_animation_graph::nodes::clip_node::ClipNode": (
+                    clip: "animations/human_wave.anim.ron",
+                ),
+            },
+        ),
+        (
+            name: "walk clip 2",
+            inner: {
+                "bevy_animation_graph::nodes::clip_node::ClipNode": (
+                    clip: "animations/human_walk.anim.ron",
+                ),
+            },
+        ),
+        (
+            name: "Make Rotation",
+            inner: {
+                "bevy_animation_graph::nodes::arithmetic::vec3::rotation_arc::RotationArcNode": (),
+            },
+        ),
     ],
     edges_inverted: {
         NodeData("Rotate", "Bone Mask"): InputData("rotation_bone"),
