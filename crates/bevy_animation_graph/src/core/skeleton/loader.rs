@@ -60,7 +60,7 @@ impl AssetLoader for SkeletonLoader {
 fn build_skeleton(world: &World) -> Result<Skeleton, AssetLoaderError> {
     let mut skeleton = Skeleton::default();
 
-    let Some(root) = find_root(world) else {
+    let Some((root, root_name)) = find_root(world) else {
         return Err(AssetLoaderError::AnimatedSceneMissingRoot);
     };
 
@@ -71,6 +71,7 @@ fn build_skeleton(world: &World) -> Result<Skeleton, AssetLoaderError> {
             .query::<(Option<&Children>, &Name)>()
     };
 
+    skeleton.set_root(EntityPath::default().child(root_name).id());
     let mut pending_children: Vec<(Entity, EntityPath)> = vec![(root, EntityPath::default())];
 
     while let Some((cur_entity, parent_path)) = pending_children.pop() {
@@ -89,15 +90,15 @@ fn build_skeleton(world: &World) -> Result<Skeleton, AssetLoaderError> {
     Ok(skeleton)
 }
 
-fn find_root(world: &World) -> Option<Entity> {
+fn find_root(world: &World) -> Option<(Entity, Name)> {
     let mut query = unsafe {
         world
             .as_unsafe_world_cell_readonly()
             .world_mut()
-            .query_filtered::<Entity, With<AnimationPlayer>>()
+            .query_filtered::<(Entity, &Name), With<AnimationPlayer>>()
     };
 
-    let entity = query.iter(world).next()?;
+    let (entity, name) = query.iter(world).next()?;
 
-    Some(entity)
+    Some((entity, name.clone()))
 }

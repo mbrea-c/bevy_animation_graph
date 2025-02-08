@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// [`Keyframes`]: crate::core::animation_clip::Keyframes
 /// [`Transform`]: bevy::transform::prelude::Transform
-#[derive(Asset, Reflect, Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Asset, Reflect, Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct BonePose {
     pub rotation: Option<Quat>,
     pub translation: Option<Vec3>,
@@ -98,7 +98,7 @@ impl BonePose {
 /// Vertical slice of an [`GraphClip`]
 ///
 /// [`GraphClip`]: crate::prelude::GraphClip
-#[derive(Asset, Reflect, Clone, Debug, Default, Serialize, Deserialize)]
+#[derive(Asset, Reflect, Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 #[reflect(Default)]
 pub struct Pose {
     pub bones: Vec<BonePose>,

@@ -96,8 +96,8 @@ impl DataValue {
     pub fn into_bool(self) -> Option<bool> {
         self.as_bool()
     }
-    #[must_use]
 
+    #[must_use]
     pub const fn as_vec2(&self) -> Option<Vec2> {
         match self {
             &Self::Vec2(x) => Some(x),
@@ -137,11 +137,26 @@ impl DataValue {
     }
 
     // non-trivial copy
+    #[must_use]
+    pub fn as_entity_path(&self) -> Option<&EntityPath> {
+        match self {
+            Self::EntityPath(x) => Some(x),
+            _ => None,
+        }
+    }
 
     #[must_use]
     pub fn into_entity_path(self) -> Option<EntityPath> {
         match self {
             Self::EntityPath(x) => Some(x),
+            _ => None,
+        }
+    }
+
+    #[must_use]
+    pub fn as_bone_mask(&self) -> Option<&BoneMask> {
+        match self {
+            Self::BoneMask(x) => Some(x),
             _ => None,
         }
     }
@@ -155,9 +170,25 @@ impl DataValue {
     }
 
     #[must_use]
+    pub fn as_pose(&self) -> Option<&Pose> {
+        match self {
+            Self::Pose(x) => Some(x),
+            _ => None,
+        }
+    }
+
+    #[must_use]
     pub fn into_pose(self) -> Option<Pose> {
         match self {
             Self::Pose(x) => Some(x),
+            _ => None,
+        }
+    }
+
+    #[must_use]
+    pub fn as_event_queue(&self) -> Option<&EventQueue> {
+        match self {
+            Self::EventQueue(x) => Some(x),
             _ => None,
         }
     }

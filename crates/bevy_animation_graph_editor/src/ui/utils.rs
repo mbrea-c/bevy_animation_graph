@@ -6,12 +6,14 @@ use crate::graph_update::{update_graph_asset, Change, GraphChange};
 use crate::tree::{Tree, TreeInternal, TreeResult};
 use bevy::asset::UntypedAssetId;
 use bevy::prelude::*;
+use bevy::render::render_resource::Extent3d;
 use bevy_animation_graph::core::animation_graph::{AnimationGraph, NodeId, PinMap};
 use bevy_animation_graph::core::context::SpecContext;
 use bevy_animation_graph::core::state_machine::high_level::StateMachine;
 use bevy_animation_graph::prelude::{
     AnimatedSceneInstance, AnimationGraphPlayer, DataSpec, GraphContext, GraphContextId,
 };
+use bevy_inspector_egui::bevy_egui::EguiUserTextures;
 use bevy_inspector_egui::egui;
 
 use super::core::{EditorSelection, EguiWindow, RequestSave};
@@ -286,4 +288,25 @@ pub fn handle_path(handle: UntypedAssetId, asset_server: &AssetServer) -> PathBu
     asset_server
         .get_path(handle)
         .map_or("Unsaved Asset".into(), |p| p.path().to_owned())
+}
+
+pub fn render_image(ui: &mut egui::Ui, world: &mut World, image: &Handle<Image>) -> egui::Response {
+    let texture_id =
+        world.resource_scope::<EguiUserTextures, egui::TextureId>(|_, user_textures| {
+            user_textures.image_id(&image).unwrap()
+        });
+
+    let available_size = ui.available_size();
+    let e3d_size = Extent3d {
+        width: available_size.x as u32,
+        height: available_size.y as u32,
+        ..default()
+    };
+    world.resource_scope::<Assets<Image>, ()>(|_, mut images| {
+        let image = images.get_mut(image).unwrap();
+        image.texture_descriptor.size = e3d_size;
+        image.resize(e3d_size);
+    });
+
+    ui.image(egui::load::SizedTexture::new(texture_id, available_size))
 }

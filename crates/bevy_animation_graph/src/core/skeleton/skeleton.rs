@@ -4,6 +4,7 @@ use std::fmt::Debug;
 
 #[derive(Asset, Reflect, Default)]
 pub struct Skeleton {
+    root: BoneId,
     id_to_path: HashMap<BoneId, EntityPath>,
     children_map: HashMap<BoneId, Vec<BoneId>>,
     parent_map: HashMap<BoneId, BoneId>,
@@ -46,6 +47,14 @@ impl Skeleton {
             }
             // self.parent_map.insert(id, parent_id);
         }
+    }
+
+    pub fn set_root(&mut self, id: BoneId) {
+        self.root = id;
+    }
+
+    pub fn root(&self) -> BoneId {
+        self.root
     }
 
     pub fn parent(&self, id: &BoneId) -> Option<BoneId> {

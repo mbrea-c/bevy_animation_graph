@@ -2,7 +2,7 @@ use super::{
     deferred_gizmos::DeferredGizmoRef,
     graph_context::{CacheReadFilter, CacheWriteFilter, GraphStateStack},
     graph_context_arena::{GraphContextArena, GraphContextId, SubContextId},
-    GraphContext, SpecContext, SystemResources,
+    DeferredGizmosContext, GraphContext, PoseFallbackContext, SpecContext, SystemResources,
 };
 use crate::{
     core::{
@@ -10,6 +10,7 @@ use crate::{
         duration_data::DurationData,
         errors::GraphError,
         pose::BoneId,
+        space_conversion::SpaceConversionContext,
         state_machine::low_level::{LowLevelStateId, LowLevelStateMachine},
     },
     nodes::{FSMNode, GraphNode},
@@ -303,6 +304,37 @@ impl<'a> PassContext<'a> {
 
     pub fn node_id(&self) -> NodeId {
         self.node_context.as_ref().unwrap().node_id.clone()
+    }
+
+    pub fn space_conversion(&self) -> SpaceConversionContext {
+        SpaceConversionContext {
+            pose_fallback: PoseFallbackContext {
+                entity_map: self.entity_map,
+                resources: self.resources,
+                fallback_to_identity: false,
+            },
+        }
+    }
+
+    pub fn with_debug_gizmos(&self, action: impl Fn(DeferredGizmosContext)) {
+        if self.should_debug {
+            let ctx = DeferredGizmosContext {
+                gizmos: self.deferred_gizmos.as_mut(),
+                resources: self.resources,
+                entity_map: self.entity_map,
+                space_conversion: self.space_conversion(),
+            };
+            action(ctx);
+        }
+    }
+
+    pub fn gizmos(&self) -> DeferredGizmosContext {
+        DeferredGizmosContext {
+            gizmos: self.deferred_gizmos.as_mut(),
+            resources: self.resources,
+            entity_map: self.entity_map,
+            space_conversion: self.space_conversion(),
+        }
     }
 }
 

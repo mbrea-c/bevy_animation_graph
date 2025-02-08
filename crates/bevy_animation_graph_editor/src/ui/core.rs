@@ -16,12 +16,11 @@ use crate::tree::{Tree, TreeResult};
 use bevy::asset::UntypedAssetId;
 use bevy::ecs::world::CommandQueue;
 use bevy::prelude::*;
-use bevy::render::render_resource::Extent3d;
 use bevy::utils::HashMap;
 use bevy::window::PrimaryWindow;
 use bevy_animation_graph::core::animated_scene::{AnimatedScene, AnimatedSceneInstance};
 use bevy_animation_graph::core::animation_clip::EntityPath;
-use bevy_animation_graph::core::animation_graph::{AnimationGraph, NodeId, PinId, SourcePin};
+use bevy_animation_graph::core::animation_graph::{AnimationGraph, NodeId, PinId};
 use bevy_animation_graph::core::animation_graph_player::AnimationGraphPlayer;
 use bevy_animation_graph::core::animation_node::AnimationNode;
 use bevy_animation_graph::core::context::{GraphContextId, SpecContext};
@@ -31,12 +30,13 @@ use bevy_animation_graph::core::state_machine::high_level::{
 };
 use bevy_animation_graph::prelude::{ReflectEditProxy, ReflectNodeLike};
 use bevy_egui::EguiContext;
-use bevy_inspector_egui::bevy_egui::EguiUserTextures;
 use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
 use bevy_inspector_egui::{bevy_egui, egui};
 use egui_dock::{DockArea, DockState, NodeIndex, Style};
 use egui_notify::{Anchor, Toasts};
 
+use super::editor_windows::debugger::DebuggerWindow;
+use super::editor_windows::scene_preview::ScenePreviewWindow;
 use super::scenes::PreviewScene;
 use super::utils;
 
@@ -102,7 +102,6 @@ pub struct NodeSelection {
 
 pub struct SceneSelection {
     pub(crate) scene: Handle<AnimatedScene>,
-    pub(crate) respawn: bool,
     pub(crate) active_context: HashMap<UntypedAssetId, GraphContextId>,
     pub(crate) event_table: Vec<AnimationEvent>,
     /// Just here as a buffer for the editor
@@ -141,7 +140,6 @@ pub struct UiState {
     /// Save events to be fired as bevy events after Ui system has finished running
     pub(crate) graph_save_events: Vec<SaveGraph>,
     pub(crate) fsm_save_events: Vec<SaveFsm>,
-    pub(crate) preview_image: Handle<Image>,
     pub(crate) notifications: Toasts,
 }
 
@@ -152,7 +150,7 @@ impl UiState {
         let [graph_editor, inspectors] = tree.split_right(
             NodeIndex::root(),
             0.75,
-            vec![EguiWindow::Inspector, EguiWindow::Debugger],
+            vec![EguiWindow::Inspector, EguiWindow::dynamic(DebuggerWindow)],
         );
         let [_graph_editor, graph_selector] =
             tree.split_left(graph_editor, 0.2, vec![EguiWindow::GraphSelector]);
@@ -163,7 +161,10 @@ impl UiState {
         let [_node_inspector, preview] = tree.split_above(
             inspectors,
             0.5,
-            vec![EguiWindow::Preview, EguiWindow::PreviewHierarchy],
+            vec![
+                EguiWindow::dynamic(ScenePreviewWindow),
+                EguiWindow::PreviewHierarchy,
+            ],
         );
         let [_preview, _preview_errors] = tree.split_below(
             preview,
@@ -177,7 +178,6 @@ impl UiState {
             graph_changes: vec![],
             global_changes: vec![],
             save_requests: vec![],
-            preview_image: Handle::default(),
             notifications: Toasts::new()
                 .with_anchor(Anchor::BottomRight)
                 .with_default_font(egui::FontId::proportional(12.)),
@@ -197,7 +197,6 @@ impl UiState {
             graph_changes: &mut self.graph_changes,
             global_changes: &mut self.global_changes,
             save_requests: &mut self.save_requests,
-            preview_image: &self.preview_image,
             notifications: &mut self.notifications,
             graph_save_events: &mut self.graph_save_events,
             fsm_save_events: &mut self.fsm_save_events,
@@ -210,29 +209,42 @@ impl UiState {
     }
 }
 
+pub struct EditorContext<'a> {
+    pub selection: &'a mut EditorSelection,
+    #[allow(dead_code)] // Temporary while I migrate to extension pattern
+    pub global_changes: &'a mut Vec<GlobalChange>,
+}
+
+pub trait EditorWindowExtension: std::fmt::Debug + Send + Sync + 'static {
+    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorContext);
+    fn display_name(&self) -> String;
+}
+
+#[derive(Debug)]
+pub struct EditorWindow {
+    window: Box<dyn EditorWindowExtension>,
+}
+
 #[derive(Debug)]
 pub enum EguiWindow {
     GraphEditor,
     FsmEditor,
-    Preview,
     PreviewHierarchy,
     PreviewErrors,
     GraphSelector,
     SceneSelector,
     FsmSelector,
-    /// Allows access to cached outputs from nodes
-    Debugger,
     Inspector,
     EventSender,
     GraphSaver(AssetId<AnimationGraph>, String, bool),
     FsmSaver(AssetId<StateMachine>, String, bool),
+    DynWindow(EditorWindow),
 }
 
 impl EguiWindow {
     pub fn display_name(&self) -> String {
         match self {
             EguiWindow::GraphEditor => "Graph Editor".into(),
-            EguiWindow::Preview => "Preview Scene".into(),
             EguiWindow::PreviewHierarchy => "Preview Hierarchy".into(),
             EguiWindow::PreviewErrors => "Errors".into(),
             EguiWindow::GraphSelector => "Select Graph".into(),
@@ -243,8 +255,14 @@ impl EguiWindow {
             EguiWindow::FsmEditor => "FSM Editor".into(),
             EguiWindow::Inspector => "Inspector".into(),
             EguiWindow::EventSender => "Send events".into(),
-            EguiWindow::Debugger => "Debugger".into(),
+            EguiWindow::DynWindow(editor_window) => editor_window.window.display_name(),
         }
+    }
+
+    pub fn dynamic(ext: impl EditorWindowExtension) -> Self {
+        EguiWindow::DynWindow(EditorWindow {
+            window: Box::new(ext),
+        })
     }
 }
 
@@ -256,7 +274,6 @@ struct TabViewer<'a> {
     save_requests: &'a mut Vec<RequestSave>,
     graph_save_events: &'a mut Vec<SaveGraph>,
     fsm_save_events: &'a mut Vec<SaveFsm>,
-    preview_image: &'a Handle<Image>,
     notifications: &'a mut Toasts,
 }
 
@@ -276,9 +293,6 @@ impl egui_dock::TabViewer for TabViewer<'_> {
                     self.graph_changes,
                     self.save_requests,
                 );
-            }
-            EguiWindow::Preview => {
-                Self::animated_scene_preview(self.world, ui, self.preview_image, self.selection);
             }
             EguiWindow::GraphSaver(graph, path, done) => {
                 Self::graph_saver(ui, self.graph_save_events, *graph, path, done);
@@ -320,7 +334,14 @@ impl egui_dock::TabViewer for TabViewer<'_> {
                 }
             },
             EguiWindow::EventSender => Self::event_sender(self.world, ui, self.selection),
-            EguiWindow::Debugger => Self::debugger(self.world, ui, self.selection),
+            EguiWindow::DynWindow(editor_window) => editor_window.window.ui(
+                ui,
+                self.world,
+                &mut EditorContext {
+                    selection: self.selection,
+                    global_changes: self.global_changes,
+                },
+            ),
         }
 
         while !self.graph_changes.is_empty() {
@@ -845,7 +866,6 @@ impl TabViewer<'_> {
             };
             selection.scene = Some(SceneSelection {
                 scene: chosen_handle,
-                respawn: true,
                 active_context: HashMap::default(),
                 event_table,
                 event_editor: AnimationEvent::default(),
@@ -1420,62 +1440,6 @@ impl TabViewer<'_> {
         queue.apply(world);
     }
 
-    fn animated_scene_preview(
-        world: &mut World,
-        ui: &mut egui::Ui,
-        preview_image: &Handle<Image>,
-        selection: &mut EditorSelection,
-    ) {
-        let cube_preview_texture_id =
-            world.resource_scope::<EguiUserTextures, egui::TextureId>(|_, user_textures| {
-                user_textures.image_id(preview_image).unwrap()
-            });
-
-        let mut query = world.query::<(&AnimatedSceneInstance, &PreviewScene)>();
-        let Ok((instance, _)) = query.get_single(world) else {
-            return;
-        };
-        let entity = instance.player_entity;
-        let mut query = world.query::<&mut AnimationGraphPlayer>();
-        let Ok(mut player) = query.get_mut(world, entity) else {
-            return;
-        };
-
-        ui.horizontal(|ui| {
-            if ui.button("X").on_hover_text("Close preview").clicked() {
-                selection.scene = None;
-            }
-
-            if ui.button("||").on_hover_text("Pause").clicked() {
-                player.pause()
-            }
-
-            if ui.button(">").on_hover_text("Play").clicked() {
-                player.resume()
-            }
-
-            if ui.button("||>").on_hover_text("Play one frame").clicked() {
-                player.play_one_frame()
-            }
-        });
-
-        let available_size = ui.available_size();
-        let e3d_size = Extent3d {
-            width: available_size.x as u32,
-            height: available_size.y as u32,
-            ..default()
-        };
-        world.resource_scope::<Assets<Image>, ()>(|_, mut images| {
-            let image = images.get_mut(preview_image).unwrap();
-            image.texture_descriptor.size = e3d_size;
-            image.resize(e3d_size);
-        });
-        ui.image(egui::load::SizedTexture::new(
-            cube_preview_texture_id,
-            available_size,
-        ));
-    }
-
     fn scene_preview_errors(world: &mut World, ui: &mut egui::Ui, selection: &mut EditorSelection) {
         if selection.scene.is_none() {
             return;
@@ -1499,103 +1463,5 @@ impl TabViewer<'_> {
                 ui.label("No errors to show");
             });
         }
-    }
-
-    /// Has some UI for showing access to cached output from currently selected node
-    fn debugger(world: &mut World, ui: &mut egui::Ui, selection: &mut EditorSelection) {
-        if selection.scene.is_none() {
-            return;
-        };
-        let mut query = world.query::<(&AnimatedSceneInstance, &PreviewScene)>();
-        let Ok((instance, _)) = query.get_single(world) else {
-            return;
-        };
-        let entity = instance.player_entity;
-        let mut query = world.query::<&AnimationGraphPlayer>();
-
-        let unsafe_world = world.as_unsafe_world_cell();
-        let type_registry = unsafe {
-            unsafe_world
-                .get_resource::<AppTypeRegistry>()
-                .unwrap()
-                .0
-                .clone()
-        };
-        let type_registry = type_registry.read();
-        let mut queue = CommandQueue::default();
-        let mut cx = Context {
-            world: Some(unsafe { unsafe_world.world_mut() }.into()),
-            queue: Some(&mut queue),
-        };
-        let mut env = InspectorUi::for_bevy(&type_registry, &mut cx);
-
-        let world = unsafe { unsafe_world.world_mut() };
-
-        let InspectorSelection::Node(node_selection) = &mut selection.inspector_selection else {
-            return;
-        };
-
-        let Some(data_pin_map) =
-            utils::get_node_output_data_pins(world, node_selection.graph, &node_selection.node)
-        else {
-            return;
-        };
-
-        let Ok(player) = query.get(world, entity) else {
-            return;
-        };
-
-        let Some(graph_selection) = &selection.graph_editor else {
-            return;
-        };
-
-        let Some(graph_context) = selection
-            .scene
-            .as_ref()
-            .and_then(|s| s.active_context.get(&graph_selection.graph.untyped()))
-            .and_then(|id| Some(id).zip(player.get_context_arena()))
-            .and_then(|(id, ca)| ca.get_context(*id))
-        else {
-            return;
-        };
-
-        // Select data to display cached value of
-        let mut selected_pin_id = node_selection
-            .selected_pin_id
-            .clone()
-            .unwrap_or("".to_string());
-        egui::ComboBox::new("cache debugger window", "Pin")
-            .selected_text(&selected_pin_id)
-            .show_ui(ui, |ui| {
-                for (id, spec) in data_pin_map.iter() {
-                    ui.selectable_value(&mut selected_pin_id, id.clone(), id)
-                        .on_hover_ui(|ui| {
-                            ui.label(format!("{:?}", spec));
-                        });
-                }
-            });
-        let new_pin_id = if selected_pin_id == "" {
-            None
-        } else {
-            Some(selected_pin_id)
-        };
-
-        if new_pin_id != node_selection.selected_pin_id {
-            node_selection.selected_pin_id = new_pin_id.clone();
-        }
-
-        // Now get the selected value and display it!
-
-        let Some(val) = new_pin_id.and_then(|pin_id| {
-            graph_context.caches.get_primary(|c| {
-                let node_id = node_selection.node.clone();
-                let pin_id = pin_id.clone();
-                c.get_data(&SourcePin::NodeData(node_id, pin_id)).cloned()
-            })
-        }) else {
-            return;
-        };
-
-        env.ui_for_reflect_readonly(&val, ui);
     }
 }

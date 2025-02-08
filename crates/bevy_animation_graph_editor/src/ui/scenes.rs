@@ -1,54 +1,28 @@
+use std::rc::Rc;
+
 use crate::asset_saving::{SaveFsm, SaveGraph};
+use bevy::color::palettes::css::WHITE;
 use bevy::prelude::*;
-use bevy::render::camera::RenderTarget;
 use bevy::render::render_resource::{
     Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
 };
+
 use bevy::render::view::RenderLayers;
 use bevy::utils::HashMap;
-use bevy_animation_graph::core::animated_scene::{AnimatedSceneBundle, AnimatedSceneInstance};
+use bevy_animation_graph::core::animated_scene::AnimatedSceneInstance;
 use bevy_animation_graph::core::animation_graph_player::AnimationGraphPlayer;
-use bevy_animation_graph::prelude::AnimatedSceneHandle;
+use bevy_animation_graph::core::pose::Pose;
+use bevy_animation_graph::core::space_conversion::SpaceConversionContext;
+use bevy_animation_graph::prelude::{
+    AnimationSource, DeferredGizmos, DeferredGizmosContext, PoseFallbackContext, SystemResources,
+};
 use bevy_inspector_egui::bevy_egui;
 use egui_dock::egui;
-use rand::rngs::StdRng;
-use rand::{Rng, SeedableRng};
 
 use super::UiState;
 
 #[derive(Component)]
 pub struct PreviewScene;
-
-pub fn scene_spawner_system(
-    mut commands: Commands,
-    mut query: Query<(Entity, &AnimatedSceneHandle), With<PreviewScene>>,
-    mut ui_state: ResMut<UiState>,
-) {
-    if let Ok((entity, AnimatedSceneHandle(scene_handle))) = query.get_single_mut() {
-        if let Some(scene_selection) = &mut ui_state.selection.scene {
-            if scene_selection.respawn || &scene_selection.scene != scene_handle {
-                commands.entity(entity).despawn_recursive();
-                commands
-                    .spawn(AnimatedSceneBundle {
-                        animated_scene: AnimatedSceneHandle(scene_selection.scene.clone()),
-                        ..default()
-                    })
-                    .insert(PreviewScene);
-                scene_selection.respawn = false;
-            }
-        } else {
-            commands.entity(entity).despawn_recursive();
-        }
-    } else if let Some(scene_selection) = &mut ui_state.selection.scene {
-        commands
-            .spawn(AnimatedSceneBundle {
-                animated_scene: AnimatedSceneHandle(scene_selection.scene.clone()),
-                ..default()
-            })
-            .insert(PreviewScene);
-        scene_selection.respawn = false;
-    }
-}
 
 pub fn asset_save_event_system(
     mut ui_state: ResMut<UiState>,
@@ -85,86 +59,202 @@ pub fn graph_debug_draw_bone_system(
     player.gizmo_for_bones(vec![path.clone().id()])
 }
 
-pub fn setup_system(
-    mut egui_user_textures: ResMut<bevy_egui::EguiUserTextures>,
-    mut ui_state: ResMut<UiState>,
-    mut commands: Commands,
-    mut images: ResMut<Assets<Image>>,
+// Pose gizmo rendering
+
+#[derive(Component)]
+#[require(Transform, Visibility, Name)]
+pub struct PoseGizmoRender {
+    pub pose: Pose,
+}
+
+pub fn render_pose_gizmos(
+    pose_queries: Query<&PoseGizmoRender>,
+    resources: SystemResources,
+    mut gizmos: Gizmos,
 ) {
-    let size = Extent3d {
-        width: 512,
-        height: 512,
-        ..default()
-    };
+    let mut deferred_gizmos = DeferredGizmos::default();
+    for pose_gizmo_render in &pose_queries {
+        let entity_map = HashMap::new();
 
-    // This is the texture that will be rendered to.
-    let mut image = Image {
-        texture_descriptor: TextureDescriptor {
-            label: None,
-            size,
-            dimension: TextureDimension::D2,
-            format: TextureFormat::Bgra8UnormSrgb,
-            mip_level_count: 1,
-            sample_count: 1,
-            usage: TextureUsages::TEXTURE_BINDING
-                | TextureUsages::COPY_DST
-                | TextureUsages::RENDER_ATTACHMENT,
-            view_formats: &[],
-        },
-        ..default()
-    };
+        let mut ctx = DeferredGizmosContext {
+            gizmos: &mut deferred_gizmos,
+            resources: &resources,
+            entity_map: &entity_map,
+            space_conversion: SpaceConversionContext {
+                pose_fallback: PoseFallbackContext {
+                    entity_map: &entity_map,
+                    resources: &resources,
+                    fallback_to_identity: true,
+                },
+            },
+        };
 
-    // fill image.data with zeroes
-    image.resize(size);
+        ctx.pose_bone_gizmos(WHITE.into(), &pose_gizmo_render.pose);
+    }
 
-    let image_handle = images.add(image);
+    deferred_gizmos.apply(&mut gizmos);
+}
 
-    egui_user_textures.add_image(image_handle.clone());
-    ui_state.preview_image = image_handle.clone();
+#[derive(Component)]
+pub struct OverrideSceneAnimation(pub Pose);
 
-    // Light
-    // NOTE: Currently lights are shared between passes - see https://github.com/bevyengine/bevy/issues/3462
-    commands.spawn((
-        PointLight::default(),
-        Transform::from_translation(Vec3::new(0.0, 0.0, 10.0)),
-    ));
+pub fn override_scene_animations(
+    scene_query: Query<
+        (&AnimatedSceneInstance, &OverrideSceneAnimation),
+        Or<(
+            Changed<AnimatedSceneInstance>,
+            Changed<OverrideSceneAnimation>,
+        )>,
+    >,
+    mut player_query: Query<&mut AnimationGraphPlayer>,
+) {
+    for (instance, pose_override) in &scene_query {
+        let Ok(mut player) = player_query.get_mut(instance.player_entity) else {
+            continue;
+        };
+        player.set_animation(AnimationSource::Pose(pose_override.0.clone()));
+    }
+}
 
-    commands.spawn((
-        Camera3d::default(),
-        Camera {
-            // render before the "main pass" camera
-            order: -1,
-            clear_color: ClearColorConfig::Custom(Color::from(LinearRgba::new(1.0, 1.0, 1.0, 0.0))),
-            target: RenderTarget::Image(image_handle),
-            ..default()
-        },
-        Transform::from_translation(Vec3::new(0.0, 2.0, 3.0)).looking_at(Vec3::Y, Vec3::Y),
-    ));
+// Below here is the generic textured render tooling
+
+pub fn provide_texture_for_scene<T: SubSceneConfig>(
+    world: &mut World,
+    id: egui::Id,
+    config: T,
+) -> Handle<Image> {
+    if !world.contains_resource::<SubScenes<T>>() {
+        world.insert_resource(SubScenes::<T>::default());
+    }
+
+    if !world.contains_resource::<SubSceneLayerManager>() {
+        world.insert_resource(SubSceneLayerManager::default());
+    }
+
+    let new_config = Rc::new(config);
+
+    let action = world
+        .run_system_cached_with(check_sync_action::<T>, (id, new_config.clone()))
+        .unwrap();
+
+    match action {
+        SubSceneSyncAction::Nothing => {}
+        SubSceneSyncAction::Respawn => {
+            world
+                .run_system_cached_with(cleanup_render_layer::<T>, id)
+                .unwrap();
+
+            world
+                .run_system_cached_with(setup_textured_render, (id, new_config.clone()))
+                .unwrap();
+
+            world.flush();
+        }
+        SubSceneSyncAction::Update => {
+            new_config.update(id, world);
+            world
+                .run_system_cached_with(update_config, (id, new_config.clone()))
+                .unwrap();
+        }
+    }
+
+    world
+        .run_system_cached_with(get_image_handle::<T>, id)
+        .unwrap()
 }
 
 /// Keeps track of "subscenes" spawned in order to render
 /// in a texture shown in the UI.
 #[derive(Resource)]
-pub struct SubScenes {
+pub struct SubScenes<T> {
     /// The map is from renderlayer to scene data
-    pub scenes: HashMap<usize, SubSceneData>,
+    scenes: HashMap<egui::Id, SubSceneData<T>>,
+    layers: HashMap<egui::Id, usize>,
 }
 
-pub struct SubSceneData {
-    /// This will be decremented every update, if it reaches 0 it will be despawned.
-    /// Therefore it should be updated if being rendered.
-    retain: u32,
+/// Keeps track of layer assignments
+#[derive(Resource, Default)]
+pub struct SubSceneLayerManager {
+    next_available_layer: usize,
+}
+
+impl SubSceneLayerManager {
+    pub fn assign_layer(&mut self) -> usize {
+        let layer = self.next_available_layer;
+        self.next_available_layer += 1;
+
+        layer
+    }
+}
+
+impl<T> Default for SubScenes<T> {
+    fn default() -> Self {
+        Self {
+            scenes: HashMap::default(),
+            layers: HashMap::default(),
+        }
+    }
+}
+
+impl<T> SubScenes<T> {
+    pub fn add(
+        &mut self,
+        id: egui::Id,
+        data: SubSceneData<T>,
+        layer_manager: &mut SubSceneLayerManager,
+    ) -> usize {
+        let layer = layer_manager.assign_layer();
+
+        self.scenes.insert(id, data);
+        self.layers.insert(id, layer);
+
+        layer
+    }
+
+    pub fn get_data(&self, id: egui::Id) -> Option<&SubSceneData<T>> {
+        self.scenes.get(&id)
+    }
+
+    pub fn get_data_mut(&mut self, id: egui::Id) -> Option<&mut SubSceneData<T>> {
+        self.scenes.get_mut(&id)
+    }
+
+    pub fn remove(&mut self, id: egui::Id) -> Option<SubSceneData<T>> {
+        self.layers.remove(&id);
+        self.scenes.remove(&id)
+    }
+}
+
+pub struct SubSceneData<T> {
+    config: T,
+    root: Entity,
+    image: Handle<Image>,
 }
 
 /// Indicates that this entity is part of a subscene with the given render layer
-#[derive(Component)]
-pub struct PartOfSubScene(usize);
+#[derive(Component, Clone)]
+pub struct PartOfSubScene(pub egui::Id);
 
-pub fn setup_textured_render(
-    In(widget_id): In<egui::Id>,
+#[derive(Debug, Clone, Copy)]
+pub enum SubSceneSyncAction {
+    Nothing,
+    Respawn,
+    Update,
+}
+
+pub trait SubSceneConfig: Clone + PartialEq + Send + Sync + 'static {
+    fn spawn(&self, builder: &mut ChildBuilder, render_target: Handle<Image>);
+    fn sync_action(&self, new_config: &Self) -> SubSceneSyncAction;
+    fn update(&self, id: egui::Id, world: &mut World);
+}
+
+pub fn setup_textured_render<T: SubSceneConfig>(
+    In((widget_id, config)): In<(egui::Id, Rc<T>)>,
     mut egui_user_textures: ResMut<bevy_egui::EguiUserTextures>,
     mut commands: Commands,
     mut images: ResMut<Assets<Image>>,
+    mut subscenes: ResMut<SubScenes<T>>,
+    mut layer_manager: ResMut<SubSceneLayerManager>,
 ) -> Handle<Image> {
     let size = Extent3d {
         width: 512,
@@ -172,13 +262,6 @@ pub fn setup_textured_render(
         ..default()
     };
 
-    let layer = {
-        let seed: u64 = widget_id.value(); // Your arbitrary seed value
-        let mut rng = StdRng::seed_from_u64(seed);
-
-        rng.random::<u32>() as usize // Generate a random usize
-    };
-
     // This is the texture that will be rendered to.
     let mut image = Image {
         texture_descriptor: TextureDescriptor {
@@ -203,46 +286,90 @@ pub fn setup_textured_render(
 
     egui_user_textures.add_image(image_handle.clone());
 
-    // Light
-    commands.spawn((
-        PointLight::default(),
-        Transform::from_translation(Vec3::new(0.0, 0.0, 10.0)),
-        RenderLayers::layer(layer),
-        PartOfSubScene(layer),
-    ));
+    let root = commands
+        .spawn((
+            Transform::default(),
+            Visibility::default(),
+            Name::new("Subscene"),
+        ))
+        .with_children(|c| {
+            config.spawn(c, image_handle.clone());
+        })
+        .id();
 
-    commands.spawn((
-        Camera3d::default(),
-        Camera {
-            // render before the "main pass" camera
-            order: -1,
-            clear_color: ClearColorConfig::Custom(Color::from(LinearRgba::new(1.0, 1.0, 1.0, 0.0))),
-            target: RenderTarget::Image(image_handle.clone()),
-            ..default()
+    let layer = subscenes.add(
+        widget_id,
+        SubSceneData {
+            config: config.as_ref().clone(),
+            root,
+            image: image_handle.clone(),
         },
-        Transform::from_translation(Vec3::new(0.0, 2.0, 3.0)).looking_at(Vec3::Y, Vec3::Y),
-        RenderLayers::layer(layer),
-        PartOfSubScene(layer),
+        &mut layer_manager,
+    );
+
+    commands.entity(root).insert((
+        RenderLayers::from_layers(&[layer]),
+        PartOfSubScene(widget_id),
     ));
 
     image_handle
 }
 
-pub fn cleanup_render_layer(
+pub fn update_config<T: SubSceneConfig>(
+    In((widget_id, config)): In<(egui::Id, Rc<T>)>,
+    mut subscenes: ResMut<SubScenes<T>>,
+) {
+    if let Some(data) = subscenes.get_data_mut(widget_id) {
+        data.config = config.as_ref().clone();
+    }
+}
+
+pub fn cleanup_render_layer<T: SubSceneConfig>(
     In(widget_id): In<egui::Id>,
     mut commands: Commands,
     query: Query<(Entity, &PartOfSubScene)>,
+    mut egui_user_textures: ResMut<bevy_egui::EguiUserTextures>,
+    mut subscenes: ResMut<SubScenes<T>>,
 ) {
-    let layer = {
-        let seed: u64 = widget_id.value(); // Your arbitrary seed value
-        let mut rng = StdRng::seed_from_u64(seed);
-
-        rng.random::<u32>() as usize // Generate a random usize
-    };
-
-    for (entity, &PartOfSubScene(entity_layer)) in &query {
-        if layer == entity_layer {
+    for (entity, &PartOfSubScene(id)) in &query {
+        if widget_id == id {
             commands.entity(entity).despawn_recursive();
+        }
+    }
+
+    if let Some(config) = subscenes.remove(widget_id) {
+        egui_user_textures.remove_image(&config.image);
+    }
+}
+
+pub fn check_sync_action<T: SubSceneConfig>(
+    In((widget_id, config)): In<(egui::Id, Rc<T>)>,
+    subscenes: Res<SubScenes<T>>,
+) -> SubSceneSyncAction {
+    if let Some(data) = subscenes.get_data(widget_id) {
+        data.config.sync_action(&config)
+    } else {
+        SubSceneSyncAction::Respawn
+    }
+}
+
+pub fn get_image_handle<T: SubSceneConfig>(
+    In(widget_id): In<egui::Id>,
+    subscenes: Res<SubScenes<T>>,
+) -> Handle<Image> {
+    subscenes.get_data(widget_id).unwrap().image.clone()
+}
+
+pub fn propagate_layers(
+    layers_query: Query<(Entity, &RenderLayers, &PartOfSubScene), Or<(Changed<Children>,)>>,
+    children_query: Query<&Children>,
+    mut commands: Commands,
+) {
+    for (entity, render_layers, part_of_sub_scene) in &layers_query {
+        for child in children_query.iter_descendants(entity) {
+            commands
+                .entity(child)
+                .insert((render_layers.clone(), part_of_sub_scene.clone()));
         }
     }
 }

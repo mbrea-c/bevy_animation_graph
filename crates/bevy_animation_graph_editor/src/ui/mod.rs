@@ -1,4 +1,5 @@
 pub mod core;
+pub mod editor_windows;
 pub mod egui_inspector_impls;
 pub mod scenes;
 pub mod utils;

@@ -6,9 +6,8 @@ use crate::{
         errors::GraphError,
         pose::Pose,
         prelude::DataSpec,
-        space_conversion::SpaceConversion,
     },
-    prelude::{BoneDebugGizmos, PassContext, SpecContext},
+    prelude::{PassContext, SpecContext},
     utils::unwrap::UnwrapVal,
 };
 use bevy::{
@@ -59,11 +58,15 @@ impl NodeLike for TwoBoneIKNode {
             skeleton.parent(&target).and_then(|p| skeleton.parent(&p)),
         ) {
             // Debug render (if enabled)
-            ctx.bone_gizmo(target, LinearRgba::RED, skeleton, Some(&pose));
-            ctx.bone_gizmo(parent_path, LinearRgba::RED, skeleton, Some(&pose));
+            ctx.with_debug_gizmos(|mut gizmos| {
+                gizmos.bone_gizmo(target, LinearRgba::RED, skeleton, Some(&pose))
+            });
+            ctx.with_debug_gizmos(|mut gizmos| {
+                gizmos.bone_gizmo(parent_path, LinearRgba::RED, skeleton, Some(&pose))
+            });
 
             let bone = pose.bones[*bone_id].clone();
-            let target_gp = ctx.root_to_bone_space(
+            let target_gp = ctx.space_conversion().root_to_bone_space(
                 Transform::from_translation(target_pos_char),
                 &pose,
                 skeleton,
@@ -106,8 +109,12 @@ impl NodeLike for TwoBoneIKNode {
             pose.bones[*bone_id].rotation = Some(bone_transform.rotation);
 
             // Debug render (if enabled)
-            ctx.bone_gizmo(target, LinearRgba::BLUE, skeleton, Some(&pose));
-            ctx.bone_gizmo(parent_path, LinearRgba::BLUE, skeleton, Some(&pose));
+            ctx.with_debug_gizmos(|mut gizmos| {
+                gizmos.bone_gizmo(target, LinearRgba::BLUE, skeleton, Some(&pose))
+            });
+            ctx.with_debug_gizmos(|mut gizmos| {
+                gizmos.bone_gizmo(parent_path, LinearRgba::BLUE, skeleton, Some(&pose))
+            });
         }
         ctx.set_time(pose.timestamp);
         ctx.set_data_fwd(Self::OUT_POSE, pose);

@@ -1,14 +1,16 @@
-use super::PassContext;
+use super::SystemResources;
 use crate::core::{
     pose::{BoneId, Pose},
     skeleton::Skeleton,
-    space_conversion::SpaceConversion,
+    space_conversion::SpaceConversionContext,
 };
 use bevy::{
     color::LinearRgba,
     gizmos::gizmos::Gizmos,
     math::{Isometry3d, Quat, Vec3},
+    prelude::Entity,
     reflect::Reflect,
+    utils::HashMap,
 };
 
 #[derive(Clone)]
@@ -30,7 +32,19 @@ impl DeferredGizmoRef {
 
 #[derive(Clone, Reflect, Default)]
 pub struct DeferredGizmos {
-    pub commands: Vec<DeferredGizmoCommand>,
+    commands: Vec<DeferredGizmoCommand>,
+}
+
+/// Enables debug drawing of bones, poses and other useful gizmos.
+///
+/// Keep in mind that this is highly inefficient (as it often requires
+/// eagerly computing transform propagation), so it should only be used
+/// for debugging purposes.
+pub struct DeferredGizmosContext<'a> {
+    pub gizmos: &'a mut DeferredGizmos,
+    pub resources: &'a SystemResources<'a, 'a>,
+    pub entity_map: &'a HashMap<BoneId, Entity>,
+    pub space_conversion: SpaceConversionContext<'a>,
 }
 
 impl DeferredGizmos {
@@ -38,6 +52,10 @@ impl DeferredGizmos {
         for command in self.commands.drain(..) {
             command.apply(gizmos);
         }
+    }
+
+    pub fn queue(&mut self, command: DeferredGizmoCommand) {
+        self.commands.push(command);
     }
 
     pub fn sphere(&mut self, position: Vec3, rotation: Quat, radius: f32, color: LinearRgba) {
@@ -111,55 +129,8 @@ fn bone_gizmo(gizmos: &mut Gizmos, start: Vec3, end: Vec3, color: LinearRgba) {
     gizmos.line(d, end, color);
 }
 
-pub trait BoneDebugGizmos {
-    fn will_draw(&self) -> bool;
-    fn gizmo(&mut self, gizmo: DeferredGizmoCommand);
-
-    fn pose_bone_gizmos(&mut self, color: LinearRgba, pose: &Pose);
-    fn bone_gizmo(
-        &mut self,
-        bone_id: BoneId,
-        color: LinearRgba,
-        skeleton: &Skeleton,
-        pose: Option<&Pose>,
-    );
-    fn bone_sphere(&mut self, bone_id: BoneId, radius: f32, color: LinearRgba);
-    fn bone_rays(&mut self, bone_id: BoneId);
-    fn sphere_in_parent_bone_space(
-        &mut self,
-        bone_id: BoneId,
-        position: Vec3,
-        rotation: Quat,
-        radius: f32,
-        color: LinearRgba,
-        skeleton: &Skeleton,
-    );
-    fn ray_in_parent_bone_space(
-        &mut self,
-        bone_id: BoneId,
-        origin: Vec3,
-        direction: Vec3,
-        color: LinearRgba,
-        skeleton: &Skeleton,
-    );
-}
-
-impl BoneDebugGizmos for PassContext<'_> {
-    fn will_draw(&self) -> bool {
-        self.should_debug
-    }
-
-    fn gizmo(&mut self, gizmo: DeferredGizmoCommand) {
-        if self.will_draw() {
-            self.deferred_gizmos.as_mut().commands.push(gizmo);
-        }
-    }
-
-    fn pose_bone_gizmos(&mut self, color: LinearRgba, pose: &Pose) {
-        if !self.will_draw() {
-            return;
-        }
-
+impl DeferredGizmosContext<'_> {
+    pub fn pose_bone_gizmos(&mut self, color: LinearRgba, pose: &Pose) {
         let Some(skeleton) = self.resources.skeleton_assets.get(&pose.skeleton) else {
             return;
         };
@@ -169,36 +140,33 @@ impl BoneDebugGizmos for PassContext<'_> {
         }
     }
 
-    fn bone_gizmo(
+    pub fn bone_gizmo(
         &mut self,
         bone_id: BoneId,
         color: LinearRgba,
         skeleton: &Skeleton,
         pose: Option<&Pose>,
     ) {
-        if !self.will_draw() {
-            return;
-        }
-
         let default_pose = Pose::default();
         let pose = pose.unwrap_or(&default_pose);
 
         let Some(parent_id) = skeleton.parent(&bone_id) else {
             return;
         };
-        let global_bone_transform = self.global_transform_of_bone(pose, skeleton, bone_id);
-        let parent_bone_transform = self.global_transform_of_bone(pose, skeleton, parent_id);
-        self.gizmo(DeferredGizmoCommand::Bone(
+        let global_bone_transform = self
+            .space_conversion
+            .global_transform_of_bone(pose, skeleton, bone_id);
+        let parent_bone_transform = self
+            .space_conversion
+            .global_transform_of_bone(pose, skeleton, parent_id);
+        self.gizmos.queue(DeferredGizmoCommand::Bone(
             parent_bone_transform.translation,
             global_bone_transform.translation,
             color,
         ));
     }
 
-    fn bone_sphere(&mut self, bone_id: BoneId, radius: f32, color: LinearRgba) {
-        if !self.will_draw() {
-            return;
-        }
+    pub fn bone_sphere(&mut self, bone_id: BoneId, radius: f32, color: LinearRgba) {
         let entity = self.entity_map.get(&bone_id).unwrap();
         let global_transform = self
             .resources
@@ -207,7 +175,7 @@ impl BoneDebugGizmos for PassContext<'_> {
             .unwrap()
             .1
             .compute_transform();
-        self.gizmo(DeferredGizmoCommand::Sphere(
+        self.gizmos.queue(DeferredGizmoCommand::Sphere(
             global_transform.translation,
             global_transform.rotation,
             radius,
@@ -215,10 +183,7 @@ impl BoneDebugGizmos for PassContext<'_> {
         ));
     }
 
-    fn bone_rays(&mut self, bone_id: BoneId) {
-        if !self.will_draw() {
-            return;
-        }
+    pub fn bone_rays(&mut self, bone_id: BoneId) {
         let entity = self.entity_map.get(&bone_id).unwrap();
         let global_transform = self
             .resources
@@ -227,24 +192,24 @@ impl BoneDebugGizmos for PassContext<'_> {
             .unwrap()
             .1
             .compute_transform();
-        self.gizmo(DeferredGizmoCommand::Ray(
+        self.gizmos.queue(DeferredGizmoCommand::Ray(
             global_transform.translation,
             global_transform.rotation * Vec3::X * 0.3,
             LinearRgba::RED,
         ));
-        self.gizmo(DeferredGizmoCommand::Ray(
+        self.gizmos.queue(DeferredGizmoCommand::Ray(
             global_transform.translation,
             global_transform.rotation * Vec3::Y * 0.3,
             LinearRgba::GREEN,
         ));
-        self.gizmo(DeferredGizmoCommand::Ray(
+        self.gizmos.queue(DeferredGizmoCommand::Ray(
             global_transform.translation,
             global_transform.rotation * Vec3::Z * 0.3,
             LinearRgba::BLUE,
         ));
     }
 
-    fn sphere_in_parent_bone_space(
+    pub fn sphere_in_parent_bone_space(
         &mut self,
         bone_id: BoneId,
         position: Vec3,
@@ -253,9 +218,6 @@ impl BoneDebugGizmos for PassContext<'_> {
         color: LinearRgba,
         skeleton: &Skeleton,
     ) {
-        if !self.will_draw() {
-            return;
-        }
         let parent_bone_id = skeleton.parent(&bone_id).unwrap();
         let entity = self.entity_map.get(&parent_bone_id).unwrap();
         let global_transform = self
@@ -265,7 +227,7 @@ impl BoneDebugGizmos for PassContext<'_> {
             .unwrap()
             .1
             .compute_transform();
-        self.gizmo(DeferredGizmoCommand::Sphere(
+        self.gizmos.queue(DeferredGizmoCommand::Sphere(
             global_transform * position,
             global_transform.rotation * rotation,
             radius,
@@ -273,7 +235,7 @@ impl BoneDebugGizmos for PassContext<'_> {
         ));
     }
 
-    fn ray_in_parent_bone_space(
+    pub fn ray_in_parent_bone_space(
         &mut self,
         bone_id: BoneId,
         origin: Vec3,
@@ -281,9 +243,6 @@ impl BoneDebugGizmos for PassContext<'_> {
         color: LinearRgba,
         skeleton: &Skeleton,
     ) {
-        if !self.will_draw() {
-            return;
-        }
         let parent_bone_id = skeleton.parent(&bone_id).unwrap();
         let entity = self.entity_map.get(&parent_bone_id).unwrap();
         let global_transform = self
@@ -293,7 +252,7 @@ impl BoneDebugGizmos for PassContext<'_> {
             .unwrap()
             .1
             .compute_transform();
-        self.gizmo(DeferredGizmoCommand::Ray(
+        self.gizmos.queue(DeferredGizmoCommand::Ray(
             global_transform * origin,
             global_transform.rotation * direction,
             color,

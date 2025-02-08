@@ -1,9 +1,11 @@
 use super::{
-    animation_graph::{AnimationGraph, InputOverlay, PinId, TimeState, TimeUpdate},
-    context::{BoneDebugGizmos, DeferredGizmos, PassContext},
+    animation_graph::{
+        AnimationGraph, InputOverlay, PinId, TimeState, TimeUpdate, DEFAULT_OUTPUT_POSE,
+    },
+    context::{DeferredGizmos, PassContext},
     edge_data::{AnimationEvent, DataValue, EventQueue, SampledEvent},
     errors::GraphError,
-    pose::BoneId,
+    pose::{BoneId, Pose},
     prelude::GraphContextArena,
     skeleton::Skeleton,
 };
@@ -27,12 +29,34 @@ impl PlaybackState {
     }
 }
 
+#[derive(Reflect, Clone, Default)]
+pub enum AnimationSource {
+    Graph(Handle<AnimationGraph>),
+    Pose(Pose),
+    #[default]
+    None,
+}
+
+impl AnimationSource {
+    pub fn is_none(&self) -> bool {
+        matches!(self, AnimationSource::None)
+    }
+
+    pub fn is_graph(&self) -> bool {
+        matches!(self, AnimationSource::Graph(_))
+    }
+
+    pub fn is_pose(&self) -> bool {
+        matches!(self, AnimationSource::Pose(_))
+    }
+}
+
 /// Animation controls
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
 pub struct AnimationGraphPlayer {
     pub(crate) playback_state: PlaybackState,
-    pub(crate) animation: Option<Handle<AnimationGraph>>,
+    pub(crate) animation: AnimationSource,
     pub(crate) skeleton: Handle<Skeleton>,
     pub(crate) context_arena: Option<GraphContextArena>,
     pub(crate) elapsed: TimeState,
@@ -64,10 +88,14 @@ impl AnimationGraphPlayer {
         self.context_arena.as_ref()
     }
 
+    pub fn set_animation(&mut self, animation: AnimationSource) {
+        self.animation = animation;
+    }
+
     /// Set the animation graph to play
     pub fn with_graph(mut self, animation: Handle<AnimationGraph>) -> Self {
         self.context_arena = Some(GraphContextArena::new(animation.id()));
-        self.animation = Some(animation);
+        self.animation = AnimationSource::Graph(animation);
         self
     }
 
@@ -92,7 +120,7 @@ impl AnimationGraphPlayer {
     /// This will use a linear blending between the previous and the new animation to make a smooth transition.
     pub fn start(&mut self, handle: Handle<AnimationGraph>) -> &mut Self {
         self.context_arena = Some(GraphContextArena::new(handle.id()));
-        self.animation = Some(handle);
+        self.animation = AnimationSource::Graph(handle);
         self.elapsed = TimeState::default();
         self.playback_state = PlaybackState::Play;
         self
@@ -116,7 +144,7 @@ impl AnimationGraphPlayer {
             std::mem::take(&mut self.queued_events).into(),
         );
 
-        let Some(graph_handle) = self.animation.as_ref() else {
+        let AnimationSource::Graph(graph_handle) = &self.animation else {
             return;
         };
 
@@ -178,7 +206,7 @@ impl AnimationGraphPlayer {
 
         let skeleton_handle = self.skeleton.clone();
 
-        let mut ctx = self
+        let ctx = self
             .get_pass_context(system_resources, root_entity)
             .with_debugging(true);
 
@@ -187,7 +215,8 @@ impl AnimationGraphPlayer {
         };
 
         for bone_id in bones.drain(..) {
-            ctx.bone_gizmo(bone_id, WHITE.into(), skeleton, None);
+            ctx.gizmos()
+                .bone_gizmo(bone_id, WHITE.into(), skeleton, None);
         }
     }
 
@@ -215,8 +244,8 @@ impl AnimationGraphPlayer {
         self.pending_update = Some(TimeUpdate::Absolute(0.));
     }
 
-    pub fn get_animation_graph(&self) -> Option<Handle<AnimationGraph>> {
-        self.animation.clone()
+    pub fn get_animation_source(&self) -> &AnimationSource {
+        &self.animation
     }
 
     /// If graph evaluation produced an error in the last frame return the error, otherwise return
@@ -227,5 +256,14 @@ impl AnimationGraphPlayer {
 
     pub fn get_outputs(&self) -> &HashMap<PinId, DataValue> {
         &self.outputs
+    }
+
+    /// Gets the default output pose from the graph, or the forced pose if set.
+    pub fn get_default_output_pose(&self) -> Option<&Pose> {
+        match &self.animation {
+            AnimationSource::Graph(_) => self.outputs.get(DEFAULT_OUTPUT_POSE)?.as_pose(),
+            AnimationSource::Pose(pose) => Some(&pose),
+            AnimationSource::None => None,
+        }
     }
 }
