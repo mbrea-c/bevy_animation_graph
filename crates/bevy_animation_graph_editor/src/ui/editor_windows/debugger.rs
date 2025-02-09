@@ -1,11 +1,10 @@
 use bevy::{
     color::LinearRgba,
-    ecs::world::CommandQueue,
     math::Vec3,
     pbr::PointLight,
     prelude::{
-        AppTypeRegistry, Camera, Camera3d, ChildBuild, ChildBuilder, ClearColorConfig, Handle,
-        Image, In, Query, Transform, World,
+        Camera, Camera3d, ChildBuild, ChildBuilder, ClearColorConfig, Handle, Image, In, Query,
+        Transform, World,
     },
     render::camera::RenderTarget,
     utils::default,
@@ -17,13 +16,12 @@ use bevy_animation_graph::{
         AnimationGraphPlayer, DataValue,
     },
 };
-use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
 use egui_dock::egui;
 
 use crate::ui::{
     core::{EditorContext, EditorWindowExtension, InspectorSelection},
     provide_texture_for_scene,
-    utils::{self, render_image},
+    utils::{self, render_image, using_inspector_env},
     OverrideSceneAnimation, PartOfSubScene, PreviewScene, SubSceneConfig, SubSceneSyncAction,
 };
 
@@ -41,24 +39,6 @@ impl EditorWindowExtension for DebuggerWindow {
         };
         let entity = instance.player_entity;
         let mut query = world.query::<&AnimationGraphPlayer>();
-
-        let unsafe_world = world.as_unsafe_world_cell();
-        let type_registry = unsafe {
-            unsafe_world
-                .get_resource::<AppTypeRegistry>()
-                .unwrap()
-                .0
-                .clone()
-        };
-        let type_registry = type_registry.read();
-        let mut queue = CommandQueue::default();
-        let mut cx = Context {
-            world: Some(unsafe { unsafe_world.world_mut() }.into()),
-            queue: Some(&mut queue),
-        };
-        let mut env = InspectorUi::for_bevy(&type_registry, &mut cx);
-
-        let world = unsafe { unsafe_world.world_mut() };
 
         let InspectorSelection::Node(node_selection) = &mut ctx.selection.inspector_selection
         else {
@@ -133,9 +113,7 @@ impl EditorWindowExtension for DebuggerWindow {
             DataValue::Pose(pose) => {
                 self.pose_readonly(pose, scene_selection.scene.clone(), ui, world, ui.id(), ctx);
             }
-            _ => {
-                env.ui_for_reflect_readonly(&val, ui);
-            }
+            _ => using_inspector_env(world, |mut env| env.ui_for_reflect_readonly(&val, ui)),
         }
     }
 
@@ -229,5 +207,7 @@ impl DebuggerWindow {
         let texture = provide_texture_for_scene(world, id, config);
 
         render_image(ui, world, &texture);
+
+        using_inspector_env(world, |mut env| env.ui_for_reflect_readonly(pose, ui));
     }
 }

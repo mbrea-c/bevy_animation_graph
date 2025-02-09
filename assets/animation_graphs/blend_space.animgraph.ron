@@ -1,0 +1,245 @@
+(
+    nodes: [
+        (
+            name: "walk clip 2",
+            inner: {
+                "bevy_animation_graph::nodes::clip_node::ClipNode": (
+                    clip: "animations/human_walk.anim.ron",
+                    override_duration: None,
+                    override_interpolation: None,
+                ),
+            },
+        ),
+        (
+            name: "flip walk",
+            inner: {
+                "bevy_animation_graph::nodes::flip_lr_node::FlipLRNode": (
+                    config: (
+                        name_mapper: Pattern((
+                            key_1: "L",
+                            key_2: "R",
+                            pattern_before: "^.*",
+                            pattern_after: "$",
+                        )),
+                    ),
+                ),
+            },
+        ),
+        (
+            name: "run clip 1",
+            inner: {
+                "bevy_animation_graph::nodes::clip_node::ClipNode": (
+                    clip: "animations/human_run.anim.ron",
+                    override_duration: None,
+                    override_interpolation: None,
+                ),
+            },
+        ),
+        (
+            name: "chain run",
+            inner: {
+                "bevy_animation_graph::nodes::chain_node::ChainNode": (
+                    interpolation_period: 0.5,
+                ),
+            },
+        ),
+        (
+            name: "loop",
+            inner: {
+                "bevy_animation_graph::nodes::loop_node::LoopNode": (
+                    interpolation_period: 0.5,
+                ),
+            },
+        ),
+        (
+            name: "chain walk",
+            inner: {
+                "bevy_animation_graph::nodes::chain_node::ChainNode": (
+                    interpolation_period: 0.5,
+                ),
+            },
+        ),
+        (
+            name: "wave",
+            inner: {
+                "bevy_animation_graph::nodes::clip_node::ClipNode": (
+                    clip: "animations/human_wave.anim.ron",
+                    override_duration: None,
+                    override_interpolation: None,
+                ),
+            },
+        ),
+        (
+            name: "walk clip 1",
+            inner: {
+                "bevy_animation_graph::nodes::clip_node::ClipNode": (
+                    clip: "animations/human_walk.anim.ron",
+                    override_duration: None,
+                    override_interpolation: None,
+                ),
+            },
+        ),
+        (
+            name: "flip run",
+            inner: {
+                "bevy_animation_graph::nodes::flip_lr_node::FlipLRNode": (
+                    config: (
+                        name_mapper: Pattern((
+                            key_1: "L",
+                            key_2: "R",
+                            pattern_before: "^.*",
+                            pattern_after: "$",
+                        )),
+                    ),
+                ),
+            },
+        ),
+        (
+            name: "blend space",
+            inner: {
+                "bevy_animation_graph::nodes::blend_space_node::BlendSpaceNode": (
+                    mode: LinearizedInterpolate,
+                    sync_mode: Absolute,
+                    points: [
+                        (
+                            id: "walk",
+                            point: (1.0, 0.0),
+                        ),
+                        (
+                            id: "run",
+                            point: (0.0, 1.0),
+                        ),
+                        (
+                            id: "wave",
+                            point: (0.0, 0.0),
+                        ),
+                    ],
+                    triangulation: (
+                        triangles: [
+                            (
+                                triangle: (
+                                    p: (
+                                        val: (1.0, 0.0),
+                                        id: Index(0),
+                                    ),
+                                    q: (
+                                        val: (0.0, 1.0),
+                                        id: Index(1),
+                                    ),
+                                    r: (
+                                        val: (0.0, 0.0),
+                                        id: Index(2),
+                                    ),
+                                ),
+                                circumcenter: Some((0.5, 0.5)),
+                                circumradius: Some(0.70710677),
+                            ),
+                            (
+                                triangle: (
+                                    p: (
+                                        val: (1.0, 0.0),
+                                        id: Index(0),
+                                    ),
+                                    q: (
+                                        val: (0.0, 1.0),
+                                        id: Index(1),
+                                    ),
+                                    r: (
+                                        val: (0.0, 0.0),
+                                        id: Index(2),
+                                    ),
+                                ),
+                                circumcenter: Some((0.5, 0.5)),
+                                circumradius: Some(0.70710677),
+                            ),
+                            (
+                                triangle: (
+                                    p: (
+                                        val: (0.0, 1.0),
+                                        id: Index(1),
+                                    ),
+                                    q: (
+                                        val: (1.0, 0.0),
+                                        id: Index(0),
+                                    ),
+                                    r: (
+                                        val: (0.0, 0.0),
+                                        id: Index(2),
+                                    ),
+                                ),
+                                circumcenter: Some((-0.5, -0.5)),
+                                circumradius: Some(1.5811388),
+                            ),
+                        ],
+                    ),
+                ),
+            },
+        ),
+        (
+            name: "run clip 2",
+            inner: {
+                "bevy_animation_graph::nodes::clip_node::ClipNode": (
+                    clip: "animations/human_run.anim.ron",
+                    override_duration: None,
+                    override_interpolation: None,
+                ),
+            },
+        ),
+    ],
+    edges_inverted: {
+        NodeData("flip walk", "pose"): NodeData("walk clip 2", "pose"),
+        OutputTime: NodeTime("loop"),
+        NodeData("loop", "pose"): NodeData("blend space", "pose"),
+        NodeData("blend space", "pose wave"): NodeData("wave", "pose"),
+        NodeTime("chain walk", "time_a"): NodeTime("walk clip 1"),
+        NodeTime("blend space", "time wave"): NodeTime("wave"),
+        OutputData("pose"): NodeData("loop", "pose"),
+        NodeData("blend space", "pose run"): NodeData("chain run", "pose"),
+        NodeData("flip run", "pose"): NodeData("run clip 2", "pose"),
+        NodeData("chain run", "pose_a"): NodeData("run clip 1", "pose"),
+        NodeData("chain walk", "pose_a"): NodeData("walk clip 1", "pose"),
+        NodeTime("blend space", "time walk"): NodeTime("chain walk"),
+        NodeTime("blend space", "time run"): NodeTime("chain run"),
+        NodeTime("chain walk", "time_b"): NodeTime("flip walk"),
+        NodeData("chain run", "pose_b"): NodeData("flip run", "pose"),
+        NodeTime("chain run", "time_b"): NodeTime("flip run"),
+        NodeData("blend space", "position"): InputData("position"),
+        NodeTime("flip walk", "time"): NodeTime("walk clip 2"),
+        NodeData("chain walk", "pose_b"): NodeData("flip walk", "pose"),
+        NodeTime("flip run", "time"): NodeTime("run clip 2"),
+        NodeData("blend space", "pose walk"): NodeData("chain walk", "pose"),
+        NodeTime("chain run", "time_a"): NodeTime("run clip 1"),
+        NodeTime("loop", "time"): NodeTime("blend space"),
+    },
+    default_parameters: {
+        "position": Vec2((0.7, 0.1)),
+    },
+    input_times: {},
+    output_parameters: {
+        "pose": Pose,
+    },
+    output_time: Some(()),
+    extra: (
+        node_positions: {
+            "walk clip 2": (21.0, 401.0),
+            "flip walk": (167.0, 401.0),
+            "run clip 1": (172.0, 558.0),
+            "chain run": (334.46155, 600.0),
+            "loop": (803.0769, 502.1538),
+            "chain walk": (335.0, 320.9231),
+            "wave": (333.2308, 899.99994),
+            "walk clip 1": (169.0, 247.0),
+            "flip run": (170.0, 713.0),
+            "blend space": (628.6154, 507.69226),
+            "run clip 2": (20.538483, 715.6923),
+        },
+        input_position: (130.61536, -34.07692),
+        output_position: (1029.384, 494.69226),
+        input_param_order: {
+            "position": 0,
+        },
+        input_time_order: {},
+        output_data_order: {},
+        output_pose_order: {},
+    ),
+)

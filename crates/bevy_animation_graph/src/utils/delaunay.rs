@@ -28,7 +28,7 @@ impl Triangulation {
         }
     }
 
-    pub fn find_linear_combination(&self, p: Vec2) -> [(Vertex, f32); 3] {
+    pub fn find_linear_combination(&self, p: Vec2) -> Vec<(Vertex, f32)> {
         let (i, (closest_p, _)) = self
             .triangles
             .iter()
@@ -40,7 +40,7 @@ impl Triangulation {
         let triangle = self.triangles[i].inner();
         let bary = triangle.barycentric_coordinates(closest_p);
 
-        [
+        vec![
             (triangle.p, bary.x),
             (triangle.q, bary.y),
             (triangle.r, bary.z),

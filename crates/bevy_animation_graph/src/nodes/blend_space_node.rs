@@ -1,4 +1,4 @@
-use crate::core::animation_graph::PinMap;
+use crate::core::animation_graph::{PinMap, TimeUpdate};
 use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
@@ -11,9 +11,7 @@ use serde::{Deserialize, Serialize};
 #[reflect(Default, Serialize)]
 pub enum BlendMode {
     #[default]
-    LinearInterpolate,
-    Additive,
-    Difference,
+    LinearizedInterpolate,
 }
 
 #[derive(Reflect, Clone, Copy, Debug, Default, Serialize, Deserialize)]
@@ -82,24 +80,18 @@ impl BlendSpaceNode {
 impl NodeLike for BlendSpaceNode {
     fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
         let position = ctx.data_back(Self::POSITION)?.as_vec2().unwrap();
-        let [(v0, _), (v1, _), (v2, _)] = self.triangulation.find_linear_combination(position);
+        let (v0, _) = self
+            .triangulation
+            .find_linear_combination(position)
+            .into_iter()
+            .max_by(|l, r| l.1.partial_cmp(&r.1).unwrap())
+            .unwrap();
 
-        let duration_0 = ctx.duration_back(Self::time_pin_id(self.vertex_key(v0.id.index())))?;
-        let duration_1 = ctx.duration_back(Self::time_pin_id(self.vertex_key(v1.id.index())))?;
-        let duration_2 = ctx.duration_back(Self::time_pin_id(self.vertex_key(v2.id.index())))?;
+        // We return the duration of the input with the highest weight
+        let master_duration =
+            ctx.duration_back(Self::time_pin_id(self.vertex_key(v0.id.index())))?;
 
-        let out_duration = if duration_0.is_none() && duration_1.is_none() && duration_2.is_none() {
-            None
-        } else {
-            Some(
-                duration_0
-                    .unwrap_or(0.)
-                    .max(duration_1.unwrap_or(0.))
-                    .max(duration_2.unwrap_or(0.)),
-            )
-        };
-
-        ctx.set_duration_fwd(out_duration);
+        ctx.set_duration_fwd(master_duration);
         Ok(())
     }
 
@@ -107,16 +99,37 @@ impl NodeLike for BlendSpaceNode {
         let input = ctx.time_update_fwd()?;
 
         let position = ctx.data_back(Self::POSITION)?.as_vec2().unwrap();
-        let [(v0, f0), (v1, f1), (v2, f2)] = self.triangulation.find_linear_combination(position);
+        let mut linear_combination = self.triangulation.find_linear_combination(position);
+        // sorted by highest weight first, lowest weight last
+        linear_combination.sort_by(|l, r| l.1.partial_cmp(&r.1).unwrap().reverse());
+
+        let (v0, f0) = linear_combination[0];
+        let (v1, f1) = linear_combination[1];
+        let (v2, f2) = linear_combination[2];
 
         ctx.set_time_update_back(Self::time_pin_id(self.vertex_key(v0.id.index())), input);
-        ctx.set_time_update_back(Self::time_pin_id(self.vertex_key(v1.id.index())), input);
-        ctx.set_time_update_back(Self::time_pin_id(self.vertex_key(v2.id.index())), input);
-
         let pose_0 = ctx
             .data_back(Self::pose_pin_id(self.vertex_key(v0.id.index())))?
             .into_pose()
             .unwrap();
+
+        match self.sync_mode {
+            BlendSyncMode::Absolute => {
+                ctx.set_time_update_back(
+                    Self::time_pin_id(self.vertex_key(v1.id.index())),
+                    TimeUpdate::Absolute(pose_0.timestamp),
+                );
+                ctx.set_time_update_back(
+                    Self::time_pin_id(self.vertex_key(v2.id.index())),
+                    TimeUpdate::Absolute(pose_0.timestamp),
+                );
+            }
+            BlendSyncMode::NoSync => {
+                ctx.set_time_update_back(Self::time_pin_id(self.vertex_key(v1.id.index())), input);
+                ctx.set_time_update_back(Self::time_pin_id(self.vertex_key(v2.id.index())), input);
+            }
+        };
+
         let pose_1 = ctx
             .data_back(Self::pose_pin_id(self.vertex_key(v1.id.index())))?
             .into_pose()
@@ -129,39 +142,16 @@ impl NodeLike for BlendSpaceNode {
         // We do a linearized weighted average.
         // While this is not the mathematically correct way of averaging quaternions,
         // it's fast and in practice provides decent results.
-        let out_pose = pose_0
-            .scalar_mult(f0)
-            .linear_add(&pose_1.scalar_mult(f1))
-            .linear_add(&pose_2.scalar_mult(f2))
-            .normalize_quat();
+        let out_pose = match self.mode {
+            BlendMode::LinearizedInterpolate => [(&pose_0, f0), (&pose_1, f1), (&pose_2, f2)]
+                .into_iter()
+                .map(|(pose, f)| pose.scalar_mult(f))
+                .reduce(|pose_acc, pose_elem| pose_acc.linear_add(&pose_elem))
+                .unwrap()
+                .normalize_quat(),
+        };
 
-        // TODO: Find master animation track and sync according to sync_mode
-        // match self.sync_mode {
-        //     BlendSyncMode::Absolute => {
-        //         ctx.set_time_update_back(
-        //             Self::IN_TIME_B,
-        //             TimeUpdate::Absolute(in_frame_1.timestamp),
-        //         );
-        //     }
-        //     BlendSyncMode::NoSync => {
-        //         ctx.set_time_update_back(Self::IN_TIME_B, input);
-        //     }
-        // };
-
-        // TODO: Blend according to blend_mode
-        // let out = match self.mode {
-        //     BlendMode::LinearInterpolate => {
-        //         let alpha = ctx.data_back(Self::POSITION)?.unwrap_f32();
-        //         in_frame_1.interpolate_linear(&in_frame_2, alpha)
-        //     }
-        //     BlendMode::Additive => {
-        //         let alpha = ctx.data_back(Self::POSITION)?.unwrap_f32();
-        //         in_frame_1.additive_blend(&in_frame_2, alpha)
-        //     }
-        //     BlendMode::Difference => in_frame_1.difference(&in_frame_2),
-        // };
-
-        ctx.set_time(out_pose.timestamp);
+        ctx.set_time(pose_0.timestamp);
         ctx.set_data_fwd(Self::OUT_POSE, out_pose);
 
         Ok(())

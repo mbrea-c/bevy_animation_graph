@@ -1,0 +1,262 @@
+(
+    nodes: [
+        (
+            name: "Rotate",
+            inner: {
+                "bevy_animation_graph::nodes::rotation_node::RotationNode": (
+                    application_mode: Compose,
+                    rotation_space: Character,
+                    chain_decay: Linear,
+                    chain_length: 1,
+                    base_weight: 1.0,
+                ),
+            },
+        ),
+        (
+            name: "flip walk",
+            inner: {
+                "bevy_animation_graph::nodes::flip_lr_node::FlipLRNode": (
+                    config: (
+                        name_mapper: Pattern((
+                            key_1: "L",
+                            key_2: "R",
+                            pattern_before: "^.*",
+                            pattern_after: "$",
+                        )),
+                    ),
+                ),
+            },
+        ),
+        (
+            name: "wave",
+            inner: {
+                "bevy_animation_graph::nodes::clip_node::ClipNode": (
+                    clip: "animations/human_wave.anim.ron",
+                    override_duration: None,
+                    override_interpolation: None,
+                ),
+            },
+        ),
+        (
+            name: "speed",
+            inner: {
+                "bevy_animation_graph::nodes::speed_node::SpeedNode": (),
+            },
+        ),
+        (
+            name: "blend",
+            inner: {
+                "bevy_animation_graph::nodes::blend_node::BlendNode": (
+                    mode: LinearInterpolate,
+                    sync_mode: Absolute,
+                ),
+            },
+        ),
+        (
+            name: "chain walk",
+            inner: {
+                "bevy_animation_graph::nodes::chain_node::ChainNode": (
+                    interpolation_period: 0.5,
+                ),
+            },
+        ),
+        (
+            name: "flip run",
+            inner: {
+                "bevy_animation_graph::nodes::flip_lr_node::FlipLRNode": (
+                    config: (
+                        name_mapper: Pattern((
+                            key_1: "L",
+                            key_2: "R",
+                            pattern_before: "^.*",
+                            pattern_after: "$",
+                        )),
+                    ),
+                ),
+            },
+        ),
+        (
+            name: "Parameters",
+            inner: {
+                "bevy_animation_graph::nodes::graph_node::GraphNode": (
+                    graph: "animation_graphs/velocity_to_params.animgraph.ron",
+                ),
+            },
+        ),
+        (
+            name: "walk clip 1",
+            inner: {
+                "bevy_animation_graph::nodes::clip_node::ClipNode": (
+                    clip: "animations/human_walk.anim.ron",
+                    override_duration: None,
+                    override_interpolation: None,
+                ),
+            },
+        ),
+        (
+            name: "wave additive",
+            inner: {
+                "bevy_animation_graph::nodes::blend_node::BlendNode": (
+                    mode: Additive,
+                    sync_mode: Absolute,
+                ),
+            },
+        ),
+        (
+            name: "run clip 1",
+            inner: {
+                "bevy_animation_graph::nodes::clip_node::ClipNode": (
+                    clip: "animations/human_run.anim.ron",
+                    override_duration: None,
+                    override_interpolation: None,
+                ),
+            },
+        ),
+        (
+            name: "wave diff",
+            inner: {
+                "bevy_animation_graph::nodes::blend_node::BlendNode": (
+                    mode: Difference,
+                    sync_mode: Absolute,
+                ),
+            },
+        ),
+        (
+            name: "walk clip 2",
+            inner: {
+                "bevy_animation_graph::nodes::clip_node::ClipNode": (
+                    clip: "animations/human_walk.anim.ron",
+                    override_duration: None,
+                    override_interpolation: None,
+                ),
+            },
+        ),
+        (
+            name: "stand",
+            inner: {
+                "bevy_animation_graph::nodes::clip_node::ClipNode": (
+                    clip: "animations/human_stand.anim.ron",
+                    override_duration: None,
+                    override_interpolation: None,
+                ),
+            },
+        ),
+        (
+            name: "Make Rotation",
+            inner: {
+                "bevy_animation_graph::nodes::arithmetic::vec3::rotation_arc::RotationArcNode": (),
+            },
+        ),
+        (
+            name: "chain run",
+            inner: {
+                "bevy_animation_graph::nodes::chain_node::ChainNode": (
+                    interpolation_period: 0.5,
+                ),
+            },
+        ),
+        (
+            name: "run clip 2",
+            inner: {
+                "bevy_animation_graph::nodes::clip_node::ClipNode": (
+                    clip: "animations/human_run.anim.ron",
+                    override_duration: None,
+                    override_interpolation: None,
+                ),
+            },
+        ),
+        (
+            name: "loop",
+            inner: {
+                "bevy_animation_graph::nodes::loop_node::LoopNode": (
+                    interpolation_period: 0.5,
+                ),
+            },
+        ),
+    ],
+    edges_inverted: {
+        NodeTime("blend", "time_a"): NodeTime("chain walk"),
+        NodeTime("flip walk", "time"): NodeTime("walk clip 2"),
+        NodeTime("flip run", "time"): NodeTime("run clip 2"),
+        NodeData("wave additive", "pose_a"): NodeData("speed", "pose"),
+        NodeTime("wave diff", "time_a"): NodeTime("stand"),
+        OutputTime: NodeTime("Rotate"),
+        NodeData("chain run", "pose_a"): NodeData("run clip 1", "pose"),
+        NodeData("speed", "speed"): NodeData("Parameters", "speed_fac"),
+        NodeData("Rotate", "pose"): NodeData("wave additive", "pose"),
+        OutputData("pose"): NodeData("Rotate", "pose"),
+        NodeTime("chain walk", "time_a"): NodeTime("walk clip 1"),
+        NodeData("Rotate", "rotation"): NodeData("Make Rotation", "out"),
+        NodeTime("chain walk", "time_b"): NodeTime("flip walk"),
+        NodeData("chain walk", "pose_a"): NodeData("walk clip 1", "pose"),
+        NodeData("flip walk", "pose"): NodeData("walk clip 2", "pose"),
+        NodeData("speed", "pose"): NodeData("loop", "pose"),
+        NodeData("Parameters", "speed"): InputData("target_speed"),
+        NodeData("flip run", "pose"): NodeData("run clip 2", "pose"),
+        NodeData("blend", "factor"): NodeData("Parameters", "blend_fac"),
+        NodeData("blend", "pose_a"): NodeData("chain walk", "pose"),
+        NodeData("wave additive", "factor"): InputData("1"),
+        NodeTime("wave diff", "time_b"): NodeTime("wave"),
+        NodeData("wave diff", "pose_a"): NodeData("stand", "pose"),
+        NodeData("wave additive", "pose_b"): NodeData("wave diff", "pose"),
+        NodeTime("wave additive", "time_b"): NodeTime("wave diff"),
+        NodeData("wave diff", "pose_b"): NodeData("wave", "pose"),
+        NodeTime("Rotate", "time"): NodeTime("wave additive"),
+        NodeData("Make Rotation", "in_b"): InputData("target_direction"),
+        NodeTime("speed", "time"): NodeTime("loop"),
+        NodeData("Rotate", "bone_mask"): InputData("rotation_bone"),
+        NodeData("blend", "pose_b"): NodeData("chain run", "pose"),
+        NodeData("chain run", "pose_b"): NodeData("flip run", "pose"),
+        NodeTime("loop", "time"): NodeTime("blend"),
+        NodeTime("chain run", "time_a"): NodeTime("run clip 1"),
+        NodeTime("blend", "time_b"): NodeTime("chain run"),
+        NodeData("loop", "pose"): NodeData("blend", "pose"),
+        NodeTime("wave additive", "time_a"): NodeTime("speed"),
+        NodeData("Make Rotation", "in_a"): InputData("Z"),
+        NodeTime("chain run", "time_b"): NodeTime("flip run"),
+        NodeData("chain walk", "pose_b"): NodeData("flip walk", "pose"),
+    },
+    default_parameters: {
+        "target_direction": Vec3((1.0, 0.0, 0.0)),
+        "rotation_bone": EntityPath([
+            "metarig",
+            "spine",
+        ]),
+        "target_speed": F32(1.6),
+        "1": F32(1.0),
+        "Z": Vec3((0.0, 0.0, 1.0)),
+    },
+    input_times: {},
+    output_parameters: {
+        "pose": Pose,
+    },
+    output_time: Some(()),
+    extra: (
+        node_positions: {
+            "Rotate": (1185.231, 292.6154),
+            "flip walk": (167.0, 401.0),
+            "wave": (411.69232, 978.4614),
+            "speed": (787.15393, 429.8462),
+            "blend": (501.0, 441.0),
+            "chain walk": (335.0, 320.0),
+            "flip run": (170.0, 713.0),
+            "Parameters": (453.23077, -5.538437),
+            "walk clip 1": (169.0, 247.0),
+            "wave additive": (1004.3075, 513.2307),
+            "run clip 1": (172.0, 558.0),
+            "wave diff": (596.3078, 868.61536),
+            "walk clip 2": (21.0, 401.0),
+            "stand": (408.9231, 818.7693),
+            "Make Rotation": (1130.7692, 96.92308),
+            "chain run": (328.0, 600.0),
+            "run clip 2": (20.538483, 715.6923),
+            "loop": (640.0, 443.0),
+        },
+        input_position: (130.61536, -34.07692),
+        output_position: (1354.3077, 305.46152),
+        input_param_order: {},
+        input_time_order: {},
+        output_data_order: {},
+        output_pose_order: {},
+    ),
+)

@@ -960,15 +960,16 @@ impl Serialize for AnimationNodeSerializer<'_> {
                 "no type registration for `{}`",
                 self.inner.reflect_type_path()
             )))?;
-        state.serialize_field("ty", type_path)?;
 
         let processor = HandleProcessor;
-        let reflect_serializer = TypedReflectSerializer::with_processor(
+        let reflect_serialzer = TypedReflectSerializer::with_processor(
             self.inner.as_partial_reflect(),
             self.type_registry,
             &processor,
         );
-        state.serialize_field("inner", &reflect_serializer)?;
+        let mut inner = HashMap::new();
+        inner.insert(type_path, reflect_serialzer);
+        state.serialize_field("inner", &inner)?;
 
         state.end()
     }

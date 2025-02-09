@@ -5,6 +5,7 @@ use crate::graph_show::{make_graph_indices, GraphIndices};
 use crate::graph_update::{update_graph_asset, Change, GraphChange};
 use crate::tree::{Tree, TreeInternal, TreeResult};
 use bevy::asset::UntypedAssetId;
+use bevy::ecs::world::CommandQueue;
 use bevy::prelude::*;
 use bevy::render::render_resource::Extent3d;
 use bevy_animation_graph::core::animation_graph::{AnimationGraph, NodeId, PinMap};
@@ -15,6 +16,7 @@ use bevy_animation_graph::prelude::{
 };
 use bevy_inspector_egui::bevy_egui::EguiUserTextures;
 use bevy_inspector_egui::egui;
+use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
 
 use super::core::{EditorSelection, EguiWindow, RequestSave};
 use super::PreviewScene;
@@ -309,4 +311,25 @@ pub fn render_image(ui: &mut egui::Ui, world: &mut World, image: &Handle<Image>)
     });
 
     ui.image(egui::load::SizedTexture::new(texture_id, available_size))
+}
+
+pub fn using_inspector_env<T>(world: &mut World, expr: impl FnOnce(InspectorUi) -> T) -> T {
+    let unsafe_world = world.as_unsafe_world_cell();
+    let type_registry = unsafe {
+        unsafe_world
+            .get_resource::<AppTypeRegistry>()
+            .unwrap()
+            .0
+            .clone()
+    };
+    let type_registry = type_registry.read();
+    let mut queue = CommandQueue::default();
+    let mut cx = Context {
+        world: Some(unsafe { unsafe_world.world_mut() }.into()),
+        queue: Some(&mut queue),
+    };
+
+    let env = InspectorUi::for_bevy(&type_registry, &mut cx);
+
+    expr(env)
 }

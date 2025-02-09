@@ -165,8 +165,8 @@ impl Pose {
     pub fn map_bones(&self, func: impl Fn(&BonePose) -> BonePose) -> Self {
         let mut result = Pose::default();
 
-        for (path, bone_id) in self.paths.iter() {
-            result.add_bone(func(&self.bones[*bone_id]), *path);
+        for (path, bone_index) in self.paths.iter() {
+            result.add_bone(func(&self.bones[*bone_index]), *path);
         }
 
         result.timestamp = self.timestamp;
