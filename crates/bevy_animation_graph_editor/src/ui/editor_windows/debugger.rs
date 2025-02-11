@@ -91,7 +91,7 @@ impl EditorWindowExtension for DebuggerWindow {
                         });
                 }
             });
-        let new_pin_id = if selected_pin_id == "" {
+        let new_pin_id = if selected_pin_id.is_empty() {
             None
         } else {
             Some(selected_pin_id)
@@ -217,7 +217,7 @@ impl DebuggerWindow {
         };
 
         let mut size = ui.available_size();
-        size.y = 0.6 * size.y;
+        size.y *= 0.6;
 
         ui.allocate_ui(size, |ui| {
             orbit_camera_scene_show(&config, &mut self.orbit_view, ui, world, id);

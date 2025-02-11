@@ -56,15 +56,13 @@ impl Edge {
 
         let t = pv.dot(pq) / pq.length_squared();
 
-        let closest_point = if t < 0. {
+        if t < 0. {
             self.p.val
         } else if t > 1. {
             self.q.val
         } else {
             self.p.val + pq * t
-        };
-
-        closest_point
+        }
     }
 }
 

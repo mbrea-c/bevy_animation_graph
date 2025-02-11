@@ -262,7 +262,7 @@ impl AnimationGraphPlayer {
     pub fn get_default_output_pose(&self) -> Option<&Pose> {
         match &self.animation {
             AnimationSource::Graph(_) => self.outputs.get(DEFAULT_OUTPUT_POSE)?.as_pose(),
-            AnimationSource::Pose(pose) => Some(&pose),
+            AnimationSource::Pose(pose) => Some(pose),
             AnimationSource::None => None,
         }
     }

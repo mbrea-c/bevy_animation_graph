@@ -488,7 +488,7 @@ impl EguiInspectorExtension for CheckboxInspector {
         _id: egui::Id,
         _env: InspectorUi<'_, '_>,
     ) {
-        let mut val = value.clone();
+        let mut val = *value;
         ui.add_enabled_ui(false, |ui| ui.checkbox(&mut val, ""));
     }
 

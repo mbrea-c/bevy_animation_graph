@@ -51,17 +51,14 @@ impl Triangulation {
 fn add_vertex(mut triangles: Vec<CachedTriangle>, vertex: Vertex) -> Vec<CachedTriangle> {
     let mut edges = vec![];
 
-    triangles = triangles
-        .into_iter()
-        .filter(|triangle| {
-            if triangle.in_circumcircle(vertex.val).unwrap_or(true) {
-                edges.extend(triangle.inner().edges());
-                false
-            } else {
-                true
-            }
-        })
-        .collect();
+    triangles.retain(|triangle| {
+        if triangle.in_circumcircle(vertex.val).unwrap_or(true) {
+            edges.extend(triangle.inner().edges());
+            false
+        } else {
+            true
+        }
+    });
 
     edges.dedup();
 

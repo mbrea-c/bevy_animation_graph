@@ -296,7 +296,7 @@ pub fn handle_path(handle: UntypedAssetId, asset_server: &AssetServer) -> PathBu
 pub fn render_image(ui: &mut egui::Ui, world: &mut World, image: &Handle<Image>) -> egui::Response {
     let texture_id =
         world.resource_scope::<EguiUserTextures, egui::TextureId>(|_, user_textures| {
-            user_textures.image_id(&image).unwrap()
+            user_textures.image_id(image).unwrap()
         });
 
     let available_size = ui.available_size();

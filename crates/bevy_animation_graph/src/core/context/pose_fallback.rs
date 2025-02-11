@@ -24,12 +24,10 @@ impl PoseFallbackContext<'_> {
     pub fn local_transform(&self, bone_id: BoneId) -> Option<Transform> {
         if let Some(entity) = self.entity_map.get(&bone_id) {
             Some(*self.resources.transform_query.get(*entity).unwrap().0)
+        } else if self.fallback_to_identity {
+            Some(Transform::IDENTITY)
         } else {
-            if self.fallback_to_identity {
-                Some(Transform::IDENTITY)
-            } else {
-                None
-            }
+            None
         }
     }
 
@@ -40,12 +38,10 @@ impl PoseFallbackContext<'_> {
     pub fn root_global_transform(&self, skeleton: &Skeleton) -> Option<GlobalTransform> {
         if let Some(entity) = self.entity_map.get(&skeleton.root()) {
             Some(*self.resources.transform_query.get(*entity).unwrap().1)
+        } else if self.fallback_to_identity {
+            Some(GlobalTransform::IDENTITY)
         } else {
-            if self.fallback_to_identity {
-                Some(GlobalTransform::IDENTITY)
-            } else {
-                None
-            }
+            None
         }
     }
 }

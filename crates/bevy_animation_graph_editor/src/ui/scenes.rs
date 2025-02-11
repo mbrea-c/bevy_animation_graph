@@ -98,6 +98,7 @@ pub fn render_pose_gizmos(
 #[derive(Component)]
 pub struct OverrideSceneAnimation(pub Pose);
 
+#[allow(clippy::type_complexity)]
 pub fn override_scene_animations(
     scene_query: Query<
         (&AnimatedSceneInstance, &OverrideSceneAnimation),
@@ -358,6 +359,7 @@ pub fn get_image_handle<T: SubSceneConfig>(
     subscenes.get_data(widget_id).unwrap().image.clone()
 }
 
+#[allow(clippy::type_complexity)]
 pub fn propagate_layers(
     layers_query: Query<(Entity, &RenderLayers, &PartOfSubScene), Or<(Changed<Children>,)>>,
     children_query: Query<&Children>,
