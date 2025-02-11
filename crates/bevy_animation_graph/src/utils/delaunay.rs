@@ -86,9 +86,7 @@ mod test {
             Vec2::new(0., 1.),
         ]);
 
-        println!("{:#?}", triangulation);
-
-        assert!(false);
+        assert_eq!(triangulation.triangles.len(), 1);
     }
 
     #[test]
@@ -101,11 +99,9 @@ mod test {
 
         let linear_combination = triangulation.find_linear_combination(Vec2::new(0.1, 0.1));
 
-        println!("{:#?}", linear_combination);
         assert_eq!(
             1.,
             linear_combination[0].1 + linear_combination[1].1 + linear_combination[2].1
         );
-        assert!(false);
     }
 }
