@@ -18,6 +18,8 @@ fn flip_quat(val: &Quat) -> Quat {
     let mut out = *val;
     out.x *= -1.;
     out.w *= -1.;
+    out = -out;
+    debug_assert!(out.is_normalized());
     out
 }
 

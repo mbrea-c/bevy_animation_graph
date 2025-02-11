@@ -4,7 +4,6 @@ use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::pose::{BonePose, Pose};
 use crate::core::prelude::DataSpec;
-use crate::core::space_conversion::SpaceConversion;
 use crate::prelude::{PassContext, SpecContext};
 use crate::utils::unwrap::UnwrapVal;
 use bevy::math::Quat;
@@ -124,28 +123,34 @@ impl NodeLike for RotationNode {
                 RotationSpace::Local => rotation,
                 RotationSpace::Character => {
                     if let Some(parent) = skeleton.parent(&target) {
-                        ctx.root_to_bone_space(
-                            Transform::from_rotation(rotation),
-                            &pose,
-                            skeleton,
-                            parent,
-                        )
-                        .rotation
+                        ctx.space_conversion()
+                            .root_to_bone_space(
+                                Transform::from_rotation(rotation),
+                                &pose,
+                                skeleton,
+                                parent,
+                            )
+                            .rotation
                     } else {
                         rotation
                     }
                 }
                 RotationSpace::Global => {
                     if let Some(parent) = skeleton.parent(&target) {
-                        ctx.global_to_bone_space(
-                            Transform::from_rotation(rotation),
-                            &pose,
-                            skeleton,
-                            parent,
-                        )
-                        .rotation
+                        ctx.space_conversion()
+                            .global_to_bone_space(
+                                Transform::from_rotation(rotation),
+                                &pose,
+                                skeleton,
+                                parent,
+                            )
+                            .rotation
                     } else {
-                        ctx.transform_global_to_character(Transform::from_rotation(rotation))
+                        ctx.space_conversion()
+                            .transform_global_to_character(
+                                Transform::from_rotation(rotation),
+                                skeleton,
+                            )
                             .rotation
                     }
                 }

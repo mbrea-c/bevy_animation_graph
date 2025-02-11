@@ -140,7 +140,7 @@ pub fn convert_graph_change(
     }
 }
 
-pub fn update_graph(
+pub fn update_graph_asset(
     mut changes: Vec<GraphChange>,
     graph_assets: &mut Assets<AnimationGraph>,
     fsm_assets: &Assets<StateMachine>,

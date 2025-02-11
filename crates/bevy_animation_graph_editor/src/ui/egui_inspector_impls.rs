@@ -1,6 +1,6 @@
 use bevy::{
     app::Plugin,
-    asset::{Asset, AssetServer, Assets, Handle, UntypedAssetId},
+    asset::{Asset, AssetServer, Assets, Handle},
     ecs::{prelude::AppTypeRegistry, system::Resource},
     prelude::{App, Reflect},
     reflect::{FromReflect, PartialReflect, TypePath, TypeRegistry},
@@ -25,7 +25,6 @@ use core::default::Default;
 use std::{
     any::{Any, TypeId},
     hash::{Hash, Hasher},
-    path::PathBuf,
 };
 
 #[derive(Clone, Reflect, Debug)]
@@ -64,6 +63,111 @@ impl<K: Clone + Eq + Hash, V: Clone> OrderedMap<K, V> {
     }
 }
 
+pub struct EguiInspectorExtensionWrapper<T> {
+    // TODO: Do we really need to keep the extension? As it is this could just be a few normal
+    // functions.
+    _extension: T,
+}
+
+impl<T: EguiInspectorExtension> EguiInspectorExtensionWrapper<T> {
+    fn for_extension(extension: T) -> Self {
+        Self {
+            _extension: extension,
+        }
+    }
+
+    fn register(&self, app: &mut App) {
+        if T::needs_buffer() {
+            app.insert_resource(EguiInspectorBuffers::<T::Base, T::Buffer>::default());
+        }
+        let type_registry = app.world().resource::<AppTypeRegistry>();
+        let mut type_registry = type_registry.write();
+        let type_registry = &mut type_registry;
+        add_no_many::<T::Base>(type_registry, Self::mutable, Self::readonly);
+    }
+
+    fn mutable(
+        value: &mut dyn Any,
+        ui: &mut egui::Ui,
+        options: &dyn Any,
+        id: egui::Id,
+        env: InspectorUi<'_, '_>,
+    ) -> bool {
+        let value = value.downcast_mut::<T::Base>().unwrap();
+        let buffer = if T::needs_buffer() {
+            Some(get_buffered::<T::Base, T::Buffer>(
+                env.context.world.as_mut().unwrap(),
+                id,
+                || T::init_buffer(value).unwrap(),
+            ))
+        } else {
+            None
+        };
+
+        T::mutable(value, buffer, ui, options, id, env)
+    }
+
+    fn readonly(
+        value: &dyn Any,
+        ui: &mut egui::Ui,
+        options: &dyn Any,
+        id: egui::Id,
+        env: InspectorUi<'_, '_>,
+    ) {
+        let value = value.downcast_ref::<T::Base>().unwrap();
+        let buffer = if T::needs_buffer() {
+            Some(get_buffered_readonly::<T::Base, T::Buffer>(
+                env.context.world.as_mut().unwrap(),
+                id,
+                || T::init_buffer(value).unwrap(),
+            ))
+        } else {
+            None
+        };
+
+        T::readonly(value, buffer, ui, options, id, env)
+    }
+}
+
+pub trait EguiInspectorExtension {
+    type Base: Clone + Sized + Send + Sync + 'static;
+    type Buffer: Default + Send + Sync + 'static;
+
+    fn mutable(
+        value: &mut Self::Base,
+        buffer: Option<&mut Self::Buffer>,
+        ui: &mut egui::Ui,
+        options: &dyn Any,
+        id: egui::Id,
+        env: InspectorUi<'_, '_>,
+    ) -> bool;
+
+    fn readonly(
+        value: &Self::Base,
+        buffer: Option<&Self::Buffer>,
+        ui: &mut egui::Ui,
+        options: &dyn Any,
+        id: egui::Id,
+        env: InspectorUi<'_, '_>,
+    );
+
+    fn init_buffer(#[allow(unused_variables)] value: &Self::Base) -> Option<Self::Buffer> {
+        None
+    }
+
+    fn needs_buffer() -> bool {
+        false
+    }
+}
+
+pub trait EguiInspectorExtensionRegistration: EguiInspectorExtension + Sized {
+    fn register(self, app: &mut App) {
+        EguiInspectorExtensionWrapper::for_extension(self).register(app);
+    }
+}
+
+impl<T: EguiInspectorExtension + Sized> EguiInspectorExtensionRegistration for T {}
+
 pub struct BetterInspectorPlugin;
 impl Plugin for BetterInspectorPlugin {
     fn build(&self, app: &mut App) {
@@ -90,7 +194,8 @@ impl Plugin for BetterInspectorPlugin {
         app.register_type::<OrderedMap<PinId, DataSpec>>();
         app.register_type::<OrderedMap<PinId, ()>>();
 
-        PatternMapperInspector::register(app);
+        PatternMapperInspector.register(app);
+        CheckboxInspector.register(app);
 
         let type_registry = app.world().resource::<AppTypeRegistry>();
         let mut type_registry = type_registry.write();
@@ -159,7 +264,7 @@ fn get_buffered<'w, T, B>(
     default: impl FnOnce() -> B,
 ) -> &'w mut B
 where
-    T: Send + Sync + Default + Clone + 'static,
+    T: Send + Sync + Clone + 'static,
     B: Send + Sync + 'static,
 {
     let mut res = world
@@ -174,6 +279,31 @@ where
     } else {
         res.bufs.insert(id, default());
         unsafe { &mut *(res.bufs.get_mut(&id).unwrap() as *mut B) }
+    }
+}
+
+fn get_buffered_readonly<'w, T, B>(
+    world: &mut RestrictedWorldView<'w>,
+    id: egui::Id,
+    default: impl FnOnce() -> B,
+) -> &'w B
+where
+    T: Send + Sync + Clone + 'static,
+    B: Send + Sync + 'static,
+{
+    let mut res = world
+        .get_resource_mut::<EguiInspectorBuffers<T, B>>()
+        .unwrap();
+    // SAFETY: This is safe because the buffers are only accessed from the inspector
+    //         which should only be accessed from one thread. Additionally, every
+    //         item ID should only be accessed once, mutably. There are never multiple references
+    //         to any buffer.
+    // TODO: Avoid unsafe altogether by using an RC pointer or something like that
+    if res.bufs.contains_key(&id) {
+        unsafe { &*(res.bufs.get(&id).unwrap() as *const B) }
+    } else {
+        res.bufs.insert(id, default());
+        unsafe { &*(res.bufs.get(&id).unwrap() as *const B) }
     }
 }
 
@@ -280,33 +410,26 @@ pub fn entity_path_readonly(
     ui.label(slashed_path);
 }
 
+#[derive(Default)]
 pub struct PatternMapperInspector;
 
-impl PatternMapperInspector {
-    pub fn register(app: &mut App) {
-        app.insert_resource(EguiInspectorBuffers::<PatternMapper, PatternMapperSerial>::default());
-        let type_registry = app.world().resource::<AppTypeRegistry>();
-        let mut type_registry = type_registry.write();
-        let type_registry = &mut type_registry;
-        add_no_many::<PatternMapper>(type_registry, Self::mutable, Self::readonly);
-    }
+impl EguiInspectorExtension for PatternMapperInspector {
+    type Base = PatternMapper;
+    type Buffer = PatternMapperSerial;
 
-    pub fn mutable(
-        value: &mut dyn Any,
+    fn mutable(
+        value: &mut Self::Base,
+        buffer: Option<&mut Self::Buffer>,
         ui: &mut egui::Ui,
         _options: &dyn Any,
         id: egui::Id,
         mut env: InspectorUi<'_, '_>,
     ) -> bool {
-        let value = value.downcast_mut::<PatternMapper>().unwrap();
-        let buffered = get_buffered::<PatternMapper, PatternMapperSerial>(
-            env.context.world.as_mut().unwrap(),
-            id,
-            || value.clone().into(),
-        );
-        match env.ui_for_reflect_with_options(buffered, ui, id, &()) {
+        let buffer = buffer.unwrap();
+
+        match env.ui_for_reflect_with_options(buffer, ui, id, &()) {
             true => {
-                if let Ok(mapper) = PatternMapper::try_from(buffered.clone()) {
+                if let Ok(mapper) = PatternMapper::try_from(buffer.clone()) {
                     *value = mapper;
                     true
                 } else {
@@ -317,20 +440,64 @@ impl PatternMapperInspector {
         }
     }
 
-    pub fn readonly(
-        value: &dyn Any,
+    fn readonly(
+        _value: &Self::Base,
+        buffer: Option<&Self::Buffer>,
         ui: &mut egui::Ui,
         _options: &dyn Any,
         id: egui::Id,
         mut env: InspectorUi<'_, '_>,
     ) {
-        let value = value.downcast_ref::<PatternMapper>().unwrap();
-        let buffered = get_buffered::<PatternMapper, PatternMapperSerial>(
-            env.context.world.as_mut().unwrap(),
-            id,
-            || value.clone().into(),
-        );
-        env.ui_for_reflect_readonly_with_options(buffered, ui, id, &());
+        let buffer = buffer.unwrap();
+
+        env.ui_for_reflect_readonly_with_options(buffer, ui, id, &());
+    }
+
+    fn init_buffer(value: &Self::Base) -> Option<Self::Buffer> {
+        Some(value.clone().into())
+    }
+
+    fn needs_buffer() -> bool {
+        true
+    }
+}
+
+#[derive(Default)]
+pub struct CheckboxInspector;
+
+impl EguiInspectorExtension for CheckboxInspector {
+    type Base = bool;
+    type Buffer = ();
+
+    fn mutable(
+        value: &mut Self::Base,
+        _buffer: Option<&mut Self::Buffer>,
+        ui: &mut egui::Ui,
+        _options: &dyn Any,
+        _id: egui::Id,
+        _env: InspectorUi<'_, '_>,
+    ) -> bool {
+        ui.checkbox(value, "").changed
+    }
+
+    fn readonly(
+        value: &Self::Base,
+        _buffer: Option<&Self::Buffer>,
+        ui: &mut egui::Ui,
+        _options: &dyn Any,
+        _id: egui::Id,
+        _env: InspectorUi<'_, '_>,
+    ) {
+        let mut val = *value;
+        ui.add_enabled_ui(false, |ui| ui.checkbox(&mut val, ""));
+    }
+
+    fn init_buffer(#[allow(unused_variables)] value: &Self::Base) -> Option<Self::Buffer> {
+        None
+    }
+
+    fn needs_buffer() -> bool {
+        false
     }
 }
 
@@ -700,10 +867,4 @@ pub fn todo_readonly_ui(
     mut _env: InspectorUi<'_, '_>,
 ) {
     ui.label("TODO: Asset picker readonly. If you see this please report an issue.");
-}
-
-pub fn handle_path(handle: UntypedAssetId, asset_server: &AssetServer) -> PathBuf {
-    asset_server
-        .get_path(handle)
-        .map_or("Unsaved Asset".into(), |p| p.path().to_owned())
 }

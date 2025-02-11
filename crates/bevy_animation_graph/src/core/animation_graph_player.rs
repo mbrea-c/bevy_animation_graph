@@ -1,9 +1,11 @@
 use super::{
-    animation_graph::{AnimationGraph, InputOverlay, PinId, TimeState, TimeUpdate},
-    context::{BoneDebugGizmos, DeferredGizmos, PassContext},
+    animation_graph::{
+        AnimationGraph, InputOverlay, PinId, TimeState, TimeUpdate, DEFAULT_OUTPUT_POSE,
+    },
+    context::{DeferredGizmos, PassContext},
     edge_data::{AnimationEvent, DataValue, EventQueue, SampledEvent},
     errors::GraphError,
-    pose::BoneId,
+    pose::{BoneId, Pose},
     prelude::GraphContextArena,
     skeleton::Skeleton,
 };
@@ -13,12 +15,48 @@ use bevy::{
     utils::HashMap,
 };
 
+#[derive(Default, Reflect, Clone, Copy)]
+pub enum PlaybackState {
+    Paused,
+    #[default]
+    Play,
+    PlayOneFrame,
+}
+
+impl PlaybackState {
+    pub fn is_paused(&self) -> bool {
+        matches!(self, PlaybackState::Paused)
+    }
+}
+
+#[derive(Reflect, Clone, Default)]
+pub enum AnimationSource {
+    Graph(Handle<AnimationGraph>),
+    Pose(Pose),
+    #[default]
+    None,
+}
+
+impl AnimationSource {
+    pub fn is_none(&self) -> bool {
+        matches!(self, AnimationSource::None)
+    }
+
+    pub fn is_graph(&self) -> bool {
+        matches!(self, AnimationSource::Graph(_))
+    }
+
+    pub fn is_pose(&self) -> bool {
+        matches!(self, AnimationSource::Pose(_))
+    }
+}
+
 /// Animation controls
 #[derive(Component, Default, Reflect)]
 #[reflect(Component)]
 pub struct AnimationGraphPlayer {
-    pub(crate) paused: bool,
-    pub(crate) animation: Option<Handle<AnimationGraph>>,
+    pub(crate) playback_state: PlaybackState,
+    pub(crate) animation: AnimationSource,
     pub(crate) skeleton: Handle<Skeleton>,
     pub(crate) context_arena: Option<GraphContextArena>,
     pub(crate) elapsed: TimeState,
@@ -50,10 +88,14 @@ impl AnimationGraphPlayer {
         self.context_arena.as_ref()
     }
 
+    pub fn set_animation(&mut self, animation: AnimationSource) {
+        self.animation = animation;
+    }
+
     /// Set the animation graph to play
     pub fn with_graph(mut self, animation: Handle<AnimationGraph>) -> Self {
         self.context_arena = Some(GraphContextArena::new(animation.id()));
-        self.animation = Some(animation);
+        self.animation = AnimationSource::Graph(animation);
         self
     }
 
@@ -78,9 +120,9 @@ impl AnimationGraphPlayer {
     /// This will use a linear blending between the previous and the new animation to make a smooth transition.
     pub fn start(&mut self, handle: Handle<AnimationGraph>) -> &mut Self {
         self.context_arena = Some(GraphContextArena::new(handle.id()));
-        self.animation = Some(handle);
+        self.animation = AnimationSource::Graph(handle);
         self.elapsed = TimeState::default();
-        self.paused = false;
+        self.playback_state = PlaybackState::Play;
         self
     }
 
@@ -102,7 +144,7 @@ impl AnimationGraphPlayer {
             std::mem::take(&mut self.queued_events).into(),
         );
 
-        let Some(graph_handle) = self.animation.as_ref() else {
+        let AnimationSource::Graph(graph_handle) = &self.animation else {
             return;
         };
 
@@ -164,7 +206,7 @@ impl AnimationGraphPlayer {
 
         let skeleton_handle = self.skeleton.clone();
 
-        let mut ctx = self
+        let ctx = self
             .get_pass_context(system_resources, root_entity)
             .with_debugging(true);
 
@@ -173,31 +215,37 @@ impl AnimationGraphPlayer {
         };
 
         for bone_id in bones.drain(..) {
-            ctx.bone_gizmo(bone_id, WHITE.into(), skeleton, None);
+            ctx.gizmos()
+                .bone_gizmo(bone_id, WHITE.into(), skeleton, None);
         }
     }
 
-    pub fn pause(&mut self) -> &mut Self {
-        self.paused = true;
-        self
+    pub fn pause(&mut self) {
+        self.playback_state = PlaybackState::Paused;
     }
 
-    pub fn resume(&mut self) -> &mut Self {
-        self.paused = false;
-        self
+    pub fn resume(&mut self) {
+        self.playback_state = PlaybackState::Play;
     }
 
     pub fn is_paused(&self) -> bool {
-        self.paused
+        self.playback_state.is_paused()
     }
 
-    pub fn reset(&mut self) -> &mut Self {
+    pub fn playback_state(&self) -> PlaybackState {
+        self.playback_state
+    }
+
+    pub fn play_one_frame(&mut self) {
+        self.playback_state = PlaybackState::PlayOneFrame;
+    }
+
+    pub fn reset(&mut self) {
         self.pending_update = Some(TimeUpdate::Absolute(0.));
-        self
     }
 
-    pub fn get_animation_graph(&self) -> Option<Handle<AnimationGraph>> {
-        self.animation.clone()
+    pub fn get_animation_source(&self) -> &AnimationSource {
+        &self.animation
     }
 
     /// If graph evaluation produced an error in the last frame return the error, otherwise return
@@ -208,5 +256,14 @@ impl AnimationGraphPlayer {
 
     pub fn get_outputs(&self) -> &HashMap<PinId, DataValue> {
         &self.outputs
+    }
+
+    /// Gets the default output pose from the graph, or the forced pose if set.
+    pub fn get_default_output_pose(&self) -> Option<&Pose> {
+        match &self.animation {
+            AnimationSource::Graph(_) => self.outputs.get(DEFAULT_OUTPUT_POSE)?.as_pose(),
+            AnimationSource::Pose(pose) => Some(pose),
+            AnimationSource::None => None,
+        }
     }
 }

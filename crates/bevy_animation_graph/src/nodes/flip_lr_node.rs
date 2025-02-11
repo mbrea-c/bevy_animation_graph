@@ -98,26 +98,23 @@ impl EditProxy for FlipLRNode {
 
 #[cfg(test)]
 mod test {
-    use crate::core::animation_graph::serial::AnimationNodeSerializer;
+    // TODO: Move serialization tests into "integration" tests (as they need to integrate with
+    // Bevy's types). Test round-trip serialiation.
+    // We create a Bevy type registry to test reflect-based serialization
+    // #[test]
+    // fn test_serialize() {
+    //     let mut registry = TypeRegistry::new();
+    //     registry.register::<FlipLRNode>();
 
-    use super::*;
-    use bevy::reflect::TypeRegistry;
-
-    /// We create a Bevy type registry to test reflect-based serialization
-    #[test]
-    fn test_serialize() {
-        let mut registry = TypeRegistry::new();
-        registry.register::<FlipLRNode>();
-
-        let node = super::FlipLRNode::default();
-        let serializer = AnimationNodeSerializer {
-            type_registry: &registry,
-            name: "Test".to_string(),
-            inner: Box::new(node),
-        };
-        let serialized = ron::to_string(&serializer).unwrap();
-        assert_eq!(serialized, "(name:\"Test\",ty:\"bevy_animation_graph::nodes::flip_lr_node::FlipLRNode\",inner:(config:(name_mapper:Pattern((key_1:\"L\",key_2:\"R\",pattern_before:\"^.*\",pattern_after:\"$\")))))".to_string());
-    }
+    //     let node = super::FlipLRNode::default();
+    //     let serializer = AnimationNodeSerializer {
+    //         type_registry: &registry,
+    //         name: "Test".to_string(),
+    //         inner: Box::new(node),
+    //     };
+    //     let serialized = ron::to_string(&serializer).unwrap();
+    //     assert_eq!(serialized, "(name:\"Test\",ty:\"bevy_animation_graph::nodes::flip_lr_node::FlipLRNode\",inner:(config:(name_mapper:Pattern((key_1:\"L\",key_2:\"R\",pattern_before:\"^.*\",pattern_after:\"$\")))))".to_string());
+    // }
 
     // TODO: How do we test deserialization?
     //

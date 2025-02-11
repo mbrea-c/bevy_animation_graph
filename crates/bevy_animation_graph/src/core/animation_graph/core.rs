@@ -705,7 +705,7 @@ impl AnimationGraph {
                 }
 
                 let Some(value) = ctx.caches().get(
-                    |c| c.get_parameter(source_pin).cloned(),
+                    |c| c.get_data(source_pin).cloned(),
                     CacheReadFilter::for_temp(ctx.temp_cache),
                 ) else {
                     return Err(GraphError::OutputMissing(source_pin.clone()));

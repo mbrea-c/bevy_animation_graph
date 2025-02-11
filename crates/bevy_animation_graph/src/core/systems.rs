@@ -1,9 +1,9 @@
 use super::{
     animation_clip::EntityPath,
-    animation_graph::{TimeUpdate, UpdateTime, DEFAULT_OUTPUT_POSE},
+    animation_graph::{TimeUpdate, UpdateTime},
     animation_graph_player::AnimationGraphPlayer,
     pose::BoneId,
-    prelude::DataValue,
+    prelude::PlaybackState,
 };
 use crate::prelude::SystemResources;
 use bevy::{
@@ -84,7 +84,7 @@ pub fn run_animation_player(
 ) {
     // Continue if paused unless the `AnimationPlayer` was changed
     // This allow the animation to still be updated if the player.elapsed field was manually updated in pause
-    if player.paused || player.animation.is_none() {
+    if player.is_paused() || !player.animation.is_graph() {
         return;
     }
 
@@ -97,6 +97,10 @@ pub fn run_animation_player(
     player.entity_map = build_entity_map(root, system_resources);
 
     player.update(system_resources, root);
+
+    if matches!(player.playback_state(), PlaybackState::PlayOneFrame) {
+        player.pause();
+    }
 }
 
 pub fn apply_animation_to_targets(
@@ -112,7 +116,7 @@ pub fn apply_animation_to_targets(
         let Ok(player) = graph_players.get(target.player) else {
             continue;
         };
-        let Some(DataValue::Pose(pose)) = player.outputs.get(DEFAULT_OUTPUT_POSE) else {
+        let Some(pose) = player.get_default_output_pose() else {
             continue;
         };
 
