@@ -227,7 +227,6 @@ impl<T> SubScenes<T> {
 
 pub struct SubSceneData<T> {
     config: T,
-    root: Entity,
     image: Handle<Image>,
 }
 
@@ -301,7 +300,6 @@ pub fn setup_textured_render<T: SubSceneConfig>(
         widget_id,
         SubSceneData {
             config: config.as_ref().clone(),
-            root,
             image: image_handle.clone(),
         },
         &mut layer_manager,

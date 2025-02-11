@@ -15,12 +15,15 @@ use bevy_animation_graph::prelude::{
 use egui_dock::egui;
 
 use crate::ui::{
-    core::EditorWindowExtension, provide_texture_for_scene, utils::render_image, PreviewScene,
-    SubSceneConfig, SubSceneSyncAction,
+    core::EditorWindowExtension,
+    utils::{orbit_camera_scene_show, orbit_camera_transform, orbit_camera_update, OrbitView},
+    PreviewScene, SubSceneConfig, SubSceneSyncAction,
 };
 
 #[derive(Debug)]
-pub struct ScenePreviewWindow;
+pub struct ScenePreviewWindow {
+    pub orbit_view: OrbitView,
+}
 
 impl EditorWindowExtension for ScenePreviewWindow {
     fn ui(
@@ -35,42 +38,39 @@ impl EditorWindowExtension for ScenePreviewWindow {
 
         let config = ScenePreviewConfig {
             animated_scene: scene_selection.scene.clone(),
+            view: self.orbit_view.clone(),
         };
 
-        // First get the texture to make sure the scene is spawned if needed
-        let texture = provide_texture_for_scene(world, ui.id(), config);
-
-        // Now we handle button presses and such
         let mut query = world.query::<(&AnimatedSceneInstance, &PreviewScene)>();
-        let Ok((instance, _)) = query.get_single(world) else {
-            return;
-        };
-        let entity = instance.player_entity;
-        let mut query = world.query::<&mut AnimationGraphPlayer>();
-        let Ok(mut player) = query.get_mut(world, entity) else {
-            return;
-        };
+        if let Ok((instance, _)) = query.get_single(world) {
+            // Scene playback control will only be shown once the scene is created
+            // (so from the second frame onwards)
+            let entity = instance.player_entity;
+            let mut query = world.query::<&mut AnimationGraphPlayer>();
+            let Ok(mut player) = query.get_mut(world, entity) else {
+                return;
+            };
 
-        ui.horizontal(|ui| {
-            if ui.button("X").on_hover_text("Close preview").clicked() {
-                ctx.selection.scene = None;
-            }
+            ui.horizontal(|ui| {
+                if ui.button("X").on_hover_text("Close preview").clicked() {
+                    ctx.selection.scene = None;
+                }
 
-            if ui.button("||").on_hover_text("Pause").clicked() {
-                player.pause()
-            }
+                if ui.button("||").on_hover_text("Pause").clicked() {
+                    player.pause()
+                }
 
-            if ui.button(">").on_hover_text("Play").clicked() {
-                player.resume()
-            }
+                if ui.button(">").on_hover_text("Play").clicked() {
+                    player.resume()
+                }
 
-            if ui.button("||>").on_hover_text("Play one frame").clicked() {
-                player.play_one_frame()
-            }
-        });
+                if ui.button("||>").on_hover_text("Play one frame").clicked() {
+                    player.play_one_frame()
+                }
+            });
+        }
 
-        // Finally render the actual scene texture
-        render_image(ui, world, &texture);
+        orbit_camera_scene_show(&config, &mut self.orbit_view, ui, world, ui.id());
     }
 
     fn display_name(&self) -> String {
@@ -81,6 +81,7 @@ impl EditorWindowExtension for ScenePreviewWindow {
 #[derive(Clone, PartialEq)]
 pub struct ScenePreviewConfig {
     animated_scene: Handle<AnimatedScene>,
+    view: OrbitView,
 }
 
 impl SubSceneConfig for ScenePreviewConfig {
@@ -101,7 +102,7 @@ impl SubSceneConfig for ScenePreviewConfig {
                 target: RenderTarget::Image(render_target),
                 ..default()
             },
-            Transform::from_translation(Vec3::new(0.0, 2.0, 3.0)).looking_at(Vec3::Y, Vec3::Y),
+            orbit_camera_transform(&self.view),
         ));
 
         builder.spawn((
@@ -114,14 +115,19 @@ impl SubSceneConfig for ScenePreviewConfig {
     }
 
     fn sync_action(&self, new_config: &Self) -> SubSceneSyncAction {
-        if self.animated_scene != new_config.animated_scene {
-            SubSceneSyncAction::Respawn
-        } else {
-            SubSceneSyncAction::Nothing
+        match (
+            self.animated_scene == new_config.animated_scene,
+            self.view == new_config.view,
+        ) {
+            (true, true) => SubSceneSyncAction::Nothing,
+            (true, false) => SubSceneSyncAction::Update,
+            (false, _) => SubSceneSyncAction::Respawn,
         }
     }
 
-    fn update(&self, _id: egui::Id, _world: &mut World) {
-        unreachable!()
+    fn update(&self, id: egui::Id, world: &mut World) {
+        world
+            .run_system_cached_with(orbit_camera_update, (id, self.view.clone()))
+            .unwrap();
     }
 }

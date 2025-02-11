@@ -20,13 +20,17 @@ use egui_dock::egui;
 
 use crate::ui::{
     core::{EditorContext, EditorWindowExtension, InspectorSelection},
-    provide_texture_for_scene,
-    utils::{self, render_image, using_inspector_env},
+    utils::{
+        self, orbit_camera_scene_show, orbit_camera_transform, orbit_camera_update,
+        using_inspector_env, OrbitView,
+    },
     OverrideSceneAnimation, PartOfSubScene, PreviewScene, SubSceneConfig, SubSceneSyncAction,
 };
 
 #[derive(Debug)]
-pub struct DebuggerWindow;
+pub struct DebuggerWindow {
+    pub orbit_view: OrbitView,
+}
 
 impl EditorWindowExtension for DebuggerWindow {
     fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorContext) {
@@ -126,6 +130,7 @@ impl EditorWindowExtension for DebuggerWindow {
 pub struct PoseSubSceneConfig {
     pose: Pose,
     animated_scene: Handle<AnimatedScene>,
+    view: OrbitView,
 }
 
 impl SubSceneConfig for PoseSubSceneConfig {
@@ -140,11 +145,12 @@ impl SubSceneConfig for PoseSubSceneConfig {
             Camera {
                 // render before the "main pass" camera
                 order: -1,
-                clear_color: ClearColorConfig::Custom(LinearRgba::new(0.0, 0.0, 0.0, 1.0).into()),
+                clear_color: ClearColorConfig::Custom(LinearRgba::new(1.0, 1.0, 1.0, 0.0).into()),
                 target: RenderTarget::Image(render_target),
                 ..default()
             },
-            Transform::from_translation(Vec3::new(0.0, 2.0, 3.0)).looking_at(Vec3::Y, Vec3::Y),
+            // Position based on orbit camera parameters
+            orbit_camera_transform(&self.view),
         ));
 
         builder.spawn((
@@ -160,16 +166,21 @@ impl SubSceneConfig for PoseSubSceneConfig {
         match (
             self.animated_scene == new_config.animated_scene,
             self.pose == new_config.pose,
+            self.view == new_config.view,
         ) {
-            (true, true) => SubSceneSyncAction::Nothing,
-            (true, false) => SubSceneSyncAction::Update,
-            (false, _) => SubSceneSyncAction::Respawn,
+            (true, true, true) => SubSceneSyncAction::Nothing,
+            (true, false, _) => SubSceneSyncAction::Update,
+            (true, _, false) => SubSceneSyncAction::Update,
+            (false, _, _) => SubSceneSyncAction::Respawn,
         }
     }
 
     fn update(&self, id: egui::Id, world: &mut World) {
         world
             .run_system_cached_with(update_pose_subscene, (id, self.pose.clone()))
+            .unwrap();
+        world
+            .run_system_cached_with(orbit_camera_update, (id, self.view.clone()))
             .unwrap();
     }
 }
@@ -188,10 +199,10 @@ fn update_pose_subscene(
 
 // some helpers only used here
 impl DebuggerWindow {
-    // Easier to manually display widget here than rely on bevy-inspector-egui, as we need
-    // mutable world access.
+    // Easier to manually display widget here than rely on bevy-inspector-egui, as we need mutable
+    // world access for setting up the Bevy scene
     fn pose_readonly(
-        &self,
+        &mut self,
         pose: &Pose,
         scene: Handle<AnimatedScene>,
         ui: &mut egui::Ui,
@@ -202,12 +213,27 @@ impl DebuggerWindow {
         let config = PoseSubSceneConfig {
             pose: pose.clone(),
             animated_scene: scene,
+            view: self.orbit_view.clone(),
         };
-        // First we need to make sure the subscene is created and get the camera image handle
-        let texture = provide_texture_for_scene(world, id, config);
 
-        render_image(ui, world, &texture);
+        let mut size = ui.available_size();
+        size.y = 0.6 * size.y;
 
-        using_inspector_env(world, |mut env| env.ui_for_reflect_readonly(pose, ui));
+        ui.allocate_ui(size, |ui| {
+            orbit_camera_scene_show(&config, &mut self.orbit_view, ui, world, id);
+        });
+
+        ui.separator();
+
+        let size = ui.available_size();
+
+        egui::ScrollArea::both()
+            .max_width(size.x)
+            .max_height(size.y)
+            .show(ui, |ui| {
+                ui.collapsing("Inspect pose values", |ui| {
+                    using_inspector_env(world, |mut env| env.ui_for_reflect_readonly(pose, ui));
+                });
+            });
     }
 }

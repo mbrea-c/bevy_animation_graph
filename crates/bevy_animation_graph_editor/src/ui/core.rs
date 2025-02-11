@@ -38,7 +38,7 @@ use egui_notify::{Anchor, Toasts};
 use super::editor_windows::debugger::DebuggerWindow;
 use super::editor_windows::scene_preview::ScenePreviewWindow;
 use super::scenes::PreviewScene;
-use super::utils;
+use super::utils::{self, OrbitView};
 
 pub fn show_ui_system(world: &mut World) {
     let Ok(egui_context) = world
@@ -150,7 +150,15 @@ impl UiState {
         let [graph_editor, inspectors] = tree.split_right(
             NodeIndex::root(),
             0.75,
-            vec![EguiWindow::Inspector, EguiWindow::dynamic(DebuggerWindow)],
+            vec![
+                EguiWindow::Inspector,
+                EguiWindow::dynamic(DebuggerWindow {
+                    orbit_view: OrbitView {
+                        distance: 3.,
+                        angles: Vec2::ZERO,
+                    },
+                }),
+            ],
         );
         let [_graph_editor, graph_selector] =
             tree.split_left(graph_editor, 0.2, vec![EguiWindow::GraphSelector]);
@@ -162,7 +170,12 @@ impl UiState {
             inspectors,
             0.5,
             vec![
-                EguiWindow::dynamic(ScenePreviewWindow),
+                EguiWindow::dynamic(ScenePreviewWindow {
+                    orbit_view: OrbitView {
+                        distance: 3.,
+                        angles: Vec2::ZERO,
+                    },
+                }),
                 EguiWindow::PreviewHierarchy,
             ],
         );

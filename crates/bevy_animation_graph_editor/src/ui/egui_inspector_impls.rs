@@ -77,7 +77,9 @@ impl<T: EguiInspectorExtension> EguiInspectorExtensionWrapper<T> {
     }
 
     fn register(&self, app: &mut App) {
-        app.insert_resource(EguiInspectorBuffers::<T::Base, T::Buffer>::default());
+        if T::needs_buffer() {
+            app.insert_resource(EguiInspectorBuffers::<T::Base, T::Buffer>::default());
+        }
         let type_registry = app.world().resource::<AppTypeRegistry>();
         let mut type_registry = type_registry.write();
         let type_registry = &mut type_registry;
@@ -92,10 +94,15 @@ impl<T: EguiInspectorExtension> EguiInspectorExtensionWrapper<T> {
         env: InspectorUi<'_, '_>,
     ) -> bool {
         let value = value.downcast_mut::<T::Base>().unwrap();
-        let buffer =
-            get_buffered::<T::Base, T::Buffer>(env.context.world.as_mut().unwrap(), id, || {
-                T::init_buffer(value)
-            });
+        let buffer = if T::needs_buffer() {
+            Some(get_buffered::<T::Base, T::Buffer>(
+                env.context.world.as_mut().unwrap(),
+                id,
+                || T::init_buffer(value).unwrap(),
+            ))
+        } else {
+            None
+        };
 
         T::mutable(value, buffer, ui, options, id, env)
     }
@@ -108,11 +115,15 @@ impl<T: EguiInspectorExtension> EguiInspectorExtensionWrapper<T> {
         env: InspectorUi<'_, '_>,
     ) {
         let value = value.downcast_ref::<T::Base>().unwrap();
-        let buffer = get_buffered_readonly::<T::Base, T::Buffer>(
-            env.context.world.as_mut().unwrap(),
-            id,
-            || T::init_buffer(value),
-        );
+        let buffer = if T::needs_buffer() {
+            Some(get_buffered_readonly::<T::Base, T::Buffer>(
+                env.context.world.as_mut().unwrap(),
+                id,
+                || T::init_buffer(value).unwrap(),
+            ))
+        } else {
+            None
+        };
 
         T::readonly(value, buffer, ui, options, id, env)
     }
@@ -124,7 +135,7 @@ pub trait EguiInspectorExtension {
 
     fn mutable(
         value: &mut Self::Base,
-        buffer: &mut Self::Buffer,
+        buffer: Option<&mut Self::Buffer>,
         ui: &mut egui::Ui,
         options: &dyn Any,
         id: egui::Id,
@@ -133,15 +144,29 @@ pub trait EguiInspectorExtension {
 
     fn readonly(
         value: &Self::Base,
-        buffer: &Self::Buffer,
+        buffer: Option<&Self::Buffer>,
         ui: &mut egui::Ui,
         options: &dyn Any,
         id: egui::Id,
         env: InspectorUi<'_, '_>,
     );
 
-    fn init_buffer(value: &Self::Base) -> Self::Buffer;
+    fn init_buffer(#[allow(unused_variables)] value: &Self::Base) -> Option<Self::Buffer> {
+        None
+    }
+
+    fn needs_buffer() -> bool {
+        false
+    }
 }
+
+pub trait EguiInspectorExtensionRegistration: EguiInspectorExtension + Sized {
+    fn register(self, app: &mut App) {
+        EguiInspectorExtensionWrapper::for_extension(self).register(app);
+    }
+}
+
+impl<T: EguiInspectorExtension + Sized> EguiInspectorExtensionRegistration for T {}
 
 pub struct BetterInspectorPlugin;
 impl Plugin for BetterInspectorPlugin {
@@ -169,7 +194,8 @@ impl Plugin for BetterInspectorPlugin {
         app.register_type::<OrderedMap<PinId, DataSpec>>();
         app.register_type::<OrderedMap<PinId, ()>>();
 
-        EguiInspectorExtensionWrapper::for_extension(PatternMapperInspector).register(app);
+        PatternMapperInspector.register(app);
+        CheckboxInspector.register(app);
 
         let type_registry = app.world().resource::<AppTypeRegistry>();
         let mut type_registry = type_registry.write();
@@ -393,12 +419,14 @@ impl EguiInspectorExtension for PatternMapperInspector {
 
     fn mutable(
         value: &mut Self::Base,
-        buffer: &mut Self::Buffer,
+        buffer: Option<&mut Self::Buffer>,
         ui: &mut egui::Ui,
         _options: &dyn Any,
         id: egui::Id,
         mut env: InspectorUi<'_, '_>,
     ) -> bool {
+        let buffer = buffer.unwrap();
+
         match env.ui_for_reflect_with_options(buffer, ui, id, &()) {
             true => {
                 if let Ok(mapper) = PatternMapper::try_from(buffer.clone()) {
@@ -414,17 +442,62 @@ impl EguiInspectorExtension for PatternMapperInspector {
 
     fn readonly(
         _value: &Self::Base,
-        buffer: &Self::Buffer,
+        buffer: Option<&Self::Buffer>,
         ui: &mut egui::Ui,
         _options: &dyn Any,
         id: egui::Id,
         mut env: InspectorUi<'_, '_>,
     ) {
+        let buffer = buffer.unwrap();
+
         env.ui_for_reflect_readonly_with_options(buffer, ui, id, &());
     }
 
-    fn init_buffer(value: &Self::Base) -> Self::Buffer {
-        value.clone().into()
+    fn init_buffer(value: &Self::Base) -> Option<Self::Buffer> {
+        Some(value.clone().into())
+    }
+
+    fn needs_buffer() -> bool {
+        true
+    }
+}
+
+#[derive(Default)]
+pub struct CheckboxInspector;
+
+impl EguiInspectorExtension for CheckboxInspector {
+    type Base = bool;
+    type Buffer = ();
+
+    fn mutable(
+        value: &mut Self::Base,
+        _buffer: Option<&mut Self::Buffer>,
+        ui: &mut egui::Ui,
+        _options: &dyn Any,
+        _id: egui::Id,
+        _env: InspectorUi<'_, '_>,
+    ) -> bool {
+        ui.checkbox(value, "").changed
+    }
+
+    fn readonly(
+        value: &Self::Base,
+        _buffer: Option<&Self::Buffer>,
+        ui: &mut egui::Ui,
+        _options: &dyn Any,
+        _id: egui::Id,
+        _env: InspectorUi<'_, '_>,
+    ) {
+        let mut val = value.clone();
+        ui.add_enabled_ui(false, |ui| ui.checkbox(&mut val, ""));
+    }
+
+    fn init_buffer(#[allow(unused_variables)] value: &Self::Base) -> Option<Self::Buffer> {
+        None
+    }
+
+    fn needs_buffer() -> bool {
+        false
     }
 }
 

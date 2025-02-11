@@ -1,3 +1,4 @@
+use std::f32::consts::{FRAC_PI_2, PI};
 use std::path::PathBuf;
 
 use crate::fsm_show::{make_fsm_indices, FsmIndices};
@@ -19,7 +20,7 @@ use bevy_inspector_egui::egui;
 use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
 
 use super::core::{EditorSelection, EguiWindow, RequestSave};
-use super::PreviewScene;
+use super::{provide_texture_for_scene, PartOfSubScene, PreviewScene, SubSceneConfig};
 
 pub(crate) fn get_node_output_data_pins(
     world: &mut World,
@@ -299,6 +300,7 @@ pub fn render_image(ui: &mut egui::Ui, world: &mut World, image: &Handle<Image>)
         });
 
     let available_size = ui.available_size();
+
     let e3d_size = Extent3d {
         width: available_size.x as u32,
         height: available_size.y as u32,
@@ -310,7 +312,16 @@ pub fn render_image(ui: &mut egui::Ui, world: &mut World, image: &Handle<Image>)
         image.resize(e3d_size);
     });
 
-    ui.image(egui::load::SizedTexture::new(texture_id, available_size))
+    let (rect, response) = ui.allocate_exact_size(available_size, egui::Sense::drag());
+
+    // Ensure interaction
+    let response = response.interact(egui::Sense::drag());
+
+    ui.put(rect, |ui: &mut egui::Ui| {
+        ui.image(egui::load::SizedTexture::new(texture_id, available_size))
+    });
+
+    response
 }
 
 pub fn using_inspector_env<T>(world: &mut World, expr: impl FnOnce(InspectorUi) -> T) -> T {
@@ -332,4 +343,71 @@ pub fn using_inspector_env<T>(world: &mut World, expr: impl FnOnce(InspectorUi) 
     let env = InspectorUi::for_bevy(&type_registry, &mut cx);
 
     expr(env)
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct OrbitView {
+    pub angles: Vec2,
+    pub distance: f32,
+}
+
+pub fn orbit_camera_scene_show<T: SubSceneConfig>(
+    config: &T,
+    orbit: &mut OrbitView,
+    ui: &mut egui::Ui,
+    world: &mut World,
+    id: egui::Id,
+) {
+    // First we need to make sure the subscene is created and get the camera image handle
+    let texture = provide_texture_for_scene(world, id, config.clone());
+    let response = render_image(ui, world, &texture);
+    let motion = response.drag_motion() * 0.01;
+    orbit.angles = Vec2::new(
+        (orbit.angles.x + motion.x).rem_euclid(2. * PI),
+        (orbit.angles.y + motion.y).clamp(-FRAC_PI_2, FRAC_PI_2),
+    );
+
+    if ui.rect_contains_pointer(response.interact_rect) {
+        let mut zoom = 0.;
+        ui.ctx().input(|i| {
+            for event in &i.events {
+                if let egui::Event::MouseWheel { unit, delta, .. } = event {
+                    zoom += delta.y
+                        * match unit {
+                            egui::MouseWheelUnit::Point => 0.1,
+                            egui::MouseWheelUnit::Line => 1.,
+                            egui::MouseWheelUnit::Page => 10.,
+                        };
+                }
+            }
+        });
+        orbit.distance = (orbit.distance - zoom).max(0.001);
+    }
+}
+
+pub fn orbit_camera_transform(view: &OrbitView) -> Transform {
+    let mut cam_transform = Transform::from_translation(
+        view.distance
+            * Vec3::new(
+                view.angles.y.cos() * view.angles.x.cos(),
+                view.angles.y.sin(),
+                view.angles.y.cos() * view.angles.x.sin(),
+            ),
+    )
+    .looking_at(Vec3::ZERO, Vec3::Y);
+
+    cam_transform.translation += Vec3::Y * view.distance.sqrt() * 0.5;
+    cam_transform
+}
+
+pub fn orbit_camera_update(
+    In((target_id, view)): In<(egui::Id, OrbitView)>,
+    mut query: Query<(&mut Transform, &PartOfSubScene), With<Camera3d>>,
+) {
+    for (mut cam_transform, PartOfSubScene(id)) in &mut query {
+        if target_id == *id {
+            *cam_transform = orbit_camera_transform(&view);
+            break;
+        }
+    }
 }
