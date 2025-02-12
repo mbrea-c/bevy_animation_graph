@@ -20,7 +20,7 @@ use crate::ui::{
     PreviewScene, SubSceneConfig, SubSceneSyncAction,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct ScenePreviewWindow {
     pub orbit_view: OrbitView,
 }

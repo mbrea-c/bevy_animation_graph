@@ -351,6 +351,15 @@ pub struct OrbitView {
     pub distance: f32,
 }
 
+impl Default for OrbitView {
+    fn default() -> Self {
+        Self {
+            distance: 3.,
+            angles: Vec2::ZERO,
+        }
+    }
+}
+
 pub fn orbit_camera_scene_show<T: SubSceneConfig>(
     config: &T,
     orbit: &mut OrbitView,
