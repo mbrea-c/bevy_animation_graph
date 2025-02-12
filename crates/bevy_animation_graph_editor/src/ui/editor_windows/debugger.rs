@@ -27,7 +27,7 @@ use crate::ui::{
     OverrideSceneAnimation, PartOfSubScene, PreviewScene, SubSceneConfig, SubSceneSyncAction,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct DebuggerWindow {
     pub orbit_view: OrbitView,
 }
