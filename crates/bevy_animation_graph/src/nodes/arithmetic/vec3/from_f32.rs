@@ -3,7 +3,6 @@ use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
 use crate::prelude::{PassContext, SpecContext};
-use crate::utils::unwrap::UnwrapVal;
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
@@ -23,9 +22,9 @@ impl BuildVec3Node {
 
 impl NodeLike for BuildVec3Node {
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let x: f32 = ctx.data_back(Self::INPUT_X)?.val();
-        let y: f32 = ctx.data_back(Self::INPUT_Y)?.val();
-        let z: f32 = ctx.data_back(Self::INPUT_Z)?.val();
+        let x = ctx.data_back(Self::INPUT_X)?.as_f32().unwrap();
+        let y = ctx.data_back(Self::INPUT_Y)?.as_f32().unwrap();
+        let z = ctx.data_back(Self::INPUT_Z)?.as_f32().unwrap();
 
         ctx.set_data_fwd(Self::OUTPUT, Vec3::new(x, y, z));
 

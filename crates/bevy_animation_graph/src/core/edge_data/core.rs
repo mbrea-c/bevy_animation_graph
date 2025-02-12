@@ -1,8 +1,5 @@
 use super::{bone_mask::BoneMask, EventQueue};
-use crate::{
-    core::{animation_clip::EntityPath, pose::Pose},
-    utils::unwrap::UnwrapVal,
-};
+use crate::core::{animation_clip::EntityPath, pose::Pose};
 use bevy::{
     math::{Quat, Vec2, Vec3},
     reflect::{std_traits::ReflectDefault, Reflect},
@@ -198,96 +195,6 @@ impl DataValue {
         match self {
             Self::EventQueue(x) => Some(x),
             _ => None,
-        }
-    }
-}
-
-impl UnwrapVal<f32> for DataValue {
-    fn val(self) -> f32 {
-        match self {
-            DataValue::F32(f) => f,
-            _ => panic!("Expected F32, found {:?}", DataSpec::from(&self)),
-        }
-    }
-}
-
-impl UnwrapVal<bool> for DataValue {
-    fn val(self) -> bool {
-        match self {
-            DataValue::Bool(b) => b,
-            _ => panic!("Expected Bool, found {:?}", DataSpec::from(&self)),
-        }
-    }
-}
-
-impl UnwrapVal<EntityPath> for DataValue {
-    fn val(self) -> EntityPath {
-        match self {
-            DataValue::EntityPath(f) => f,
-            _ => panic!("Expected EntityPath, found {:?}", DataSpec::from(&self)),
-        }
-    }
-}
-
-impl UnwrapVal<BoneMask> for DataValue {
-    fn val(self) -> BoneMask {
-        match self {
-            DataValue::BoneMask(b) => b,
-            _ => panic!("Expected BoneMask, found {:?}", DataSpec::from(&self)),
-        }
-    }
-}
-
-impl UnwrapVal<Quat> for DataValue {
-    fn val(self) -> Quat {
-        match self {
-            DataValue::Quat(q) => q,
-            _ => panic!("Expected Quat, found {:?}", DataSpec::from(&self)),
-        }
-    }
-}
-
-impl UnwrapVal<Vec2> for DataValue {
-    fn val(self) -> Vec2 {
-        match self {
-            DataValue::Vec2(v) => v,
-            _ => panic!("Expected Vec2, found {:?}", DataSpec::from(&self)),
-        }
-    }
-}
-
-impl UnwrapVal<Vec3> for DataValue {
-    fn val(self) -> Vec3 {
-        match self {
-            DataValue::Vec3(v) => v,
-            _ => panic!("Expected Vec3, found {:?}", DataSpec::from(&self)),
-        }
-    }
-}
-
-impl UnwrapVal<Pose> for DataValue {
-    fn val(self) -> Pose {
-        match self {
-            DataValue::Pose(v) => v,
-            _ => panic!("Expected Pose, found {:?}", DataSpec::from(&self)),
-        }
-    }
-}
-
-impl UnwrapVal<EventQueue> for DataValue {
-    fn val(self) -> EventQueue {
-        match self {
-            DataValue::EventQueue(v) => v,
-            _ => panic!("Expected EventQueue, found {:?}", DataSpec::from(&self)),
-        }
-    }
-}
-
-impl DataValue {
-    pub fn unwrap_f32(self) -> f32 {
-        match self {
-            DataValue::F32(f) => f,
-            _ => panic!("Expected F32, found {:?}", DataSpec::from(&self)),
         }
     }
 }

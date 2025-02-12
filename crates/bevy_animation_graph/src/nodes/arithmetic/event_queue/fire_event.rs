@@ -1,12 +1,9 @@
-use crate::{
-    core::{
-        animation_graph::PinMap,
-        animation_node::{NodeLike, ReflectNodeLike},
-        context::{PassContext, SpecContext},
-        edge_data::{AnimationEvent, DataSpec, EventQueue, SampledEvent},
-        errors::GraphError,
-    },
-    utils::unwrap::UnwrapVal,
+use crate::core::{
+    animation_graph::PinMap,
+    animation_node::{NodeLike, ReflectNodeLike},
+    context::{PassContext, SpecContext},
+    edge_data::{AnimationEvent, DataSpec, EventQueue, SampledEvent},
+    errors::GraphError,
 };
 use bevy::prelude::*;
 
@@ -31,7 +28,7 @@ impl NodeLike for FireEventNode {
     }
 
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let cond: bool = ctx.data_back(Self::CONDITION_IN)?.val();
+        let cond: bool = ctx.data_back(Self::CONDITION_IN)?.into_bool().unwrap();
 
         if cond {
             ctx.set_data_fwd(

@@ -3,7 +3,6 @@ use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
 use crate::prelude::{PassContext, SpecContext};
-use crate::utils::unwrap::UnwrapVal;
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
@@ -21,7 +20,7 @@ impl InvertQuatNode {
 
 impl NodeLike for InvertQuatNode {
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let input: Quat = ctx.data_back(Self::INPUT)?.val();
+        let input: Quat = ctx.data_back(Self::INPUT)?.as_quat().unwrap();
         let output: Quat = input.inverse();
 
         ctx.set_data_fwd(Self::OUTPUT, output);

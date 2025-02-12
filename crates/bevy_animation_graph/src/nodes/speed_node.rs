@@ -1,10 +1,8 @@
 use crate::core::animation_graph::{PinMap, TimeUpdate};
 use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
-use crate::core::pose::Pose;
 use crate::core::prelude::DataSpec;
 use crate::prelude::{PassContext, SpecContext};
-use crate::utils::unwrap::UnwrapVal;
 use bevy::reflect::std_traits::ReflectDefault;
 use bevy::reflect::Reflect;
 
@@ -25,7 +23,7 @@ impl SpeedNode {
 
 impl NodeLike for SpeedNode {
     fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let speed = ctx.data_back(Self::SPEED)?.unwrap_f32();
+        let speed = ctx.data_back(Self::SPEED)?.as_f32().unwrap();
         let out_duration = if speed == 0. {
             None
         } else {
@@ -37,7 +35,7 @@ impl NodeLike for SpeedNode {
     }
 
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let speed = ctx.data_back(Self::SPEED)?.unwrap_f32();
+        let speed = ctx.data_back(Self::SPEED)?.as_f32().unwrap();
         let input = ctx.time_update_fwd()?;
         let fw_upd = match input {
             TimeUpdate::Delta(dt) => TimeUpdate::Delta(dt * speed),
@@ -45,7 +43,7 @@ impl NodeLike for SpeedNode {
         };
 
         ctx.set_time_update_back(Self::IN_TIME, fw_upd);
-        let mut in_pose: Pose = ctx.data_back(Self::IN_POSE)?.val();
+        let mut in_pose = ctx.data_back(Self::IN_POSE)?.into_pose().unwrap();
 
         if speed != 0. {
             in_pose.timestamp /= speed.abs();

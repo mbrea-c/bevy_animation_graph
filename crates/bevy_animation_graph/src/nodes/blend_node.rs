@@ -4,7 +4,6 @@ use crate::core::errors::GraphError;
 use crate::core::pose::Pose;
 use crate::core::prelude::DataSpec;
 use crate::prelude::{InterpolateLinear, PassContext, SpecContext};
-use crate::utils::unwrap::UnwrapVal;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -67,7 +66,7 @@ impl NodeLike for BlendNode {
         let input = ctx.time_update_fwd()?;
 
         ctx.set_time_update_back(Self::IN_TIME_A, input);
-        let in_frame_1: Pose = ctx.data_back(Self::IN_POSE_A)?.val();
+        let in_frame_1: Pose = ctx.data_back(Self::IN_POSE_A)?.into_pose().unwrap();
 
         match self.sync_mode {
             BlendSyncMode::Absolute => {
@@ -81,15 +80,15 @@ impl NodeLike for BlendNode {
             }
         };
 
-        let in_frame_2: Pose = ctx.data_back(Self::IN_POSE_B)?.val();
+        let in_frame_2: Pose = ctx.data_back(Self::IN_POSE_B)?.into_pose().unwrap();
 
         let out = match self.mode {
             BlendMode::LinearInterpolate => {
-                let alpha = ctx.data_back(Self::FACTOR)?.unwrap_f32();
+                let alpha = ctx.data_back(Self::FACTOR)?.as_f32().unwrap();
                 in_frame_1.interpolate_linear(&in_frame_2, alpha)
             }
             BlendMode::Additive => {
-                let alpha = ctx.data_back(Self::FACTOR)?.unwrap_f32();
+                let alpha = ctx.data_back(Self::FACTOR)?.as_f32().unwrap();
                 in_frame_1.additive_blend(&in_frame_2, alpha)
             }
             BlendMode::Difference => in_frame_1.difference(&in_frame_2),

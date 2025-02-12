@@ -3,7 +3,6 @@ use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
 use crate::prelude::{PassContext, SpecContext};
-use crate::utils::unwrap::UnwrapVal;
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
@@ -23,9 +22,9 @@ impl LerpVec3Node {
 
 impl NodeLike for LerpVec3Node {
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let a: Vec3 = ctx.data_back(Self::INPUT_A)?.val();
-        let b: Vec3 = ctx.data_back(Self::INPUT_B)?.val();
-        let factor: f32 = ctx.data_back(Self::INPUT_FACTOR)?.val();
+        let a: Vec3 = ctx.data_back(Self::INPUT_A)?.as_vec3().unwrap();
+        let b: Vec3 = ctx.data_back(Self::INPUT_B)?.as_vec3().unwrap();
+        let factor: f32 = ctx.data_back(Self::INPUT_FACTOR)?.as_f32().unwrap();
 
         let output = Vec3::lerp(a, b, factor);
 

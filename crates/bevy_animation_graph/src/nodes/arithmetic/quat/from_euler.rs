@@ -3,7 +3,6 @@ use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
 use crate::prelude::{PassContext, SpecContext};
-use crate::utils::unwrap::UnwrapVal;
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
@@ -23,7 +22,7 @@ impl FromEulerNode {
 
 impl NodeLike for FromEulerNode {
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let Vec3 { x, y, z } = ctx.data_back(Self::INPUT)?.val();
+        let Vec3 { x, y, z } = ctx.data_back(Self::INPUT)?.as_vec3().unwrap();
 
         let output = Quat::from_euler(self.mode, x, y, z);
 

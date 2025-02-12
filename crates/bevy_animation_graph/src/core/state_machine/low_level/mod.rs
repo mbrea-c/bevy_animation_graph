@@ -1,19 +1,13 @@
 use std::cmp::Ordering;
 
-use crate::{
-    core::{
-        animation_graph::{
-            AnimationGraph, InputOverlay, PinMap, SourcePin, TargetPin, TimeUpdate,
-            DEFAULT_OUTPUT_POSE,
-        },
-        context::{
-            CacheReadFilter, CacheWriteFilter, FsmContext, PassContext, StateRole, StateStack,
-        },
-        duration_data::DurationData,
-        edge_data::{AnimationEvent, DataValue, EventQueue},
-        errors::GraphError,
+use crate::core::{
+    animation_graph::{
+        AnimationGraph, InputOverlay, PinMap, SourcePin, TargetPin, TimeUpdate, DEFAULT_OUTPUT_POSE,
     },
-    utils::unwrap::UnwrapVal,
+    context::{CacheReadFilter, CacheWriteFilter, FsmContext, PassContext, StateRole, StateStack},
+    duration_data::DurationData,
+    edge_data::{AnimationEvent, DataValue, EventQueue},
+    errors::GraphError,
 };
 use bevy::{
     asset::{Asset, Handle},
@@ -250,7 +244,10 @@ impl LowLevelStateMachine {
         ctx.set_time(pred_time);
 
         ctx.set_time_update_back(Self::DRIVER_TIME, input);
-        let event_queue: EventQueue = ctx.data_back(Self::DRIVER_EVENT_QUEUE)?.val();
+        let event_queue = ctx
+            .data_back(Self::DRIVER_EVENT_QUEUE)?
+            .into_event_queue()
+            .unwrap();
         let fsm_state = self.handle_event_queue(None, event_queue, ctx.clone())?;
         let inner_eq = self.update_graph(&fsm_state, ctx.clone())?;
         self.handle_event_queue(Some(fsm_state), inner_eq, ctx)?;
@@ -317,7 +314,7 @@ impl LowLevelStateMachine {
                 ctx.child_with_state(Some(fsm_ctx.clone()), &input_overlay),
             )?;
             if id == Self::DRIVER_EVENT_QUEUE {
-                driver_event_queue = value.val();
+                driver_event_queue = value.into_event_queue().unwrap();
             } else {
                 ctx.set_data_fwd(id, value);
             }

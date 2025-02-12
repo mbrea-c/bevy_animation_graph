@@ -26,9 +26,9 @@ impl NodeLike for ClampF32 {
     }
 
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let input = ctx.data_back(Self::INPUT)?.unwrap_f32();
-        let min = ctx.data_back(Self::CLAMP_MIN)?.unwrap_f32();
-        let max = ctx.data_back(Self::CLAMP_MAX)?.unwrap_f32();
+        let input = ctx.data_back(Self::INPUT)?.as_f32().unwrap();
+        let min = ctx.data_back(Self::CLAMP_MIN)?.as_f32().unwrap();
+        let max = ctx.data_back(Self::CLAMP_MAX)?.as_f32().unwrap();
         ctx.set_data_fwd(Self::OUTPUT, input.clamp(min, max));
         Ok(())
     }

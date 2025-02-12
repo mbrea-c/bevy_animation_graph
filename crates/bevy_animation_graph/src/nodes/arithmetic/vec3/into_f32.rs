@@ -3,7 +3,6 @@ use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
 use crate::prelude::{PassContext, SpecContext};
-use crate::utils::unwrap::UnwrapVal;
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
@@ -23,7 +22,7 @@ impl DecomposeVec3Node {
 
 impl NodeLike for DecomposeVec3Node {
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let Vec3 { x, y, z } = ctx.data_back(Self::INPUT)?.val();
+        let Vec3 { x, y, z } = ctx.data_back(Self::INPUT)?.as_vec3().unwrap();
 
         ctx.set_data_fwd(Self::OUTPUT_X, x);
         ctx.set_data_fwd(Self::OUTPUT_Y, y);

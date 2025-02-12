@@ -1,11 +1,9 @@
 use crate::core::animation_graph::{PinMap, TimeUpdate};
 use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
-use crate::core::pose::Pose;
 use crate::core::prelude::DataSpec;
 use crate::interpolation::prelude::InterpolateLinear;
 use crate::prelude::{PassContext, SpecContext};
-use crate::utils::unwrap::UnwrapVal;
 use bevy::prelude::*;
 
 /// This node pads the duration of an animation with a configurable period where
@@ -41,7 +39,7 @@ impl NodeLike for PaddingNode {
         let input = ctx.time_update_fwd()?;
 
         ctx.set_time_update_back(Self::IN_TIME, input);
-        let mut pose: Pose = ctx.data_back(Self::IN_POSE)?.val();
+        let mut pose = ctx.data_back(Self::IN_POSE)?.into_pose().unwrap();
         ctx.set_time(pose.timestamp);
 
         let Some(duration) = ctx.duration_back(Self::IN_TIME)? else {
@@ -53,7 +51,7 @@ impl NodeLike for PaddingNode {
             // Need to get initial pose and interpolate
             let mut ctx_temp = ctx.with_temp(true);
             ctx_temp.set_time_update_back(Self::IN_TIME, TimeUpdate::Absolute(0.));
-            let start_pose: Pose = ctx_temp.data_back(Self::IN_POSE)?.val();
+            let start_pose = ctx_temp.data_back(Self::IN_POSE)?.into_pose().unwrap();
             // TODO: How to clear cache? time? pose?
             // ctx.clear_temp_cache(Self::IN_POSE);
             let old_time = pose.timestamp;

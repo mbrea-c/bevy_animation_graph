@@ -1,10 +1,8 @@
 use crate::core::animation_graph::{PinMap, TimeUpdate};
 use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
-use crate::core::pose::Pose;
 use crate::core::prelude::DataSpec;
 use crate::prelude::{InterpolateLinear, PassContext, SpecContext};
-use crate::utils::unwrap::UnwrapVal;
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
@@ -53,13 +51,13 @@ impl NodeLike for ChainNode {
         let Some(duration_1) = duration_1 else {
             // First input is infinite, forward time update without change
             ctx.set_time_update_back(Self::IN_TIME_A, input);
-            let pose_a: Pose = ctx.data_back(Self::IN_POSE_A)?.val();
+            let pose_a = ctx.data_back(Self::IN_POSE_A)?.into_pose().unwrap();
             ctx.set_time(pose_a.timestamp);
             ctx.set_data_fwd(Self::OUT_POSE, pose_a);
             return Ok(());
         };
         ctx.set_time_update_back(Self::IN_TIME_A, input);
-        let pose_a: Pose = ctx.data_back(Self::IN_POSE_A)?.val();
+        let pose_a = ctx.data_back(Self::IN_POSE_A)?.into_pose().unwrap();
         let curr_time = pose_a.timestamp;
         ctx.set_time(curr_time);
 
@@ -70,12 +68,12 @@ impl NodeLike for ChainNode {
                 Self::IN_TIME_B,
                 TimeUpdate::Absolute(curr_time - duration_1 - self.interpolation_period),
             );
-            let mut pose_b: Pose = ctx.data_back(Self::IN_POSE_B)?.val();
+            let mut pose_b = ctx.data_back(Self::IN_POSE_B)?.into_pose().unwrap();
             pose_b.timestamp = curr_time;
             ctx.set_data_fwd(Self::OUT_POSE, pose_b);
         } else {
             ctx.set_time_update_back(Self::IN_TIME_B, TimeUpdate::Absolute(0.0));
-            let pose_2: Pose = ctx.data_back(Self::IN_POSE_B)?.val();
+            let pose_2 = ctx.data_back(Self::IN_POSE_B)?.into_pose().unwrap();
             let mut out_pose = pose_a.interpolate_linear(
                 &pose_2,
                 (curr_time - duration_1) / self.interpolation_period,

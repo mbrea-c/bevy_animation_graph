@@ -3,7 +3,6 @@ use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
 use crate::prelude::{PassContext, SpecContext};
-use crate::utils::unwrap::UnwrapVal;
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
@@ -23,9 +22,9 @@ impl SlerpQuatNode {
 
 impl NodeLike for SlerpQuatNode {
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let a: Quat = ctx.data_back(Self::INPUT_A)?.val();
-        let b: Quat = ctx.data_back(Self::INPUT_B)?.val();
-        let factor: f32 = ctx.data_back(Self::INPUT_FACTOR)?.val();
+        let a: Quat = ctx.data_back(Self::INPUT_A)?.as_quat().unwrap();
+        let b: Quat = ctx.data_back(Self::INPUT_B)?.as_quat().unwrap();
+        let factor: f32 = ctx.data_back(Self::INPUT_FACTOR)?.as_f32().unwrap();
 
         let output = Quat::slerp(a, b, factor);
 

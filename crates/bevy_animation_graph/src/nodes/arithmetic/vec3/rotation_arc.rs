@@ -3,7 +3,6 @@ use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
 use crate::prelude::{PassContext, SpecContext};
-use crate::utils::unwrap::UnwrapVal;
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
@@ -22,8 +21,8 @@ impl RotationArcNode {
 
 impl NodeLike for RotationArcNode {
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let input_1: Vec3 = ctx.data_back(Self::INPUT_1)?.val();
-        let input_2: Vec3 = ctx.data_back(Self::INPUT_2)?.val();
+        let input_1: Vec3 = ctx.data_back(Self::INPUT_1)?.as_vec3().unwrap();
+        let input_2: Vec3 = ctx.data_back(Self::INPUT_2)?.as_vec3().unwrap();
 
         ctx.set_data_fwd(Self::OUTPUT, Quat::from_rotation_arc(input_1, input_2));
 

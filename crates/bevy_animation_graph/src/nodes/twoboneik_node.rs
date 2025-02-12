@@ -1,14 +1,11 @@
 use crate::{
     core::{
-        animation_clip::EntityPath,
         animation_graph::PinMap,
         animation_node::{NodeLike, ReflectNodeLike},
         errors::GraphError,
-        pose::Pose,
         prelude::DataSpec,
     },
     prelude::{PassContext, SpecContext},
-    utils::unwrap::UnwrapVal,
 };
 use bevy::{
     color::LinearRgba,
@@ -43,11 +40,11 @@ impl NodeLike for TwoBoneIKNode {
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
         let input = ctx.time_update_fwd()?;
         ctx.set_time_update_back(Self::IN_TIME, input);
-        let target: EntityPath = ctx.data_back(Self::TARGETBONE)?.val();
+        let target = ctx.data_back(Self::TARGETBONE)?.into_entity_path().unwrap();
         let target = target.id();
-        let target_pos_char: Vec3 = ctx.data_back(Self::TARGETPOS)?.val();
+        let target_pos_char = ctx.data_back(Self::TARGETPOS)?.into_vec3().unwrap();
         //let targetrotation: Quat = ctx.parameter_back(Self::TARGETROT).unwrap();
-        let mut pose: Pose = ctx.data_back(Self::IN_POSE)?.val();
+        let mut pose = ctx.data_back(Self::IN_POSE)?.into_pose().unwrap();
         let Some(skeleton) = ctx.resources.skeleton_assets.get(&pose.skeleton) else {
             return Err(GraphError::SkeletonMissing(ctx.node_id()));
         };

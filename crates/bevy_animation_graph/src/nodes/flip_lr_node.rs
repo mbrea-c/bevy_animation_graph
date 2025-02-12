@@ -1,12 +1,10 @@
 use crate::core::animation_graph::PinMap;
 use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
-use crate::core::pose::Pose;
 use crate::core::prelude::DataSpec;
 use crate::flipping::flip_pose;
 use crate::prelude::config::{FlipConfig, FlipConfigProxy};
 use crate::prelude::{EditProxy, PassContext, SpecContext};
-use crate::utils::unwrap::UnwrapVal;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -42,7 +40,7 @@ impl NodeLike for FlipLRNode {
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
         let input = ctx.time_update_fwd()?;
         ctx.set_time_update_back(Self::IN_TIME, input);
-        let in_pose: Pose = ctx.data_back(Self::IN_POSE)?.val();
+        let in_pose = ctx.data_back(Self::IN_POSE)?.into_pose().unwrap();
         ctx.set_time(in_pose.timestamp);
         let Some(skeleton) = ctx.resources.skeleton_assets.get(&in_pose.skeleton) else {
             return Err(GraphError::SkeletonMissing(ctx.node_id()));

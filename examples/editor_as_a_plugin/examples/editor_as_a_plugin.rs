@@ -3,8 +3,8 @@ extern crate bevy_animation_graph;
 
 use bevy::prelude::*;
 use bevy_animation_graph::{
-    core::{animation_graph::PinMap, errors::GraphError, pose::Pose},
-    prelude::{DataSpec, NodeLike, PassContext, ReflectNodeLike, SpecContext, UnwrapVal},
+    core::{animation_graph::PinMap, errors::GraphError},
+    prelude::{DataSpec, NodeLike, PassContext, ReflectNodeLike, SpecContext},
 };
 use bevy_animation_graph_editor::AnimationGraphEditorPlugin;
 
@@ -46,7 +46,7 @@ impl NodeLike for MyCustomNode {
         // Now that we made the time signal available to dependency nodes, we can read their output
         // data. Nodes are evaluated lazily, so they won't compute anything until we attempt to
         // read them.
-        let mut in_pose: Pose = ctx.data_back(Self::IN_POSE)?.val();
+        let mut in_pose = ctx.data_back(Self::IN_POSE)?.into_pose().unwrap();
 
         // This node doesn't do anything "useful", but for demonstration purposes let's add some
         // random noise to the translation of each bone that has an animated translation.

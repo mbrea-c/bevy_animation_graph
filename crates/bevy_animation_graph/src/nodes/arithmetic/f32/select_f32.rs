@@ -3,7 +3,6 @@ use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
 use crate::prelude::{PassContext, SpecContext};
-use crate::utils::unwrap::UnwrapVal;
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
@@ -27,9 +26,9 @@ impl NodeLike for SelectF32 {
     }
 
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let bool: bool = ctx.data_back(Self::INPUT_BOOL)?.val();
-        let if_false: f32 = ctx.data_back(Self::INPUT_FALSE)?.val();
-        let if_true: f32 = ctx.data_back(Self::INPUT_TRUE)?.val();
+        let bool: bool = ctx.data_back(Self::INPUT_BOOL)?.as_bool().unwrap();
+        let if_false: f32 = ctx.data_back(Self::INPUT_FALSE)?.as_f32().unwrap();
+        let if_true: f32 = ctx.data_back(Self::INPUT_TRUE)?.as_f32().unwrap();
 
         let output = if bool { if_true } else { if_false };
 
