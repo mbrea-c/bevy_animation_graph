@@ -9,8 +9,7 @@ use bevy::{
     utils::default,
 };
 use bevy_animation_graph::prelude::{
-    AnimatedScene, AnimatedSceneBundle, AnimatedSceneHandle, AnimatedSceneInstance,
-    AnimationGraphPlayer,
+    AnimatedScene, AnimatedSceneHandle, AnimatedSceneInstance, AnimationGraphPlayer,
 };
 use egui_dock::egui;
 
@@ -106,10 +105,7 @@ impl SubSceneConfig for ScenePreviewConfig {
         ));
 
         builder.spawn((
-            AnimatedSceneBundle {
-                animated_scene: AnimatedSceneHandle(self.animated_scene.clone()),
-                ..default()
-            },
+            AnimatedSceneHandle(self.animated_scene.clone()),
             PreviewScene,
         ));
     }

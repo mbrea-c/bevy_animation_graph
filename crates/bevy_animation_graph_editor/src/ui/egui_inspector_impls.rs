@@ -194,6 +194,7 @@ impl Plugin for BetterInspectorPlugin {
         app.register_type::<OrderedMap<PinId, DataSpec>>();
         app.register_type::<OrderedMap<PinId, ()>>();
 
+        EntityPathInspector.register(app);
         PatternMapperInspector.register(app);
         CheckboxInspector.register(app);
 
@@ -217,7 +218,7 @@ impl Plugin for BetterInspectorPlugin {
             asset_picker_ui::<GraphClip>,
             todo_readonly_ui,
         );
-        add_no_many::<EntityPath>(type_registry, entity_path_mut, entity_path_readonly);
+
         add_no_many::<AnimationGraph>(type_registry, animation_graph_mut, todo_readonly_ui);
         add_no_many::<BoneMask>(type_registry, bone_mask_ui_mut, todo_readonly_ui);
         add_no_many::<HashMap<EntityPath, f32>>(
@@ -373,41 +374,53 @@ fn string_readonly(
     ui.label(value);
 }
 
-pub fn entity_path_mut(
-    value: &mut dyn Any,
-    ui: &mut egui::Ui,
-    _options: &dyn Any,
-    id: egui::Id,
-    env: InspectorUi<'_, '_>,
-) -> bool {
-    let value = value.downcast_mut::<EntityPath>().unwrap();
-    let buffered =
-        get_buffered::<EntityPath, String>(env.context.world.as_mut().unwrap(), id, || {
-            value.to_slashed_string()
-        });
+pub struct EntityPathInspector;
 
-    let response = ui.text_edit_singleline(buffered);
+impl EguiInspectorExtension for EntityPathInspector {
+    type Base = EntityPath;
+    type Buffer = String;
 
-    if response.lost_focus() {
-        *value = EntityPath::from_slashed_string(buffered.clone());
-        true
-    } else if !response.has_focus() {
-        *buffered = value.to_slashed_string();
-        false
-    } else {
-        false
+    fn mutable(
+        value: &mut Self::Base,
+        buffer: Option<&mut Self::Buffer>,
+        ui: &mut egui::Ui,
+        _options: &dyn Any,
+        _id: egui::Id,
+        _env: InspectorUi<'_, '_>,
+    ) -> bool {
+        let buffered = buffer.unwrap();
+        let response = ui.text_edit_singleline(buffered);
+
+        if response.lost_focus() {
+            *value = EntityPath::from_slashed_string(buffered.clone());
+            true
+        } else if !response.has_focus() {
+            *buffered = value.to_slashed_string();
+            false
+        } else {
+            false
+        }
     }
-}
-pub fn entity_path_readonly(
-    value: &dyn Any,
-    ui: &mut egui::Ui,
-    _options: &dyn Any,
-    _id: egui::Id,
-    mut _env: InspectorUi<'_, '_>,
-) {
-    let value = value.downcast_ref::<EntityPath>().unwrap();
-    let slashed_path = value.to_slashed_string();
-    ui.label(slashed_path);
+
+    fn readonly(
+        value: &Self::Base,
+        _buffer: Option<&Self::Buffer>,
+        ui: &mut egui::Ui,
+        _options: &dyn Any,
+        _id: egui::Id,
+        _env: InspectorUi<'_, '_>,
+    ) {
+        let slashed_path = value.to_slashed_string();
+        ui.label(slashed_path);
+    }
+
+    fn init_buffer(#[allow(unused_variables)] value: &Self::Base) -> Option<Self::Buffer> {
+        Some(value.to_slashed_string())
+    }
+
+    fn needs_buffer() -> bool {
+        true
+    }
 }
 
 #[derive(Default)]

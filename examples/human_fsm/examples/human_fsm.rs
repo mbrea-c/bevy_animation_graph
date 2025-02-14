@@ -2,7 +2,7 @@ extern crate bevy;
 extern crate bevy_animation_graph;
 
 use bevy::{pbr::CascadeShadowConfigBuilder, prelude::*};
-use bevy_animation_graph::core::animated_scene::{AnimatedSceneBundle, AnimatedSceneInstance};
+use bevy_animation_graph::core::animated_scene::AnimatedSceneInstance;
 use bevy_animation_graph::core::edge_data::AnimationEvent;
 use bevy_animation_graph::prelude::*;
 use std::f32::consts::PI;
@@ -79,13 +79,8 @@ fn setup(
 
     // Animated character
     commands.spawn((
-        AnimatedSceneBundle {
-            animated_scene: AnimatedSceneHandle(
-                asset_server.load("animated_scenes/fsm.animscn.ron"),
-            ),
-            transform: Transform::from_xyz(0., 0., 0.),
-            ..default()
-        },
+        AnimatedSceneHandle(asset_server.load("animated_scenes/fsm.animscn.ron")),
+        Transform::from_xyz(0., 0., 0.),
         Human,
     ));
 

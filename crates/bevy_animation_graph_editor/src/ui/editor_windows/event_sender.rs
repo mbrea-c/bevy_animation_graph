@@ -1,8 +1,4 @@
-use bevy::{
-    ecs::world::CommandQueue,
-    prelude::{AppTypeRegistry, World},
-};
-use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
+use bevy::prelude::World;
 use egui_dock::egui;
 
 use crate::ui::{
@@ -15,29 +11,11 @@ pub struct EventSenderWindow;
 
 impl EditorWindowExtension for EventSenderWindow {
     fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorContext) {
-        let unsafe_world = world.as_unsafe_world_cell();
-        let type_registry = unsafe {
-            unsafe_world
-                .get_resource::<AppTypeRegistry>()
-                .unwrap()
-                .0
-                .clone()
-        };
-
-        let type_registry = type_registry.read();
-        let mut queue = CommandQueue::default();
-        let mut cx = Context {
-            world: Some(unsafe { unsafe_world.world_mut() }.into()),
-            queue: Some(&mut queue),
-        };
-        let mut env = InspectorUi::for_bevy(&type_registry, &mut cx);
-
         let Some(scene_selection) = &mut ctx.selection.scene else {
             return;
         };
-        let Some(graph_player) =
-            utils::get_animation_graph_player_mut(unsafe { unsafe_world.world_mut() })
-        else {
+
+        let Some(graph_player) = utils::get_animation_graph_player_mut(world) else {
             return;
         };
 
@@ -60,7 +38,10 @@ impl EditorWindowExtension for EventSenderWindow {
 
         ui.separator();
 
-        env.ui_for_reflect(&mut scene_selection.event_editor, ui);
+        utils::using_inspector_env(world, |mut env| {
+            env.ui_for_reflect(&mut scene_selection.event_editor, ui);
+        });
+
         if ui.button("Add").clicked() {
             scene_selection
                 .event_table

@@ -1,6 +1,11 @@
 pub mod debugger;
 pub mod event_sender;
+pub mod fsm_editor;
+pub mod fsm_selector;
 pub mod graph_editor;
+pub mod graph_selector;
+pub mod inspector;
 pub mod preview_hierarchy;
 pub mod scene_preview;
 pub mod scene_preview_errors;
+pub mod scene_selector;

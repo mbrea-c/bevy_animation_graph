@@ -3,13 +3,13 @@ use crate::prelude::{AnimationGraph, AnimationGraphPlayer};
 use bevy::{
     asset::{io::Reader, Asset, AssetLoader, Handle, LoadContext, ReflectAsset},
     core::Name,
-    ecs::{bundle::Bundle, entity::Entity, query::Without},
+    ecs::{entity::Entity, query::Without},
     hierarchy::Children,
     prelude::*,
     reflect::Reflect,
-    render::view::{InheritedVisibility, ViewVisibility, Visibility},
+    render::view::Visibility,
     scene::{Scene, SceneInstance},
-    transform::components::{GlobalTransform, Transform},
+    transform::components::Transform,
 };
 use serde::{Deserialize, Serialize};
 
@@ -36,25 +36,11 @@ pub struct AnimatedSceneInstance {
 }
 
 #[derive(Component, Default)]
+#[require(Transform, Visibility)]
 pub struct AnimatedSceneHandle(pub Handle<AnimatedScene>);
 
 #[derive(Component)]
 pub struct AnimatedSceneFailed;
-
-#[derive(Bundle, Default)]
-pub struct AnimatedSceneBundle {
-    pub animated_scene: AnimatedSceneHandle,
-    /// Transform of the scene root entity.
-    pub transform: Transform,
-    /// Global transform of the scene root entity.
-    pub global_transform: GlobalTransform,
-    /// User-driven visibility of the scene root entity.
-    pub visibility: Visibility,
-    /// Inherited visibility of the scene root entity.
-    pub inherited_visibility: InheritedVisibility,
-    /// Algorithmically-computed visibility of the scene root entity for rendering.
-    pub view_visibility: ViewVisibility,
-}
 
 #[derive(Default)]
 pub struct AnimatedSceneLoader;

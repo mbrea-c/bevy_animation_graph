@@ -12,8 +12,7 @@ use bevy::{
 use bevy_animation_graph::{
     core::{animation_graph::SourcePin, pose::Pose},
     prelude::{
-        AnimatedScene, AnimatedSceneBundle, AnimatedSceneHandle, AnimatedSceneInstance,
-        AnimationGraphPlayer, DataValue,
+        AnimatedScene, AnimatedSceneHandle, AnimatedSceneInstance, AnimationGraphPlayer, DataValue,
     },
 };
 use egui_dock::egui;
@@ -154,10 +153,7 @@ impl SubSceneConfig for PoseSubSceneConfig {
         ));
 
         builder.spawn((
-            AnimatedSceneBundle {
-                animated_scene: AnimatedSceneHandle(self.animated_scene.clone()),
-                ..default()
-            },
+            AnimatedSceneHandle(self.animated_scene.clone()),
             OverrideSceneAnimation(self.pose.clone()),
         ));
     }
