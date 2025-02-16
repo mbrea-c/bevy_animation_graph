@@ -34,6 +34,7 @@ in version 0.14._
   - Two-bone inverse kinematics.
   - Looping.
   - Linear Blending (in bone space).
+  - 2D Blend space node.
   - Mirror animation about the YZ plane.
   - Animation clip playback.
   - Apply a given rotation to some bones in a pose using a bone mask.
@@ -103,6 +104,7 @@ This project is divided in two crates:
 | `bevy` | `bevy_animation_graph` | `bevy_animation_graph_editor` |
 | ------ | ---------------------- | ----------------------------- |
 | 0.15   | master                 | master                        |
+| 0.15   | 0.6                    | 0.6                           |
 | 0.14   | 0.5                    | 0.5                           |
 | 0.13   | 0.4                    | 0.4                           |
 | 0.13   | 0.3                    | 0.3                           |
