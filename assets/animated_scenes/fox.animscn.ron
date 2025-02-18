@@ -1,0 +1,6 @@
+(
+    source: "models/Fox.glb#Scene0",
+    path_to_player: ["root"],
+    animation_graph: "animation_graphs/fox.animgraph.ron",
+    skeleton: "skeletons/fox.skn.ron",
+)

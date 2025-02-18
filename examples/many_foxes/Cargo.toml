@@ -1,0 +1,9 @@
+[package]
+name = "many_foxes"
+publish = false
+edition = { workspace = true }
+
+[dependencies]
+bevy = { workspace = true }
+bevy_animation_graph = { path = "../../crates/bevy_animation_graph" }
+argh = "0.1.12"
