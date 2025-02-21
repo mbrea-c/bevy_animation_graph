@@ -51,7 +51,7 @@ pub fn graph_debug_draw_bone_system(
     let Ok(instance) = scene_instance_query.get_single() else {
         return;
     };
-    let entity = instance.player_entity;
+    let entity = instance.player_entity();
     let Ok(mut player) = player_query.get_mut(entity) else {
         return;
     };
@@ -110,7 +110,7 @@ pub fn override_scene_animations(
     mut player_query: Query<&mut AnimationGraphPlayer>,
 ) {
     for (instance, pose_override) in &scene_query {
-        let Ok(mut player) = player_query.get_mut(instance.player_entity) else {
+        let Ok(mut player) = player_query.get_mut(instance.player_entity()) else {
             continue;
         };
         player.set_animation(AnimationSource::Pose(pose_override.0.clone()));

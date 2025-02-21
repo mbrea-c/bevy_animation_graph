@@ -22,7 +22,7 @@ impl EditorWindowExtension for PreviewHierarchyWindow {
         let Ok((instance, _)) = query.get_single(world) else {
             return;
         };
-        let entity = instance.player_entity;
+        let entity = instance.player_entity();
         let tree = Tree::entity_tree(world, entity);
         match utils::select_from_branches(ui, tree.0) {
             TreeResult::Leaf((_, path)) => {

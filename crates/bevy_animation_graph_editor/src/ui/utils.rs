@@ -267,7 +267,7 @@ pub(crate) fn get_animation_graph_player(world: &mut World) -> Option<&Animation
     let Ok((instance, _)) = query.get_single(world) else {
         return None;
     };
-    let entity = instance.player_entity;
+    let entity = instance.player_entity();
     let mut query = world.query::<&AnimationGraphPlayer>();
     query.get(world, entity).ok()
 }
@@ -279,7 +279,7 @@ pub(crate) fn get_animation_graph_player_mut(
     let Ok((instance, _)) = query.get_single(world) else {
         return None;
     };
-    let entity = instance.player_entity;
+    let entity = instance.player_entity();
     let mut query = world.query::<&mut AnimationGraphPlayer>();
     query
         .get_mut(world, entity)

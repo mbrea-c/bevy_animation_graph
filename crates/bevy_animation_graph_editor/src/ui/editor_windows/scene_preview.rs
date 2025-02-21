@@ -44,7 +44,7 @@ impl EditorWindowExtension for ScenePreviewWindow {
         if let Ok((instance, _)) = query.get_single(world) {
             // Scene playback control will only be shown once the scene is created
             // (so from the second frame onwards)
-            let entity = instance.player_entity;
+            let entity = instance.player_entity();
             let mut query = world.query::<&mut AnimationGraphPlayer>();
             let Ok(mut player) = query.get_mut(world, entity) else {
                 return;
