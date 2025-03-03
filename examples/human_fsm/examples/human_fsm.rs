@@ -97,11 +97,11 @@ fn keyboard_animation_control(
     mut animation_players: Query<&mut AnimationGraphPlayer>,
     mut params: ResMut<Params>,
 ) {
-    let Ok(AnimatedSceneInstance { player_entity }) = human_character.get_single() else {
+    let Ok(player_entity) = human_character.get_single().map(|i| i.player_entity()) else {
         return;
     };
 
-    let Ok(mut player) = animation_players.get_mut(*player_entity) else {
+    let Ok(mut player) = animation_players.get_mut(player_entity) else {
         return;
     };
 

@@ -1,0 +1,48 @@
+(
+    nodes: [
+        (
+            name: "loop",
+            inner: {
+                "bevy_animation_graph::nodes::loop_node::LoopNode": (
+                    interpolation_period: 0.0,
+                ),
+            },
+        ),
+        (
+            name: "Walk",
+            inner: {
+                "bevy_animation_graph::nodes::clip_node::ClipNode": (
+                    clip: "animations/fox_walk.anim.ron",
+                    override_duration: None,
+                    override_interpolation: None,
+                ),
+            },
+        ),
+    ],
+    edges_inverted: {
+        OutputData("pose"): NodeData("loop", "pose"),
+        OutputTime: NodeTime("loop"),
+        NodeTime("loop", "time"): NodeTime("Walk"),
+        NodeData("loop", "pose"): NodeData("Walk", "pose"),
+    },
+    default_parameters: {
+        "speed": F32(1.0),
+    },
+    input_times: {},
+    output_parameters: {
+        "pose": Pose,
+    },
+    output_time: Some(()),
+    extra: (
+        node_positions: {
+            "loop": (808.6153, 420.00003),
+            "Walk": (548.30774, 418.1538),
+        },
+        input_position: (326.84613, 420.15384),
+        output_position: (1130.0, 408.84613),
+        input_param_order: {},
+        input_time_order: {},
+        output_data_order: {},
+        output_pose_order: {},
+    ),
+)

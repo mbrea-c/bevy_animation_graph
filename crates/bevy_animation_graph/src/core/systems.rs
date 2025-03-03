@@ -7,8 +7,8 @@ use super::{
 };
 use crate::prelude::SystemResources;
 use bevy::{
-    ecs::prelude::*, gizmos::gizmos::Gizmos, render::mesh::morph::MorphWeights, time::prelude::*,
-    transform::prelude::*, utils::HashMap,
+    ecs::prelude::*, gizmos::gizmos::Gizmos, log::info_span, render::mesh::morph::MorphWeights,
+    time::prelude::*, transform::prelude::*, utils::HashMap,
 };
 use std::collections::VecDeque;
 
@@ -82,6 +82,7 @@ pub fn run_animation_player(
     time: &Time,
     system_resources: &SystemResources,
 ) {
+    let _run_animation_player_span = info_span!("run_animation_player").entered();
     // Continue if paused unless the `AnimationPlayer` was changed
     // This allow the animation to still be updated if the player.elapsed field was manually updated in pause
     if player.is_paused() || !player.animation.is_graph() {
@@ -94,9 +95,15 @@ pub fn run_animation_player(
         .update(player.pending_update);
     player.pending_update = None;
 
-    player.entity_map = build_entity_map(root, system_resources);
+    {
+        let _entity_map_span = info_span!("build_entity_map").entered();
+        player.entity_map = build_entity_map(root, system_resources);
+    }
 
-    player.update(system_resources, root);
+    {
+        let _update_span = info_span!("player_update").entered();
+        player.update(system_resources, root);
+    }
 
     if matches!(player.playback_state(), PlaybackState::PlayOneFrame) {
         player.pause();

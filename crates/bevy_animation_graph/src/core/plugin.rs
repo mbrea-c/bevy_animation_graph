@@ -1,15 +1,13 @@
 use super::animation_clip::Interpolation;
 use super::edge_data::{AnimationEvent, EventQueue, SampledEvent};
 use super::pose::Pose;
-use super::prelude::GraphClip;
+use super::prelude::{locate_animated_scene_player, GraphClip};
 use super::skeleton::loader::SkeletonLoader;
 use super::skeleton::Skeleton;
 use super::state_machine::high_level::GlobalTransition;
 use super::systems::apply_animation_to_targets;
 use super::{
-    animated_scene::{
-        process_animated_scenes, spawn_animated_scenes, AnimatedScene, AnimatedSceneLoader,
-    },
+    animated_scene::{spawn_animated_scenes, AnimatedScene, AnimatedSceneLoader},
     animation_graph::loader::{AnimationGraphLoader, GraphClipLoader},
     edge_data::{BoneMask, DataSpec, DataValue},
     state_machine::high_level::{loader::StateMachineLoader, StateMachine},
@@ -36,8 +34,10 @@ impl Plugin for AnimationGraphPlugin {
     fn build(&self, app: &mut App) {
         self.register_assets(app);
         self.register_types(app);
+        self.register_nodes(app);
+
         app //
-            .add_systems(PreUpdate, (spawn_animated_scenes, process_animated_scenes))
+            .add_systems(PreUpdate, spawn_animated_scenes)
             .add_systems(
                 PostUpdate,
                 (
@@ -47,32 +47,65 @@ impl Plugin for AnimationGraphPlugin {
                 )
                     .chain()
                     .before(TransformSystem::TransformPropagate),
-            );
+            )
+            .add_observer(locate_animated_scene_player);
     }
 }
 
 impl AnimationGraphPlugin {
+    /// Registers asset types and their loaders
     fn register_assets(&self, app: &mut App) {
-        app //
-            .init_asset::<GraphClip>()
+        app.init_asset::<GraphClip>()
             .init_asset_loader::<GraphClipLoader>()
-            .init_asset::<AnimationGraph>()
+            .register_asset_reflect::<GraphClip>();
+        app.init_asset::<AnimationGraph>()
             .init_asset_loader::<AnimationGraphLoader>()
-            .init_asset::<AnimatedScene>()
+            .register_asset_reflect::<AnimationGraph>();
+        app.init_asset::<AnimatedScene>()
             .init_asset_loader::<AnimatedSceneLoader>()
-            .init_asset::<StateMachine>()
+            .register_asset_reflect::<AnimatedScene>();
+        app.init_asset::<StateMachine>()
             .init_asset_loader::<StateMachineLoader>()
-            .init_asset::<Skeleton>()
-            .init_asset_loader::<SkeletonLoader>();
+            .register_asset_reflect::<StateMachine>();
+        app.init_asset::<Skeleton>()
+            .init_asset_loader::<SkeletonLoader>()
+            .register_asset_reflect::<Skeleton>();
     }
 
+    /// Registers built-in animation node implementations
+    fn register_nodes(&self, app: &mut App) {
+        app //
+            .register_type::<ClipNode>()
+            .register_type::<DummyNode>()
+            .register_type::<ChainNode>()
+            .register_type::<BlendNode>()
+            .register_type::<BlendSpaceNode>()
+            .register_type::<FlipLRNode>()
+            .register_type::<GraphNode>()
+            .register_type::<LoopNode>()
+            .register_type::<PaddingNode>()
+            .register_type::<RotationNode>()
+            .register_type::<SpeedNode>()
+            .register_type::<TwoBoneIKNode>()
+            .register_type::<AbsF32>()
+            .register_type::<AddF32>()
+            .register_type::<ClampF32>()
+            .register_type::<DivF32>()
+            .register_type::<MulF32>()
+            .register_type::<SubF32>()
+            .register_type::<CompareF32>()
+            .register_type::<FireEventNode>()
+            .register_type::<RotationArcNode>()
+            .register_type::<FSMNode>();
+        // .register_type::<ExtendSkeleton>()
+        // .register_type::<IntoBoneSpaceNode>()
+        // .register_type::<IntoGlobalSpaceNode>()
+        // .register_type::<IntoCharacterSpaceNode>()
+    }
+
+    /// "Other" reflect registrations
     fn register_types(&self, app: &mut App) {
         app //
-            .register_asset_reflect::<AnimationGraph>()
-            .register_asset_reflect::<StateMachine>()
-            .register_asset_reflect::<GraphClip>()
-            .register_asset_reflect::<AnimatedScene>()
-            .register_asset_reflect::<Skeleton>()
             .register_type::<Interpolation>()
             .register_type::<AnimationGraphPlayer>()
             .register_type::<EntityPath>()
@@ -95,36 +128,6 @@ impl AnimationGraphPlugin {
             .register_type::<BlendSyncMode>()
             .register_type::<GlobalTransition>()
             .register_type::<()>()
-            .register_type_data::<(), ReflectDefault>()
-        // --- Node registrations
-        // ------------------------------------------
-            .register_type::<ClipNode>()
-            .register_type::<DummyNode>()
-            .register_type::<ChainNode>()
-            .register_type::<BlendNode>()
-            .register_type::<BlendSpaceNode>()
-            .register_type::<FlipLRNode>()
-            .register_type::<GraphNode>()
-            .register_type::<LoopNode>()
-            .register_type::<PaddingNode>()
-            .register_type::<RotationNode>()
-            .register_type::<SpeedNode>()
-            .register_type::<TwoBoneIKNode>()
-            .register_type::<AbsF32>()
-            .register_type::<AddF32>()
-            .register_type::<ClampF32>()
-            .register_type::<DivF32>()
-            .register_type::<MulF32>()
-            .register_type::<SubF32>()
-            .register_type::<CompareF32>()
-            .register_type::<FireEventNode>()
-            .register_type::<RotationArcNode>()
-            .register_type::<FSMNode>()
-            // .register_type::<ExtendSkeleton>()
-            // .register_type::<IntoBoneSpaceNode>()
-            // .register_type::<IntoGlobalSpaceNode>()
-            // .register_type::<IntoCharacterSpaceNode>()
-        // ------------------------------------------
-        ;
+            .register_type_data::<(), ReflectDefault>();
     }
 }

@@ -1,0 +1,3 @@
+(
+    source: Gltf(source: "models/Fox.glb", label: "Scene0"),
+)

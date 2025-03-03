@@ -1,0 +1,7 @@
+(
+    source: GltfNamed(
+        path: "models/Fox.glb",
+        animation_name: "Survey",
+    ),
+    skeleton: "skeletons/fox.skn.ron",
+)

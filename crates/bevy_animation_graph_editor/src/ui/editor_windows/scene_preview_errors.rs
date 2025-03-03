@@ -19,7 +19,7 @@ impl EditorWindowExtension for ScenePreviewErrorsWindow {
         let Ok((instance, _)) = query.get_single(world) else {
             return;
         };
-        let entity = instance.player_entity;
+        let entity = instance.player_entity();
         let mut query = world.query::<&AnimationGraphPlayer>();
         let Ok(player) = query.get(world, entity) else {
             return;

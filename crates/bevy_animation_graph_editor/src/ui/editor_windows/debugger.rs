@@ -40,7 +40,7 @@ impl EditorWindowExtension for DebuggerWindow {
         let Ok((instance, _)) = query.get_single(world) else {
             return;
         };
-        let entity = instance.player_entity;
+        let entity = instance.player_entity();
         let mut query = world.query::<&AnimationGraphPlayer>();
 
         let InspectorSelection::Node(node_selection) = &mut ctx.selection.inspector_selection

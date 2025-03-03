@@ -694,7 +694,11 @@ impl AnimationGraph {
                     let node = &self.nodes[node_id];
                     let should_debug = node.should_debug;
 
-                    node.update(ctx.with_node(node_id, self).with_debugging(should_debug))?;
+                    {
+                        let _node_update_span =
+                            info_span!("anim_node_update", name = node_id).entered();
+                        node.update(ctx.with_node(node_id, self).with_debugging(should_debug))?;
+                    }
 
                     let is_temp = ctx.temp_cache;
 
