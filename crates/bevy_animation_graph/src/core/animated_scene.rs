@@ -121,7 +121,7 @@ pub(crate) fn spawn_animated_scenes(
 }
 
 /// This function finds the [`bevy::animation::AnimationPlayer`] and replaces it with our own.
-/// ~~It also replaces our own version of the animation targets.~~
+#[allow(clippy::result_large_err)]
 fn process_scene_into_animscn(
     mut scene: Scene,
     skeleton: Handle<Skeleton>,
