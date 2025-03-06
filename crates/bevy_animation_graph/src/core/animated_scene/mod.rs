@@ -1,7 +1,9 @@
+pub mod loader;
+
 use super::{errors::AssetLoaderError, skeleton::Skeleton};
 use crate::prelude::{AnimationGraph, AnimationGraphPlayer};
 use bevy::{
-    asset::{io::Reader, Asset, AssetLoader, Handle, LoadContext, ReflectAsset},
+    asset::{Asset, Handle, ReflectAsset},
     ecs::{entity::Entity, query::Without},
     prelude::*,
     reflect::Reflect,
@@ -9,15 +11,6 @@ use bevy::{
     scene::{Scene, SceneInstance, SceneInstanceReady},
     transform::components::Transform,
 };
-use serde::{Deserialize, Serialize};
-
-#[derive(Serialize, Deserialize, Clone)]
-struct AnimatedSceneSerial {
-    source: String,
-    path_to_player: Vec<String>,
-    animation_graph: String,
-    skeleton: String,
-}
 
 #[derive(Clone, Asset, Reflect)]
 #[reflect(Asset)]
@@ -43,42 +36,6 @@ impl AnimatedSceneInstance {
 #[derive(Component, Default)]
 #[require(Transform, Visibility)]
 pub struct AnimatedSceneHandle(pub Handle<AnimatedScene>);
-
-#[derive(Default)]
-pub struct AnimatedSceneLoader;
-
-impl AssetLoader for AnimatedSceneLoader {
-    type Asset = AnimatedScene;
-    type Settings = ();
-    type Error = AssetLoaderError;
-
-    async fn load(
-        &self,
-        reader: &mut dyn Reader,
-        _settings: &Self::Settings,
-        load_context: &mut LoadContext<'_>,
-    ) -> Result<Self::Asset, Self::Error> {
-        let mut bytes = vec![];
-        reader.read_to_end(&mut bytes).await?;
-        let serial: AnimatedSceneSerial = ron::de::from_bytes(&bytes)?;
-
-        let animation_graph: Handle<AnimationGraph> = load_context.load(serial.animation_graph);
-        let skeleton: Handle<Skeleton> = load_context.load(serial.skeleton);
-        let source: Handle<Scene> = load_context.load(serial.source);
-
-        Ok(AnimatedScene {
-            source,
-            processed_scene: None,
-            path_to_player: serial.path_to_player,
-            animation_graph,
-            skeleton,
-        })
-    }
-
-    fn extensions(&self) -> &[&str] {
-        &["animscn.ron"]
-    }
-}
 
 /// Processed animated scenes are "cached".
 pub(crate) fn spawn_animated_scenes(
