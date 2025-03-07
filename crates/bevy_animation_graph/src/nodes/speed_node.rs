@@ -37,9 +37,11 @@ impl NodeLike for SpeedNode {
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
         let speed = ctx.data_back(Self::SPEED)?.as_f32().unwrap();
         let input = ctx.time_update_fwd()?;
+
         let fw_upd = match input {
             TimeUpdate::Delta(dt) => TimeUpdate::Delta(dt * speed),
-            TimeUpdate::Absolute(t) => TimeUpdate::Absolute(t),
+            // TODO: add warnings if input is not delta
+            other => other,
         };
 
         ctx.set_time_update_back(Self::IN_TIME, fw_upd);

@@ -7,6 +7,7 @@ pub mod context;
 pub mod duration_data;
 pub mod edge_data;
 pub mod errors;
+pub mod event_track;
 pub mod id;
 pub mod plugin;
 pub mod pose;

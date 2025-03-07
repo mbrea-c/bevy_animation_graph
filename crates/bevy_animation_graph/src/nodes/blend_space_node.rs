@@ -107,7 +107,10 @@ impl NodeLike for BlendSpaceNode {
         let (v1, f1) = linear_combination[1];
         let (v2, f2) = linear_combination[2];
 
-        ctx.set_time_update_back(Self::time_pin_id(self.vertex_key(v0.id.index())), input);
+        ctx.set_time_update_back(
+            Self::time_pin_id(self.vertex_key(v0.id.index())),
+            input.clone(),
+        );
         let pose_0 = ctx
             .data_back(Self::pose_pin_id(self.vertex_key(v0.id.index())))?
             .into_pose()
@@ -125,7 +128,10 @@ impl NodeLike for BlendSpaceNode {
                 );
             }
             BlendSyncMode::NoSync => {
-                ctx.set_time_update_back(Self::time_pin_id(self.vertex_key(v1.id.index())), input);
+                ctx.set_time_update_back(
+                    Self::time_pin_id(self.vertex_key(v1.id.index())),
+                    input.clone(),
+                );
                 ctx.set_time_update_back(Self::time_pin_id(self.vertex_key(v2.id.index())), input);
             }
         };

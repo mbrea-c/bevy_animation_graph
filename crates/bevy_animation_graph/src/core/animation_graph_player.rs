@@ -1,7 +1,5 @@
 use super::{
-    animation_graph::{
-        AnimationGraph, InputOverlay, PinId, TimeState, TimeUpdate, DEFAULT_OUTPUT_POSE,
-    },
+    animation_graph::{AnimationGraph, InputOverlay, PinId, TimeUpdate, DEFAULT_OUTPUT_POSE},
     context::{DeferredGizmos, PassContext},
     edge_data::{AnimationEvent, DataValue, EventQueue, SampledEvent},
     errors::GraphError,
@@ -59,8 +57,8 @@ pub struct AnimationGraphPlayer {
     pub(crate) animation: AnimationSource,
     pub(crate) skeleton: Handle<Skeleton>,
     pub(crate) context_arena: Option<GraphContextArena>,
-    pub(crate) elapsed: TimeState,
-    pub(crate) pending_update: Option<TimeUpdate>,
+    pub(crate) elapsed: f32,
+    pub(crate) pending_update: TimeUpdate,
     pub(crate) deferred_gizmos: DeferredGizmos,
     pub(crate) debug_draw_bones: Vec<BoneId>,
     pub(crate) entity_map: HashMap<BoneId, Entity>,
@@ -121,7 +119,7 @@ impl AnimationGraphPlayer {
     pub fn start(&mut self, handle: Handle<AnimationGraph>) -> &mut Self {
         self.context_arena = Some(GraphContextArena::new(handle.id()));
         self.animation = AnimationSource::Graph(handle);
-        self.elapsed = TimeState::default();
+        self.elapsed = 0.;
         self.playback_state = PlaybackState::Play;
         self
     }
@@ -133,7 +131,12 @@ impl AnimationGraphPlayer {
             event,
             weight: 1.,
             percentage: 1.,
+            track: None,
         });
+    }
+
+    pub fn queue_time_update(&mut self, update: TimeUpdate) {
+        self.pending_update = self.pending_update.combine(&update);
     }
 
     /// Query the animation graph with the latest time update and inputs
@@ -153,7 +156,7 @@ impl AnimationGraphPlayer {
         };
 
         match graph.query_with_overlay(
-            self.elapsed.update,
+            self.pending_update.clone(),
             self.context_arena.as_mut().unwrap(),
             system_resources,
             &self.input_overlay,
@@ -169,6 +172,8 @@ impl AnimationGraphPlayer {
                 self.error = Some(error);
             }
         };
+
+        self.pending_update = TimeUpdate::Delta(0.);
     }
 
     pub fn get_pass_context<'a>(
@@ -241,7 +246,7 @@ impl AnimationGraphPlayer {
     }
 
     pub fn reset(&mut self) {
-        self.pending_update = Some(TimeUpdate::Absolute(0.));
+        self.pending_update = TimeUpdate::Absolute(0.);
     }
 
     pub fn get_animation_source(&self) -> &AnimationSource {

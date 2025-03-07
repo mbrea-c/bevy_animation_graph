@@ -4,6 +4,7 @@ use crate::{
         animation_node::AnimationNode,
         context::{CacheReadFilter, CacheWriteFilter},
         duration_data::DurationData,
+        edge_data::AnimationEvent,
         errors::{GraphError, GraphValidationError},
         pose::{BoneId, Pose},
         prelude::GraphContextArena,
@@ -33,10 +34,15 @@ pub struct Edge {
     pub target: TargetPin,
 }
 
-#[derive(Reflect, Clone, Debug, Copy)]
+#[derive(Reflect, Clone, Debug)]
 pub enum TimeUpdate {
     Delta(f32),
     Absolute(f32),
+    PercentOfEvent {
+        percent: f32,
+        event: AnimationEvent,
+        track: String,
+    },
 }
 
 impl Default for TimeUpdate {
@@ -46,57 +52,17 @@ impl Default for TimeUpdate {
 }
 
 impl TimeUpdate {
-    pub fn apply(&self, time: f32) -> f32 {
-        match self {
-            Self::Delta(dt) => time + dt,
-            Self::Absolute(t) => *t,
-        }
-    }
-}
-
-#[derive(Reflect, Clone, Debug, Copy)]
-pub struct TimeState {
-    pub update: TimeUpdate,
-    pub time: f32,
-}
-
-impl Default for TimeState {
-    fn default() -> Self {
-        Self {
-            update: TimeUpdate::Absolute(0.),
-            time: 0.,
-        }
-    }
-}
-
-pub trait UpdateTime<T> {
-    fn update(&self, update: T) -> Self;
-}
-
-impl UpdateTime<TimeUpdate> for TimeState {
-    fn update(&self, update: TimeUpdate) -> Self {
-        Self {
-            update,
-            time: match update {
-                TimeUpdate::Delta(dt) => self.time + dt,
-                TimeUpdate::Absolute(t) => t,
-            },
-        }
-    }
-}
-
-impl UpdateTime<Option<TimeUpdate>> for TimeState {
-    fn update(&self, update: Option<TimeUpdate>) -> Self {
-        if let Some(update) = update {
-            Self {
-                update,
-                time: match update {
-                    TimeUpdate::Delta(dt) => self.time + dt,
-                    TimeUpdate::Absolute(t) => t,
-                },
+    pub fn combine(&self, other: &Self) -> Self {
+        match (self, other) {
+            (TimeUpdate::Delta(t0), TimeUpdate::Delta(t1)) => TimeUpdate::Delta(t0 + t1),
+            (_, TimeUpdate::Absolute(_)) => other.clone(),
+            (_, TimeUpdate::PercentOfEvent { .. }) => other.clone(),
+            (TimeUpdate::Absolute(t_abs), TimeUpdate::Delta(t_delta)) => {
+                TimeUpdate::Absolute(t_abs + t_delta)
             }
-        } else {
-            *self
+            (TimeUpdate::PercentOfEvent { .. }, TimeUpdate::Delta(_)) => {
+                todo!("Need to decide what to do here")
+            }
         }
     }
 }

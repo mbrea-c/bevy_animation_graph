@@ -65,7 +65,7 @@ impl NodeLike for BlendNode {
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
         let input = ctx.time_update_fwd()?;
 
-        ctx.set_time_update_back(Self::IN_TIME_A, input);
+        ctx.set_time_update_back(Self::IN_TIME_A, input.clone());
         let in_frame_1: Pose = ctx.data_back(Self::IN_POSE_A)?.into_pose().unwrap();
 
         match self.sync_mode {
