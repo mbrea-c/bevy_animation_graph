@@ -1,5 +1,9 @@
+use bevy::reflect::Reflect;
+use serde::{Deserialize, Serialize};
+
 use super::edge_data::{AnimationEvent, SampledEvent};
 
+#[derive(Debug, Reflect, Clone, Serialize, Deserialize)]
 pub struct TrackItem {
     pub event: AnimationEvent,
     pub start_time: f32,
@@ -20,6 +24,7 @@ impl TrackItem {
     }
 }
 
+#[derive(Debug, Reflect, Clone, Serialize, Deserialize)]
 pub struct EventTrack {
     name: String,
     events: Vec<TrackItem>,

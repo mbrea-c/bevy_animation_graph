@@ -9,6 +9,7 @@ pub mod edge_data;
 pub mod errors;
 pub mod event_track;
 pub mod id;
+pub mod pin_map;
 pub mod plugin;
 pub mod pose;
 pub mod skeleton;

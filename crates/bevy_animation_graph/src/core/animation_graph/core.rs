@@ -6,6 +6,7 @@ use crate::{
         duration_data::DurationData,
         edge_data::AnimationEvent,
         errors::{GraphError, GraphValidationError},
+        event_track::EventTrack,
         pose::{BoneId, Pose},
         prelude::GraphContextArena,
         state_machine::high_level::StateMachine,
@@ -63,6 +64,31 @@ impl TimeUpdate {
             (TimeUpdate::PercentOfEvent { .. }, TimeUpdate::Delta(_)) => {
                 todo!("Need to decide what to do here")
             }
+        }
+    }
+
+    pub fn partial_update_basic(&self, time: f32) -> Option<f32> {
+        match self {
+            TimeUpdate::Delta(dt) => Some(time + dt),
+            TimeUpdate::Absolute(t) => Some(*t),
+            // We lack enough information to compute a time update here
+            TimeUpdate::PercentOfEvent { .. } => None,
+        }
+    }
+
+    pub fn partial_update_with_tracks(
+        &self,
+        time: f32,
+        tracks: &HashMap<String, EventTrack>,
+    ) -> Option<f32> {
+        match self {
+            TimeUpdate::Delta(dt) => Some(time + dt),
+            TimeUpdate::Absolute(t) => Some(*t),
+            TimeUpdate::PercentOfEvent {
+                percent,
+                event,
+                track,
+            } => tracks.get(track)?.seek_event(event, *percent),
         }
     }
 }

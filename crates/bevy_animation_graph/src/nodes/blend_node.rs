@@ -16,7 +16,7 @@ pub enum BlendMode {
     Difference,
 }
 
-#[derive(Reflect, Clone, Copy, Debug, Default, Serialize, Deserialize)]
+#[derive(Reflect, Clone, Debug, Default, Serialize, Deserialize)]
 #[reflect(Default)]
 pub enum BlendSyncMode {
     /// Sets the absolute timestamp of input 2 equal to the timestamp from input 1
@@ -24,6 +24,8 @@ pub enum BlendSyncMode {
     Absolute,
     /// Propagates the same time update that was received, does not try to sync the inputs.
     NoSync,
+    /// Synchronizes
+    EventTrack(String),
 }
 
 #[derive(Reflect, Clone, Debug, Default)]
@@ -37,8 +39,10 @@ impl BlendNode {
     pub const FACTOR: &'static str = "factor";
     pub const IN_POSE_A: &'static str = "pose_a";
     pub const IN_TIME_A: &'static str = "time_a";
+    pub const IN_EVENT_A: &'static str = "events_a";
     pub const IN_POSE_B: &'static str = "pose_b";
     pub const IN_TIME_B: &'static str = "time_b";
+    pub const IN_EVENT_B: &'static str = "events_b";
     pub const OUT_POSE: &'static str = "pose";
 
     pub fn new(mode: BlendMode, sync_mode: BlendSyncMode) -> Self {
@@ -68,7 +72,7 @@ impl NodeLike for BlendNode {
         ctx.set_time_update_back(Self::IN_TIME_A, input.clone());
         let in_frame_1: Pose = ctx.data_back(Self::IN_POSE_A)?.into_pose().unwrap();
 
-        match self.sync_mode {
+        match &self.sync_mode {
             BlendSyncMode::Absolute => {
                 ctx.set_time_update_back(
                     Self::IN_TIME_B,
@@ -77,6 +81,31 @@ impl NodeLike for BlendNode {
             }
             BlendSyncMode::NoSync => {
                 ctx.set_time_update_back(Self::IN_TIME_B, input);
+            }
+            BlendSyncMode::EventTrack(track_name) => {
+                let event_queue_1 = ctx.data_back(Self::IN_EVENT_A)?.into_event_queue().unwrap();
+                if let Some(event) = event_queue_1
+                    .events
+                    .iter()
+                    .filter(|ev| {
+                        ev.track
+                            .as_ref()
+                            .map(|track| track == track_name)
+                            .unwrap_or(false)
+                    })
+                    .next()
+                {
+                    ctx.set_time_update_back(
+                        Self::IN_TIME_B,
+                        TimeUpdate::PercentOfEvent {
+                            percent: event.percentage,
+                            event: event.event.clone(),
+                            track: track_name.clone(),
+                        },
+                    );
+                } else {
+                    ctx.set_time_update_back(Self::IN_TIME_B, input);
+                }
             }
         };
 
@@ -101,12 +130,18 @@ impl NodeLike for BlendNode {
     }
 
     fn data_input_spec(&self, _: SpecContext) -> PinMap<DataSpec> {
-        [
+        let mut input_data = vec![
             (Self::FACTOR.into(), DataSpec::F32),
             (Self::IN_POSE_A.into(), DataSpec::Pose),
             (Self::IN_POSE_B.into(), DataSpec::Pose),
-        ]
-        .into()
+        ];
+
+        if matches!(self.sync_mode, BlendSyncMode::EventTrack(_)) {
+            input_data.push((Self::IN_EVENT_A.into(), DataSpec::EventQueue));
+            input_data.push((Self::IN_EVENT_B.into(), DataSpec::EventQueue));
+        }
+
+        input_data.into_iter().collect()
     }
 
     fn data_output_spec(&self, _: SpecContext) -> PinMap<DataSpec> {

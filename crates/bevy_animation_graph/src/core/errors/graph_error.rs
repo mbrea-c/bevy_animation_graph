@@ -26,4 +26,10 @@ pub enum GraphError {
     FSMGraphAssetMissing,
     #[error("We're missing a skeleton asset at: {0:?}")]
     SkeletonMissing(NodeId),
+    #[error("The requested animation clip is not found.")]
+    ClipMissing,
+    #[error(
+        "Failed to update time. Possibly the requested event track does not exist in a given clip."
+    )]
+    TimeUpdateFailed,
 }

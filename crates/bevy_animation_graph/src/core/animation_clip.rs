@@ -3,10 +3,11 @@ use bevy::{
     asset::{prelude::*, ReflectAsset},
     core::prelude::*,
     reflect::prelude::*,
+    utils::HashMap,
 };
 use serde::{Deserialize, Serialize};
 
-use super::{id, skeleton::Skeleton};
+use super::{event_track::EventTrack, id, skeleton::Skeleton};
 
 /// Interpolation method to use between keyframes.
 #[derive(Reflect, Serialize, Deserialize, Clone, Copy, Debug, Default)]
@@ -148,6 +149,7 @@ pub struct GraphClip {
     pub(crate) curves: AnimationCurves,
     pub(crate) duration: f32,
     pub(crate) skeleton: Handle<Skeleton>,
+    pub(crate) event_tracks: HashMap<String, EventTrack>,
 }
 
 impl GraphClip {
@@ -182,11 +184,13 @@ impl GraphClip {
     pub fn from_bevy_clip(
         bevy_clip: bevy::animation::AnimationClip,
         skeleton: Handle<Skeleton>,
+        event_tracks: HashMap<String, EventTrack>,
     ) -> Self {
         Self {
             curves: bevy_clip.curves().clone(),
             duration: bevy_clip.duration(),
             skeleton,
+            event_tracks,
         }
     }
 }
