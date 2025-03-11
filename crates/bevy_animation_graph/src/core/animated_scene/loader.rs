@@ -17,6 +17,7 @@ struct AnimatedSceneSerial {
     source: String,
     animation_graph: String,
     skeleton: String,
+    #[serde(default)]
     bone_path_overrides: HashMap<String, String>,
 }
 
