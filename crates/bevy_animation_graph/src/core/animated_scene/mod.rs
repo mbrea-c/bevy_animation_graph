@@ -1,8 +1,9 @@
 pub mod loader;
 
-use super::{errors::AssetLoaderError, skeleton::Skeleton};
+use super::{animation_clip::EntityPath, errors::AssetLoaderError, id::BoneId, skeleton::Skeleton};
 use crate::prelude::{AnimationGraph, AnimationGraphPlayer};
 use bevy::{
+    animation::AnimationTarget,
     asset::{Asset, Handle, ReflectAsset},
     ecs::{entity::Entity, query::Without},
     prelude::*,
@@ -10,6 +11,7 @@ use bevy::{
     render::view::Visibility,
     scene::{Scene, SceneInstance, SceneInstanceReady},
     transform::components::Transform,
+    utils::HashMap,
 };
 
 #[derive(Clone, Asset, Reflect)]
@@ -17,8 +19,8 @@ use bevy::{
 pub struct AnimatedScene {
     pub(crate) source: Handle<Scene>,
     pub(crate) processed_scene: Option<Handle<Scene>>,
-    pub(crate) path_to_player: Vec<String>,
     pub(crate) animation_graph: Handle<AnimationGraph>,
+    pub(crate) bone_path_overrides: HashMap<String, String>,
     pub(crate) skeleton: Handle<Skeleton>,
 }
 
@@ -43,6 +45,7 @@ pub(crate) fn spawn_animated_scenes(
     unloaded_scenes: Query<(Entity, &AnimatedSceneHandle), Without<SceneRoot>>,
     mut animated_scene_assets: ResMut<Assets<AnimatedScene>>,
     mut scenes: ResMut<Assets<Scene>>,
+    skeletons: Res<Assets<Skeleton>>,
     app_type_registry: Res<AppTypeRegistry>,
 ) {
     for (entity, animscn_handle) in &unloaded_scenes {
@@ -60,10 +63,16 @@ pub(crate) fn spawn_animated_scenes(
                 continue;
             };
 
+            let Some(skeleton) = skeletons.get(&animscn.skeleton) else {
+                continue;
+            };
+
             let scene = process_scene_into_animscn(
                 scene,
                 animscn.skeleton.clone(),
                 animscn.animation_graph.clone(),
+                skeleton,
+                &animscn.bone_path_overrides,
             )
             .unwrap();
 
@@ -81,8 +90,10 @@ pub(crate) fn spawn_animated_scenes(
 #[allow(clippy::result_large_err)]
 fn process_scene_into_animscn(
     mut scene: Scene,
-    skeleton: Handle<Skeleton>,
+    skeleton_handle: Handle<Skeleton>,
     graph: Handle<AnimationGraph>,
+    skeleton: &Skeleton,
+    mappings: &HashMap<String, String>,
 ) -> Result<Scene, AssetLoaderError> {
     let mut query = scene
         .world
@@ -95,9 +106,51 @@ fn process_scene_into_animscn(
     let mut entity_mut = scene.world.entity_mut(animation_player);
 
     entity_mut.remove::<bevy::animation::AnimationPlayer>();
-    entity_mut.insert(AnimationGraphPlayer::new(skeleton).with_graph(graph));
+    entity_mut.insert(AnimationGraphPlayer::new(skeleton_handle).with_graph(graph));
+
+    let player_entity_id = entity_mut.id();
+
+    let mut query = scene.world.query::<&mut AnimationTarget>();
+
+    for mut target in query.iter_mut(&mut scene.world) {
+        if player_entity_id != target.player {
+            continue;
+        }
+
+        let bone_id = BoneId::from(target.id);
+        let Some(mapped_bone_id) = apply_bone_path_overrides(bone_id, skeleton, mappings) else {
+            continue;
+        };
+        *target = AnimationTarget {
+            id: bevy::animation::AnimationTargetId(mapped_bone_id.id()),
+            player: target.player,
+        }
+    }
 
     Ok(scene)
+}
+
+fn apply_bone_path_overrides(
+    bone_id: BoneId,
+    skeleton: &Skeleton,
+    mappings: &HashMap<String, String>,
+) -> Option<BoneId> {
+    let path = EntityPath {
+        parts: skeleton
+            .id_to_path(bone_id)?
+            .parts
+            .into_iter()
+            .map(|p| {
+                if let Some(s) = mappings.get(p.as_str()) {
+                    Name::new(s.clone())
+                } else {
+                    p
+                }
+            })
+            .collect(),
+    };
+
+    Some(path.id())
 }
 
 /// Adds an `AnimatedSceneInstance` pointing to the animation graph player when the scene is
