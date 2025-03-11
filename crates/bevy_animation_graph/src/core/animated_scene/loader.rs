@@ -1,6 +1,7 @@
 use bevy::{
     asset::{io::Reader, AssetLoader, Handle, LoadContext},
     scene::Scene,
+    utils::HashMap,
 };
 use serde::{Deserialize, Serialize};
 
@@ -14,9 +15,10 @@ use super::AnimatedScene;
 #[derive(Serialize, Deserialize, Clone)]
 struct AnimatedSceneSerial {
     source: String,
-    path_to_player: Vec<String>,
     animation_graph: String,
     skeleton: String,
+    #[serde(default)]
+    bone_path_overrides: HashMap<String, String>,
 }
 
 #[derive(Default)]
@@ -44,9 +46,9 @@ impl AssetLoader for AnimatedSceneLoader {
         Ok(AnimatedScene {
             source,
             processed_scene: None,
-            path_to_player: serial.path_to_player,
             animation_graph,
             skeleton,
+            bone_path_overrides: serial.bone_path_overrides,
         })
     }
 
