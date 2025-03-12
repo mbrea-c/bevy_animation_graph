@@ -1,0 +1,7 @@
+(
+    source: GltfNamed(
+        path: "models/snake_with_anim.glb",
+        animation_name: "Wiggle",
+    ),
+    skeleton: "skeletons/snake.skn.ron",
+)

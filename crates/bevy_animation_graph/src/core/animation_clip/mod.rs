@@ -1,3 +1,5 @@
+pub mod loader;
+
 use bevy::{
     animation::{AnimationCurves, AnimationTargetId},
     asset::{prelude::*, ReflectAsset},

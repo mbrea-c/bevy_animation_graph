@@ -1,0 +1,48 @@
+(
+    nodes: [
+        (
+            name: "wiggle",
+            inner: {
+                "bevy_animation_graph::nodes::clip_node::ClipNode": (
+                    clip: "animations/snake_wiggle.anim.ron",
+                    override_duration: None,
+                    override_interpolation: None,
+                ),
+            },
+        ),
+        (
+            name: "loop",
+            inner: {
+                "bevy_animation_graph::nodes::loop_node::LoopNode": (
+                    interpolation_period: 0.0,
+                ),
+            },
+        ),
+    ],
+    edges_inverted: {
+        NodeData("loop", "pose"): NodeData("wiggle", "pose"),
+        NodeTime("loop", "time"): NodeTime("wiggle"),
+        OutputData("pose"): NodeData("loop", "pose"),
+        OutputTime: NodeTime("loop"),
+    },
+    default_parameters: {},
+    input_times: {},
+    output_parameters: {
+        "pose": Pose,
+    },
+    output_time: Some(()),
+    extra: (
+        node_positions: {
+            "wiggle": (111.69232, 188.30771),
+            "loop": (279.69232, 191.0769),
+        },
+        input_position: (-80.30768, 187.38464),
+        output_position: (458.7693, 188.30766),
+        input_param_order: {},
+        input_time_order: {},
+        output_data_order: {
+            "pose": 0,
+        },
+        output_pose_order: {},
+    ),
+)

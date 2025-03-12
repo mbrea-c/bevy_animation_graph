@@ -1,0 +1,3 @@
+(
+    source: Gltf(source: "models/snake_with_anim.glb", label: "Scene0"),
+)

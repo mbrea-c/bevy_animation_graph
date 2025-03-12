@@ -1,0 +1,5 @@
+(
+    source: "models/snake_with_anim.glb#Scene0",
+    animation_graph: "animation_graphs/snake.animgraph.ron",
+    skeleton: "skeletons/snake.skn.ron",
+)

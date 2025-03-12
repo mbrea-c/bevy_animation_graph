@@ -1,0 +1,9 @@
+(
+    source: "models/snake_without_anim.glb#Scene0",
+    animation_graph: "animation_graphs/snake.animgraph.ron",
+    retargeting: Some((
+        source_skeleton: "skeletons/snake_b.skn.ron",
+        bone_path_overrides: { "cylinderbone1": "bone1" },
+    )),
+    skeleton: "skeletons/snake.skn.ron",
+)
