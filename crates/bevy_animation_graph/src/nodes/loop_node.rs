@@ -46,18 +46,28 @@ impl NodeLike for LoopNode {
         let full_duration = duration + self.interpolation_period;
 
         let prev_time = ctx.prev_time();
-        let curr_time = input.apply(prev_time);
-        let t = curr_time.rem_euclid(full_duration);
 
-        let fw_upd = match input {
+        let (curr_time, t, fw_upd) = match input {
             TimeUpdate::Delta(dt) => {
-                if prev_time.div_euclid(full_duration) != curr_time.div_euclid(full_duration) {
-                    TimeUpdate::Absolute(t)
-                } else {
-                    TimeUpdate::Delta(dt)
-                }
+                let curr_time = prev_time + dt;
+                let t = curr_time.rem_euclid(full_duration);
+
+                let fw_upd =
+                    if prev_time.div_euclid(full_duration) != curr_time.div_euclid(full_duration) {
+                        TimeUpdate::Absolute(t)
+                    } else {
+                        TimeUpdate::Delta(dt)
+                    };
+
+                (curr_time, t, fw_upd)
             }
-            TimeUpdate::Absolute(_) => TimeUpdate::Absolute(t),
+            TimeUpdate::Absolute(curr_time) => {
+                let t = curr_time.rem_euclid(full_duration);
+                (curr_time, t, TimeUpdate::Absolute(t))
+            }
+            TimeUpdate::PercentOfEvent { .. } => {
+                todo!("we probably want to return here and issue a warning")
+            }
         };
 
         ctx.set_time_update_back(Self::IN_TIME, fw_upd);

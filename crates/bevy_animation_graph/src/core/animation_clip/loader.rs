@@ -1,10 +1,11 @@
 use bevy::{
     asset::{io::Reader, AssetLoader, LoadContext},
     gltf::Gltf,
+    utils::HashMap,
 };
 use serde::{Deserialize, Serialize};
 
-use crate::core::errors::AssetLoaderError;
+use crate::core::{errors::AssetLoaderError, event_track::EventTrack};
 
 use super::GraphClip;
 
@@ -20,6 +21,8 @@ pub enum GraphClipSource {
 pub struct GraphClipSerial {
     source: GraphClipSource,
     skeleton: String,
+    #[serde(default)]
+    event_tracks: HashMap<String, EventTrack>,
 }
 
 #[derive(Default)]
@@ -77,7 +80,7 @@ impl AssetLoader for GraphClipLoader {
 
         let skeleton = load_context.loader().load(serial.skeleton);
 
-        let clip_mine = GraphClip::from_bevy_clip(bevy_clip, skeleton);
+        let clip_mine = GraphClip::from_bevy_clip(bevy_clip, skeleton, serial.event_tracks);
 
         Ok(clip_mine)
     }

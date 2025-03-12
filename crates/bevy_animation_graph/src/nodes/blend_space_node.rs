@@ -7,21 +7,13 @@ use crate::utils::delaunay::Triangulation;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
+use super::BlendSyncMode;
+
 #[derive(Reflect, Clone, Copy, Debug, Default, Serialize, Deserialize)]
 #[reflect(Default, Serialize)]
 pub enum BlendMode {
     #[default]
     LinearizedInterpolate,
-}
-
-#[derive(Reflect, Clone, Copy, Debug, Default, Serialize, Deserialize)]
-#[reflect(Default)]
-pub enum BlendSyncMode {
-    /// Sets the absolute timestamp of input 2 equal to the timestamp from input 1
-    #[default]
-    Absolute,
-    /// Propagates the same time update that was received, does not try to sync the inputs.
-    NoSync,
 }
 
 #[derive(Reflect, Clone, Debug, Default, Serialize, Deserialize)]
@@ -107,13 +99,16 @@ impl NodeLike for BlendSpaceNode {
         let (v1, f1) = linear_combination[1];
         let (v2, f2) = linear_combination[2];
 
-        ctx.set_time_update_back(Self::time_pin_id(self.vertex_key(v0.id.index())), input);
+        ctx.set_time_update_back(
+            Self::time_pin_id(self.vertex_key(v0.id.index())),
+            input.clone(),
+        );
         let pose_0 = ctx
             .data_back(Self::pose_pin_id(self.vertex_key(v0.id.index())))?
             .into_pose()
             .unwrap();
 
-        match self.sync_mode {
+        match &self.sync_mode {
             BlendSyncMode::Absolute => {
                 ctx.set_time_update_back(
                     Self::time_pin_id(self.vertex_key(v1.id.index())),
@@ -125,9 +120,13 @@ impl NodeLike for BlendSpaceNode {
                 );
             }
             BlendSyncMode::NoSync => {
-                ctx.set_time_update_back(Self::time_pin_id(self.vertex_key(v1.id.index())), input);
+                ctx.set_time_update_back(
+                    Self::time_pin_id(self.vertex_key(v1.id.index())),
+                    input.clone(),
+                );
                 ctx.set_time_update_back(Self::time_pin_id(self.vertex_key(v2.id.index())), input);
             }
+            BlendSyncMode::EventTrack(track_name) => {}
         };
 
         let pose_1 = ctx
@@ -203,7 +202,7 @@ impl EditProxy for BlendSpaceNode {
     fn update_from_proxy(proxy: &Self::Proxy) -> Self {
         Self {
             mode: proxy.mode,
-            sync_mode: proxy.sync_mode,
+            sync_mode: proxy.sync_mode.clone(),
             points: proxy.points.clone(),
             triangulation: Triangulation::from_points_delaunay(
                 proxy.points.clone().into_iter().map(|x| x.point).collect(),
@@ -214,7 +213,7 @@ impl EditProxy for BlendSpaceNode {
     fn make_proxy(&self) -> Self::Proxy {
         Self::Proxy {
             mode: self.mode,
-            sync_mode: self.sync_mode,
+            sync_mode: self.sync_mode.clone(),
             points: self.points.clone(),
         }
     }
