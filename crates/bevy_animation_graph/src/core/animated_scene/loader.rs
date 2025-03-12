@@ -1,5 +1,5 @@
 use bevy::{
-    asset::{io::Reader, AssetLoader, Handle, LoadContext},
+    asset::{io::Reader, AssetLoader, AssetPath, Handle, LoadContext},
     scene::Scene,
     utils::HashMap,
 };
@@ -10,14 +10,20 @@ use crate::{
     prelude::AnimationGraph,
 };
 
-use super::AnimatedScene;
+use super::{AnimatedScene, Retargeting};
 
 #[derive(Serialize, Deserialize, Clone)]
 struct AnimatedSceneSerial {
-    source: String,
-    animation_graph: String,
-    skeleton: String,
+    source: AssetPath<'static>,
+    animation_graph: AssetPath<'static>,
+    skeleton: AssetPath<'static>,
     #[serde(default)]
+    retargeting: Option<RetargetingSerial>,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct RetargetingSerial {
+    source_skeleton: AssetPath<'static>,
     bone_path_overrides: HashMap<String, String>,
 }
 
@@ -42,13 +48,17 @@ impl AssetLoader for AnimatedSceneLoader {
         let animation_graph: Handle<AnimationGraph> = load_context.load(serial.animation_graph);
         let skeleton: Handle<Skeleton> = load_context.load(serial.skeleton);
         let source: Handle<Scene> = load_context.load(serial.source);
+        let retargeting: Option<Retargeting> = serial.retargeting.map(|r| Retargeting {
+            source_skeleton: load_context.load(r.source_skeleton),
+            bone_path_overrides: r.bone_path_overrides,
+        });
 
         Ok(AnimatedScene {
             source,
             processed_scene: None,
             animation_graph,
             skeleton,
-            bone_path_overrides: serial.bone_path_overrides,
+            retargeting,
         })
     }
 

@@ -20,8 +20,24 @@ pub struct AnimatedScene {
     pub(crate) source: Handle<Scene>,
     pub(crate) processed_scene: Option<Handle<Scene>>,
     pub(crate) animation_graph: Handle<AnimationGraph>,
-    pub(crate) bone_path_overrides: HashMap<String, String>,
+    pub(crate) retargeting: Option<Retargeting>,
+    /// Skeleton of the animations we want to play on the source scene.
+    ///
+    /// Usually this will be the source scene's skeleton, but it may differ if we're applying
+    /// retargeting.
     pub(crate) skeleton: Handle<Skeleton>,
+}
+
+/// Configuration needed to apply animation retargeting
+#[derive(Clone, Reflect)]
+pub struct Retargeting {
+    /// *Actual* skeleton of the source scene.
+    source_skeleton: Handle<Skeleton>,
+    /// Allows renaming of individual components of bone paths.
+    ///
+    /// For example using an override `"bone_a": "bone_b"` will map a path `["parent_bone",
+    /// "bone_a", "child_bone"]` to `["parent_bone", "bone_b", "child_bone"]`.
+    bone_path_overrides: HashMap<String, String>,
 }
 
 #[derive(Component)]
@@ -63,16 +79,12 @@ pub(crate) fn spawn_animated_scenes(
                 continue;
             };
 
-            let Some(skeleton) = skeletons.get(&animscn.skeleton) else {
-                continue;
-            };
-
             let scene = process_scene_into_animscn(
                 scene,
                 animscn.skeleton.clone(),
                 animscn.animation_graph.clone(),
-                skeleton,
-                &animscn.bone_path_overrides,
+                &skeletons,
+                animscn.retargeting.as_ref(),
             )
             .unwrap();
 
@@ -87,13 +99,15 @@ pub(crate) fn spawn_animated_scenes(
 }
 
 /// This function finds the [`bevy::animation::AnimationPlayer`] and replaces it with our own.
+///
+/// It also applies retargeting if necessary.
 #[allow(clippy::result_large_err)]
 fn process_scene_into_animscn(
     mut scene: Scene,
     skeleton_handle: Handle<Skeleton>,
     graph: Handle<AnimationGraph>,
-    skeleton: &Skeleton,
-    mappings: &HashMap<String, String>,
+    skeletons: &Assets<Skeleton>,
+    retargeting: Option<&Retargeting>,
 ) -> Result<Scene, AssetLoaderError> {
     let mut query = scene
         .world
@@ -108,22 +122,28 @@ fn process_scene_into_animscn(
     entity_mut.remove::<bevy::animation::AnimationPlayer>();
     entity_mut.insert(AnimationGraphPlayer::new(skeleton_handle).with_graph(graph));
 
-    let player_entity_id = entity_mut.id();
+    if let Some(retargeting) = retargeting {
+        if let Some(skeleton) = skeletons.get(&retargeting.source_skeleton) {
+            let player_entity_id = entity_mut.id();
 
-    let mut query = scene.world.query::<&mut AnimationTarget>();
+            let mut query = scene.world.query::<&mut AnimationTarget>();
 
-    for mut target in query.iter_mut(&mut scene.world) {
-        if player_entity_id != target.player {
-            continue;
-        }
+            for mut target in query.iter_mut(&mut scene.world) {
+                if player_entity_id != target.player {
+                    continue;
+                }
 
-        let bone_id = BoneId::from(target.id);
-        let Some(mapped_bone_id) = apply_bone_path_overrides(bone_id, skeleton, mappings) else {
-            continue;
-        };
-        *target = AnimationTarget {
-            id: bevy::animation::AnimationTargetId(mapped_bone_id.id()),
-            player: target.player,
+                let bone_id = BoneId::from(target.id);
+                let Some(mapped_bone_id) =
+                    apply_bone_path_overrides(bone_id, skeleton, &retargeting.bone_path_overrides)
+                else {
+                    continue;
+                };
+                *target = AnimationTarget {
+                    id: bevy::animation::AnimationTargetId(mapped_bone_id.id()),
+                    player: target.player,
+                }
+            }
         }
     }
 
