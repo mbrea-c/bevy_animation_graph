@@ -22,9 +22,9 @@ impl SlerpQuatNode {
 
 impl NodeLike for SlerpQuatNode {
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let a: Quat = ctx.data_back(Self::INPUT_A)?.as_quat().unwrap();
-        let b: Quat = ctx.data_back(Self::INPUT_B)?.as_quat().unwrap();
-        let factor: f32 = ctx.data_back(Self::INPUT_FACTOR)?.as_f32().unwrap();
+        let a: Quat = ctx.data_back(Self::INPUT_A)?.as_quat()?;
+        let b: Quat = ctx.data_back(Self::INPUT_B)?.as_quat()?;
+        let factor: f32 = ctx.data_back(Self::INPUT_FACTOR)?.as_f32()?;
 
         let output = Quat::slerp(a, b, factor);
 

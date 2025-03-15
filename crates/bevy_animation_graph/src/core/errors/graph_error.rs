@@ -32,4 +32,8 @@ pub enum GraphError {
         "Failed to update time. Possibly the requested event track does not exist in a given clip."
     )]
     TimeUpdateFailed,
+    #[error("Tried to convert to incorrect data type: expected {0}, got {1}")]
+    MismatchedDataType(String, String),
 }
+
+pub type GraphResult<T> = Result<T, GraphError>;

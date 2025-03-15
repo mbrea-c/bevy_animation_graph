@@ -22,7 +22,7 @@ impl DecomposeVec3Node {
 
 impl NodeLike for DecomposeVec3Node {
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let Vec3 { x, y, z } = ctx.data_back(Self::INPUT)?.as_vec3().unwrap();
+        let Vec3 { x, y, z } = ctx.data_back(Self::INPUT)?.as_vec3()?;
 
         ctx.set_data_fwd(Self::OUTPUT_X, x);
         ctx.set_data_fwd(Self::OUTPUT_Y, y);

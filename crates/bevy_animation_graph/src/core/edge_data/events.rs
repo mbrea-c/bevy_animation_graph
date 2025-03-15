@@ -73,4 +73,9 @@ impl EventQueue {
             events: events.into(),
         }
     }
+
+    pub fn concat(mut self, other: EventQueue) -> Self {
+        self.events.extend(other.events);
+        self
+    }
 }

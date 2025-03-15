@@ -70,7 +70,7 @@ impl NodeLike for BlendNode {
         let input = ctx.time_update_fwd()?;
 
         ctx.set_time_update_back(Self::IN_TIME_A, input.clone());
-        let in_frame_1: Pose = ctx.data_back(Self::IN_POSE_A)?.into_pose().unwrap();
+        let in_frame_1: Pose = ctx.data_back(Self::IN_POSE_A)?.into_pose()?;
 
         match &self.sync_mode {
             BlendSyncMode::Absolute => {
@@ -83,7 +83,7 @@ impl NodeLike for BlendNode {
                 ctx.set_time_update_back(Self::IN_TIME_B, input);
             }
             BlendSyncMode::EventTrack(track_name) => {
-                let event_queue_1 = ctx.data_back(Self::IN_EVENT_A)?.into_event_queue().unwrap();
+                let event_queue_1 = ctx.data_back(Self::IN_EVENT_A)?.into_event_queue()?;
                 if let Some(event) = event_queue_1
                     .events
                     .iter()
@@ -109,15 +109,15 @@ impl NodeLike for BlendNode {
             }
         };
 
-        let in_frame_2: Pose = ctx.data_back(Self::IN_POSE_B)?.into_pose().unwrap();
+        let in_frame_2: Pose = ctx.data_back(Self::IN_POSE_B)?.into_pose()?;
 
         let out = match self.mode {
             BlendMode::LinearInterpolate => {
-                let alpha = ctx.data_back(Self::FACTOR)?.as_f32().unwrap();
+                let alpha = ctx.data_back(Self::FACTOR)?.as_f32()?;
                 in_frame_1.interpolate_linear(&in_frame_2, alpha)
             }
             BlendMode::Additive => {
-                let alpha = ctx.data_back(Self::FACTOR)?.as_f32().unwrap();
+                let alpha = ctx.data_back(Self::FACTOR)?.as_f32()?;
                 in_frame_1.additive_blend(&in_frame_2, alpha)
             }
             BlendMode::Difference => in_frame_1.difference(&in_frame_2),

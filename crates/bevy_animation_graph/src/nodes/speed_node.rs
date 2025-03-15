@@ -23,7 +23,7 @@ impl SpeedNode {
 
 impl NodeLike for SpeedNode {
     fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let speed = ctx.data_back(Self::SPEED)?.as_f32().unwrap();
+        let speed = ctx.data_back(Self::SPEED)?.as_f32()?;
         let out_duration = if speed == 0. {
             None
         } else {
@@ -35,7 +35,7 @@ impl NodeLike for SpeedNode {
     }
 
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let speed = ctx.data_back(Self::SPEED)?.as_f32().unwrap();
+        let speed = ctx.data_back(Self::SPEED)?.as_f32()?;
         let input = ctx.time_update_fwd()?;
 
         let fw_upd = match input {
@@ -45,7 +45,7 @@ impl NodeLike for SpeedNode {
         };
 
         ctx.set_time_update_back(Self::IN_TIME, fw_upd);
-        let mut in_pose = ctx.data_back(Self::IN_POSE)?.into_pose().unwrap();
+        let mut in_pose = ctx.data_back(Self::IN_POSE)?.into_pose()?;
 
         if speed != 0. {
             in_pose.timestamp /= speed.abs();

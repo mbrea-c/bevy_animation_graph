@@ -40,7 +40,7 @@ impl NodeLike for FlipLRNode {
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
         let input = ctx.time_update_fwd()?;
         ctx.set_time_update_back(Self::IN_TIME, input);
-        let in_pose = ctx.data_back(Self::IN_POSE)?.into_pose().unwrap();
+        let in_pose = ctx.data_back(Self::IN_POSE)?.into_pose()?;
         ctx.set_time(in_pose.timestamp);
         let Some(skeleton) = ctx.resources.skeleton_assets.get(&in_pose.skeleton) else {
             return Err(GraphError::SkeletonMissing(ctx.node_id()));

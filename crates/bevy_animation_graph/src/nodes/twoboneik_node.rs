@@ -40,11 +40,11 @@ impl NodeLike for TwoBoneIKNode {
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
         let input = ctx.time_update_fwd()?;
         ctx.set_time_update_back(Self::IN_TIME, input);
-        let target = ctx.data_back(Self::TARGETBONE)?.into_entity_path().unwrap();
+        let target = ctx.data_back(Self::TARGETBONE)?.into_entity_path()?;
         let target = target.id();
-        let target_pos_char = ctx.data_back(Self::TARGETPOS)?.into_vec3().unwrap();
+        let target_pos_char = ctx.data_back(Self::TARGETPOS)?.into_vec3()?;
         //let targetrotation: Quat = ctx.parameter_back(Self::TARGETROT).unwrap();
-        let mut pose = ctx.data_back(Self::IN_POSE)?.into_pose().unwrap();
+        let mut pose = ctx.data_back(Self::IN_POSE)?.into_pose()?;
         let Some(skeleton) = ctx.resources.skeleton_assets.get(&pose.skeleton) else {
             return Err(GraphError::SkeletonMissing(ctx.node_id()));
         };

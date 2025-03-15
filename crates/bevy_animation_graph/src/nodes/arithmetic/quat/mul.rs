@@ -21,8 +21,8 @@ impl MulQuatNode {
 
 impl NodeLike for MulQuatNode {
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let a: Quat = ctx.data_back(Self::INPUT_A)?.as_quat().unwrap();
-        let b: Quat = ctx.data_back(Self::INPUT_B)?.as_quat().unwrap();
+        let a: Quat = ctx.data_back(Self::INPUT_A)?.as_quat()?;
+        let b: Quat = ctx.data_back(Self::INPUT_B)?.as_quat()?;
 
         let output = a * b;
 

@@ -4,6 +4,7 @@ use bevy::{
     math::{Quat, Vec2, Vec3},
     reflect::{std_traits::ReflectDefault, Reflect},
 };
+use bevy_animation_graph_proc_macros::ValueWrapper;
 use serde::{Deserialize, Serialize};
 
 #[derive(Reflect, Clone, Copy, Debug, Serialize, Deserialize, Default)]
@@ -44,15 +45,20 @@ pub enum DataSpec {
     EventQueue,
 }
 
-#[derive(Serialize, Deserialize, Reflect, Clone, Debug)]
+#[derive(Serialize, Deserialize, Reflect, Clone, Debug, ValueWrapper)]
+#[unwrap_error(error(crate::core::errors::GraphError), variant(MismatchedDataType))]
 pub enum DataValue {
-    // trivial copy
+    #[trivial_copy]
     F32(f32),
+    #[trivial_copy]
     Bool(bool),
+    #[trivial_copy]
     Vec2(Vec2),
+    #[trivial_copy]
     Vec3(Vec3),
+    #[trivial_copy]
     Quat(Quat),
-    // non-trivial copy
+
     EntityPath(EntityPath),
     BoneMask(BoneMask),
     Pose(Pose),
@@ -62,176 +68,6 @@ pub enum DataValue {
 impl Default for DataValue {
     fn default() -> Self {
         Self::F32(0.)
-    }
-}
-
-impl DataValue {
-    // trivial copy
-
-    #[must_use]
-    pub const fn as_f32(&self) -> Option<f32> {
-        match self {
-            &Self::F32(x) => Some(x),
-            _ => None,
-        }
-    }
-
-    #[must_use]
-    pub fn into_f32(self) -> Option<f32> {
-        self.as_f32()
-    }
-
-    #[must_use]
-    pub const fn as_bool(&self) -> Option<bool> {
-        match self {
-            &Self::Bool(x) => Some(x),
-            _ => None,
-        }
-    }
-
-    #[must_use]
-    pub fn into_bool(self) -> Option<bool> {
-        self.as_bool()
-    }
-
-    #[must_use]
-    pub const fn as_vec2(&self) -> Option<Vec2> {
-        match self {
-            &Self::Vec2(x) => Some(x),
-            _ => None,
-        }
-    }
-
-    #[must_use]
-    pub fn into_vec2(self) -> Option<Vec2> {
-        self.as_vec2()
-    }
-
-    #[must_use]
-    pub const fn as_vec3(&self) -> Option<Vec3> {
-        match self {
-            &Self::Vec3(x) => Some(x),
-            _ => None,
-        }
-    }
-
-    #[must_use]
-    pub fn into_vec3(self) -> Option<Vec3> {
-        self.as_vec3()
-    }
-
-    #[must_use]
-    pub const fn as_quat(&self) -> Option<Quat> {
-        match self {
-            &Self::Quat(x) => Some(x),
-            _ => None,
-        }
-    }
-
-    #[must_use]
-    pub fn into_quat(self) -> Option<Quat> {
-        self.as_quat()
-    }
-
-    // non-trivial copy
-    #[must_use]
-    pub fn as_entity_path(&self) -> Option<&EntityPath> {
-        match self {
-            Self::EntityPath(x) => Some(x),
-            _ => None,
-        }
-    }
-
-    #[must_use]
-    pub fn into_entity_path(self) -> Option<EntityPath> {
-        match self {
-            Self::EntityPath(x) => Some(x),
-            _ => None,
-        }
-    }
-
-    #[must_use]
-    pub fn as_bone_mask(&self) -> Option<&BoneMask> {
-        match self {
-            Self::BoneMask(x) => Some(x),
-            _ => None,
-        }
-    }
-
-    #[must_use]
-    pub fn into_bone_mask(self) -> Option<BoneMask> {
-        match self {
-            Self::BoneMask(x) => Some(x),
-            _ => None,
-        }
-    }
-
-    #[must_use]
-    pub fn as_pose(&self) -> Option<&Pose> {
-        match self {
-            Self::Pose(x) => Some(x),
-            _ => None,
-        }
-    }
-
-    #[must_use]
-    pub fn into_pose(self) -> Option<Pose> {
-        match self {
-            Self::Pose(x) => Some(x),
-            _ => None,
-        }
-    }
-
-    #[must_use]
-    pub fn as_event_queue(&self) -> Option<&EventQueue> {
-        match self {
-            Self::EventQueue(x) => Some(x),
-            _ => None,
-        }
-    }
-
-    #[must_use]
-    pub fn into_event_queue(self) -> Option<EventQueue> {
-        match self {
-            Self::EventQueue(x) => Some(x),
-            _ => None,
-        }
-    }
-}
-
-impl From<f32> for DataValue {
-    fn from(value: f32) -> Self {
-        Self::F32(value)
-    }
-}
-
-impl From<bool> for DataValue {
-    fn from(value: bool) -> Self {
-        Self::Bool(value)
-    }
-}
-
-impl From<Vec3> for DataValue {
-    fn from(value: Vec3) -> Self {
-        Self::Vec3(value)
-    }
-}
-
-impl From<Quat> for DataValue {
-    fn from(value: Quat) -> Self {
-        Self::Quat(value)
-    }
-}
-
-impl From<Pose> for DataValue {
-    fn from(value: Pose) -> Self {
-        Self::Pose(value)
-    }
-}
-
-impl From<EventQueue> for DataValue {
-    fn from(value: EventQueue) -> Self {
-        Self::EventQueue(value)
     }
 }
 

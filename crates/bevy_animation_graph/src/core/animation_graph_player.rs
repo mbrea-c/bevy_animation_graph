@@ -266,7 +266,7 @@ impl AnimationGraphPlayer {
     /// Gets the default output pose from the graph, or the forced pose if set.
     pub fn get_default_output_pose(&self) -> Option<&Pose> {
         match &self.animation {
-            AnimationSource::Graph(_) => self.outputs.get(DEFAULT_OUTPUT_POSE)?.as_pose(),
+            AnimationSource::Graph(_) => self.outputs.get(DEFAULT_OUTPUT_POSE)?.as_pose().ok(),
             AnimationSource::Pose(pose) => Some(pose),
             AnimationSource::None => None,
         }

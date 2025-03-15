@@ -69,3 +69,13 @@ impl EventTrack {
         Some(track_item.time_at_percentage(percent))
     }
 }
+
+pub fn sample_tracks<'a>(
+    tracks: impl IntoIterator<Item = &'a EventTrack>,
+    time: f32,
+) -> Vec<SampledEvent> {
+    tracks
+        .into_iter()
+        .flat_map(|track| track.sample(time))
+        .collect()
+}

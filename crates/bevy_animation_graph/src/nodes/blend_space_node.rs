@@ -60,6 +60,10 @@ impl BlendSpaceNode {
         format!("pose {}", key)
     }
 
+    pub fn events_pin_id(key: &str) -> String {
+        format!("events {}", key)
+    }
+
     pub fn time_pin_id(key: &str) -> String {
         format!("time {}", key)
     }
@@ -71,7 +75,7 @@ impl BlendSpaceNode {
 
 impl NodeLike for BlendSpaceNode {
     fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let position = ctx.data_back(Self::POSITION)?.as_vec2().unwrap();
+        let position = ctx.data_back(Self::POSITION)?.as_vec2()?;
         let (v0, _) = self
             .triangulation
             .find_linear_combination(position)
@@ -90,7 +94,7 @@ impl NodeLike for BlendSpaceNode {
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
         let input = ctx.time_update_fwd()?;
 
-        let position = ctx.data_back(Self::POSITION)?.as_vec2().unwrap();
+        let position = ctx.data_back(Self::POSITION)?.as_vec2()?;
         let mut linear_combination = self.triangulation.find_linear_combination(position);
         // sorted by highest weight first, lowest weight last
         linear_combination.sort_by(|l, r| l.1.partial_cmp(&r.1).unwrap().reverse());
@@ -105,8 +109,7 @@ impl NodeLike for BlendSpaceNode {
         );
         let pose_0 = ctx
             .data_back(Self::pose_pin_id(self.vertex_key(v0.id.index())))?
-            .into_pose()
-            .unwrap();
+            .into_pose()?;
 
         match &self.sync_mode {
             BlendSyncMode::Absolute => {
@@ -126,17 +129,54 @@ impl NodeLike for BlendSpaceNode {
                 );
                 ctx.set_time_update_back(Self::time_pin_id(self.vertex_key(v2.id.index())), input);
             }
-            BlendSyncMode::EventTrack(track_name) => {}
+            BlendSyncMode::EventTrack(track_name) => {
+                let event_queue_0 = ctx
+                    .data_back(Self::events_pin_id(self.vertex_key(v0.id.index())))?
+                    .into_event_queue()?;
+                if let Some(event) = event_queue_0
+                    .events
+                    .iter()
+                    .filter(|ev| {
+                        ev.track
+                            .as_ref()
+                            .map(|track| track == track_name)
+                            .unwrap_or(false)
+                    })
+                    .next()
+                {
+                    let time_update = TimeUpdate::PercentOfEvent {
+                        percent: event.percentage,
+                        event: event.event.clone(),
+                        track: track_name.clone(),
+                    };
+
+                    ctx.set_time_update_back(
+                        Self::time_pin_id(self.vertex_key(v1.id.index())),
+                        time_update.clone(),
+                    );
+                    ctx.set_time_update_back(
+                        Self::time_pin_id(self.vertex_key(v2.id.index())),
+                        time_update,
+                    );
+                } else {
+                    ctx.set_time_update_back(
+                        Self::time_pin_id(self.vertex_key(v1.id.index())),
+                        input.clone(),
+                    );
+                    ctx.set_time_update_back(
+                        Self::time_pin_id(self.vertex_key(v2.id.index())),
+                        input,
+                    );
+                }
+            }
         };
 
         let pose_1 = ctx
             .data_back(Self::pose_pin_id(self.vertex_key(v1.id.index())))?
-            .into_pose()
-            .unwrap();
+            .into_pose()?;
         let pose_2 = ctx
             .data_back(Self::pose_pin_id(self.vertex_key(v2.id.index())))?
-            .into_pose()
-            .unwrap();
+            .into_pose()?;
 
         // We do a linearized weighted average.
         // While this is not the mathematically correct way of averaging quaternions,
@@ -159,11 +199,15 @@ impl NodeLike for BlendSpaceNode {
     fn data_input_spec(&self, _: SpecContext) -> PinMap<DataSpec> {
         let mut input_spec = PinMap::from([(Self::POSITION.into(), DataSpec::Vec2)]);
 
-        input_spec.extend(
-            self.points
-                .iter()
-                .map(|p| (Self::pose_pin_id(&p.id), DataSpec::Pose)),
-        );
+        input_spec.extend(self.points.iter().flat_map(|p| {
+            let mut out = vec![(Self::pose_pin_id(&p.id), DataSpec::Pose)];
+
+            if matches!(self.sync_mode, BlendSyncMode::EventTrack(_)) {
+                out.push((Self::events_pin_id(&p.id), DataSpec::EventQueue));
+            }
+
+            out
+        }));
 
         input_spec
     }

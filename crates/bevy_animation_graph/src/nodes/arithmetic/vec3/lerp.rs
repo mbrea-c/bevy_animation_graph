@@ -22,9 +22,9 @@ impl LerpVec3Node {
 
 impl NodeLike for LerpVec3Node {
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let a: Vec3 = ctx.data_back(Self::INPUT_A)?.as_vec3().unwrap();
-        let b: Vec3 = ctx.data_back(Self::INPUT_B)?.as_vec3().unwrap();
-        let factor: f32 = ctx.data_back(Self::INPUT_FACTOR)?.as_f32().unwrap();
+        let a: Vec3 = ctx.data_back(Self::INPUT_A)?.as_vec3()?;
+        let b: Vec3 = ctx.data_back(Self::INPUT_B)?.as_vec3()?;
+        let factor: f32 = ctx.data_back(Self::INPUT_FACTOR)?.as_f32()?;
 
         let output = Vec3::lerp(a, b, factor);
 

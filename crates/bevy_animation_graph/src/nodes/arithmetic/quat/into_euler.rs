@@ -22,7 +22,7 @@ impl IntoEulerNode {
 
 impl NodeLike for IntoEulerNode {
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let quat: Quat = ctx.data_back(Self::INPUT)?.as_quat().unwrap();
+        let quat: Quat = ctx.data_back(Self::INPUT)?.as_quat()?;
 
         let (x, y, z) = quat.to_euler(self.mode);
         let output = Vec3::new(x, y, z);
