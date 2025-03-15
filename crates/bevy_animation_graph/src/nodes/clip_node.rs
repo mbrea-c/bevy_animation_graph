@@ -1,9 +1,11 @@
 use std::any::TypeId;
 
 use crate::core::animation_clip::{GraphClip, Interpolation};
-use crate::core::animation_graph::PinMap;
+use crate::core::animation_graph::{PinMap, TimeUpdate};
 use crate::core::animation_node::{NodeLike, ReflectNodeLike};
+use crate::core::edge_data::EventQueue;
 use crate::core::errors::GraphError;
+use crate::core::event_track::sample_tracks;
 use crate::core::id::BoneId;
 use crate::core::pose::{BonePose, Pose};
 use crate::core::prelude::{DataSpec, DataValue};
@@ -26,6 +28,8 @@ pub struct ClipNode {
 
 impl ClipNode {
     pub const OUT_POSE: &'static str = "pose";
+    pub const OUT_EVENT_QUEUE: &'static str = "events";
+
     pub fn new(
         clip: Handle<GraphClip>,
         override_duration: Option<f32>,
@@ -50,6 +54,20 @@ impl ClipNode {
                 .duration()
         }
     }
+
+    pub fn update_time(&self, ctx: &PassContext, input: &TimeUpdate) -> Result<f32, GraphError> {
+        let prev_time = ctx.prev_time();
+
+        ctx.resources
+            .graph_clip_assets
+            .get(&self.clip)
+            .ok_or(GraphError::ClipMissing)
+            .and_then(|clip| {
+                input
+                    .partial_update_with_tracks(prev_time, &clip.event_tracks)
+                    .ok_or(GraphError::TimeUpdateFailed)
+            })
+    }
 }
 
 impl NodeLike for ClipNode {
@@ -67,11 +85,16 @@ impl NodeLike for ClipNode {
             return Ok(());
         };
 
-        let prev_time = ctx.prev_time();
         let time_update = ctx.time_update_fwd()?;
-        let time = time_update.apply(prev_time);
-
+        let time = self.update_time(&ctx, &time_update)?;
         ctx.set_time(time);
+
+        // Sample events and publish
+        let events = sample_tracks(clip.event_tracks.values(), time);
+        ctx.set_data_fwd(
+            Self::OUT_EVENT_QUEUE,
+            DataValue::EventQueue(EventQueue::with_events(events)),
+        );
 
         let mut out_pose = Pose {
             timestamp: time,
@@ -101,7 +124,11 @@ impl NodeLike for ClipNode {
     }
 
     fn data_output_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {
-        [(Self::OUT_POSE.into(), DataSpec::Pose)].into()
+        [
+            (Self::OUT_POSE.into(), DataSpec::Pose),
+            (Self::OUT_EVENT_QUEUE.into(), DataSpec::EventQueue),
+        ]
+        .into()
     }
 
     fn time_output_spec(&self, _: SpecContext) -> Option<()> {

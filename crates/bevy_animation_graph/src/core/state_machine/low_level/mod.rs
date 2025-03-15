@@ -11,6 +11,7 @@ use crate::core::{
 };
 use bevy::{
     asset::{Asset, Handle},
+    log::warn,
     reflect::Reflect,
     utils::HashMap,
 };
@@ -236,11 +237,18 @@ impl LowLevelStateMachine {
         Ok(fsm_state)
     }
 
+    /// Performs a node update
     pub fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
         let input = ctx.time_update_fwd()?;
-        let prev_time = ctx.prev_time();
-        let pred_time = input.apply(prev_time);
 
+        let prev_time = ctx.prev_time();
+        let pred_time = input.partial_update_basic(prev_time).unwrap_or_else(|| {
+            warn!(
+                "State machine node received unsupported time update: {:?}",
+                input
+            );
+            prev_time
+        });
         ctx.set_time(pred_time);
 
         ctx.set_time_update_back(Self::DRIVER_TIME, input);
@@ -248,6 +256,7 @@ impl LowLevelStateMachine {
             .data_back(Self::DRIVER_EVENT_QUEUE)?
             .into_event_queue()
             .unwrap();
+
         let fsm_state = self.handle_event_queue(None, event_queue, ctx.clone())?;
         let inner_eq = self.update_graph(&fsm_state, ctx.clone())?;
         self.handle_event_queue(Some(fsm_state), inner_eq, ctx)?;
@@ -255,6 +264,7 @@ impl LowLevelStateMachine {
         Ok(())
     }
 
+    /// Updates underlying animation graphs for active states.
     pub fn update_graph(
         &self,
         fsm_state: &FSMState,

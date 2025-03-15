@@ -20,7 +20,7 @@ impl NormalizeVec3Node {
 
 impl NodeLike for NormalizeVec3Node {
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let input: Vec3 = ctx.data_back(Self::INPUT)?.as_vec3().unwrap();
+        let input: Vec3 = ctx.data_back(Self::INPUT)?.as_vec3()?;
         let output = input.normalize_or_zero();
 
         ctx.set_data_fwd(Self::OUTPUT, output);

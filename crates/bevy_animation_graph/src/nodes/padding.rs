@@ -39,7 +39,7 @@ impl NodeLike for PaddingNode {
         let input = ctx.time_update_fwd()?;
 
         ctx.set_time_update_back(Self::IN_TIME, input);
-        let mut pose = ctx.data_back(Self::IN_POSE)?.into_pose().unwrap();
+        let mut pose = ctx.data_back(Self::IN_POSE)?.into_pose()?;
         ctx.set_time(pose.timestamp);
 
         let Some(duration) = ctx.duration_back(Self::IN_TIME)? else {
@@ -51,7 +51,7 @@ impl NodeLike for PaddingNode {
             // Need to get initial pose and interpolate
             let mut ctx_temp = ctx.with_temp(true);
             ctx_temp.set_time_update_back(Self::IN_TIME, TimeUpdate::Absolute(0.));
-            let start_pose = ctx_temp.data_back(Self::IN_POSE)?.into_pose().unwrap();
+            let start_pose = ctx_temp.data_back(Self::IN_POSE)?.into_pose()?;
             // TODO: How to clear cache? time? pose?
             // ctx.clear_temp_cache(Self::IN_POSE);
             let old_time = pose.timestamp;

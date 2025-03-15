@@ -1,9 +1,6 @@
 use super::{
-    animation_clip::EntityPath,
-    animation_graph::{TimeUpdate, UpdateTime},
-    animation_graph_player::AnimationGraphPlayer,
-    pose::BoneId,
-    prelude::PlaybackState,
+    animation_clip::EntityPath, animation_graph::TimeUpdate,
+    animation_graph_player::AnimationGraphPlayer, pose::BoneId, prelude::PlaybackState,
 };
 use crate::prelude::SystemResources;
 use bevy::{
@@ -89,11 +86,7 @@ pub fn run_animation_player(
         return;
     }
 
-    player.elapsed = player
-        .elapsed
-        .update(TimeUpdate::Delta(time.delta_secs()))
-        .update(player.pending_update);
-    player.pending_update = None;
+    player.queue_time_update(TimeUpdate::Delta(time.delta_secs()));
 
     {
         let _entity_map_span = info_span!("build_entity_map").entered();

@@ -22,7 +22,7 @@ impl FromEulerNode {
 
 impl NodeLike for FromEulerNode {
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let Vec3 { x, y, z } = ctx.data_back(Self::INPUT)?.as_vec3().unwrap();
+        let Vec3 { x, y, z } = ctx.data_back(Self::INPUT)?.as_vec3()?;
 
         let output = Quat::from_euler(self.mode, x, y, z);
 

@@ -24,7 +24,7 @@ impl NodeLike for AbsF32 {
     }
 
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let input = ctx.data_back(Self::INPUT)?.as_f32().unwrap();
+        let input = ctx.data_back(Self::INPUT)?.as_f32()?;
         ctx.set_data_fwd(Self::OUTPUT, input.abs());
         Ok(())
     }

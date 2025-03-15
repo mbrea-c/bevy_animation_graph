@@ -28,7 +28,7 @@ impl NodeLike for FireEventNode {
     }
 
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let cond: bool = ctx.data_back(Self::CONDITION_IN)?.into_bool().unwrap();
+        let cond: bool = ctx.data_back(Self::CONDITION_IN)?.into_bool()?;
 
         if cond {
             ctx.set_data_fwd(
