@@ -10,7 +10,7 @@ use crate::{
     egui_fsm::lib::FsmUiContext,
     tree::TreeResult,
     ui::{
-        core::{EditorContext, EditorWindowExtension, FsmSelection, InspectorSelection},
+        core::{EditorWindowContext, EditorWindowExtension, FsmSelection, InspectorSelection},
         utils,
     },
 };
@@ -19,7 +19,7 @@ use crate::{
 pub struct FsmSelectorWindow;
 
 impl EditorWindowExtension for FsmSelectorWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorContext) {
+    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
         let mut queue = CommandQueue::default();
         let mut chosen_id: Option<AssetId<StateMachine>> = None;
 
@@ -42,14 +42,14 @@ impl EditorWindowExtension for FsmSelectorWindow {
         });
         queue.apply(world);
         if let Some(chosen_id) = chosen_id {
-            ctx.selection.fsm_editor = Some(FsmSelection {
+            ctx.global_state.fsm_editor = Some(FsmSelection {
                 fsm: chosen_id,
                 graph_indices: utils::update_fsm_indices(world, chosen_id),
                 nodes_context: FsmUiContext::default(),
                 state_creation: State::default(),
                 transition_creation: Transition::default(),
             });
-            ctx.selection.inspector_selection = InspectorSelection::Fsm;
+            ctx.global_state.inspector_selection = InspectorSelection::Fsm;
         }
     }
 

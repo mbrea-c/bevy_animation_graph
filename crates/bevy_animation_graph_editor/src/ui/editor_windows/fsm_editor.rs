@@ -12,9 +12,13 @@ use crate::{
     fsm_show::FsmReprSpec,
     graph_update::convert_fsm_change,
     ui::{
+        actions::{
+            saving::{RequestSaveFsm, SaveAction},
+            EditorAction,
+        },
         core::{
-            EditorContext, EditorWindowExtension, FsmStateSelection, FsmTransitionSelection,
-            InspectorSelection, RequestSave,
+            EditorWindowContext, EditorWindowExtension, FsmStateSelection, FsmTransitionSelection,
+            InspectorSelection,
         },
         utils,
     },
@@ -24,8 +28,8 @@ use crate::{
 pub struct FsmEditorWindow;
 
 impl EditorWindowExtension for FsmEditorWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorContext) {
-        let Some(fsm_selection) = &mut ctx.selection.fsm_editor else {
+    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
+        let Some(fsm_selection) = &mut ctx.global_state.fsm_editor else {
             ui.centered_and_justified(|ui| ui.label("Select a state machine to edit!"));
             return;
         };
@@ -41,7 +45,7 @@ impl EditorWindowExtension for FsmEditorWindow {
 
                     // Autoselect context if none selected and some available
                     if let (Some(scene), Some(available_contexts)) = (
-                        &mut ctx.selection.scene,
+                        &mut ctx.global_state.scene,
                         utils::list_graph_contexts(world, |ctx| {
                             let graph_id = ctx.get_graph_id();
                             graph_assets
@@ -65,7 +69,7 @@ impl EditorWindowExtension for FsmEditorWindow {
                     let graph_player = utils::get_animation_graph_player(world);
 
                     let maybe_fsm_state = ctx
-                        .selection
+                        .global_state
                         .scene
                         .as_ref()
                         .and_then(|s| s.active_context.get(&fsm_selection.fsm.untyped()))
@@ -114,7 +118,7 @@ impl EditorWindowExtension for FsmEditorWindow {
                         .name(*selected_node)
                         .unwrap();
                     if fsm_selection.nodes_context.is_node_just_selected() {
-                        ctx.selection.inspector_selection =
+                        ctx.global_state.inspector_selection =
                             InspectorSelection::FsmState(FsmStateSelection {
                                 fsm: fsm_selection.fsm,
                                 state: state_name.clone(),
@@ -134,7 +138,7 @@ impl EditorWindowExtension for FsmEditorWindow {
                         .edge(*selected_transition)
                         .unwrap();
                     if fsm_selection.nodes_context.is_transition_just_selected() {
-                        ctx.selection.inspector_selection =
+                        ctx.global_state.inspector_selection =
                             InspectorSelection::FsmTransition(FsmTransitionSelection {
                                 fsm: fsm_selection.fsm,
                                 state: transition_id.clone(),
@@ -149,7 +153,10 @@ impl EditorWindowExtension for FsmEditorWindow {
         // ----------------------------------------------------------------
         world.resource_scope::<ButtonInput<KeyCode>, ()>(|_, input| {
             if input.pressed(KeyCode::ControlLeft) && input.just_pressed(KeyCode::KeyS) {
-                ctx.save_requests.push(RequestSave::Fsm(fsm_selection.fsm));
+                ctx.editor_actions
+                    .push(EditorAction::Save(SaveAction::RequestFsm(RequestSaveFsm {
+                        fsm: fsm_selection.fsm,
+                    })));
             }
         });
         // ----------------------------------------------------------------

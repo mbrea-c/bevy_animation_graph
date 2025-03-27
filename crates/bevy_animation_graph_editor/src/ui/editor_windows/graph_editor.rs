@@ -13,9 +13,11 @@ use crate::{
     graph_show::GraphReprSpec,
     graph_update::convert_graph_change,
     ui::{
-        core::{
-            EditorContext, EditorWindowExtension, InspectorSelection, NodeSelection, RequestSave,
+        actions::{
+            saving::{RequestSaveGraph, SaveAction},
+            EditorAction,
         },
+        core::{EditorWindowContext, EditorWindowExtension, InspectorSelection, NodeSelection},
         utils,
     },
 };
@@ -24,8 +26,8 @@ use crate::{
 pub struct GraphEditorWindow;
 
 impl EditorWindowExtension for GraphEditorWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorContext) {
-        let Some(graph_selection) = &mut ctx.selection.graph_editor else {
+    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
+        let Some(graph_selection) = &mut ctx.global_state.graph_editor else {
             ui.centered_and_justified(|ui| ui.label("Select a graph to edit!"));
             return;
         };
@@ -45,7 +47,7 @@ impl EditorWindowExtension for GraphEditorWindow {
 
                     // Autoselect context if none selected and some available
                     if let (Some(scene), Some(available_contexts)) = (
-                        &mut ctx.selection.scene,
+                        &mut ctx.global_state.scene,
                         utils::list_graph_contexts(world, |ctx| {
                             ctx.get_graph_id() == graph_selection.graph
                         }),
@@ -65,7 +67,7 @@ impl EditorWindowExtension for GraphEditorWindow {
                     let graph_player = utils::get_animation_graph_player(world);
 
                     let maybe_graph_context = ctx
-                        .selection
+                        .global_state
                         .scene
                         .as_ref()
                         .and_then(|s| s.active_context.get(&graph_selection.graph.untyped()))
@@ -114,7 +116,7 @@ impl EditorWindowExtension for GraphEditorWindow {
                             .unwrap();
                         graph.nodes.get_mut(node_name).unwrap().should_debug = true;
                         if let InspectorSelection::Node(node_selection) =
-                            &mut ctx.selection.inspector_selection
+                            &mut ctx.global_state.inspector_selection
                         {
                             if &node_selection.node != node_name
                                 || node_selection.graph != graph_selection.graph
@@ -124,7 +126,7 @@ impl EditorWindowExtension for GraphEditorWindow {
                                 node_selection.graph = graph_selection.graph;
                             }
                         } else if graph_selection.nodes_context.is_node_just_selected() {
-                            ctx.selection.inspector_selection =
+                            ctx.global_state.inspector_selection =
                                 InspectorSelection::Node(NodeSelection {
                                     graph: graph_selection.graph,
                                     node: node_name.clone(),
@@ -142,8 +144,12 @@ impl EditorWindowExtension for GraphEditorWindow {
         // ----------------------------------------------------------------
         world.resource_scope::<ButtonInput<KeyCode>, ()>(|_, input| {
             if input.pressed(KeyCode::ControlLeft) && input.just_pressed(KeyCode::KeyS) {
-                ctx.save_requests
-                    .push(RequestSave::Graph(graph_selection.graph));
+                ctx.editor_actions
+                    .push(EditorAction::Save(SaveAction::RequestGraph(
+                        RequestSaveGraph {
+                            graph: graph_selection.graph,
+                        },
+                    )));
             }
         });
         // ----------------------------------------------------------------

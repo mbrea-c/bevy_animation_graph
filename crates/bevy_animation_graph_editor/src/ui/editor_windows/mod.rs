@@ -1,5 +1,6 @@
 pub mod debugger;
 pub mod event_sender;
+pub mod event_track_editor;
 pub mod fsm_editor;
 pub mod fsm_selector;
 pub mod graph_editor;

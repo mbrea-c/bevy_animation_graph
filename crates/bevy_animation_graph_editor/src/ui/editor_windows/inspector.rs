@@ -20,7 +20,7 @@ use egui_dock::egui;
 use crate::{
     graph_update::{Change, FsmChange, FsmPropertiesChange, GlobalChange, GraphChange},
     ui::{
-        core::{EditorContext, EditorWindowExtension, FsmSelection, InspectorSelection},
+        core::{EditorWindowContext, EditorWindowExtension, FsmSelection, InspectorSelection},
         utils,
     },
 };
@@ -29,8 +29,8 @@ use crate::{
 pub struct InspectorWindow;
 
 impl EditorWindowExtension for InspectorWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorContext) {
-        match ctx.selection.inspector_selection {
+    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
+        match ctx.global_state.inspector_selection {
             InspectorSelection::FsmTransition(_) => transition_inspector(world, ui, ctx),
             InspectorSelection::FsmState(_) => state_inspector(world, ui, ctx),
             InspectorSelection::Node(_) => node_inspector(world, ui, ctx),
@@ -45,12 +45,12 @@ impl EditorWindowExtension for InspectorWindow {
     }
 }
 
-fn node_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorContext) {
+fn node_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorWindowContext) {
     ui.heading("Graph node");
 
     let mut changes = Vec::new();
 
-    let InspectorSelection::Node(node_selection) = &mut ctx.selection.inspector_selection else {
+    let InspectorSelection::Node(node_selection) = &mut ctx.global_state.inspector_selection else {
         return;
     };
 
@@ -70,7 +70,7 @@ fn node_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorContext)
     };
     let graph = graph_assets.get_mut(node_selection.graph).unwrap();
     let Some(node) = graph.nodes.get_mut(&node_selection.node) else {
-        ctx.selection.inspector_selection = InspectorSelection::Nothing;
+        ctx.global_state.inspector_selection = InspectorSelection::Nothing;
         return;
     };
 
@@ -123,16 +123,16 @@ fn node_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorContext)
     queue.apply(world);
 }
 
-fn state_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorContext) {
+fn state_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorWindowContext) {
     ui.heading("FSM State");
 
     let mut changes = Vec::new();
 
-    let Some(_fsm_selection) = &mut ctx.selection.fsm_editor else {
+    let Some(_fsm_selection) = &mut ctx.global_state.fsm_editor else {
         return;
     };
 
-    let InspectorSelection::FsmState(state_selection) = &mut ctx.selection.inspector_selection
+    let InspectorSelection::FsmState(state_selection) = &mut ctx.global_state.inspector_selection
     else {
         return;
     };
@@ -152,7 +152,7 @@ fn state_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorContext
     };
     let fsm = fsm_assets.get_mut(state_selection.fsm).unwrap();
     let Some(state) = fsm.states.get_mut(&state_selection.state) else {
-        ctx.selection.inspector_selection = InspectorSelection::Nothing;
+        ctx.global_state.inspector_selection = InspectorSelection::Nothing;
         return;
     };
 
@@ -180,16 +180,16 @@ fn state_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorContext
     queue.apply(world);
 }
 
-fn transition_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorContext) {
+fn transition_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorWindowContext) {
     ui.heading("FSM Transition");
     let mut changes = Vec::new();
 
-    let Some(fsm_selection) = &mut ctx.selection.fsm_editor else {
+    let Some(fsm_selection) = &mut ctx.global_state.fsm_editor else {
         return;
     };
 
     let InspectorSelection::FsmTransition(transition_selection) =
-        &mut ctx.selection.inspector_selection
+        &mut ctx.global_state.inspector_selection
     else {
         return;
     };
@@ -209,7 +209,7 @@ fn transition_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorCo
     };
     let fsm = fsm_assets.get_mut(fsm_selection.fsm).unwrap();
     let Some(transition) = fsm.transitions.get_mut(&transition_selection.state) else {
-        ctx.selection.inspector_selection = InspectorSelection::Nothing;
+        ctx.global_state.inspector_selection = InspectorSelection::Nothing;
         return;
     };
 
@@ -238,16 +238,16 @@ fn transition_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorCo
     queue.apply(world);
 }
 
-fn graph_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorContext) {
+fn graph_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorWindowContext) {
     ui.heading("Animation graph");
 
-    utils::select_graph_context(world, ui, ctx.selection);
+    utils::select_graph_context(world, ui, ctx.global_state);
 
     ui.collapsing("Create node", |ui| node_creator(world, ui, ctx));
 
     let mut changes = Vec::new();
 
-    let Some(graph_selection) = &mut ctx.selection.graph_editor else {
+    let Some(graph_selection) = &mut ctx.global_state.graph_editor else {
         return;
     };
 
@@ -289,13 +289,13 @@ fn graph_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorContext
     queue.apply(world);
 }
 
-fn fsm_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorContext) {
+fn fsm_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorWindowContext) {
     ui.heading("State machine");
     let mut changes = Vec::new();
 
-    utils::select_graph_context_fsm(world, ui, ctx.selection);
+    utils::select_graph_context_fsm(world, ui, ctx.global_state);
 
-    let Some(fsm_selection) = &mut ctx.selection.fsm_editor else {
+    let Some(fsm_selection) = &mut ctx.global_state.fsm_editor else {
         return;
     };
 
@@ -387,7 +387,7 @@ fn add_state_ui(
     }
 }
 
-fn node_creator(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorContext) {
+fn node_creator(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorWindowContext) {
     let unsafe_world = world.as_unsafe_world_cell();
     let type_registry = unsafe {
         unsafe_world
@@ -404,13 +404,13 @@ fn node_creator(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorContext) {
         queue: Some(&mut queue),
     };
 
-    let original_type_id = ctx.selection.node_creation.node.inner.type_id();
+    let original_type_id = ctx.global_state.node_creation.node.inner.type_id();
     let mut type_id = original_type_id;
     egui::Grid::new("node creator fields")
         .num_columns(2)
         .show(ui, |ui| {
             ui.label("Name");
-            ui.text_edit_singleline(&mut ctx.selection.node_creation.node.name);
+            ui.text_edit_singleline(&mut ctx.global_state.node_creation.node.name);
             ui.end_row();
 
             ui.label("Type");
@@ -497,7 +497,7 @@ fn node_creator(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorContext) {
                 "Create node".hash(&mut hasher);
                 let node_creator_id = egui::Id::new(Hasher::finish(&hasher));
                 env.ui_for_reflect_with_options(
-                    ctx.selection
+                    ctx.global_state
                         .node_creation
                         .node
                         .inner
@@ -522,7 +522,7 @@ fn node_creator(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorContext) {
             let inner = node_like
                 .get_boxed(reflect_default.default())
                 .map_err(|_| "default-created value is not a `NodeLike`")?;
-            ctx.selection.node_creation.node.inner = inner;
+            ctx.global_state.node_creation.node.inner = inner;
             Ok::<_, &str>(())
         })();
 
@@ -533,10 +533,10 @@ fn node_creator(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorContext) {
 
     let submit_response = ui.button("Create node");
 
-    if submit_response.clicked() && ctx.selection.graph_editor.is_some() {
-        let graph_selection = ctx.selection.graph_editor.as_ref().unwrap();
+    if submit_response.clicked() && ctx.global_state.graph_editor.is_some() {
+        let graph_selection = ctx.global_state.graph_editor.as_ref().unwrap();
         ctx.graph_changes.push(GraphChange {
-            change: Change::NodeCreated(ctx.selection.node_creation.node.clone()),
+            change: Change::NodeCreated(ctx.global_state.node_creation.node.clone()),
             graph: graph_selection.graph,
         });
     }

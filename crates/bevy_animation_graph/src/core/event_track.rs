@@ -26,8 +26,8 @@ impl TrackItem {
 
 #[derive(Debug, Reflect, Clone, Serialize, Deserialize)]
 pub struct EventTrack {
-    name: String,
-    events: Vec<TrackItem>,
+    pub name: String,
+    pub events: Vec<TrackItem>,
 }
 
 impl EventTrack {

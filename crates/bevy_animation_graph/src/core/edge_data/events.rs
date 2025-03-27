@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::core::state_machine::high_level::{StateId, TransitionId};
 
 /// Event data
-#[derive(Clone, Debug, Reflect, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Reflect, Serialize, Deserialize, PartialEq, Hash)]
 #[reflect(Default)]
 pub enum AnimationEvent {
     /// Trigger the most specific transition from transitioning into the provided state. That

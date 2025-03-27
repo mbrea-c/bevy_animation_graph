@@ -18,7 +18,7 @@ use bevy_animation_graph::{
 use egui_dock::egui;
 
 use crate::ui::{
-    core::{EditorContext, EditorWindowExtension, InspectorSelection},
+    core::{EditorWindowContext, EditorWindowExtension, InspectorSelection},
     utils::{
         self, orbit_camera_scene_show, orbit_camera_transform, orbit_camera_update,
         using_inspector_env, OrbitView,
@@ -32,8 +32,8 @@ pub struct DebuggerWindow {
 }
 
 impl EditorWindowExtension for DebuggerWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorContext) {
-        if ctx.selection.scene.is_none() {
+    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
+        if ctx.global_state.scene.is_none() {
             return;
         };
         let mut query = world.query::<(&AnimatedSceneInstance, &PreviewScene)>();
@@ -43,7 +43,7 @@ impl EditorWindowExtension for DebuggerWindow {
         let entity = instance.player_entity();
         let mut query = world.query::<&AnimationGraphPlayer>();
 
-        let InspectorSelection::Node(node_selection) = &mut ctx.selection.inspector_selection
+        let InspectorSelection::Node(node_selection) = &mut ctx.global_state.inspector_selection
         else {
             return;
         };
@@ -58,11 +58,11 @@ impl EditorWindowExtension for DebuggerWindow {
             return;
         };
 
-        let Some(graph_selection) = &ctx.selection.graph_editor else {
+        let Some(graph_selection) = &ctx.global_state.graph_editor else {
             return;
         };
 
-        let Some(scene_selection) = ctx.selection.scene.as_ref() else {
+        let Some(scene_selection) = ctx.global_state.scene.as_ref() else {
             return;
         };
 
@@ -204,7 +204,7 @@ impl DebuggerWindow {
         ui: &mut egui::Ui,
         world: &mut World,
         id: egui::Id,
-        _ctx: &mut EditorContext,
+        _ctx: &mut EditorWindowContext,
     ) {
         let config = PoseSubSceneConfig {
             pose: pose.clone(),

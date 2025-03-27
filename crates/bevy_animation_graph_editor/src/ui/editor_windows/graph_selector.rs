@@ -12,7 +12,7 @@ use crate::{
     scanner::PersistedAssetHandles,
     tree::TreeResult,
     ui::{
-        core::{EditorContext, EditorWindowExtension, GraphSelection, InspectorSelection},
+        core::{EditorWindowContext, EditorWindowExtension, GraphSelection, InspectorSelection},
         utils,
     },
 };
@@ -21,7 +21,7 @@ use crate::{
 pub struct GraphSelectorWindow;
 
 impl EditorWindowExtension for GraphSelectorWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorContext) {
+    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
         let mut queue = CommandQueue::default();
         let mut chosen_id: Option<AssetId<AnimationGraph>> = None;
 
@@ -49,12 +49,12 @@ impl EditorWindowExtension for GraphSelectorWindow {
         });
         queue.apply(world);
         if let Some(chosen_id) = chosen_id {
-            ctx.selection.graph_editor = Some(GraphSelection {
+            ctx.global_state.graph_editor = Some(GraphSelection {
                 graph: chosen_id,
                 graph_indices: utils::update_graph_indices(world, chosen_id),
                 nodes_context: NodesContext::default(),
             });
-            ctx.selection.inspector_selection = InspectorSelection::Graph;
+            ctx.global_state.inspector_selection = InspectorSelection::Graph;
         }
     }
 

@@ -19,7 +19,7 @@ use bevy_inspector_egui::bevy_egui::EguiUserTextures;
 use bevy_inspector_egui::egui;
 use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
 
-use super::core::{EditorSelection, EguiWindow, RequestSave};
+use super::core::GlobalState;
 use super::{provide_texture_for_scene, PartOfSubScene, PreviewScene, SubSceneConfig};
 
 pub(crate) fn get_node_output_data_pins(
@@ -37,23 +37,6 @@ pub(crate) fn get_node_output_data_pins(
             let node = graph.nodes.get(node_id)?;
             Some(node.inner.data_output_spec(spec_context))
         })
-    })
-}
-
-pub(crate) fn create_saver_window(world: &mut World, save_request: RequestSave) -> EguiWindow {
-    world.resource_scope::<AssetServer, EguiWindow>(|_, asset_server| match save_request {
-        RequestSave::Graph(graph) => {
-            let path = asset_server
-                .get_path(graph)
-                .map_or("".into(), |p| p.path().to_string_lossy().into());
-            EguiWindow::GraphSaver(graph, path, false)
-        }
-        RequestSave::Fsm(fsm_id) => {
-            let path = asset_server
-                .get_path(fsm_id)
-                .map_or("".into(), |p| p.path().to_string_lossy().into());
-            EguiWindow::FsmSaver(fsm_id, path, false)
-        }
     })
 }
 
@@ -170,7 +153,7 @@ pub(crate) fn indices_one_step(
 pub(crate) fn select_graph_context(
     world: &mut World,
     ui: &mut egui::Ui,
-    selection: &mut EditorSelection,
+    selection: &mut GlobalState,
 ) {
     let Some(graph) = &selection.graph_editor else {
         return;
@@ -223,7 +206,7 @@ pub(crate) fn list_graph_contexts(
 pub(crate) fn select_graph_context_fsm(
     world: &mut World,
     ui: &mut egui::Ui,
-    selection: &mut EditorSelection,
+    selection: &mut GlobalState,
 ) {
     let Some(fsm) = &selection.fsm_editor else {
         return;

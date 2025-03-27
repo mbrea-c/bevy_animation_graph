@@ -8,7 +8,6 @@ mod scanner;
 mod tree;
 mod ui;
 
-use asset_saving::AssetSavingPlugin;
 use bevy::prelude::*;
 use bevy_animation_graph::core::plugin::AnimationGraphPlugin;
 use bevy_egui::EguiPlugin;
@@ -53,7 +52,6 @@ impl Plugin for AnimationGraphEditorPlugin {
             .add_plugins(AnimationGraphPlugin)
             .add_plugins(DefaultInspectorConfigPlugin)
             .add_plugins(BetterInspectorPlugin)
-            .add_plugins(AssetSavingPlugin)
             .add_plugins(ScannerPlugin)
             .insert_resource(UiState::new())
             .insert_resource(cli)
@@ -61,7 +59,6 @@ impl Plugin for AnimationGraphEditorPlugin {
                 Update,
                 (
                     ui::show_ui_system,
-                    ui::asset_save_event_system,
                     ui::override_scene_animations,
                     ui::render_pose_gizmos,
                     ui::propagate_layers,

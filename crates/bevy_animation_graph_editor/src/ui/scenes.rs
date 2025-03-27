@@ -1,6 +1,5 @@
 use std::rc::Rc;
 
-use crate::asset_saving::{SaveFsm, SaveGraph};
 use bevy::color::palettes::css::WHITE;
 use bevy::prelude::*;
 use bevy::render::render_resource::{
@@ -24,28 +23,15 @@ use super::UiState;
 #[derive(Component)]
 pub struct PreviewScene;
 
-pub fn asset_save_event_system(
-    mut ui_state: ResMut<UiState>,
-    mut evw_save_graph: EventWriter<SaveGraph>,
-    mut evw_save_fsm: EventWriter<SaveFsm>,
-) {
-    for save_event in ui_state.graph_save_events.drain(..) {
-        evw_save_graph.send(save_event);
-    }
-    for save_event in ui_state.fsm_save_events.drain(..) {
-        evw_save_fsm.send(save_event);
-    }
-}
-
 pub fn graph_debug_draw_bone_system(
     ui_state: Res<UiState>,
     scene_instance_query: Query<&AnimatedSceneInstance, With<PreviewScene>>,
     mut player_query: Query<&mut AnimationGraphPlayer>,
 ) {
-    let Some(path) = ui_state.selection.entity_path.as_ref() else {
+    let Some(path) = ui_state.global_state.entity_path.as_ref() else {
         return;
     };
-    if ui_state.selection.scene.is_none() {
+    if ui_state.global_state.scene.is_none() {
         return;
     };
     let Ok(instance) = scene_instance_query.get_single() else {
