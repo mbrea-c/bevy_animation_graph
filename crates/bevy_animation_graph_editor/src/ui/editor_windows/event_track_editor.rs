@@ -5,7 +5,10 @@ use bevy_animation_graph::core::{
 };
 use egui_dock::egui;
 
-use crate::ui::core::{EditorWindowContext, EditorWindowExtension};
+use crate::ui::{
+    core::{EditorWindowContext, EditorWindowExtension},
+    utils,
+};
 
 #[derive(Debug)]
 pub struct EventTrackEditorWindow {
@@ -16,6 +19,7 @@ pub struct EventTrackEditorWindow {
     /// How much we have scrolled "down", in tracks. It's possible to scroll a fraction of a track
     vertical_scroll: f32,
     being_edited: Vec<EventTrack>,
+    buffer: TrackItem,
 }
 
 impl Default for EventTrackEditorWindow {
@@ -64,6 +68,7 @@ impl Default for EventTrackEditorWindow {
                     ],
                 },
             ],
+            buffer: TrackItem::default(),
         }
     }
 }
@@ -84,9 +89,7 @@ impl EditorWindowExtension for EventTrackEditorWindow {
             .resizable(true)
             .default_width(200.)
             .min_width(100.)
-            .show_inside(ui, |ui| {
-                ui.label("We figuring this out");
-            });
+            .show_inside(ui, |ui| self.draw_event_editor(ui, world, &self.buffer));
 
         egui::TopBottomPanel::top("Timeline")
             .resizable(false)
@@ -101,7 +104,10 @@ impl EditorWindowExtension for EventTrackEditorWindow {
 
         for (track_number, track) in self.being_edited.iter().enumerate() {
             for event in &track.events {
-                self.draw_event(ui, rect, event, track_number);
+                let response = self.draw_event(ui, rect, event, track_number);
+                if response.clicked() {
+                    self.buffer = event.clone();
+                }
             }
         }
 
@@ -143,19 +149,14 @@ impl EventTrackEditorWindow {
         event: &TrackItem,
         track_number: usize,
     ) -> egui::Response {
-        let time_to_pixel = area_rect.width() / self.time_range;
-        let viewport_relative_start = event.start_time - self.left_time();
-        let viewport_relative_end = event.end_time - self.left_time();
+        let pixel_x_start = self.time_to_pixel(event.start_time, area_rect);
+        let pixel_x_end = self.time_to_pixel(event.end_time, area_rect);
 
-        // These are relative to the "area rect"
-        let pixel_x_start = time_to_pixel * viewport_relative_start;
-        let pixel_x_end = time_to_pixel * viewport_relative_end;
+        let pixel_y_start = self.track_to_pixel(track_number as f32, area_rect);
+        let pixel_y_end = self.track_to_pixel((track_number + 1) as f32, area_rect);
 
-        let pixel_y_start = self.track_to_viewport_pixel(track_number as f32);
-        let pixel_y_end = self.track_to_viewport_pixel((track_number + 1) as f32);
-
-        let start = area_rect.left_top() + egui::Vec2::new(pixel_x_start, pixel_y_start);
-        let end = area_rect.left_top() + egui::Vec2::new(pixel_x_end, pixel_y_end);
+        let start = egui::Pos2::new(pixel_x_start, pixel_y_start);
+        let end = egui::Pos2::new(pixel_x_end, pixel_y_end);
 
         let rect = egui::Rect {
             min: start,
@@ -213,12 +214,12 @@ impl EventTrackEditorWindow {
 
         for (track_number, track) in tracks.iter().enumerate() {
             let pixel_y_start =
-                self.track_to_viewport_pixel(track_number as f32) + vertical_offset_pixels;
+                self.track_to_pixel(track_number as f32, area_rect) + vertical_offset_pixels;
             let pixel_y_end =
-                self.track_to_viewport_pixel((track_number + 1) as f32) + vertical_offset_pixels;
+                self.track_to_pixel((track_number + 1) as f32, area_rect) + vertical_offset_pixels;
 
-            let start = egui::Pos2::new(area_rect.left(), area_rect.top() + pixel_y_start);
-            let end = egui::Pos2::new(area_rect.right(), area_rect.top() + pixel_y_end);
+            let start = egui::Pos2::new(area_rect.left(), pixel_y_start);
+            let end = egui::Pos2::new(area_rect.right(), pixel_y_end);
 
             let rect = egui::Rect {
                 min: start,
@@ -277,7 +278,14 @@ impl EventTrackEditorWindow {
         }
     }
 
-    fn draw_event_editor(&self, ui: &mut egui::Ui, event: &TrackItem) {}
+    fn draw_event_editor(&self, ui: &mut egui::Ui, world: &mut World, event: &TrackItem) {
+        utils::using_inspector_env(world, |mut env| {
+            env.ui_for_reflect_readonly(event, ui);
+            if ui.button("Update").clicked() {
+                println!("update should happen");
+            }
+        });
+    }
 
     fn left_time(&self) -> f32 {
         self.center_time - self.time_range / 2.
@@ -294,8 +302,8 @@ impl EventTrackEditorWindow {
     }
 
     /// Supports track fractional numbers
-    fn track_to_viewport_pixel(&self, track_number: f32) -> f32 {
-        (track_number - self.vertical_scroll) * 20.
+    fn track_to_pixel(&self, track_number: f32, viewport: egui::Rect) -> f32 {
+        viewport.top() + (track_number - self.vertical_scroll) * 20.
     }
 
     fn time_to_pixel(&self, time: f32, viewport: egui::Rect) -> f32 {

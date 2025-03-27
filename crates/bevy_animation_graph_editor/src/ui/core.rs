@@ -23,7 +23,7 @@ use egui_dock::{DockArea, DockState, NodeIndex, Style};
 use egui_notify::{Anchor, Toasts};
 
 use super::actions::saving::{SaveAction, SaveFsm, SaveGraph};
-use super::actions::{handle_editor_action_queue, EditorAction, PushQueue};
+use super::actions::{EditorAction, PendingActions, PushQueue};
 use super::editor_windows::debugger::DebuggerWindow;
 use super::editor_windows::event_sender::EventSenderWindow;
 use super::editor_windows::event_track_editor::EventTrackEditorWindow;
@@ -51,7 +51,9 @@ pub fn show_ui_system(world: &mut World) {
     let mut egui_context = egui_context.clone();
 
     world.resource_scope::<UiState, _>(|world, mut ui_state| {
-        ui_state.ui(world, egui_context.get_mut())
+        world.resource_scope::<PendingActions, _>(|world, mut pending_actions| {
+            ui_state.ui(world, egui_context.get_mut(), &mut pending_actions)
+        });
     });
 }
 
@@ -235,11 +237,9 @@ impl UiState {
         }
     }
 
-    fn ui(&mut self, world: &mut World, ctx: &mut egui::Context) {
-        let mut editor_actions = PushQueue::default();
-
+    fn ui(&mut self, world: &mut World, ctx: &mut egui::Context, queue: &mut PendingActions) {
         if let Some(view_action) = view_selection_bar(ctx, self) {
-            editor_actions.push(EditorAction::View(view_action));
+            queue.actions.push(EditorAction::View(view_action));
         }
 
         let view_context = EditorViewContext {
@@ -248,7 +248,7 @@ impl UiState {
             graph_changes: &mut self.graph_changes,
             global_changes: &mut self.global_changes,
             notifications: &mut self.notifications,
-            editor_actions: &mut editor_actions,
+            editor_actions: &mut queue.actions,
         };
 
         if let Some(active_view_idx) = self.active_view {
@@ -257,8 +257,6 @@ impl UiState {
         }
 
         self.notifications.show(ctx);
-
-        handle_editor_action_queue(world, editor_actions);
     }
 }
 

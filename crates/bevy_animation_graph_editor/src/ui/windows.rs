@@ -37,7 +37,7 @@ impl EditorWindowExtension for EditorWindow {
 /// How they're handled is up to the window.
 pub struct WindowAction {
     pub target: WindowId,
-    pub event: Box<dyn Any>,
+    pub event: Box<dyn Any + Send + Sync>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]

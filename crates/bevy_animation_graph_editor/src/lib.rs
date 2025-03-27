@@ -15,6 +15,7 @@ use bevy_inspector_egui::{bevy_egui, DefaultInspectorConfigPlugin};
 use clap::Parser;
 use scanner::ScannerPlugin;
 use std::path::PathBuf;
+use ui::actions::PendingActions;
 use ui::egui_inspector_impls::BetterInspectorPlugin;
 use ui::{graph_debug_draw_bone_system, UiState};
 
@@ -54,11 +55,13 @@ impl Plugin for AnimationGraphEditorPlugin {
             .add_plugins(BetterInspectorPlugin)
             .add_plugins(ScannerPlugin)
             .insert_resource(UiState::new())
+            .insert_resource(PendingActions::default())
             .insert_resource(cli)
             .add_systems(
                 Update,
                 (
                     ui::show_ui_system,
+                    ui::actions::process_actions_system,
                     ui::override_scene_animations,
                     ui::render_pose_gizmos,
                     ui::propagate_layers,

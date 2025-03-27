@@ -2,7 +2,7 @@ pub mod saving;
 
 use bevy::{
     ecs::{
-        system::{In, ResMut},
+        system::{In, ResMut, Resource},
         world::World,
     },
     log::error,
@@ -15,6 +15,11 @@ use super::{
     windows::WindowAction,
     UiState,
 };
+
+#[derive(Resource, Default)]
+pub struct PendingActions {
+    pub actions: PushQueue<EditorAction>,
+}
 
 /// A "push-only" queue
 pub struct PushQueue<T>(Vec<T>);
@@ -37,8 +42,8 @@ pub enum EditorAction {
     Save(SaveAction),
 }
 
-pub fn handle_editor_action_queue(world: &mut World, queue: PushQueue<EditorAction>) {
-    for action in queue.0 {
+pub fn handle_editor_action_queue(world: &mut World, actions: impl Iterator<Item = EditorAction>) {
+    for action in actions {
         handle_editor_action(world, action);
     }
 }
@@ -83,4 +88,10 @@ fn handle_view_action(In(view_action): In<ViewAction>, mut ui_state: ResMut<UiSt
 
 fn handle_window_action(In(window_action): In<WindowAction>, mut ui_state: ResMut<UiState>) {
     ui_state.windows.handle_action(window_action);
+}
+
+pub fn process_actions_system(world: &mut World) {
+    world.resource_scope::<PendingActions, ()>(|world, mut actions| {
+        handle_editor_action_queue(world, actions.actions.0.drain(..));
+    });
 }

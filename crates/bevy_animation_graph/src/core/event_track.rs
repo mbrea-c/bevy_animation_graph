@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 use super::edge_data::{AnimationEvent, SampledEvent};
 
-#[derive(Debug, Reflect, Clone, Serialize, Deserialize)]
+#[derive(Debug, Reflect, Clone, Serialize, Deserialize, Default)]
 pub struct TrackItem {
     pub event: AnimationEvent,
     pub start_time: f32,
