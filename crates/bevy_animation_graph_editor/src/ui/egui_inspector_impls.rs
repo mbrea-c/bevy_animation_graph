@@ -6,14 +6,11 @@ use bevy::{
     reflect::{FromReflect, PartialReflect, TypePath, TypeRegistry},
     utils::HashMap,
 };
-use bevy_animation_graph::{
-    core::{
-        animation_clip::{EntityPath, GraphClip},
-        animation_graph::{AnimationGraph, PinId},
-        edge_data::{BoneMask, DataSpec, DataValue},
-        state_machine::high_level::StateMachine,
-    },
-    flipping::config::{PatternMapper, PatternMapperSerial},
+use bevy_animation_graph::core::{
+    animation_clip::{EntityPath, GraphClip},
+    animation_graph::{AnimationGraph, PinId},
+    edge_data::{BoneMask, DataSpec, DataValue},
+    state_machine::high_level::StateMachine,
 };
 use bevy_inspector_egui::{
     egui,
@@ -26,6 +23,8 @@ use std::{
     any::{Any, TypeId},
     hash::{Hash, Hasher},
 };
+
+use super::reflect_widgets;
 
 #[derive(Clone, Reflect, Debug)]
 pub struct OrderedMap<K, V> {
@@ -63,114 +62,14 @@ impl<K: Clone + Eq + Hash, V: Clone> OrderedMap<K, V> {
     }
 }
 
-pub struct EguiInspectorExtensionWrapper<T> {
-    // TODO: Do we really need to keep the extension? As it is this could just be a few normal
-    // functions.
-    _extension: T,
-}
-
-impl<T: EguiInspectorExtension> EguiInspectorExtensionWrapper<T> {
-    fn for_extension(extension: T) -> Self {
-        Self {
-            _extension: extension,
-        }
-    }
-
-    fn register(&self, app: &mut App) {
-        if T::needs_buffer() {
-            app.insert_resource(EguiInspectorBuffers::<T::Base, T::Buffer>::default());
-        }
-        let type_registry = app.world().resource::<AppTypeRegistry>();
-        let mut type_registry = type_registry.write();
-        let type_registry = &mut type_registry;
-        add_no_many::<T::Base>(type_registry, Self::mutable, Self::readonly);
-    }
-
-    fn mutable(
-        value: &mut dyn Any,
-        ui: &mut egui::Ui,
-        options: &dyn Any,
-        id: egui::Id,
-        env: InspectorUi<'_, '_>,
-    ) -> bool {
-        let value = value.downcast_mut::<T::Base>().unwrap();
-        let buffer = if T::needs_buffer() {
-            Some(get_buffered::<T::Base, T::Buffer>(
-                env.context.world.as_mut().unwrap(),
-                id,
-                || T::init_buffer(value).unwrap(),
-            ))
-        } else {
-            None
-        };
-
-        T::mutable(value, buffer, ui, options, id, env)
-    }
-
-    fn readonly(
-        value: &dyn Any,
-        ui: &mut egui::Ui,
-        options: &dyn Any,
-        id: egui::Id,
-        env: InspectorUi<'_, '_>,
-    ) {
-        let value = value.downcast_ref::<T::Base>().unwrap();
-        let buffer = if T::needs_buffer() {
-            Some(get_buffered_readonly::<T::Base, T::Buffer>(
-                env.context.world.as_mut().unwrap(),
-                id,
-                || T::init_buffer(value).unwrap(),
-            ))
-        } else {
-            None
-        };
-
-        T::readonly(value, buffer, ui, options, id, env)
-    }
-}
-
-pub trait EguiInspectorExtension {
-    type Base: Clone + Sized + Send + Sync + 'static;
-    type Buffer: Default + Send + Sync + 'static;
-
-    fn mutable(
-        value: &mut Self::Base,
-        buffer: Option<&mut Self::Buffer>,
-        ui: &mut egui::Ui,
-        options: &dyn Any,
-        id: egui::Id,
-        env: InspectorUi<'_, '_>,
-    ) -> bool;
-
-    fn readonly(
-        value: &Self::Base,
-        buffer: Option<&Self::Buffer>,
-        ui: &mut egui::Ui,
-        options: &dyn Any,
-        id: egui::Id,
-        env: InspectorUi<'_, '_>,
-    );
-
-    fn init_buffer(#[allow(unused_variables)] value: &Self::Base) -> Option<Self::Buffer> {
-        None
-    }
-
-    fn needs_buffer() -> bool {
-        false
-    }
-}
-
-pub trait EguiInspectorExtensionRegistration: EguiInspectorExtension + Sized {
-    fn register(self, app: &mut App) {
-        EguiInspectorExtensionWrapper::for_extension(self).register(app);
-    }
-}
-
-impl<T: EguiInspectorExtension + Sized> EguiInspectorExtensionRegistration for T {}
-
 pub struct BetterInspectorPlugin;
+
 impl Plugin for BetterInspectorPlugin {
     fn build(&self, app: &mut App) {
+        // This shall replace this plugin in due time
+        // Currently using both for legacy reasons (too much effort to migrate everything at once)
+        app.add_plugins(reflect_widgets::plugin::BetterInspectorPlugin);
+
         app.insert_resource(EguiInspectorBuffers::<
             OrderedMap<PinId, DataValue>,
             Vec<(PinId, DataValue)>,
@@ -195,10 +94,6 @@ impl Plugin for BetterInspectorPlugin {
         app.register_type::<OrderedMap<PinId, DataValue>>();
         app.register_type::<OrderedMap<PinId, DataSpec>>();
         app.register_type::<OrderedMap<PinId, ()>>();
-
-        EntityPathInspector.register(app);
-        PatternMapperInspector.register(app);
-        CheckboxInspector.register(app);
 
         let type_registry = app.world().resource::<AppTypeRegistry>();
         let mut type_registry = type_registry.write();
@@ -285,31 +180,6 @@ where
     }
 }
 
-fn get_buffered_readonly<'w, T, B>(
-    world: &mut RestrictedWorldView<'w>,
-    id: egui::Id,
-    default: impl FnOnce() -> B,
-) -> &'w B
-where
-    T: Send + Sync + Clone + 'static,
-    B: Send + Sync + 'static,
-{
-    let mut res = world
-        .get_resource_mut::<EguiInspectorBuffers<T, B>>()
-        .unwrap();
-    // SAFETY: This is safe because the buffers are only accessed from the inspector
-    //         which should only be accessed from one thread. Additionally, every
-    //         item ID should only be accessed once, mutably. There are never multiple references
-    //         to any buffer.
-    // TODO: Avoid unsafe altogether by using an RC pointer or something like that
-    if res.bufs.contains_key(&id) {
-        unsafe { &*(res.bufs.get(&id).unwrap() as *const B) }
-    } else {
-        res.bufs.insert(id, default());
-        unsafe { &*(res.bufs.get(&id).unwrap() as *const B) }
-    }
-}
-
 type InspectorEguiImplFn =
     fn(&mut dyn Any, &mut egui::Ui, &dyn Any, egui::Id, InspectorUi<'_, '_>) -> bool;
 type InspectorEguiImplFnReadonly =
@@ -374,146 +244,6 @@ fn string_readonly(
 ) {
     let value = value.downcast_ref::<String>().unwrap();
     ui.label(value);
-}
-
-pub struct EntityPathInspector;
-
-impl EguiInspectorExtension for EntityPathInspector {
-    type Base = EntityPath;
-    type Buffer = String;
-
-    fn mutable(
-        value: &mut Self::Base,
-        buffer: Option<&mut Self::Buffer>,
-        ui: &mut egui::Ui,
-        _options: &dyn Any,
-        _id: egui::Id,
-        _env: InspectorUi<'_, '_>,
-    ) -> bool {
-        let buffered = buffer.unwrap();
-        let response = ui.text_edit_singleline(buffered);
-
-        if response.lost_focus() {
-            *value = EntityPath::from_slashed_string(buffered.clone());
-            true
-        } else if !response.has_focus() {
-            *buffered = value.to_slashed_string();
-            false
-        } else {
-            false
-        }
-    }
-
-    fn readonly(
-        value: &Self::Base,
-        _buffer: Option<&Self::Buffer>,
-        ui: &mut egui::Ui,
-        _options: &dyn Any,
-        _id: egui::Id,
-        _env: InspectorUi<'_, '_>,
-    ) {
-        let slashed_path = value.to_slashed_string();
-        ui.label(slashed_path);
-    }
-
-    fn init_buffer(#[allow(unused_variables)] value: &Self::Base) -> Option<Self::Buffer> {
-        Some(value.to_slashed_string())
-    }
-
-    fn needs_buffer() -> bool {
-        true
-    }
-}
-
-#[derive(Default)]
-pub struct PatternMapperInspector;
-
-impl EguiInspectorExtension for PatternMapperInspector {
-    type Base = PatternMapper;
-    type Buffer = PatternMapperSerial;
-
-    fn mutable(
-        value: &mut Self::Base,
-        buffer: Option<&mut Self::Buffer>,
-        ui: &mut egui::Ui,
-        _options: &dyn Any,
-        id: egui::Id,
-        mut env: InspectorUi<'_, '_>,
-    ) -> bool {
-        let buffer = buffer.unwrap();
-
-        match env.ui_for_reflect_with_options(buffer, ui, id, &()) {
-            true => {
-                if let Ok(mapper) = PatternMapper::try_from(buffer.clone()) {
-                    *value = mapper;
-                    true
-                } else {
-                    false
-                }
-            }
-            false => false,
-        }
-    }
-
-    fn readonly(
-        _value: &Self::Base,
-        buffer: Option<&Self::Buffer>,
-        ui: &mut egui::Ui,
-        _options: &dyn Any,
-        id: egui::Id,
-        mut env: InspectorUi<'_, '_>,
-    ) {
-        let buffer = buffer.unwrap();
-
-        env.ui_for_reflect_readonly_with_options(buffer, ui, id, &());
-    }
-
-    fn init_buffer(value: &Self::Base) -> Option<Self::Buffer> {
-        Some(value.clone().into())
-    }
-
-    fn needs_buffer() -> bool {
-        true
-    }
-}
-
-#[derive(Default)]
-pub struct CheckboxInspector;
-
-impl EguiInspectorExtension for CheckboxInspector {
-    type Base = bool;
-    type Buffer = ();
-
-    fn mutable(
-        value: &mut Self::Base,
-        _buffer: Option<&mut Self::Buffer>,
-        ui: &mut egui::Ui,
-        _options: &dyn Any,
-        _id: egui::Id,
-        _env: InspectorUi<'_, '_>,
-    ) -> bool {
-        ui.checkbox(value, "").changed
-    }
-
-    fn readonly(
-        value: &Self::Base,
-        _buffer: Option<&Self::Buffer>,
-        ui: &mut egui::Ui,
-        _options: &dyn Any,
-        _id: egui::Id,
-        _env: InspectorUi<'_, '_>,
-    ) {
-        let mut val = *value;
-        ui.add_enabled_ui(false, |ui| ui.checkbox(&mut val, ""));
-    }
-
-    fn init_buffer(#[allow(unused_variables)] value: &Self::Base) -> Option<Self::Buffer> {
-        None
-    }
-
-    fn needs_buffer() -> bool {
-        false
-    }
 }
 
 pub fn animation_graph_mut(

@@ -18,18 +18,18 @@ use bevy_inspector_egui::{
 use egui_dock::egui;
 
 pub mod checkbox;
-pub mod core;
 pub mod entity_path;
 pub mod pattern_mapper;
 pub mod plugin;
+pub mod wrap_ui;
 
-pub trait EguiInspectorExtension {
-    type Base: Clone + Sized + Send + Sync + 'static;
+pub trait EguiInspectorExtension: Sized {
+    type Base: Clone + IntoBuffer<Self::Buffer> + Sized + Send + Sync + 'static;
     type Buffer: Default + Send + Sync + 'static;
 
     fn mutable(
         value: &mut Self::Base,
-        buffer: Option<&mut Self::Buffer>,
+        buffer: &mut Self::Buffer,
         ui: &mut egui::Ui,
         options: &dyn Any,
         id: egui::Id,
@@ -38,20 +38,12 @@ pub trait EguiInspectorExtension {
 
     fn readonly(
         value: &Self::Base,
-        buffer: Option<&Self::Buffer>,
+        buffer: &Self::Buffer,
         ui: &mut egui::Ui,
         options: &dyn Any,
         id: egui::Id,
         env: InspectorUi<'_, '_>,
     );
-
-    fn init_buffer(#[allow(unused_variables)] value: &Self::Base) -> Option<Self::Buffer> {
-        None
-    }
-
-    fn needs_buffer() -> bool {
-        false
-    }
 }
 
 pub trait EguiInspectorExtensionRegistration:
@@ -60,11 +52,12 @@ where
     Self::Base: HashExt,
 {
     fn register(self, app: &mut App) {
-        if Self::needs_buffer() {
-            app.insert_resource(EguiInspectorBuffers::<Self>::default());
-        }
+        // Working buffer
+        app.insert_resource(EguiInspectorBuffers::<Self::Base, Self::Buffer, Self>::default());
         // Top level buffer for non-dynamic
-        app.insert_resource(EguiInspectorBuffers::<Self, TopLevelBuffer>::default());
+        app.insert_resource(
+            EguiInspectorBuffers::<Self::Base, Self::Base, TopLevelBuffer>::default(),
+        );
         let type_registry = app.world().resource::<AppTypeRegistry>();
         let mut type_registry = type_registry.write();
         let type_registry = &mut type_registry;
@@ -79,8 +72,11 @@ where
         env: InspectorUi<'_, '_>,
     ) -> bool {
         let value = value.downcast_mut::<Self::Base>().unwrap();
-        let buffer = Self::needs_buffer()
-            .then(|| get_buffered::<Self, ()>(env.context.world.as_mut().unwrap(), value, id));
+        let buffer = get_buffered::<Self::Base, Self::Buffer, ()>(
+            env.context.world.as_mut().unwrap(),
+            value,
+            id,
+        );
 
         Self::mutable(value, buffer, ui, options, id, env)
     }
@@ -93,9 +89,11 @@ where
         env: InspectorUi<'_, '_>,
     ) {
         let value = value.downcast_ref::<Self::Base>().unwrap();
-        let buffer = Self::needs_buffer().then(|| {
-            get_buffered_readonly::<Self, ()>(env.context.world.as_mut().unwrap(), value, id)
-        });
+        let buffer = get_buffered_readonly::<Self::Base, Self::Buffer, ()>(
+            env.context.world.as_mut().unwrap(),
+            value,
+            id,
+        );
 
         Self::readonly(value, buffer, ui, options, id, env)
     }
@@ -112,6 +110,16 @@ pub trait HashExt {
     fn hash_ext(&self) -> u64;
 }
 
+pub trait IntoBuffer<B> {
+    fn into_buffer(&self) -> B;
+}
+
+impl<T: Clone> IntoBuffer<T> for T {
+    fn into_buffer(&self) -> T {
+        self.clone()
+    }
+}
+
 struct BufferField<B> {
     buffer: B,
     /// The hash of the original value this buffer is for.
@@ -123,37 +131,38 @@ struct BufferField<B> {
 pub struct TopLevelBuffer;
 
 #[derive(Resource)]
-struct EguiInspectorBuffers<E: EguiInspectorExtension, M = ()> {
-    bufs: HashMap<egui::Id, BufferField<E::Buffer>>,
-    _marker_e: std::marker::PhantomData<E>,
+struct EguiInspectorBuffers<S, B, M = ()> {
+    bufs: HashMap<egui::Id, BufferField<B>>,
+    /// marker for source type (which isn't stored but used to determine when to flush cache)
+    _marker_s: std::marker::PhantomData<S>,
     /// The second marker is needed so we can have multiple resources for the same extension.
     /// In practice this will be used for a top-level buffer (used for `buffered_mut` calls) and a
     /// regular buffer accessible to UI code.
     _marker_m: std::marker::PhantomData<M>,
 }
 
-impl<E: EguiInspectorExtension, M> Default for EguiInspectorBuffers<E, M> {
+impl<S, B, M> Default for EguiInspectorBuffers<S, B, M> {
     fn default() -> Self {
         Self {
             bufs: HashMap::default(),
-            _marker_e: std::marker::PhantomData,
+            _marker_s: std::marker::PhantomData,
             _marker_m: std::marker::PhantomData,
         }
     }
 }
 
-impl<E: EguiInspectorExtension, M> EguiInspectorBuffers<E, M>
+impl<S, B, M> EguiInspectorBuffers<S, B, M>
 where
-    E::Base: HashExt,
+    S: HashExt + IntoBuffer<B>,
 {
     /// If the original value was changed and we need to flush the buffer, flush it
-    pub fn reset_if_needed(&mut self, value: &E::Base, id: egui::Id) {
+    pub fn reset_if_needed(&mut self, value: &S, id: egui::Id) {
         if self.should_reset_field(value, id) {
             self.reset_field(value, id);
         }
     }
 
-    fn should_reset_field(&self, value: &E::Base, id: egui::Id) -> bool {
+    fn should_reset_field(&self, value: &S, id: egui::Id) -> bool {
         if let Some(field_hash) = self.bufs.get(&id).map(|f| f.start_hash) {
             // First we need to compute the hash of value
             let hash = value.hash_ext();
@@ -163,52 +172,50 @@ where
         }
     }
 
-    fn reset_field(&mut self, value: &E::Base, id: egui::Id) {
+    fn reset_field(&mut self, value: &S, id: egui::Id) {
         self.bufs.insert(
             id,
             BufferField {
-                buffer: E::init_buffer(value).unwrap(),
+                buffer: value.into_buffer(),
                 start_hash: value.hash_ext(),
             },
         );
     }
 }
 
-fn get_buffered<'w, E: EguiInspectorExtension, M>(
+fn get_buffered<'w, S, B, M>(
     world: &mut RestrictedWorldView<'w>,
-    value: &E::Base,
+    value: &S,
     id: egui::Id,
-) -> &'w mut E::Buffer
+) -> &'w mut B
 where
-    E: Send + Sync + 'static,
-    E::Base: HashExt + Send + Sync + Clone + 'static,
-    E::Buffer: Send + Sync + 'static,
+    S: HashExt + IntoBuffer<B> + Send + Sync + 'static,
+    B: Send + Sync + 'static,
     M: Send + Sync + 'static,
 {
     let mut res = world
-        .get_resource_mut::<EguiInspectorBuffers<E, M>>()
+        .get_resource_mut::<EguiInspectorBuffers<S, B, M>>()
         .unwrap();
     res.reset_if_needed(value, id);
     // SAFETY: This is safe because the buffers are only accessed from the inspector
     //         which should only be accessed from one thread. Additionally, every
     //         item ID should only be accessed once, mutably. There are never multiple references
     //         to any buffer.
-    unsafe { &mut *(&mut res.bufs.get_mut(&id).unwrap().buffer as *mut E::Buffer) }
+    unsafe { &mut *(&mut res.bufs.get_mut(&id).unwrap().buffer as *mut B) }
 }
 
-fn get_buffered_readonly<'w, E: EguiInspectorExtension, M>(
+fn get_buffered_readonly<'w, S, B, M>(
     world: &mut RestrictedWorldView<'w>,
-    value: &E::Base,
+    value: &S,
     id: egui::Id,
-) -> &'w E::Buffer
+) -> &'w B
 where
-    E: Send + Sync + 'static,
-    E::Base: HashExt + Send + Sync + Clone + 'static,
-    E::Buffer: Send + Sync + 'static,
+    S: HashExt + IntoBuffer<B> + Send + Sync + 'static,
+    B: Send + Sync + 'static,
     M: Send + Sync + 'static,
 {
     let mut res = world
-        .get_resource_mut::<EguiInspectorBuffers<E, M>>()
+        .get_resource_mut::<EguiInspectorBuffers<S, B, M>>()
         .unwrap();
     res.reset_if_needed(value, id);
     // SAFETY: This is safe because the buffers are only accessed from the inspector
@@ -216,7 +223,7 @@ where
     //         item ID should only be accessed once, mutably. There are never multiple references
     //         to any buffer.
     // TODO: Avoid unsafe altogether by using an RC pointer or something like that
-    unsafe { &*(&res.bufs.get(&id).unwrap().buffer as *const E::Buffer) }
+    unsafe { &*(&res.bufs.get(&id).unwrap().buffer as *const B) }
 }
 
 fn add_no_many<T: 'static>(
