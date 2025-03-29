@@ -187,8 +187,10 @@ impl Plugin for BetterInspectorPlugin {
             OrderedMap<PinId, ()>,
             Vec<(PinId, ())>,
         >::default());
+
         app.insert_resource(EguiInspectorBuffers::<String>::default());
         app.insert_resource(EguiInspectorBuffers::<EntityPath, String>::default());
+
         app.register_type::<HashMap<EntityPath, f32>>();
         app.register_type::<OrderedMap<PinId, DataValue>>();
         app.register_type::<OrderedMap<PinId, DataSpec>>();
