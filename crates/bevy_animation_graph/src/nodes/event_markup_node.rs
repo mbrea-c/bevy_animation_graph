@@ -20,7 +20,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Reflect, Clone, Debug, Serialize, Deserialize)]
 #[reflect(Default, NodeLike, Serialize, Deserialize)]
 pub struct EventMarkupNode {
-    event_tracks: HashMap<String, EventTrack>,
+    pub event_tracks: HashMap<String, EventTrack>,
 }
 
 impl Default for EventMarkupNode {

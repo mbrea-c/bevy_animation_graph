@@ -21,7 +21,7 @@ impl EditorWindowExtension for EventSenderWindow {
 
         ui.horizontal_wrapped(|ui| {
             scene_selection.event_table.retain(|ev| {
-                egui::Frame::none()
+                egui::Frame::NONE
                     .stroke(egui::Stroke::new(1., egui::Color32::WHITE))
                     .show(ui, |ui| {
                         ui.horizontal(|ui| {

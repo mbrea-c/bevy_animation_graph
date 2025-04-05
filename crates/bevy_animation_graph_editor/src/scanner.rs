@@ -1,8 +1,5 @@
 use crate::Cli;
 use bevy::{asset::LoadedUntypedAsset, prelude::*, utils::HashSet};
-use bevy_animation_graph::{
-    core::state_machine::high_level::StateMachine, prelude::AnimationGraph,
-};
 use std::{
     fs, io,
     path::{Path, PathBuf},
@@ -12,8 +9,6 @@ pub struct ScannerPlugin;
 impl Plugin for ScannerPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.insert_resource(PersistedAssetHandles {
-            unsaved_graphs: HashSet::default(),
-            unsaved_fsms: HashSet::default(),
             loaded_paths: HashSet::default(),
         })
         .add_event::<RescanAssets>()
@@ -27,8 +22,6 @@ impl Plugin for ScannerPlugin {
 pub struct PersistedAssetHandles {
     #[allow(dead_code)]
     pub loaded_paths: HashSet<Handle<LoadedUntypedAsset>>,
-    pub unsaved_graphs: HashSet<Handle<AnimationGraph>>,
-    pub unsaved_fsms: HashSet<Handle<StateMachine>>,
 }
 
 #[derive(Event)]

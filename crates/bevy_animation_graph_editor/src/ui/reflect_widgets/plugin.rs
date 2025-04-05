@@ -1,8 +1,14 @@
 use bevy::app::{App, Plugin};
+use bevy_animation_graph::{
+    core::{event_track::TrackItemValue, state_machine::high_level::StateMachine},
+    prelude::{AnimationGraph, GraphClip},
+};
 
 use super::{
-    checkbox::CheckboxInspector, entity_path::EntityPathInspector,
-    pattern_mapper::PatternMapperInspector, EguiInspectorExtensionRegistration,
+    asset_picker::AssetPickerInspector, checkbox::CheckboxInspector,
+    entity_path::EntityPathInspector, pattern_mapper::PatternMapperInspector,
+    submittable::SubmittableInspector, target_tracks::TargetTracksInspector,
+    EguiInspectorExtensionRegistration,
 };
 pub struct BetterInspectorPlugin;
 impl Plugin for BetterInspectorPlugin {
@@ -10,5 +16,11 @@ impl Plugin for BetterInspectorPlugin {
         EntityPathInspector.register(app);
         PatternMapperInspector.register(app);
         CheckboxInspector.register(app);
+        AssetPickerInspector::<AnimationGraph>::default().register(app);
+        AssetPickerInspector::<StateMachine>::default().register(app);
+        AssetPickerInspector::<GraphClip>::default().register(app);
+        TargetTracksInspector.register(app);
+        SubmittableInspector::<String>::default().register(app);
+        SubmittableInspector::<TrackItemValue>::default().register(app);
     }
 }

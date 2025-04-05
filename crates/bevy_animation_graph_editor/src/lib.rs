@@ -1,4 +1,3 @@
-mod asset_saving;
 mod egui_fsm;
 mod egui_nodes;
 mod fsm_show;
@@ -15,6 +14,7 @@ use bevy_inspector_egui::{bevy_egui, DefaultInspectorConfigPlugin};
 use clap::Parser;
 use scanner::ScannerPlugin;
 use std::path::PathBuf;
+use ui::actions::saving::DirtyAssets;
 use ui::actions::PendingActions;
 use ui::egui_inspector_impls::BetterInspectorPlugin;
 use ui::{graph_debug_draw_bone_system, UiState};
@@ -54,8 +54,10 @@ impl Plugin for AnimationGraphEditorPlugin {
             .add_plugins(DefaultInspectorConfigPlugin)
             .add_plugins(BetterInspectorPlugin)
             .add_plugins(ScannerPlugin)
+            // .add_plugins(WorldInspectorPlugin::new())
             .insert_resource(UiState::new())
             .insert_resource(PendingActions::default())
+            .insert_resource(DirtyAssets::default())
             .insert_resource(cli)
             .add_systems(
                 Update,

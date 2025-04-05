@@ -4,7 +4,7 @@ use crate::{
     graph_show::{GraphIndices, Pin},
 };
 use bevy::{
-    asset::{AssetId, Assets},
+    asset::{AssetId, Assets, Handle},
     ecs::world::World,
     log::info,
     math::Vec2,
@@ -58,7 +58,7 @@ pub struct FsmPropertiesChange {
 
 #[derive(Debug, Clone)]
 pub struct GraphChange {
-    pub graph: AssetId<AnimationGraph>,
+    pub graph: Handle<AnimationGraph>,
     pub change: Change,
 }
 
@@ -89,7 +89,7 @@ impl From<&StateMachine> for FsmPropertiesChange {
 pub fn convert_graph_change(
     graph_change: EguiGraphChange,
     graph_indices: &GraphIndices,
-    graph_id: AssetId<AnimationGraph>,
+    graph_handle: Handle<AnimationGraph>,
 ) -> GraphChange {
     let change = match graph_change {
         EguiGraphChange::LinkCreated(source_id, target_id) => {
@@ -135,7 +135,7 @@ pub fn convert_graph_change(
     };
 
     GraphChange {
-        graph: graph_id,
+        graph: graph_handle,
         change,
     }
 }
@@ -152,7 +152,7 @@ pub fn update_graph_asset(
     };
     let mut must_regen_indices = false;
     while let Some(change) = changes.pop() {
-        let graph = graph_assets.get_mut(change.graph).unwrap();
+        let graph = graph_assets.get_mut(&change.graph).unwrap();
         match change.change {
             Change::LinkCreated(source_pin, target_pin) => {
                 if let Ok(()) = graph.can_add_edge(

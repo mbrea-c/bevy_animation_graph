@@ -104,13 +104,13 @@ pub(crate) fn update_graph(world: &mut World, changes: Vec<GraphChange>) -> bool
 
 pub(crate) fn update_graph_indices(
     world: &mut World,
-    graph_id: AssetId<AnimationGraph>,
+    graph_handle: Handle<AnimationGraph>,
 ) -> GraphIndices {
-    let mut res = indices_one_step(world, graph_id);
+    let mut res = indices_one_step(world, graph_handle.clone());
 
     while let Err(changes) = &res {
         update_graph(world, changes.clone());
-        res = indices_one_step(world, graph_id);
+        res = indices_one_step(world, graph_handle.clone());
     }
 
     res.unwrap()
@@ -126,11 +126,11 @@ pub(crate) fn update_fsm_indices(world: &mut World, fsm_id: AssetId<StateMachine
 
 pub(crate) fn indices_one_step(
     world: &mut World,
-    graph_id: AssetId<AnimationGraph>,
+    graph_handle: Handle<AnimationGraph>,
 ) -> Result<GraphIndices, Vec<GraphChange>> {
     world.resource_scope::<Assets<AnimationGraph>, _>(|world, graph_assets| {
         world.resource_scope::<Assets<StateMachine>, _>(|_, fsm_assets| {
-            let graph = graph_assets.get(graph_id).unwrap();
+            let graph = graph_assets.get(&graph_handle).unwrap();
             let spec_context = SpecContext {
                 graph_assets: &graph_assets,
                 fsm_assets: &fsm_assets,
@@ -140,7 +140,7 @@ pub(crate) fn indices_one_step(
                 Err(targets) => Err(targets
                     .into_iter()
                     .map(|t| GraphChange {
-                        graph: graph_id,
+                        graph: graph_handle.clone(),
                         change: Change::LinkRemoved(t),
                     })
                     .collect()),
@@ -159,7 +159,7 @@ pub(crate) fn select_graph_context(
         return;
     };
 
-    let Some(available) = list_graph_contexts(world, |ctx| ctx.get_graph_id() == graph.graph)
+    let Some(available) = list_graph_contexts(world, |ctx| ctx.get_graph_id() == graph.graph.id())
     else {
         return;
     };
@@ -168,7 +168,10 @@ pub(crate) fn select_graph_context(
         return;
     };
 
-    let mut selected = scene.active_context.get(&graph.graph.untyped()).copied();
+    let mut selected = scene
+        .active_context
+        .get(&graph.graph.id().untyped())
+        .copied();
     egui::ComboBox::from_label("Active context")
         .selected_text(format!("{:?}", selected))
         .show_ui(ui, |ui| {
@@ -179,9 +182,11 @@ pub(crate) fn select_graph_context(
         });
 
     if let Some(selected) = selected {
-        scene.active_context.insert(graph.graph.untyped(), selected);
+        scene
+            .active_context
+            .insert(graph.graph.id().untyped(), selected);
     } else {
-        scene.active_context.remove(&graph.graph.untyped());
+        scene.active_context.remove(&graph.graph.id().untyped());
     }
 }
 

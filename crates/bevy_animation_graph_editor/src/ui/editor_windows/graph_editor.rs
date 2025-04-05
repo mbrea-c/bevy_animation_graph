@@ -1,8 +1,4 @@
-use bevy::{
-    asset::Assets,
-    input::ButtonInput,
-    prelude::{KeyCode, World},
-};
+use bevy::{asset::Assets, prelude::World};
 use bevy_animation_graph::{
     core::state_machine::high_level::StateMachine,
     prelude::{AnimationGraph, SpecContext},
@@ -13,10 +9,6 @@ use crate::{
     graph_show::GraphReprSpec,
     graph_update::convert_graph_change,
     ui::{
-        actions::{
-            saving::{RequestSaveGraph, SaveAction},
-            EditorAction,
-        },
         core::{EditorWindowContext, EditorWindowExtension, InspectorSelection, NodeSelection},
         utils,
     },
@@ -34,12 +26,12 @@ impl EditorWindowExtension for GraphEditorWindow {
 
         world.resource_scope::<Assets<AnimationGraph>, _>(|world, mut graph_assets| {
             world.resource_scope::<Assets<StateMachine>, _>(|world, fsm_assets| {
-                if !graph_assets.contains(graph_selection.graph) {
+                if !graph_assets.contains(&graph_selection.graph) {
                     return;
                 }
 
                 let changes = {
-                    let graph = graph_assets.get(graph_selection.graph).unwrap();
+                    let graph = graph_assets.get(&graph_selection.graph).unwrap();
                     let spec_context = SpecContext {
                         graph_assets: &graph_assets,
                         fsm_assets: &fsm_assets,
@@ -49,18 +41,19 @@ impl EditorWindowExtension for GraphEditorWindow {
                     if let (Some(scene), Some(available_contexts)) = (
                         &mut ctx.global_state.scene,
                         utils::list_graph_contexts(world, |ctx| {
-                            ctx.get_graph_id() == graph_selection.graph
+                            ctx.get_graph_id() == graph_selection.graph.id()
                         }),
                     ) {
                         if scene
                             .active_context
-                            .get(&graph_selection.graph.untyped())
+                            .get(&graph_selection.graph.id().untyped())
                             .is_none()
                             && !available_contexts.is_empty()
                         {
-                            scene
-                                .active_context
-                                .insert(graph_selection.graph.untyped(), available_contexts[0]);
+                            scene.active_context.insert(
+                                graph_selection.graph.id().untyped(),
+                                available_contexts[0],
+                            );
                         }
                     }
 
@@ -70,7 +63,7 @@ impl EditorWindowExtension for GraphEditorWindow {
                         .global_state
                         .scene
                         .as_ref()
-                        .and_then(|s| s.active_context.get(&graph_selection.graph.untyped()))
+                        .and_then(|s| s.active_context.get(&graph_selection.graph.id().untyped()))
                         .zip(graph_player)
                         .and_then(|(id, p)| Some(id).zip(p.get_context_arena()))
                         .and_then(|(id, ca)| ca.get_context(*id));
@@ -89,7 +82,11 @@ impl EditorWindowExtension for GraphEditorWindow {
                 }
                 .into_iter()
                 .map(|c| {
-                    convert_graph_change(c, &graph_selection.graph_indices, graph_selection.graph)
+                    convert_graph_change(
+                        c,
+                        &graph_selection.graph_indices,
+                        graph_selection.graph.clone(),
+                    )
                 });
                 ctx.graph_changes.extend(changes);
 
@@ -97,7 +94,7 @@ impl EditorWindowExtension for GraphEditorWindow {
                 // --- And enable debug render for latest node selected only
                 // ----------------------------------------------------------------
 
-                let graph = graph_assets.get_mut(graph_selection.graph).unwrap();
+                let graph = graph_assets.get_mut(&graph_selection.graph).unwrap();
                 for (_, node) in graph.nodes.iter_mut() {
                     node.should_debug = false;
                 }
@@ -123,12 +120,12 @@ impl EditorWindowExtension for GraphEditorWindow {
                             {
                                 node_selection.node.clone_from(node_name);
                                 node_selection.name_buf.clone_from(node_name);
-                                node_selection.graph = graph_selection.graph;
+                                node_selection.graph = graph_selection.graph.clone();
                             }
                         } else if graph_selection.nodes_context.is_node_just_selected() {
                             ctx.global_state.inspector_selection =
                                 InspectorSelection::Node(NodeSelection {
-                                    graph: graph_selection.graph,
+                                    graph: graph_selection.graph.clone(),
                                     node: node_name.clone(),
                                     name_buf: node_name.clone(),
                                     selected_pin_id: None,
@@ -139,20 +136,6 @@ impl EditorWindowExtension for GraphEditorWindow {
                 // ----------------------------------------------------------------
             });
         });
-
-        // --- Initiate graph saving if Ctrl+S pressed
-        // ----------------------------------------------------------------
-        world.resource_scope::<ButtonInput<KeyCode>, ()>(|_, input| {
-            if input.pressed(KeyCode::ControlLeft) && input.just_pressed(KeyCode::KeyS) {
-                ctx.editor_actions
-                    .push(EditorAction::Save(SaveAction::RequestGraph(
-                        RequestSaveGraph {
-                            graph: graph_selection.graph,
-                        },
-                    )));
-            }
-        });
-        // ----------------------------------------------------------------
     }
 
     fn display_name(&self) -> String {

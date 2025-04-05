@@ -20,7 +20,7 @@ impl EguiInspectorExtension for CheckboxInspector {
         _id: egui::Id,
         _env: InspectorUi<'_, '_>,
     ) -> bool {
-        ui.checkbox(value, "").changed
+        ui.checkbox(value, "").changed()
     }
 
     fn readonly(

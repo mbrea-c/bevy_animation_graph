@@ -1,4 +1,8 @@
+pub mod event_tracks;
+pub mod graph;
 pub mod saving;
+
+use std::any::Any;
 
 use bevy::{
     ecs::{
@@ -8,11 +12,12 @@ use bevy::{
     log::error,
 };
 use egui_dock::DockState;
+use event_tracks::{handle_event_track_action, EventTrackAction};
 use saving::{handle_save_action, SaveAction};
 
 use super::{
     core::{ViewAction, ViewState},
-    windows::WindowAction,
+    windows::{WindowAction, WindowId},
     UiState,
 };
 
@@ -40,6 +45,7 @@ pub enum EditorAction {
     Window(WindowAction),
     View(ViewAction),
     Save(SaveAction),
+    EventTrack(EventTrackAction),
 }
 
 pub fn handle_editor_action_queue(world: &mut World, actions: impl Iterator<Item = EditorAction>) {
@@ -61,6 +67,9 @@ pub fn handle_editor_action(world: &mut World, action: EditorAction) {
             }
         }
         EditorAction::Save(save_action) => handle_save_action(world, save_action),
+        EditorAction::EventTrack(event_track_action) => {
+            handle_event_track_action(world, event_track_action)
+        }
     }
 }
 
@@ -94,4 +103,13 @@ pub fn process_actions_system(world: &mut World) {
     world.resource_scope::<PendingActions, ()>(|world, mut actions| {
         handle_editor_action_queue(world, actions.actions.0.drain(..));
     });
+}
+
+impl PushQueue<EditorAction> {
+    pub fn window(&mut self, window: WindowId, event: impl Any + Send + Sync) {
+        self.push(EditorAction::Window(WindowAction {
+            target: window,
+            event: Box::new(event),
+        }))
+    }
 }

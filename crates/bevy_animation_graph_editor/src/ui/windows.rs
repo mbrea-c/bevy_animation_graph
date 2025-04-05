@@ -11,9 +11,13 @@ pub trait EditorWindowExtension: std::fmt::Debug + Send + Sync + 'static {
     fn display_name(&self) -> String;
     #[allow(unused_variables)]
     fn handle_action(&mut self, event: WindowAction) {}
+    fn closeable(&self) -> bool {
+        false
+    }
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct EditorWindow {
     id: WindowId,
     window: Box<dyn EditorWindowExtension>,
@@ -30,6 +34,10 @@ impl EditorWindowExtension for EditorWindow {
 
     fn handle_action(&mut self, event: WindowAction) {
         self.window.handle_action(event);
+    }
+
+    fn closeable(&self) -> bool {
+        self.window.closeable()
     }
 }
 

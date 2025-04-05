@@ -1,16 +1,14 @@
 use bevy::{
     app::Plugin,
-    asset::{Asset, AssetServer, Assets, Handle},
     ecs::{prelude::AppTypeRegistry, system::Resource},
     prelude::{App, Reflect},
     reflect::{FromReflect, PartialReflect, TypePath, TypeRegistry},
     utils::HashMap,
 };
 use bevy_animation_graph::core::{
-    animation_clip::{EntityPath, GraphClip},
+    animation_clip::EntityPath,
     animation_graph::{AnimationGraph, PinId},
     edge_data::{BoneMask, DataSpec, DataValue},
-    state_machine::high_level::StateMachine,
 };
 use bevy_inspector_egui::{
     egui,
@@ -100,22 +98,6 @@ impl Plugin for BetterInspectorPlugin {
         let type_registry = &mut type_registry;
 
         add_no_many::<String>(type_registry, string_mut, string_readonly);
-        add_no_many::<Handle<AnimationGraph>>(
-            type_registry,
-            asset_picker_ui::<AnimationGraph>,
-            todo_readonly_ui,
-        );
-        add_no_many::<Handle<StateMachine>>(
-            type_registry,
-            asset_picker_ui::<StateMachine>,
-            todo_readonly_ui,
-        );
-        add_no_many::<Handle<GraphClip>>(
-            type_registry,
-            asset_picker_ui::<GraphClip>,
-            todo_readonly_ui,
-        );
-
         add_no_many::<AnimationGraph>(type_registry, animation_graph_mut, todo_readonly_ui);
         add_no_many::<BoneMask>(type_registry, bone_mask_ui_mut, todo_readonly_ui);
         add_no_many::<HashMap<EntityPath, f32>>(
@@ -545,59 +527,6 @@ pub fn better_ordered_map<
     if should_write_back {
         *value = OrderedMap::from_vec(buffered);
         *buffered = value.to_vec();
-        true
-    } else {
-        false
-    }
-}
-
-pub fn asset_picker_ui<T: Asset>(
-    value: &mut dyn Any,
-    ui: &mut egui::Ui,
-    _options: &dyn Any,
-    id: egui::Id,
-    env: InspectorUi<'_, '_>,
-) -> bool {
-    let value = value.downcast_mut::<Handle<T>>().unwrap();
-    let value_id = value.id();
-
-    let (mut world_t_assets, world) = env
-        .context
-        .world
-        .as_mut()
-        .unwrap()
-        .split_off_resource(TypeId::of::<Assets<T>>());
-    let t_assets = world_t_assets.get_resource_mut::<Assets<T>>().unwrap();
-    let (asset_server, _) = world.split_off_resource_typed::<AssetServer>().unwrap();
-
-    let mut selected = value_id;
-    egui::ComboBox::from_id_salt(id)
-        .selected_text(if t_assets.contains(selected) {
-            asset_server
-                .get_path(selected)
-                .map(|p| p.path().to_string_lossy().into())
-                .unwrap_or("Unsaved Asset".to_string())
-        } else {
-            "None".to_string()
-        })
-        .show_ui(ui, |ui| {
-            let mut assets_ids: Vec<_> = t_assets.ids().collect();
-            assets_ids.sort();
-            for asset_id in assets_ids {
-                ui.selectable_value(
-                    &mut selected,
-                    asset_id,
-                    asset_server
-                        .get_path(asset_id)
-                        .unwrap()
-                        .path()
-                        .to_str()
-                        .unwrap(),
-                );
-            }
-        });
-    if selected != value_id {
-        *value = asset_server.get_id_handle(selected).unwrap();
         true
     } else {
         false

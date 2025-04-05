@@ -68,7 +68,7 @@ fn node_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorWindowCo
             .get_resource_mut::<Assets<AnimationGraph>>()
             .unwrap()
     };
-    let graph = graph_assets.get_mut(node_selection.graph).unwrap();
+    let graph = graph_assets.get_mut(&node_selection.graph).unwrap();
     let Some(node) = graph.nodes.get_mut(&node_selection.node) else {
         ctx.global_state.inspector_selection = InspectorSelection::Nothing;
         return;
@@ -81,7 +81,7 @@ fn node_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorWindowCo
                 node_selection.node.clone(),
                 node_selection.name_buf.clone(),
             ),
-            graph: node_selection.graph,
+            graph: node_selection.graph.clone(),
         });
     }
 
@@ -114,7 +114,7 @@ fn node_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorWindowCo
     if changed {
         changes.push(GraphChange {
             change: Change::GraphValidate,
-            graph: node_selection.graph,
+            graph: node_selection.graph.clone(),
         });
     }
 
@@ -264,7 +264,7 @@ fn graph_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorWindowC
             .get_resource_mut::<Assets<AnimationGraph>>()
             .unwrap()
     };
-    let graph = graph_assets.get_mut(graph_selection.graph).unwrap();
+    let graph = graph_assets.get_mut(&graph_selection.graph).unwrap();
 
     let type_registry = type_registry.read();
     let mut queue = CommandQueue::default();
@@ -275,12 +275,12 @@ fn graph_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorWindowC
     let mut env = InspectorUi::for_bevy(&type_registry, &mut cx);
 
     let changed =
-        env.ui_for_reflect_with_options(graph, ui, egui::Id::new(graph_selection.graph), &());
+        env.ui_for_reflect_with_options(graph, ui, egui::Id::new(&graph_selection.graph), &());
 
     if changed {
         changes.push(GraphChange {
             change: Change::GraphValidate,
-            graph: graph_selection.graph,
+            graph: graph_selection.graph.clone(),
         });
     }
 
@@ -537,7 +537,7 @@ fn node_creator(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorWindowCont
         let graph_selection = ctx.global_state.graph_editor.as_ref().unwrap();
         ctx.graph_changes.push(GraphChange {
             change: Change::NodeCreated(ctx.global_state.node_creation.node.clone()),
-            graph: graph_selection.graph,
+            graph: graph_selection.graph.clone(),
         });
     }
 

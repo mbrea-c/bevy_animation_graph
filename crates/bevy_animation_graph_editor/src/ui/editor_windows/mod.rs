@@ -7,6 +7,7 @@ pub mod graph_editor;
 pub mod graph_selector;
 pub mod inspector;
 pub mod preview_hierarchy;
+pub mod saving;
 pub mod scene_preview;
 pub mod scene_preview_errors;
 pub mod scene_selector;

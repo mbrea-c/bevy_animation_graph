@@ -27,14 +27,20 @@ impl EditorWindowExtension for PreviewHierarchyWindow {
         match utils::select_from_branches(ui, tree.0) {
             TreeResult::Leaf((_, path)) => {
                 let path = EntityPath { parts: path };
-                ui.output_mut(|o| o.copied_text = path.to_slashed_string());
+                ui.output_mut(|o| {
+                    o.commands
+                        .push(egui::OutputCommand::CopyText(path.to_slashed_string()))
+                });
                 ctx.notifications
                     .info(format!("{} copied to clipboard", path.to_slashed_string()));
                 ctx.global_state.entity_path = Some(path);
             }
             TreeResult::Node((_, path)) => {
                 let path = EntityPath { parts: path };
-                ui.output_mut(|o| o.copied_text = path.to_slashed_string());
+                ui.output_mut(|o| {
+                    o.commands
+                        .push(egui::OutputCommand::CopyText(path.to_slashed_string()))
+                });
                 ctx.notifications
                     .info(format!("{} copied to clipboard", path.to_slashed_string()));
                 ctx.global_state.entity_path = Some(path);

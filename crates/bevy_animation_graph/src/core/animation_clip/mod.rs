@@ -183,6 +183,14 @@ impl GraphClip {
         self.skeleton = skeleton;
     }
 
+    pub fn event_tracks(&self) -> &HashMap<String, EventTrack> {
+        &self.event_tracks
+    }
+
+    pub fn event_tracks_mut(&mut self) -> &mut HashMap<String, EventTrack> {
+        &mut self.event_tracks
+    }
+
     pub fn from_bevy_clip(
         bevy_clip: bevy::animation::AnimationClip,
         skeleton: Handle<Skeleton>,

@@ -48,9 +48,11 @@ impl EditorWindowExtension for DebuggerWindow {
             return;
         };
 
-        let Some(data_pin_map) =
-            utils::get_node_output_data_pins(world, node_selection.graph, &node_selection.node)
-        else {
+        let Some(data_pin_map) = utils::get_node_output_data_pins(
+            world,
+            node_selection.graph.id(),
+            &node_selection.node,
+        ) else {
             return;
         };
 
@@ -68,7 +70,7 @@ impl EditorWindowExtension for DebuggerWindow {
 
         let Some(graph_context) = scene_selection
             .active_context
-            .get(&graph_selection.graph.untyped())
+            .get(&graph_selection.graph.id().untyped())
             .and_then(|id| Some(id).zip(player.get_context_arena()))
             .and_then(|(id, ca)| ca.get_context(*id))
         else {

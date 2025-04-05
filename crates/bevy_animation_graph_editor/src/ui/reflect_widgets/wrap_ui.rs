@@ -11,7 +11,7 @@ use bevy::{
 use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
 use egui_dock::egui;
 
-use super::{get_buffered, HashExt, TopLevelBuffer};
+use super::{get_buffered, EguiInspectorBuffers, HashExt, TopLevelBuffer};
 
 pub struct WrapUi<'a, 'c> {
     inspector_ui: InspectorUi<'a, 'c>,
@@ -29,6 +29,7 @@ impl WrapUi<'_, '_> {
         T: PartialReflect + Clone + HashExt,
         O: 'static,
     {
+        self.initialize_buffer_if_missing::<T>();
         // First we get the buffered value
         let buf_val = get_buffered::<T, T, TopLevelBuffer>(
             self.inspector_ui.context.world.as_mut().unwrap(),
@@ -41,6 +42,27 @@ impl WrapUi<'_, '_> {
             .ui_for_reflect_with_options(buf_val, ui, id, options);
 
         is_changed.then(|| buf_val.clone())
+    }
+
+    fn initialize_buffer_if_missing<T>(&mut self)
+    where
+        T: PartialReflect + Clone + HashExt,
+    {
+        let Some(world) = self.inspector_ui.context.world.as_mut() else {
+            return;
+        };
+
+        if world
+            .get_resource_mut::<EguiInspectorBuffers<T, T, TopLevelBuffer>>()
+            .is_err()
+        {
+            unsafe {
+                world
+                    .world()
+                    .world_mut()
+                    .insert_resource(EguiInspectorBuffers::<T, T, TopLevelBuffer>::default());
+            }
+        }
     }
 }
 

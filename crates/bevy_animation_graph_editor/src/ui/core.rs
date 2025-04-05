@@ -58,7 +58,7 @@ pub fn show_ui_system(world: &mut World) {
 }
 
 pub struct GraphSelection {
-    pub graph: AssetId<AnimationGraph>,
+    pub graph: Handle<AnimationGraph>,
     pub graph_indices: GraphIndices,
     pub nodes_context: NodesContext,
 }
@@ -97,7 +97,7 @@ pub struct FsmStateSelection {
 }
 
 pub struct NodeSelection {
-    pub(crate) graph: AssetId<AnimationGraph>,
+    pub(crate) graph: Handle<AnimationGraph>,
     pub(crate) node: NodeId,
     pub(crate) name_buf: String,
     pub(crate) selected_pin_id: Option<PinId>,
@@ -242,6 +242,12 @@ impl UiState {
             queue.actions.push(EditorAction::View(view_action));
         }
 
+        if ctx.input(|i| i.modifiers.ctrl && i.key_pressed(egui::Key::S)) {
+            queue
+                .actions
+                .push(EditorAction::Save(SaveAction::RequestMultiple));
+        }
+
         let view_context = EditorViewContext {
             global_state: &mut self.global_state,
             windows: &mut self.windows,
@@ -350,7 +356,7 @@ impl egui_dock::TabViewer for TabViewer<'_> {
             if must_regen_indices {
                 if let Some(graph_selection) = self.context.global_state.graph_editor.as_mut() {
                     graph_selection.graph_indices =
-                        utils::update_graph_indices(self.world, graph_selection.graph);
+                        utils::update_graph_indices(self.world, graph_selection.graph.clone());
                 }
             }
         }
@@ -360,7 +366,7 @@ impl egui_dock::TabViewer for TabViewer<'_> {
         if must_regen_indices {
             if let Some(graph_selection) = self.context.global_state.graph_editor.as_mut() {
                 graph_selection.graph_indices =
-                    utils::update_graph_indices(self.world, graph_selection.graph);
+                    utils::update_graph_indices(self.world, graph_selection.graph.clone());
             }
             if let Some(fsm_selection) = self.context.global_state.fsm_editor.as_mut() {
                 fsm_selection.graph_indices =
@@ -382,10 +388,15 @@ impl egui_dock::TabViewer for TabViewer<'_> {
     }
 
     fn closeable(&mut self, tab: &mut Self::Tab) -> bool {
-        matches!(
-            tab,
-            EguiWindow::GraphSaver(_, _, _) | EguiWindow::FsmSaver(_, _, _)
-        )
+        match tab {
+            EguiWindow::GraphSaver(_, _, _) => true,
+            EguiWindow::FsmSaver(_, _, _) => true,
+            EguiWindow::DynWindow(window_id) => self
+                .context
+                .windows
+                .get_window(*window_id)
+                .map_or(false, |w| w.closeable()),
+        }
     }
 }
 
@@ -404,7 +415,7 @@ impl TabViewer<'_> {
             if ui.button("Save").clicked() {
                 *done = true;
                 editor_actions.push(EditorAction::Save(SaveAction::Graph(SaveGraph {
-                    graph: graph_id,
+                    asset_id: graph_id,
                     virtual_path: path.clone().into(),
                 })));
             }
@@ -424,7 +435,7 @@ impl TabViewer<'_> {
             if ui.button("Save").clicked() {
                 *done = true;
                 editor_actions.push(EditorAction::Save(SaveAction::Fsm(SaveFsm {
-                    fsm: fsm_id,
+                    asset_id: fsm_id,
                     virtual_path: path.clone().into(),
                 })));
             }
@@ -474,20 +485,20 @@ fn view_button(
     view: &ViewState,
     is_selected: bool,
 ) -> Option<ViewAction> {
-    egui::Frame::none()
+    egui::Frame::NONE
         .stroke((1., egui::Color32::DARK_GRAY))
-        .rounding(egui::Rounding {
-            nw: 3.,
-            ne: 3.,
-            sw: 0.,
-            se: 0.,
+        .corner_radius(egui::CornerRadius {
+            nw: 3,
+            ne: 3,
+            sw: 0,
+            se: 0,
         })
         .inner_margin(2.)
         .outer_margin(egui::Margin {
-            left: 0.,
-            right: 0.,
-            top: 0.,
-            bottom: 0.,
+            left: 0,
+            right: 0,
+            top: 0,
+            bottom: 0,
         })
         .fill(if is_selected {
             Color32::DARK_GRAY

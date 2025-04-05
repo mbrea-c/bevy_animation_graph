@@ -1,74 +1,84 @@
-use bevy::{prelude::World, utils::default};
-use bevy_animation_graph::core::{
-    edge_data::AnimationEvent,
-    event_track::{EventTrack, TrackItem},
+use std::{hash::Hash, usize};
+
+use bevy::{
+    asset::{Assets, Handle},
+    prelude::World,
+    reflect::Reflect,
+    utils::{default, HashMap},
 };
+use bevy_animation_graph::{
+    core::{
+        animation_graph::NodeId,
+        edge_data::AnimationEvent,
+        event_track::{EventTrack, TrackItem, TrackItemValue},
+    },
+    nodes::EventMarkupNode,
+    prelude::{AnimationGraph, GraphClip},
+};
+use egui::Sense;
 use egui_dock::egui;
+use uuid::Uuid;
 
 use crate::ui::{
+    actions::{
+        event_tracks::{EditEventAction, EventTrackAction, NewEventAction, NewTrackAction},
+        EditorAction,
+    },
     core::{EditorWindowContext, EditorWindowExtension},
-    utils,
+    reflect_widgets::{submittable::Submittable, wrap_ui::using_wrap_ui},
+    windows::WindowAction,
 };
 
 #[derive(Debug)]
 pub struct EventTrackEditorWindow {
+    scroll_config: ScrollConfig,
+    selected_track: Option<String>,
+    selected_event: Option<Uuid>,
+    target_tracks: Option<TargetTracks>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ScrollConfig {
     /// The time at the center of the window, in seconds
     center_time: f32,
     /// How much time is shown in the window, in seconds
     time_range: f32,
     /// How much we have scrolled "down", in tracks. It's possible to scroll a fraction of a track
     vertical_scroll: f32,
-    being_edited: Vec<EventTrack>,
-    buffer: TrackItem,
+}
+
+#[derive(Debug, Clone, Reflect, Hash)]
+pub enum TargetTracks {
+    Clip(Handle<GraphClip>),
+    GraphNode {
+        graph: Handle<AnimationGraph>,
+        node: NodeId,
+    },
+}
+
+#[derive(Debug, Clone, Copy)]
+struct ActiveTracks<'a> {
+    target: &'a TargetTracks,
+    tracks: &'a HashMap<String, EventTrack>,
+}
+
+pub enum EventTrackEditorAction {
+    SelectEvent { track_name: String, event_id: Uuid },
+    SetScrollConfig(ScrollConfig),
+    SetTrackSource(Option<TargetTracks>),
 }
 
 impl Default for EventTrackEditorWindow {
     fn default() -> Self {
         Self {
-            center_time: 0.,
-            time_range: 5.,
-            vertical_scroll: 0.,
-            being_edited: vec![
-                EventTrack {
-                    name: "Basic".into(),
-                    events: vec![TrackItem {
-                        event: AnimationEvent::StringId("test".into()),
-                        start_time: 1.,
-                        end_time: 4.,
-                    }],
-                },
-                EventTrack {
-                    name: "Packed".into(),
-                    events: vec![
-                        TrackItem {
-                            event: AnimationEvent::StringId("first".into()),
-                            start_time: 0.,
-                            end_time: 3.,
-                        },
-                        TrackItem {
-                            event: AnimationEvent::StringId("second".into()),
-                            start_time: 3.,
-                            end_time: 5.,
-                        },
-                    ],
-                },
-                EventTrack {
-                    name: "Overlapping".into(),
-                    events: vec![
-                        TrackItem {
-                            event: AnimationEvent::StringId("other first".into()),
-                            start_time: 0.,
-                            end_time: 4.,
-                        },
-                        TrackItem {
-                            event: AnimationEvent::StringId("other second".into()),
-                            start_time: 3.,
-                            end_time: 5.,
-                        },
-                    ],
-                },
-            ],
-            buffer: TrackItem::default(),
+            scroll_config: ScrollConfig {
+                center_time: 0.,
+                time_range: 5.,
+                vertical_scroll: 0.,
+            },
+            selected_track: None,
+            selected_event: None,
+            target_tracks: None,
         }
     }
 }
@@ -82,31 +92,145 @@ impl EditorWindowExtension for EventTrackEditorWindow {
             .default_width(200.)
             .min_width(100.)
             .show_inside(ui, |ui| {
-                self.draw_track_names(ui, &self.being_edited, timeline_height);
+                Self::with_tracks(
+                    ui,
+                    &self.target_tracks,
+                    world,
+                    |ui, world, active_tracks| {
+                        self.draw_track_names(ui, world, active_tracks, 2. * timeline_height, ctx);
+                    },
+                    |ui, _| {
+                        ui.label("No event track selected");
+                    },
+                );
             });
 
         egui::SidePanel::right("Event details")
             .resizable(true)
             .default_width(200.)
             .min_width(100.)
-            .show_inside(ui, |ui| self.draw_event_editor(ui, world, &self.buffer));
+            .show_inside(ui, |ui| {
+                Self::with_event(
+                    ui,
+                    &self.target_tracks,
+                    &self.selected_track,
+                    &self.selected_event,
+                    world,
+                    |ui, world, event| {
+                        self.draw_event_editor(ui, world, &event.value, ctx);
+                    },
+                    |_, _| {},
+                );
+            });
+
+        egui::TopBottomPanel::top("Asset selector")
+            .resizable(false)
+            .exact_height(timeline_height)
+            .frame(egui::Frame::NONE)
+            .show_inside(ui, |ui| {
+                self.draw_track_source_selector(ui, world, ctx);
+            });
 
         egui::TopBottomPanel::top("Timeline")
             .resizable(false)
             .exact_height(timeline_height)
-            .frame(egui::Frame::none())
+            .frame(egui::Frame::NONE)
             .show_inside(ui, |ui| {
                 self.draw_timeline(ui);
             });
 
+        Self::with_tracks(
+            ui,
+            &self.target_tracks,
+            world,
+            |ui, world, active_tracks| {
+                self.draw_event_tracks(ui, world, active_tracks, ctx);
+            },
+            |ui, _| {
+                ui.label("No event track selected");
+            },
+        );
+    }
+
+    fn display_name(&self) -> String {
+        "Edit tracks".to_string()
+    }
+
+    fn handle_action(&mut self, event: WindowAction) {
+        let Ok(editor_action): Result<Box<EventTrackEditorAction>, _> = event.event.downcast()
+        else {
+            return;
+        };
+
+        match *editor_action {
+            EventTrackEditorAction::SelectEvent {
+                track_name,
+                event_id,
+            } => {
+                self.selected_track = Some(track_name);
+                self.selected_event = Some(event_id);
+            }
+            EventTrackEditorAction::SetScrollConfig(scroll_config) => {
+                self.scroll_config = scroll_config
+            }
+            EventTrackEditorAction::SetTrackSource(target_tracks) => {
+                self.target_tracks = target_tracks;
+            }
+        }
+    }
+}
+
+impl EventTrackEditorWindow {
+    fn draw_event_tracks(
+        &self,
+        ui: &mut egui::Ui,
+        world: &mut World,
+        active_tracks: ActiveTracks,
+        ctx: &mut EditorWindowContext,
+    ) {
         let available_size = ui.available_size();
         let (_, rect) = ui.allocate_space(available_size);
 
-        for (track_number, track) in self.being_edited.iter().enumerate() {
-            for event in &track.events {
-                let response = self.draw_event(ui, rect, event, track_number);
+        let hovered_track_number = ui
+            .input(|i| i.pointer.latest_pos())
+            .and_then(|pos| rect.contains(pos).then_some(pos))
+            .map(|pos| self.pixel_to_track(pos.y, rect).floor())
+            .and_then(|pos| (pos >= 0.).then_some(pos))
+            .map(|pos| pos as usize);
+
+        let mut hovered_track = None;
+
+        for (track_number, track) in Self::sorted_tracks(active_tracks).enumerate() {
+            // Highlight currently hovered track row
+            if let Some(hovered_track_number) =
+                hovered_track_number.and_then(|t| (t == track_number).then_some(t))
+            {
+                hovered_track = Some(track.name.clone());
+                ui.painter().rect_filled(
+                    egui::Rect {
+                        min: egui::Pos2::new(
+                            rect.min.x,
+                            self.track_to_pixel(hovered_track_number as f32, rect),
+                        ),
+                        max: egui::Pos2::new(
+                            rect.max.x,
+                            self.track_to_pixel((hovered_track_number + 1) as f32, rect),
+                        ),
+                    },
+                    0.,
+                    egui::Color32::from_white_alpha(10),
+                );
+            }
+            for event in track.events.iter() {
+                let response = self.draw_event(ui, rect, &event.value, track_number);
                 if response.clicked() {
-                    self.buffer = event.clone();
+                    ctx.editor_actions.window(
+                        ctx.window_id,
+                        EventTrackEditorAction::SelectEvent {
+                            track_name: track.name.clone(),
+                            event_id: event.id,
+                        },
+                    );
                 }
             }
         }
@@ -124,29 +248,62 @@ impl EditorWindowExtension for EventTrackEditorWindow {
                             };
                     }
                 }
+                let mut current_config = self.scroll_config;
+
                 if i.modifiers.ctrl {
-                    self.time_range *= 1. - total_scroll * 0.1;
+                    current_config.time_range *= 1. - total_scroll * 0.1;
                 } else if i.modifiers.shift {
-                    self.vertical_scroll -= total_scroll;
+                    current_config.vertical_scroll -= total_scroll;
                 } else {
-                    self.center_time += total_scroll * 0.4;
+                    current_config.center_time += total_scroll * 0.4;
+                }
+
+                if current_config != self.scroll_config {
+                    ctx.editor_actions.window(
+                        ctx.window_id,
+                        EventTrackEditorAction::SetScrollConfig(current_config),
+                    );
                 }
             });
         }
+
+        Self::popup(
+            ui,
+            "Create event popup",
+            rect,
+            hovered_track.is_some(),
+            hovered_track,
+            |ui, last_hovered_track| {
+                ui.menu_button("New event", |ui| {
+                    if let Some(new_item) = using_wrap_ui(world, |mut env| {
+                        env.mutable_buffered(
+                            &Submittable {
+                                value: TrackItemValue::default(),
+                            },
+                            ui,
+                            ui.id(),
+                            &(),
+                        )
+                    }) {
+                        ctx.editor_actions.push(EditorAction::EventTrack(
+                            EventTrackAction::NewEvent(NewEventAction {
+                                target_tracks: active_tracks.target.clone(),
+                                track_id: last_hovered_track,
+                                item: TrackItem::new(new_item.value),
+                            }),
+                        ));
+                    }
+                });
+            },
+        );
     }
 
-    fn display_name(&self) -> String {
-        "Edit tracks".to_string()
-    }
-}
-
-impl EventTrackEditorWindow {
     /// Draw a single event in the track editor window
     fn draw_event(
         &self,
         ui: &mut egui::Ui,
         area_rect: egui::Rect,
-        event: &TrackItem,
+        event: &TrackItemValue,
         track_number: usize,
     ) -> egui::Response {
         let pixel_x_start = self.time_to_pixel(event.start_time, area_rect);
@@ -185,6 +342,7 @@ impl EventTrackEditorWindow {
                 width: 1.,
                 color: egui::Color32::LIGHT_GRAY,
             },
+            egui::StrokeKind::Middle,
         );
 
         if area_rect.intersects(rect) {
@@ -206,13 +364,15 @@ impl EventTrackEditorWindow {
     fn draw_track_names(
         &self,
         ui: &mut egui::Ui,
-        tracks: &Vec<EventTrack>,
+        world: &mut World,
+        active_tracks: ActiveTracks,
         vertical_offset_pixels: f32,
+        ctx: &mut EditorWindowContext,
     ) {
         let available_size = ui.available_size();
         let (_, area_rect) = ui.allocate_space(available_size);
 
-        for (track_number, track) in tracks.iter().enumerate() {
+        for (track_number, track) in active_tracks.tracks.values().enumerate() {
             let pixel_y_start =
                 self.track_to_pixel(track_number as f32, area_rect) + vertical_offset_pixels;
             let pixel_y_end =
@@ -237,6 +397,35 @@ impl EventTrackEditorWindow {
                 );
             }
         }
+
+        Self::popup(
+            ui,
+            "Create track popup",
+            area_rect,
+            true,
+            Some(()),
+            |ui, ()| {
+                ui.menu_button("New track", |ui| {
+                    if let Some(new_track) = using_wrap_ui(world, |mut env| {
+                        env.mutable_buffered(
+                            &Submittable {
+                                value: "".to_string(),
+                            },
+                            ui,
+                            ui.id(),
+                            &(),
+                        )
+                    }) {
+                        ctx.editor_actions.push(EditorAction::EventTrack(
+                            EventTrackAction::NewTrack(NewTrackAction {
+                                target_tracks: active_tracks.target.clone(),
+                                track_id: new_track.value,
+                            }),
+                        ));
+                    }
+                })
+            },
+        );
     }
 
     fn draw_timeline(&self, ui: &mut egui::Ui) {
@@ -278,36 +467,242 @@ impl EventTrackEditorWindow {
         }
     }
 
-    fn draw_event_editor(&self, ui: &mut egui::Ui, world: &mut World, event: &TrackItem) {
-        utils::using_inspector_env(world, |mut env| {
-            env.ui_for_reflect_readonly(event, ui);
-            if ui.button("Update").clicked() {
-                println!("update should happen");
+    fn draw_track_source_selector(
+        &self,
+        ui: &mut egui::Ui,
+        world: &mut World,
+        ctx: &mut EditorWindowContext,
+    ) {
+        ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
+            if let Some(new_selection) = using_wrap_ui(world, |mut env| {
+                env.mutable_buffered(
+                    &self.target_tracks,
+                    ui,
+                    ui.id().with("track source selector"),
+                    &(),
+                )
+            }) {
+                ctx.editor_actions.window(
+                    ctx.window_id,
+                    EventTrackEditorAction::SetTrackSource(new_selection),
+                );
             }
         });
     }
 
+    fn draw_event_editor(
+        &self,
+        ui: &mut egui::Ui,
+        world: &mut World,
+        event: &TrackItemValue,
+        ctx: &mut EditorWindowContext,
+    ) {
+        if let Some(edited_event) = using_wrap_ui(world, |mut env| {
+            env.mutable_buffered(
+                &Submittable {
+                    value: event.clone(),
+                },
+                ui,
+                ui.id().with("track event editor"),
+                &(),
+            )
+        }) {
+            ctx.editor_actions
+                .push(EditorAction::EventTrack(EventTrackAction::EditEvent(
+                    EditEventAction {
+                        target_tracks: self.target_tracks.clone().unwrap(),
+                        track_id: self.selected_track.clone().unwrap(),
+                        event_id: self.selected_event.clone().unwrap(),
+                        item: edited_event.value,
+                    },
+                )));
+        }
+    }
+
     fn left_time(&self) -> f32 {
-        self.center_time - self.time_range / 2.
+        self.scroll_config.center_time - self.scroll_config.time_range / 2.
     }
 
     fn right_time(&self) -> f32 {
-        self.center_time + self.time_range / 2.
+        self.scroll_config.center_time + self.scroll_config.time_range / 2.
     }
 
     // Pretty naive time interval calculation. In the future we may want
     // to "snap" to more "rounder", human readable values
     fn timeline_interval(&self) -> f32 {
-        self.time_range / 10.
+        self.scroll_config.time_range / 10.
     }
 
     /// Supports track fractional numbers
     fn track_to_pixel(&self, track_number: f32, viewport: egui::Rect) -> f32 {
-        viewport.top() + (track_number - self.vertical_scroll) * 20.
+        viewport.top() + (track_number - self.scroll_config.vertical_scroll) * 20.
     }
 
     fn time_to_pixel(&self, time: f32, viewport: egui::Rect) -> f32 {
-        let time_to_pixel = viewport.width() / self.time_range;
+        let time_to_pixel = viewport.width() / self.scroll_config.time_range;
         viewport.left() + (time - self.left_time()) * time_to_pixel
+    }
+
+    /// Supports track fractional numbers
+    fn pixel_to_track(&self, pixel: f32, viewport: egui::Rect) -> f32 {
+        self.scroll_config.vertical_scroll + (pixel - viewport.top()) / 20.
+    }
+
+    fn with_event<F, G, T>(
+        ui: &mut egui::Ui,
+        target: &Option<TargetTracks>,
+        track_id: &Option<String>,
+        event_id: &Option<Uuid>,
+        world: &mut World,
+        f: F,
+        g: G,
+    ) -> T
+    where
+        F: FnOnce(&mut egui::Ui, &mut World, &TrackItem) -> T,
+        G: FnOnce(&mut egui::Ui, &mut World) -> T + Clone,
+    {
+        let (Some(track_id), Some(event_id)) = (track_id, event_id) else {
+            return g(ui, world);
+        };
+
+        let gg = g.clone();
+
+        Self::with_tracks(
+            ui,
+            target,
+            world,
+            |ui, world, active_tracks| {
+                if let Some(event) = active_tracks
+                    .tracks
+                    .get(track_id)
+                    .and_then(|track| track.events.iter().filter(|e| e.id == *event_id).next())
+                {
+                    f(ui, world, event)
+                } else {
+                    gg(ui, world)
+                }
+            },
+            g,
+        )
+    }
+
+    fn with_tracks<F, G, T>(
+        ui: &mut egui::Ui,
+        target: &Option<TargetTracks>,
+        world: &mut World,
+        f: F,
+        g: G,
+    ) -> T
+    where
+        F: FnOnce(&mut egui::Ui, &mut World, ActiveTracks) -> T,
+        G: FnOnce(&mut egui::Ui, &mut World) -> T,
+    {
+        if let Some(target) = target {
+            match target {
+                TargetTracks::Clip(asset_id) => {
+                    world.resource_scope::<Assets<GraphClip>, _>(|world, graph_clips| {
+                        if let Some(tracks) =
+                            graph_clips.get(asset_id.id()).map(|c| c.event_tracks())
+                        {
+                            f(ui, world, ActiveTracks { tracks, target })
+                        } else {
+                            g(ui, world)
+                        }
+                    })
+                }
+                TargetTracks::GraphNode { graph, node } => world
+                    .resource_scope::<Assets<AnimationGraph>, _>(|world, anim_graphs| {
+                        if let Some(tracks) = anim_graphs
+                            .get(graph.id())
+                            .and_then(|g| g.nodes.get(node))
+                            .and_then(|n| n.inner.as_any().downcast_ref::<EventMarkupNode>())
+                            .map(|n| &n.event_tracks)
+                        {
+                            f(ui, world, ActiveTracks { target, tracks })
+                        } else {
+                            g(ui, world)
+                        }
+                    }),
+            }
+        } else {
+            g(ui, world)
+        }
+    }
+
+    /// Returns the tracks sorted lexicographically
+    fn sorted_tracks<'a>(tracks: ActiveTracks<'a>) -> impl Iterator<Item = &'a EventTrack> {
+        let mut track_vec = tracks.tracks.iter().collect::<Vec<_>>();
+        track_vec.sort_by_key(|(k, _)| *k);
+        track_vec.into_iter().map(|t| t.1)
+    }
+
+    fn popup<T, S: Default + Clone + Send + Sync + 'static>(
+        ui: &mut egui::Ui,
+        salt: impl Hash,
+        allowable_rect: egui::Rect,
+        allow_opening: bool,
+        save_on_click: Option<S>,
+        popup_ui: impl FnOnce(&mut egui::Ui, S) -> T,
+    ) -> Option<T> {
+        let popup_id = ui.id().with(&salt);
+
+        if allow_opening {
+            if ui.input(|i| i.pointer.secondary_clicked())
+                && ui
+                    .input(|i| i.pointer.interact_pos())
+                    .map_or(false, |p| allowable_rect.contains(p))
+            {
+                let pointer_pos = ui
+                    .input(|i| i.pointer.interact_pos())
+                    .unwrap_or(egui::Pos2::default());
+                ui.memory_mut(|mem| mem.open_popup(popup_id));
+                if let Some(save_on_click) = save_on_click {
+                    ui.memory_mut(|mem| {
+                        mem.data
+                            .insert_persisted(popup_id, (pointer_pos, save_on_click))
+                    })
+                }
+            }
+        }
+
+        let (pointer_pos, saved_on_click) = ui
+            .memory_mut(|mem| mem.data.get_persisted(popup_id))
+            .unwrap_or_default();
+
+        // We need to do some response hacking, since it's otherwise nontrivial
+        // to draw a popup on right click position.
+        //
+        // The alternative is to implement our own popup widget, which I'm reluctant
+        // to do now given that egui 0.32 is overhauling popups.
+        let new_rect = egui::Rect {
+            min: pointer_pos,
+            max: pointer_pos + egui::Vec2::new(80., 0.),
+        };
+
+        let response = egui::Response {
+            ctx: ui.ctx().clone(),
+            layer_id: ui.layer_id(),
+            id: popup_id,
+            rect: new_rect,
+            interact_rect: new_rect,
+            sense: Sense::click(),
+            interact_pointer_pos: None,
+            intrinsic_size: None,
+            flags: egui::response::Flags::ENABLED,
+        };
+
+        egui::popup_above_or_below_widget(
+            ui,
+            popup_id,
+            &response,
+            egui::AboveOrBelow::Below,
+            egui::popup::PopupCloseBehavior::IgnoreClicks,
+            |ui| {
+                if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+                    ui.memory_mut(|mem| mem.close_popup());
+                }
+                popup_ui(ui, saved_on_click)
+            },
+        )
     }
 }

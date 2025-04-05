@@ -1,8 +1,4 @@
-use bevy::{
-    asset::Assets,
-    input::ButtonInput,
-    prelude::{KeyCode, World},
-};
+use bevy::{asset::Assets, prelude::World};
 use bevy_animation_graph::{
     core::state_machine::high_level::StateMachine, prelude::AnimationGraph,
 };
@@ -12,10 +8,6 @@ use crate::{
     fsm_show::FsmReprSpec,
     graph_update::convert_fsm_change,
     ui::{
-        actions::{
-            saving::{RequestSaveFsm, SaveAction},
-            EditorAction,
-        },
         core::{
             EditorWindowContext, EditorWindowExtension, FsmStateSelection, FsmTransitionSelection,
             InspectorSelection,
@@ -148,18 +140,6 @@ impl EditorWindowExtension for FsmEditorWindow {
                 // ----------------------------------------------------------------
             });
         });
-
-        // --- Initiate fsm saving if Ctrl+S pressed
-        // ----------------------------------------------------------------
-        world.resource_scope::<ButtonInput<KeyCode>, ()>(|_, input| {
-            if input.pressed(KeyCode::ControlLeft) && input.just_pressed(KeyCode::KeyS) {
-                ctx.editor_actions
-                    .push(EditorAction::Save(SaveAction::RequestFsm(RequestSaveFsm {
-                        fsm: fsm_selection.fsm,
-                    })));
-            }
-        });
-        // ----------------------------------------------------------------
     }
 
     fn display_name(&self) -> String {

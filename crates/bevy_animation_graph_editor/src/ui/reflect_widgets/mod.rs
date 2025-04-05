@@ -1,15 +1,22 @@
 use std::{
     any::{Any, TypeId},
-    hash::{DefaultHasher, Hash, Hasher},
+    path::PathBuf,
 };
 
 use bevy::{
     app::App,
+    asset::Handle,
     ecs::{reflect::AppTypeRegistry, system::Resource},
-    reflect::{PartialReflect, TypeRegistry},
+    reflect::{PartialReflect, Reflect, Reflectable, TypeRegistry},
     utils::HashMap,
 };
-use bevy_animation_graph::{core::animation_clip::EntityPath, prelude::config::PatternMapper};
+use bevy_animation_graph::{
+    core::{
+        animation_clip::EntityPath, event_track::TrackItemValue,
+        state_machine::high_level::StateMachine,
+    },
+    prelude::{config::PatternMapper, AnimationGraph, GraphClip},
+};
 use bevy_inspector_egui::{
     inspector_egui_impls::InspectorEguiImpl,
     reflect_inspector::{InspectorUi, ProjectorReflect},
@@ -17,14 +24,17 @@ use bevy_inspector_egui::{
 };
 use egui_dock::egui;
 
+pub mod asset_picker;
 pub mod checkbox;
 pub mod entity_path;
 pub mod pattern_mapper;
 pub mod plugin;
+pub mod submittable;
+pub mod target_tracks;
 pub mod wrap_ui;
 
 pub trait EguiInspectorExtension: Sized {
-    type Base: Clone + IntoBuffer<Self::Buffer> + Sized + Send + Sync + 'static;
+    type Base: Reflectable + Clone + IntoBuffer<Self::Buffer> + Sized + Send + Sync + 'static;
     type Buffer: Default + Send + Sync + 'static;
 
     fn mutable(
@@ -49,11 +59,12 @@ pub trait EguiInspectorExtension: Sized {
 pub trait EguiInspectorExtensionRegistration:
     EguiInspectorExtension + Sized + Send + Sync + 'static
 where
-    Self::Base: HashExt,
+    Self::Base: HashExt + std::fmt::Debug,
 {
     fn register(self, app: &mut App) {
+        app.register_type::<Self::Base>();
         // Working buffer
-        app.insert_resource(EguiInspectorBuffers::<Self::Base, Self::Buffer, Self>::default());
+        app.insert_resource(EguiInspectorBuffers::<Self::Base, Self::Buffer>::default());
         // Top level buffer for non-dynamic
         app.insert_resource(
             EguiInspectorBuffers::<Self::Base, Self::Base, TopLevelBuffer>::default(),
@@ -102,7 +113,7 @@ where
 impl<T: EguiInspectorExtension + Sized + Send + Sync + 'static> EguiInspectorExtensionRegistration
     for T
 where
-    T::Base: HashExt,
+    T::Base: HashExt + std::fmt::Debug,
 {
 }
 
@@ -120,6 +131,7 @@ impl<T: Clone> IntoBuffer<T> for T {
     }
 }
 
+#[derive(Debug, Reflect)]
 struct BufferField<B> {
     buffer: B,
     /// The hash of the original value this buffer is for.
@@ -128,9 +140,10 @@ struct BufferField<B> {
     start_hash: u64,
 }
 
+#[derive(Debug, Reflect)]
 pub struct TopLevelBuffer;
 
-#[derive(Resource)]
+#[derive(Resource, Debug, Reflect)]
 struct EguiInspectorBuffers<S, B, M = ()> {
     bufs: HashMap<egui::Id, BufferField<B>>,
     /// marker for source type (which isn't stored but used to determine when to flush cache)
@@ -262,10 +275,11 @@ type InspectorEguiImplFnReadonly =
 #[macro_export]
 macro_rules! impl_hash_ext_from_hash {
     ( $($t:ty),* ) => {
-    $( impl HashExt for $t
+    $( impl crate::ui::reflect_widgets::HashExt for $t
     {
         fn hash_ext(&self) -> u64 {
-            let mut hasher = DefaultHasher::new();
+            use std::hash::{Hash, Hasher};
+            let mut hasher = std::hash::DefaultHasher::new();
             self.hash(&mut hasher);
             hasher.finish()
         }
@@ -273,4 +287,14 @@ macro_rules! impl_hash_ext_from_hash {
     }
 }
 
-impl_hash_ext_from_hash! { PatternMapper, EntityPath, bool }
+impl_hash_ext_from_hash! {
+    PatternMapper,
+    EntityPath,
+    bool,
+    TrackItemValue,
+    Handle<AnimationGraph>,
+    Handle<GraphClip>,
+    Handle<StateMachine>,
+    String,
+    PathBuf
+}
