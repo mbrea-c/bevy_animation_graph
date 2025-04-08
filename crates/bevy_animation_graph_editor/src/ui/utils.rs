@@ -162,7 +162,9 @@ pub(crate) fn select_graph_context_fsm(
         world.resource_scope::<Assets<AnimationGraph>, _>(|world, graph_assets| {
             list_graph_contexts(world, |ctx| {
                 let graph_id = ctx.get_graph_id();
-                let graph = graph_assets.get(graph_id).unwrap();
+                let Some(graph) = graph_assets.get(graph_id) else {
+                    return false;
+                };
                 graph.contains_state_machine(fsm.fsm.id()).is_some()
             })
         })

@@ -1,8 +1,12 @@
-use std::path::PathBuf;
+use std::{any::TypeId, path::PathBuf};
 
 use bevy::{
     asset::{AssetPath, UntypedAssetId},
     prelude::World,
+};
+use bevy_animation_graph::{
+    core::state_machine::high_level::StateMachine,
+    prelude::{AnimationGraph, GraphClip},
 };
 use egui_dock::egui;
 
@@ -39,6 +43,7 @@ impl SaveWindow {
 impl EditorWindowExtension for SaveWindow {
     fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
         for meta in &mut self.assets {
+            ui.label(Self::displays_type_name(meta.id.type_id()));
             ui.horizontal(|ui| {
                 ui.checkbox(&mut meta.should_save, "Save");
                 if let Some(path) = &meta.current_path {
@@ -95,5 +100,19 @@ impl EditorWindowExtension for SaveWindow {
 
     fn closeable(&self) -> bool {
         true
+    }
+}
+
+impl SaveWindow {
+    fn displays_type_name(type_id: TypeId) -> String {
+        if type_id == TypeId::of::<AnimationGraph>() {
+            "Animation Graph".into()
+        } else if type_id == TypeId::of::<StateMachine>() {
+            "State Machine".into()
+        } else if type_id == TypeId::of::<GraphClip>() {
+            "Animation Clip".into()
+        } else {
+            "Unknown type (?)".into()
+        }
     }
 }

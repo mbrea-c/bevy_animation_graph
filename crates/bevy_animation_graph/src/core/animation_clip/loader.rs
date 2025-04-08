@@ -1,6 +1,7 @@
 use bevy::{
     asset::{io::Reader, AssetLoader, LoadContext},
     gltf::Gltf,
+    reflect::Reflect,
     utils::HashMap,
 };
 use serde::{Deserialize, Serialize};
@@ -9,7 +10,7 @@ use crate::core::{errors::AssetLoaderError, event_track::EventTrack};
 
 use super::GraphClip;
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Reflect, Serialize, Deserialize, Clone, Debug)]
 pub enum GraphClipSource {
     GltfNamed {
         path: String,
@@ -43,7 +44,7 @@ impl AssetLoader for GraphClipLoader {
         reader.read_to_end(&mut bytes).await?;
         let serial: GraphClipSerial = ron::de::from_bytes(&bytes)?;
 
-        let bevy_clip = match serial.source {
+        let bevy_clip = match &serial.source {
             GraphClipSource::GltfNamed {
                 path,
                 animation_name,
@@ -60,11 +61,11 @@ impl AssetLoader for GraphClipLoader {
                     .named_animations
                     .get(&animation_name.clone().into_boxed_str())
                 else {
-                    return Err(AssetLoaderError::GltfMissingLabel(animation_name));
+                    return Err(AssetLoaderError::GltfMissingLabel(animation_name.clone()));
                 };
 
                 let Some(clip_path) = clip_handle.path() else {
-                    return Err(AssetLoaderError::GltfMissingLabel(animation_name));
+                    return Err(AssetLoaderError::GltfMissingLabel(animation_name.clone()));
                 };
 
                 let clip_bevy: bevy::animation::AnimationClip = gltf_loaded_asset
@@ -80,12 +81,36 @@ impl AssetLoader for GraphClipLoader {
 
         let skeleton = load_context.loader().load(serial.skeleton);
 
-        let clip_mine = GraphClip::from_bevy_clip(bevy_clip, skeleton, serial.event_tracks);
+        let clip_mine = GraphClip::from_bevy_clip(
+            bevy_clip,
+            skeleton,
+            serial.event_tracks,
+            Some(serial.source.clone()),
+        );
 
         Ok(clip_mine)
     }
 
     fn extensions(&self) -> &[&str] {
         &["anim.ron"]
+    }
+}
+
+impl TryFrom<&GraphClip> for GraphClipSerial {
+    type Error = ();
+
+    fn try_from(value: &GraphClip) -> Result<Self, Self::Error> {
+        let Some(source) = value.source.clone() else {
+            return Err(());
+        };
+
+        Ok(Self {
+            source,
+            skeleton: value
+                .skeleton
+                .path()
+                .map_or(Err(()), |s| Ok(s.to_string()))?,
+            event_tracks: value.event_tracks.clone(),
+        })
     }
 }

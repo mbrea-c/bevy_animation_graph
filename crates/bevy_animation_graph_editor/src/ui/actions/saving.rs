@@ -9,6 +9,7 @@ use crate::{
 use bevy::{asset::UntypedAssetId, prelude::*, utils::HashMap};
 use bevy_animation_graph::{
     core::{
+        animation_clip::loader::GraphClipSerial,
         animation_graph::{serial::AnimationGraphSerializer, AnimationGraph},
         state_machine::high_level::{serial::StateMachineSerial, StateMachine},
     },
@@ -42,6 +43,11 @@ pub struct SaveGraph {
 
 pub struct SaveFsm {
     pub asset_id: AssetId<StateMachine>,
+    pub virtual_path: PathBuf,
+}
+
+pub struct SaveClip {
+    pub asset_id: AssetId<GraphClip>,
     pub virtual_path: PathBuf,
 }
 
@@ -127,6 +133,39 @@ pub fn handle_save_fsm(
     }
 }
 
+pub fn handle_save_animation_clip(
+    In(save_fsm): In<SaveClip>,
+    asset_server: Res<AssetServer>,
+    clip_assets: Res<Assets<GraphClip>>,
+    mut ui_state: ResMut<UiState>,
+    cli: Res<Cli>,
+) {
+    let clip = clip_assets.get(save_fsm.asset_id).unwrap();
+    let Ok(clip_serial) = GraphClipSerial::try_from(clip) else {
+        error!("Could not save graph clip asset");
+        return;
+    };
+    let mut final_path = cli.asset_source.clone();
+    final_path.push(&save_fsm.virtual_path);
+    info!(
+        "Saving animation clip with id {:?} to {:?}",
+        save_fsm.asset_id, final_path
+    );
+    ron::ser::to_writer_pretty(
+        std::fs::File::create(final_path).unwrap(),
+        &clip_serial,
+        ron::ser::PrettyConfig::default(),
+    )
+    .unwrap();
+
+    // If we just saved a newly created graph, unload the in-memory asset from the
+    // editor selection.
+    // Also delete the temporary asset
+    if asset_server.get_path(save_fsm.asset_id).is_none() {
+        ui_state.global_state.fsm_editor = None;
+    }
+}
+
 pub fn handle_save_multiple(
     In(action): In<SaveMultiple>,
     mut commands: Commands,
@@ -153,7 +192,13 @@ pub fn handle_save_multiple(
                 },
             );
         } else if let Ok(asset_id) = asset_id.try_typed::<GraphClip>() {
-            todo!();
+            commands.run_system_cached_with(
+                handle_save_animation_clip,
+                SaveClip {
+                    asset_id,
+                    virtual_path,
+                },
+            );
         }
     }
 }

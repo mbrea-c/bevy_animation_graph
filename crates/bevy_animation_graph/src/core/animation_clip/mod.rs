@@ -7,6 +7,7 @@ use bevy::{
     reflect::prelude::*,
     utils::HashMap,
 };
+use loader::GraphClipSource;
 use serde::{Deserialize, Serialize};
 
 use super::{event_track::EventTrack, id, skeleton::Skeleton};
@@ -149,6 +150,8 @@ pub struct GraphClip {
     // AnimationCurves are non-reflectable
     #[reflect(ignore)]
     pub(crate) curves: AnimationCurves,
+    /// If loaded from a [`GraphClipSerial`], what was the source?
+    pub(crate) source: Option<GraphClipSource>,
     pub(crate) duration: f32,
     pub(crate) skeleton: Handle<Skeleton>,
     pub(crate) event_tracks: HashMap<String, EventTrack>,
@@ -195,12 +198,14 @@ impl GraphClip {
         bevy_clip: bevy::animation::AnimationClip,
         skeleton: Handle<Skeleton>,
         event_tracks: HashMap<String, EventTrack>,
+        source: Option<GraphClipSource>,
     ) -> Self {
         Self {
             curves: bevy_clip.curves().clone(),
             duration: bevy_clip.duration(),
             skeleton,
             event_tracks,
+            source,
         }
     }
 }
