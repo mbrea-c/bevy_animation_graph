@@ -1,18 +1,25 @@
+//! Actions are the way we mutate editor state. When UI code wants to change something, they should
+//! do it through an editor action.
+//!
+//! This will pave the way for undo/redo support later on.
+
 pub mod event_tracks;
+pub mod fsm;
 pub mod graph;
 pub mod saving;
 
-use std::any::Any;
+use std::{any::Any, fmt::Display};
 
 use bevy::{
     ecs::{
-        system::{In, ResMut, Resource},
+        system::{In, IntoSystem, ResMut, Resource, SystemInput},
         world::World,
     },
     log::error,
 };
 use egui_dock::DockState;
 use event_tracks::{handle_event_track_action, EventTrackAction};
+use fsm::{handle_fsm_action, FsmAction};
 use graph::{handle_graph_action, GraphAction};
 use saving::{handle_save_action, SaveAction};
 
@@ -48,6 +55,7 @@ pub enum EditorAction {
     Save(SaveAction),
     EventTrack(EventTrackAction),
     Graph(GraphAction),
+    Fsm(FsmAction),
 }
 
 pub fn handle_editor_action_queue(world: &mut World, actions: impl Iterator<Item = EditorAction>) {
@@ -58,21 +66,20 @@ pub fn handle_editor_action_queue(world: &mut World, actions: impl Iterator<Item
 
 pub fn handle_editor_action(world: &mut World, action: EditorAction) {
     match action {
-        EditorAction::Window(window_action) => {
-            if let Err(err) = world.run_system_cached_with(handle_window_action, window_action) {
+        EditorAction::Window(action) => {
+            if let Err(err) = world.run_system_cached_with(handle_window_action, action) {
                 error!("Failed to apply window action: {:?}", err);
             }
         }
-        EditorAction::View(view_action) => {
-            if let Err(err) = world.run_system_cached_with(handle_view_action, view_action) {
+        EditorAction::View(action) => {
+            if let Err(err) = world.run_system_cached_with(handle_view_action, action) {
                 error!("Failed to apply view action: {:?}", err);
             }
         }
-        EditorAction::Save(save_action) => handle_save_action(world, save_action),
-        EditorAction::EventTrack(event_track_action) => {
-            handle_event_track_action(world, event_track_action)
-        }
-        EditorAction::Graph(graph_action) => handle_graph_action(world, graph_action),
+        EditorAction::Save(action) => handle_save_action(world, action),
+        EditorAction::EventTrack(action) => handle_event_track_action(world, action),
+        EditorAction::Graph(action) => handle_graph_action(world, action),
+        EditorAction::Fsm(action) => handle_fsm_action(world, action),
     }
 }
 
@@ -114,5 +121,21 @@ impl PushQueue<EditorAction> {
             target: window,
             event: Box::new(event),
         }))
+    }
+}
+
+pub fn run_handler<'w, I, O, M, S>(
+    world: &'w mut World,
+    msg: impl Display + 'static,
+) -> impl FnOnce(S, I::Inner<'_>) + 'w
+where
+    I: SystemInput + 'static,
+    O: 'static,
+    S: IntoSystem<I, O, M> + 'static,
+{
+    move |closure, input| {
+        let _ = world
+            .run_system_cached_with(closure, input)
+            .inspect_err(|err| error!("{}: {}", msg, err));
     }
 }

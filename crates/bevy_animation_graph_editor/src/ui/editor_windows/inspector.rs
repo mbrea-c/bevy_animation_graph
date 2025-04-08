@@ -17,20 +17,21 @@ use bevy_animation_graph::{
 use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
 use egui_dock::egui;
 
-use crate::{
-    graph_update::{FsmChange, FsmPropertiesChange, GlobalChange},
-    ui::{
-        actions::{
-            graph::{
-                CreateNode, EditNode, GraphAction, RenameNode, UpdateInputData, UpdateInputTimes,
-                UpdateOutputData, UpdateOutputTime,
-            },
-            EditorAction,
+use crate::ui::{
+    actions::{
+        fsm::{
+            CreateState, CreateTransition, FsmAction, FsmProperties, UpdateProperties, UpdateState,
+            UpdateTransition,
         },
-        core::{EditorWindowContext, EditorWindowExtension, FsmSelection, InspectorSelection},
-        egui_inspector_impls::OrderedMap,
-        utils::{self, using_inspector_env},
+        graph::{
+            CreateNode, EditNode, GraphAction, RenameNode, UpdateInputData, UpdateInputTimes,
+            UpdateOutputData, UpdateOutputTime,
+        },
+        EditorAction,
     },
+    core::{EditorWindowContext, EditorWindowExtension, FsmSelection, InspectorSelection},
+    egui_inspector_impls::OrderedMap,
+    utils::{self, using_inspector_env},
 };
 
 #[derive(Debug)]
@@ -112,116 +113,67 @@ fn node_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorWindowCo
 fn state_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorWindowContext) {
     ui.heading("FSM State");
 
-    let mut changes = Vec::new();
+    world.resource_scope::<Assets<StateMachine>, _>(|world, fsm_assets| {
+        let InspectorSelection::FsmState(state_selection) =
+            &mut ctx.global_state.inspector_selection
+        else {
+            return;
+        };
+        let fsm = fsm_assets.get(&state_selection.fsm).unwrap();
 
-    let Some(_fsm_selection) = &mut ctx.global_state.fsm_editor else {
-        return;
-    };
+        let Some(state) = fsm.states.get(&state_selection.state) else {
+            ctx.global_state.inspector_selection = InspectorSelection::Nothing;
+            return;
+        };
 
-    let InspectorSelection::FsmState(state_selection) = &mut ctx.global_state.inspector_selection
-    else {
-        return;
-    };
-
-    let unsafe_world = world.as_unsafe_world_cell();
-    let type_registry = unsafe {
-        unsafe_world
-            .get_resource::<AppTypeRegistry>()
-            .unwrap()
-            .0
-            .clone()
-    };
-    let mut fsm_assets = unsafe {
-        unsafe_world
-            .get_resource_mut::<Assets<StateMachine>>()
-            .unwrap()
-    };
-    let fsm = fsm_assets.get_mut(state_selection.fsm).unwrap();
-    let Some(state) = fsm.states.get_mut(&state_selection.state) else {
-        ctx.global_state.inspector_selection = InspectorSelection::Nothing;
-        return;
-    };
-
-    let type_registry = type_registry.read();
-    let mut queue = CommandQueue::default();
-    let mut cx = Context {
-        world: Some(unsafe { unsafe_world.world_mut() }.into()),
-        queue: Some(&mut queue),
-    };
-    let mut env = InspectorUi::for_bevy(&type_registry, &mut cx);
-
-    let mut copy = state.clone();
-
-    let changed = env.ui_for_reflect(&mut copy, ui);
-
-    if changed {
-        changes.push(GlobalChange::FsmChange {
-            asset_id: state_selection.fsm,
-            change: FsmChange::StateChanged(state_selection.state.clone(), copy),
+        using_inspector_env(world, |mut env| {
+            let mut copy = state.clone();
+            let changed = env.ui_for_reflect(&mut copy, ui);
+            if changed {
+                ctx.editor_actions
+                    .push(EditorAction::Fsm(FsmAction::UpdateState(UpdateState {
+                        fsm: state_selection.fsm.clone(),
+                        state_id: state_selection.state.clone(),
+                        new_state: copy,
+                    })));
+            }
         });
-    }
-
-    ctx.global_changes.extend(changes);
-
-    queue.apply(world);
+    });
 }
 
 fn transition_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorWindowContext) {
     ui.heading("FSM Transition");
-    let mut changes = Vec::new();
 
-    let Some(fsm_selection) = &mut ctx.global_state.fsm_editor else {
-        return;
-    };
+    world.resource_scope::<Assets<StateMachine>, _>(|world, fsm_assets| {
+        let Some(fsm_selection) = &mut ctx.global_state.fsm_editor else {
+            return;
+        };
+        let InspectorSelection::FsmTransition(transition_selection) =
+            &mut ctx.global_state.inspector_selection
+        else {
+            return;
+        };
+        let fsm = fsm_assets.get(&fsm_selection.fsm).unwrap();
+        let Some(transition) = fsm.transitions.get(&transition_selection.state) else {
+            ctx.global_state.inspector_selection = InspectorSelection::Nothing;
+            return;
+        };
 
-    let InspectorSelection::FsmTransition(transition_selection) =
-        &mut ctx.global_state.inspector_selection
-    else {
-        return;
-    };
-
-    let unsafe_world = world.as_unsafe_world_cell();
-    let type_registry = unsafe {
-        unsafe_world
-            .get_resource::<AppTypeRegistry>()
-            .unwrap()
-            .0
-            .clone()
-    };
-    let mut fsm_assets = unsafe {
-        unsafe_world
-            .get_resource_mut::<Assets<StateMachine>>()
-            .unwrap()
-    };
-    let fsm = fsm_assets.get_mut(fsm_selection.fsm).unwrap();
-    let Some(transition) = fsm.transitions.get_mut(&transition_selection.state) else {
-        ctx.global_state.inspector_selection = InspectorSelection::Nothing;
-        return;
-    };
-
-    let type_registry = type_registry.read();
-    let mut queue = CommandQueue::default();
-    let mut cx = Context {
-        world: Some(unsafe { unsafe_world.world_mut() }.into()),
-        queue: Some(&mut queue),
-    };
-    let mut env = InspectorUi::for_bevy(&type_registry, &mut cx);
-
-    let mut copy = transition.clone();
-
-    let changed = env.ui_for_reflect(&mut copy, ui);
-
-    if changed {
-        println!("Should push a change now");
-        changes.push(GlobalChange::FsmChange {
-            asset_id: transition_selection.fsm,
-            change: FsmChange::TransitionChanged(transition_selection.state.clone(), copy),
+        using_inspector_env(world, |mut env| {
+            let mut copy = transition.clone();
+            let changed = env.ui_for_reflect(&mut copy, ui);
+            if changed {
+                ctx.editor_actions
+                    .push(EditorAction::Fsm(FsmAction::UpdateTransition(
+                        UpdateTransition {
+                            fsm: transition_selection.fsm.clone(),
+                            transition_id: transition_selection.state.clone(),
+                            new_transition: copy,
+                        },
+                    )));
+            }
         });
-    }
-
-    ctx.global_changes.extend(changes);
-
-    queue.apply(world);
+    });
 }
 
 fn graph_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorWindowContext) {
@@ -340,7 +292,6 @@ fn graph_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorWindowC
 
 fn fsm_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorWindowContext) {
     ui.heading("State machine");
-    let mut changes = Vec::new();
 
     utils::select_graph_context_fsm(world, ui, ctx.global_state);
 
@@ -348,52 +299,47 @@ fn fsm_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorWindowCon
         return;
     };
 
-    let unsafe_world = world.as_unsafe_world_cell();
-    let type_registry = unsafe {
-        unsafe_world
-            .get_resource::<AppTypeRegistry>()
-            .unwrap()
-            .0
-            .clone()
-    };
-    let fsm_assets = unsafe { unsafe_world.get_resource::<Assets<StateMachine>>().unwrap() };
-    let fsm = fsm_assets.get(fsm_selection.fsm).unwrap();
+    world.resource_scope::<Assets<StateMachine>, _>(|world, fsm_assets| {
+        let fsm = fsm_assets.get(&fsm_selection.fsm).unwrap();
 
-    let type_registry = type_registry.read();
-    let mut queue = CommandQueue::default();
-    let mut cx = Context {
-        world: Some(unsafe { unsafe_world.world_mut() }.into()),
-        queue: Some(&mut queue),
-    };
-    let mut env = InspectorUi::for_bevy(&type_registry, &mut cx);
+        using_inspector_env(world, |mut env| {
+            let mut new_properties = FsmProperties::from(fsm);
 
-    let mut properties = FsmPropertiesChange::from(fsm);
+            let changed = env.ui_for_reflect_with_options(
+                &mut new_properties,
+                ui,
+                ui.id().with("fsm properties inspector"),
+                &(),
+            );
+            if changed {
+                ctx.editor_actions
+                    .push(EditorAction::Fsm(FsmAction::UpdateProperties(
+                        UpdateProperties {
+                            fsm: fsm_selection.fsm.clone(),
+                            new_properties,
+                        },
+                    )));
+            }
 
-    let changed =
-        env.ui_for_reflect_with_options(&mut properties, ui, egui::Id::new(fsm_selection.fsm), &());
-    if changed {
-        changes.push(GlobalChange::FsmChange {
-            asset_id: fsm_selection.fsm,
-            change: FsmChange::PropertiesChanged(properties),
+            if let Some(state) = add_state_ui(ui, fsm_selection, &mut env) {
+                ctx.editor_actions
+                    .push(EditorAction::Fsm(FsmAction::CreateState(CreateState {
+                        fsm: fsm_selection.fsm.clone(),
+                        state,
+                    })));
+            }
+
+            if let Some(transition) = add_transition_ui(ui, fsm_selection, &mut env) {
+                ctx.editor_actions
+                    .push(EditorAction::Fsm(FsmAction::CreateTransition(
+                        CreateTransition {
+                            fsm: fsm_selection.fsm.clone(),
+                            transition,
+                        },
+                    )));
+            }
         });
-    }
-
-    if let Some(new_state) = add_state_ui(ui, fsm_selection, &mut env) {
-        changes.push(GlobalChange::FsmChange {
-            asset_id: fsm_selection.fsm,
-            change: FsmChange::StateAdded(new_state),
-        })
-    }
-
-    if let Some(transition) = add_transition_ui(ui, fsm_selection, &mut env) {
-        changes.push(GlobalChange::FsmChange {
-            asset_id: fsm_selection.fsm,
-            change: FsmChange::TransitionAdded(transition),
-        })
-    }
-
-    ctx.global_changes.extend(changes);
-    queue.apply(world);
+    });
 }
 
 fn add_transition_ui(

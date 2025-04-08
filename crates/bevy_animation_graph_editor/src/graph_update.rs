@@ -2,68 +2,17 @@ use crate::{
     egui_nodes::lib::GraphChange as EguiGraphChange,
     fsm_show::FsmIndices,
     graph_show::{GraphIndices, Pin},
-    ui::actions::graph::{
-        CreateLink, GraphAction, MoveInput, MoveNode, MoveOutput, RemoveLink, RemoveNode,
+    ui::actions::{
+        fsm::{FsmAction, MoveState, RemoveState, RemoveTransition},
+        graph::{CreateLink, GraphAction, MoveInput, MoveNode, MoveOutput, RemoveLink, RemoveNode},
     },
 };
-use bevy::{
-    asset::{AssetId, Assets, Handle},
-    ecs::world::World,
-    math::Vec2,
-    reflect::Reflect,
-};
+use bevy::asset::Handle;
 use bevy_animation_graph::core::{
-    animation_graph::{AnimationGraph, PinMap},
-    edge_data::DataValue,
-    state_machine::high_level::{State, StateId, StateMachine, Transition, TransitionId},
+    animation_graph::AnimationGraph, state_machine::high_level::StateMachine,
 };
 
 use super::egui_fsm::lib::EguiFsmChange;
-
-#[derive(Debug, Clone)]
-pub enum GlobalChange {
-    FsmChange {
-        asset_id: AssetId<StateMachine>,
-        change: FsmChange,
-    },
-    Noop,
-}
-
-#[derive(Debug, Clone)]
-pub enum FsmChange {
-    StateMoved(StateId, Vec2),
-    /// Some of the properties of a state are changed.
-    /// This includes the state name.
-    /// (original state id, new state)
-    StateChanged(StateId, State),
-    /// (original transition id, new transition)
-    TransitionChanged(TransitionId, Transition),
-    /// Add a new state.
-    StateAdded(State),
-    /// Add a new transition.
-    TransitionAdded(Transition),
-    /// Delete a state.
-    StateDeleted(StateId),
-    /// Delete a transition
-    TransitionDeleted(TransitionId),
-    /// Inspectable properties of the FSM must change.
-    PropertiesChanged(FsmPropertiesChange),
-}
-
-#[derive(Debug, Clone, Reflect)]
-pub struct FsmPropertiesChange {
-    pub start_state: StateId,
-    pub input_data: PinMap<DataValue>,
-}
-
-impl From<&StateMachine> for FsmPropertiesChange {
-    fn from(value: &StateMachine) -> Self {
-        Self {
-            start_state: value.start_state.clone(),
-            input_data: value.input_data.clone(),
-        }
-    }
-}
 
 pub fn convert_graph_change(
     graph_change: EguiGraphChange,
@@ -135,95 +84,37 @@ pub fn convert_graph_change(
     }
 }
 
-pub fn apply_global_changes(world: &mut World, changes: Vec<GlobalChange>) -> bool {
-    let mut needs_regen_indices = false;
-
-    for change in changes {
-        needs_regen_indices = needs_regen_indices
-            || match change {
-                GlobalChange::FsmChange { asset_id, change } => {
-                    apply_fsm_change(world, asset_id, change)
-                }
-                GlobalChange::Noop => false,
-            };
-    }
-
-    needs_regen_indices
-}
-
-/// Apply a change to a state machine. Returns true if it requires recomputing the UI context, false otherwise.
-fn apply_fsm_change(world: &mut World, asset_id: AssetId<StateMachine>, change: FsmChange) -> bool {
-    let mut fsm_assets = world.resource_mut::<Assets<StateMachine>>();
-    let fsm = fsm_assets.get_mut(asset_id).unwrap();
-
-    match change {
-        FsmChange::StateMoved(state_id, pos) => {
-            fsm.extra.set_node_position(state_id, pos);
-            false
-        }
-        FsmChange::StateChanged(old_state_name, new_state) => {
-            let _ = fsm.update_state(old_state_name, new_state);
-            true
-        }
-        FsmChange::TransitionChanged(old_transition_name, new_transition) => {
-            let _ = fsm.update_transition(old_transition_name, new_transition);
-            true
-        }
-        FsmChange::StateAdded(new_state) => {
-            fsm.add_state(new_state);
-            true
-        }
-        FsmChange::PropertiesChanged(new_props) => {
-            fsm.set_start_state(new_props.start_state);
-            fsm.set_input_data(new_props.input_data);
-            true
-        }
-        FsmChange::TransitionAdded(new_transition) => {
-            let _ = fsm.add_transition_from_ui(new_transition);
-            true
-        }
-        FsmChange::StateDeleted(state_to_delete) => {
-            let _ = fsm.delete_state(state_to_delete);
-            true
-        }
-        FsmChange::TransitionDeleted(transition_to_delete) => {
-            let _ = fsm.delete_transition(transition_to_delete);
-            true
-        }
-    }
-}
-
 pub fn convert_fsm_change(
     fsm_change: EguiFsmChange,
-    graph_indices: &FsmIndices,
-    graph_id: AssetId<StateMachine>,
-) -> GlobalChange {
+    fsm_indices: &FsmIndices,
+    fsm: Handle<StateMachine>,
+) -> Option<FsmAction> {
     let change = match fsm_change {
         EguiFsmChange::StateMoved(state_id, delta) => {
-            let node_id = graph_indices.state_indices.name(state_id).unwrap();
-            GlobalChange::FsmChange {
-                asset_id: graph_id,
-                change: FsmChange::StateMoved(node_id.into(), delta),
-            }
+            let node_id = fsm_indices.state_indices.name(state_id).unwrap();
+            Some(FsmAction::MoveState(MoveState {
+                fsm,
+                state_id: node_id.into(),
+                new_pos: delta,
+            }))
         }
         EguiFsmChange::TransitionRemoved(transition_id) => {
-            let (_, transition_name, _) = graph_indices
-                .transition_indices
-                .edge(transition_id)
-                .unwrap();
-            GlobalChange::FsmChange {
-                asset_id: graph_id,
-                change: FsmChange::TransitionDeleted(transition_name.clone()),
-            }
+            let (_, transition_name, _) =
+                fsm_indices.transition_indices.edge(transition_id).unwrap();
+            Some(FsmAction::RemoveTransition(RemoveTransition {
+                fsm,
+                transition_id: transition_name.clone(),
+            }))
         }
         EguiFsmChange::StateRemoved(state_id) => {
-            let state_name = graph_indices.state_indices.name(state_id).unwrap().clone();
-            GlobalChange::FsmChange {
-                asset_id: graph_id,
-                change: FsmChange::StateDeleted(state_name),
-            }
+            let state_name = fsm_indices.state_indices.name(state_id).unwrap().clone();
+
+            Some(FsmAction::RemoveState(RemoveState {
+                fsm,
+                state_id: state_name,
+            }))
         }
-        EguiFsmChange::TransitionCreated(_, _) => GlobalChange::Noop,
+        EguiFsmChange::TransitionCreated(_, _) => None,
     };
 
     change

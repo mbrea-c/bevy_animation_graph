@@ -1,7 +1,6 @@
 use std::f32::consts::{FRAC_PI_2, PI};
 use std::path::PathBuf;
 
-use crate::fsm_show::{make_fsm_indices, FsmIndices};
 use crate::tree::{Tree, TreeInternal, TreeResult};
 use bevy::asset::UntypedAssetId;
 use bevy::ecs::world::CommandQueue;
@@ -92,14 +91,6 @@ pub(crate) fn select_from_tree_internal<I, L>(
     }
 }
 
-pub(crate) fn update_fsm_indices(world: &mut World, fsm_id: AssetId<StateMachine>) -> FsmIndices {
-    world.resource_scope::<Assets<StateMachine>, FsmIndices>(|_, fsm_assets| {
-        let fsm = fsm_assets.get(fsm_id).unwrap();
-
-        make_fsm_indices(fsm, &fsm_assets).unwrap()
-    })
-}
-
 pub(crate) fn select_graph_context(
     world: &mut World,
     ui: &mut egui::Ui,
@@ -172,7 +163,7 @@ pub(crate) fn select_graph_context_fsm(
             list_graph_contexts(world, |ctx| {
                 let graph_id = ctx.get_graph_id();
                 let graph = graph_assets.get(graph_id).unwrap();
-                graph.contains_state_machine(fsm.fsm).is_some()
+                graph.contains_state_machine(fsm.fsm.id()).is_some()
             })
         })
     else {
@@ -183,7 +174,7 @@ pub(crate) fn select_graph_context_fsm(
         return;
     };
 
-    let mut selected = scene.active_context.get(&fsm.fsm.untyped()).copied();
+    let mut selected = scene.active_context.get(&fsm.fsm.id().untyped()).copied();
     egui::ComboBox::from_label("Active context")
         .selected_text(format!("{:?}", selected))
         .show_ui(ui, |ui| {
@@ -194,9 +185,11 @@ pub(crate) fn select_graph_context_fsm(
         });
 
     if let Some(selected) = selected {
-        scene.active_context.insert(fsm.fsm.untyped(), selected);
+        scene
+            .active_context
+            .insert(fsm.fsm.id().untyped(), selected);
     } else {
-        scene.active_context.remove(&fsm.fsm.untyped());
+        scene.active_context.remove(&fsm.fsm.id().untyped());
     }
 }
 

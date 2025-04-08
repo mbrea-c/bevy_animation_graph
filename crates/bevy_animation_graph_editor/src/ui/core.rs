@@ -1,7 +1,5 @@
 use crate::egui_fsm::lib::FsmUiContext;
 use crate::egui_nodes::lib::NodesContext;
-use crate::fsm_show::FsmIndices;
-use crate::graph_update::{apply_global_changes, GlobalChange};
 use bevy::asset::UntypedAssetId;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
@@ -35,7 +33,6 @@ use super::editor_windows::preview_hierarchy::PreviewHierarchyWindow;
 use super::editor_windows::scene_preview::ScenePreviewWindow;
 use super::editor_windows::scene_preview_errors::ScenePreviewErrorsWindow;
 use super::editor_windows::scene_selector::SceneSelectorWindow;
-use super::utils;
 
 pub use super::windows::EditorWindowExtension;
 use super::windows::{WindowId, Windows};
@@ -62,8 +59,7 @@ pub struct GraphSelection {
 }
 
 pub struct FsmSelection {
-    pub fsm: AssetId<StateMachine>,
-    pub graph_indices: FsmIndices,
+    pub fsm: Handle<StateMachine>,
     pub nodes_context: FsmUiContext,
     pub state_creation: State,
     pub transition_creation: Transition,
@@ -85,12 +81,12 @@ pub enum InspectorSelection {
 }
 
 pub struct FsmTransitionSelection {
-    pub(crate) fsm: AssetId<StateMachine>,
+    pub(crate) fsm: Handle<StateMachine>,
     pub(crate) state: TransitionId,
 }
 
 pub struct FsmStateSelection {
-    pub(crate) fsm: AssetId<StateMachine>,
+    pub(crate) fsm: Handle<StateMachine>,
     pub(crate) state: StateId,
 }
 
@@ -205,8 +201,6 @@ pub struct UiState {
 
     pub(crate) windows: Windows,
 
-    pub(crate) global_changes: Vec<GlobalChange>,
-
     pub(crate) notifications: Toasts,
 
     pub(crate) views: Vec<ViewState>,
@@ -219,7 +213,6 @@ impl UiState {
 
         Self {
             global_state: GlobalState::default(),
-            global_changes: vec![],
             notifications: Toasts::new()
                 .with_anchor(Anchor::BottomRight)
                 .with_default_font(egui::FontId::proportional(12.)),
@@ -247,7 +240,6 @@ impl UiState {
         let view_context = EditorViewContext {
             global_state: &mut self.global_state,
             windows: &mut self.windows,
-            global_changes: &mut self.global_changes,
             notifications: &mut self.notifications,
             editor_actions: &mut queue.actions,
         };
@@ -264,7 +256,6 @@ impl UiState {
 pub struct EditorViewContext<'a> {
     pub global_state: &'a mut GlobalState,
     pub windows: &'a mut Windows,
-    pub global_changes: &'a mut Vec<GlobalChange>,
     pub notifications: &'a mut Toasts,
     pub editor_actions: &'a mut PushQueue<EditorAction>,
 }
@@ -273,7 +264,6 @@ pub struct EditorWindowContext<'a> {
     pub window_id: WindowId,
     pub global_state: &'a mut GlobalState,
     #[allow(dead_code)] // Temporary while I migrate to extension pattern
-    pub global_changes: &'a mut Vec<GlobalChange>,
     pub notifications: &'a mut Toasts,
     pub editor_actions: &'a mut PushQueue<EditorAction>,
 }
@@ -311,7 +301,6 @@ impl egui_dock::TabViewer for TabViewer<'_> {
                 let mut ctx = EditorWindowContext {
                     window_id: *editor_window,
                     global_state: self.context.global_state,
-                    global_changes: self.context.global_changes,
                     notifications: self.context.notifications,
                     editor_actions: self.context.editor_actions,
                 };
@@ -321,16 +310,6 @@ impl egui_dock::TabViewer for TabViewer<'_> {
                     .ui_for_window(ui, &mut self.world, &mut ctx);
             }
         }
-
-        let must_regen_indices =
-            apply_global_changes(self.world, self.context.global_changes.clone());
-        if must_regen_indices {
-            if let Some(fsm_selection) = self.context.global_state.fsm_editor.as_mut() {
-                fsm_selection.graph_indices =
-                    utils::update_fsm_indices(self.world, fsm_selection.fsm);
-            }
-        }
-        self.context.global_changes.clear();
     }
 
     fn title(&mut self, window: &mut Self::Tab) -> egui_dock::egui::WidgetText {
