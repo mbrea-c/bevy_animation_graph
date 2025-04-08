@@ -2,7 +2,6 @@ mod egui_fsm;
 mod egui_nodes;
 mod fsm_show;
 mod graph_show;
-mod graph_update;
 mod scanner;
 mod tree;
 mod ui;

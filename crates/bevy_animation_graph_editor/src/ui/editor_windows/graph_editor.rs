@@ -1,4 +1,7 @@
-use bevy::{asset::Assets, prelude::World};
+use bevy::{
+    asset::{Assets, Handle},
+    prelude::World,
+};
 use bevy_animation_graph::{
     core::state_machine::high_level::StateMachine,
     prelude::{AnimationGraph, SpecContext},
@@ -6,11 +9,14 @@ use bevy_animation_graph::{
 use egui_dock::egui;
 
 use crate::{
-    graph_show::{GraphIndicesMap, GraphReprSpec},
-    graph_update::convert_graph_change,
+    egui_nodes::lib::GraphChange as EguiGraphChange,
+    graph_show::{GraphIndices, GraphIndicesMap, GraphReprSpec, Pin},
     ui::{
         actions::{
-            graph::{GenerateIndices, GraphAction},
+            graph::{
+                CreateLink, GenerateIndices, GraphAction, MoveInput, MoveNode, MoveOutput,
+                RemoveLink, RemoveNode,
+            },
             EditorAction,
         },
         core::{EditorWindowContext, EditorWindowExtension, InspectorSelection, NodeSelection},
@@ -151,5 +157,75 @@ impl EditorWindowExtension for GraphEditorWindow {
 
     fn display_name(&self) -> String {
         "Graph Editor".to_string()
+    }
+}
+
+pub fn convert_graph_change(
+    graph_change: EguiGraphChange,
+    graph_indices: &GraphIndices,
+    graph_handle: Handle<AnimationGraph>,
+) -> GraphAction {
+    match graph_change {
+        EguiGraphChange::LinkCreated(source_id, target_id) => {
+            let source_pin = match graph_indices.pin_indices.pin(source_id).unwrap() {
+                Pin::Source(s) => s,
+                _ => panic!("Expected source pin"),
+            }
+            .clone();
+            let target_pin = match graph_indices.pin_indices.pin(target_id).unwrap() {
+                Pin::Target(t) => t,
+                _ => panic!("Expected target pin"),
+            }
+            .clone();
+            GraphAction::CreateLink(CreateLink {
+                graph: graph_handle,
+                source: source_pin,
+                target: target_pin,
+            })
+        }
+        EguiGraphChange::LinkRemoved(edge_id) => {
+            let (_, target_id) = graph_indices.edge_indices.edge(edge_id).unwrap();
+            let target_pin = match graph_indices.pin_indices.pin(*target_id).unwrap() {
+                Pin::Target(t) => t,
+                _ => panic!("Expected target pin"),
+            }
+            .clone();
+
+            GraphAction::RemoveLink(RemoveLink {
+                graph: graph_handle,
+                target: target_pin,
+            })
+        }
+        EguiGraphChange::NodeMoved(node_id, delta) => {
+            if node_id == 0 {
+                GraphAction::MoveInput(MoveInput {
+                    graph: graph_handle,
+                    new_pos: delta,
+                })
+            } else if node_id == 1 {
+                GraphAction::MoveOutput(MoveOutput {
+                    graph: graph_handle,
+                    new_pos: delta,
+                })
+            } else {
+                let node_id = graph_indices.node_indices.name(node_id).unwrap();
+                GraphAction::MoveNode(MoveNode {
+                    graph: graph_handle,
+                    node: node_id.into(),
+                    new_pos: delta,
+                })
+            }
+        }
+        EguiGraphChange::NodeRemoved(node_id) => {
+            if node_id <= 1 {
+                GraphAction::Noop
+            } else {
+                let node_id = graph_indices.node_indices.name(node_id).unwrap();
+                GraphAction::RemoveNode(RemoveNode {
+                    graph: graph_handle,
+                    node: node_id.into(),
+                })
+            }
+        }
     }
 }

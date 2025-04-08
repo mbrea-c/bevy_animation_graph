@@ -1,15 +1,18 @@
-use bevy::{asset::Assets, prelude::World};
+use bevy::{
+    asset::{Assets, Handle},
+    prelude::World,
+};
 use bevy_animation_graph::{
     core::state_machine::high_level::StateMachine, prelude::AnimationGraph,
 };
 use egui_dock::egui;
 
 use crate::{
-    fsm_show::{FsmIndicesMap, FsmReprSpec},
-    graph_update::convert_fsm_change,
+    egui_fsm::lib::EguiFsmChange,
+    fsm_show::{FsmIndices, FsmIndicesMap, FsmReprSpec},
     ui::{
         actions::{
-            fsm::{FsmAction, GenerateIndices},
+            fsm::{FsmAction, GenerateIndices, MoveState, RemoveState, RemoveTransition},
             EditorAction,
         },
         core::{
@@ -156,4 +159,40 @@ impl EditorWindowExtension for FsmEditorWindow {
     fn display_name(&self) -> String {
         "FSM Editor".to_string()
     }
+}
+
+pub fn convert_fsm_change(
+    fsm_change: EguiFsmChange,
+    fsm_indices: &FsmIndices,
+    fsm: Handle<StateMachine>,
+) -> Option<FsmAction> {
+    let change = match fsm_change {
+        EguiFsmChange::StateMoved(state_id, delta) => {
+            let node_id = fsm_indices.state_indices.name(state_id).unwrap();
+            Some(FsmAction::MoveState(MoveState {
+                fsm,
+                state_id: node_id.into(),
+                new_pos: delta,
+            }))
+        }
+        EguiFsmChange::TransitionRemoved(transition_id) => {
+            let (_, transition_name, _) =
+                fsm_indices.transition_indices.edge(transition_id).unwrap();
+            Some(FsmAction::RemoveTransition(RemoveTransition {
+                fsm,
+                transition_id: transition_name.clone(),
+            }))
+        }
+        EguiFsmChange::StateRemoved(state_id) => {
+            let state_name = fsm_indices.state_indices.name(state_id).unwrap().clone();
+
+            Some(FsmAction::RemoveState(RemoveState {
+                fsm,
+                state_id: state_name,
+            }))
+        }
+        EguiFsmChange::TransitionCreated(_, _) => None,
+    };
+
+    change
 }
