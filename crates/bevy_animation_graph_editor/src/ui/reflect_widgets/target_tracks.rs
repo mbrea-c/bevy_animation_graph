@@ -7,7 +7,7 @@ use bevy_animation_graph::{
 use bevy_inspector_egui::reflect_inspector::InspectorUi;
 use egui_dock::egui;
 
-use crate::{impl_hash_ext_from_hash, ui::editor_windows::event_track_editor::TargetTracks};
+use crate::{impl_widget_hash_from_hash, ui::editor_windows::event_track_editor::TargetTracks};
 
 use super::{EguiInspectorExtension, IntoBuffer};
 
@@ -197,4 +197,4 @@ pub struct TargetTracksBuffer {
     selector_type: TargetTracksSelectorType,
 }
 
-impl_hash_ext_from_hash! { Option<TargetTracks> }
+impl_widget_hash_from_hash! { Option<TargetTracks> }

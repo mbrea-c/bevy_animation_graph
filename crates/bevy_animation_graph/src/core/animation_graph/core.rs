@@ -438,29 +438,23 @@ impl AnimationGraph {
     /// It is not guaranteed that the edge will be legal after a single edge removal,
     /// so this function should be called repeatedly until it returns Ok(()) or Err(None)
     pub fn can_add_edge(&self, edge: Edge, ctx: SpecContext) -> Result<(), Option<Edge>> {
-        // --- Verify source and target exist
-        // -----------------------------------------------------------------
+        // Verify source and target exist
         if !self.edge_ends_exist(&edge.source, &edge.target, ctx) {
             return Err(None);
         }
-        // -----------------------------------------------------------------
 
-        // --- Verify matching types
-        // -----------------------------------------------------------------
+        // Verify matching types
         if !self.edge_end_types_match(&edge.source, &edge.target, ctx) {
             return Err(None);
         }
-        // -----------------------------------------------------------------
 
-        // --- Verify target does not already exist
-        // -----------------------------------------------------------------
+        // Verify target does not already exist
         if self.edges.contains_key(&edge.target) {
             return Err(Some(Edge {
                 source: self.edges.get(&edge.target).unwrap().clone(),
                 target: edge.target,
             }));
         }
-        // -----------------------------------------------------------------
 
         Ok(())
     }

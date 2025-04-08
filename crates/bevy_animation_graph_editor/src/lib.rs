@@ -12,6 +12,7 @@ use bevy_animation_graph::core::plugin::AnimationGraphPlugin;
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::{bevy_egui, DefaultInspectorConfigPlugin};
 use clap::Parser;
+use graph_show::GraphIndicesMap;
 use scanner::ScannerPlugin;
 use std::path::PathBuf;
 use ui::actions::saving::DirtyAssets;
@@ -58,6 +59,7 @@ impl Plugin for AnimationGraphEditorPlugin {
             .insert_resource(UiState::new())
             .insert_resource(PendingActions::default())
             .insert_resource(DirtyAssets::default())
+            .insert_resource(GraphIndicesMap::default())
             .insert_resource(cli)
             .add_systems(
                 Update,

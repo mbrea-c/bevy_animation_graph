@@ -1,8 +1,7 @@
 use crate::egui_fsm::lib::FsmUiContext;
 use crate::egui_nodes::lib::NodesContext;
 use crate::fsm_show::FsmIndices;
-use crate::graph_show::GraphIndices;
-use crate::graph_update::{apply_global_changes, update_graph_asset, GlobalChange, GraphChange};
+use crate::graph_update::{apply_global_changes, GlobalChange};
 use bevy::asset::UntypedAssetId;
 use bevy::prelude::*;
 use bevy::utils::HashMap;
@@ -22,7 +21,7 @@ use egui_dock::egui::Color32;
 use egui_dock::{DockArea, DockState, NodeIndex, Style};
 use egui_notify::{Anchor, Toasts};
 
-use super::actions::saving::{SaveAction, SaveFsm, SaveGraph};
+use super::actions::saving::SaveAction;
 use super::actions::{EditorAction, PendingActions, PushQueue};
 use super::editor_windows::debugger::DebuggerWindow;
 use super::editor_windows::event_sender::EventSenderWindow;
@@ -59,7 +58,6 @@ pub fn show_ui_system(world: &mut World) {
 
 pub struct GraphSelection {
     pub graph: Handle<AnimationGraph>,
-    pub graph_indices: GraphIndices,
     pub nodes_context: NodesContext,
 }
 
@@ -207,7 +205,6 @@ pub struct UiState {
 
     pub(crate) windows: Windows,
 
-    pub(crate) graph_changes: Vec<GraphChange>,
     pub(crate) global_changes: Vec<GlobalChange>,
 
     pub(crate) notifications: Toasts,
@@ -222,7 +219,6 @@ impl UiState {
 
         Self {
             global_state: GlobalState::default(),
-            graph_changes: vec![],
             global_changes: vec![],
             notifications: Toasts::new()
                 .with_anchor(Anchor::BottomRight)
@@ -251,7 +247,6 @@ impl UiState {
         let view_context = EditorViewContext {
             global_state: &mut self.global_state,
             windows: &mut self.windows,
-            graph_changes: &mut self.graph_changes,
             global_changes: &mut self.global_changes,
             notifications: &mut self.notifications,
             editor_actions: &mut queue.actions,
@@ -269,7 +264,6 @@ impl UiState {
 pub struct EditorViewContext<'a> {
     pub global_state: &'a mut GlobalState,
     pub windows: &'a mut Windows,
-    pub graph_changes: &'a mut Vec<GraphChange>,
     pub global_changes: &'a mut Vec<GlobalChange>,
     pub notifications: &'a mut Toasts,
     pub editor_actions: &'a mut PushQueue<EditorAction>,
@@ -281,14 +275,11 @@ pub struct EditorWindowContext<'a> {
     #[allow(dead_code)] // Temporary while I migrate to extension pattern
     pub global_changes: &'a mut Vec<GlobalChange>,
     pub notifications: &'a mut Toasts,
-    pub graph_changes: &'a mut Vec<GraphChange>,
     pub editor_actions: &'a mut PushQueue<EditorAction>,
 }
 
 #[derive(Debug)]
 pub enum EguiWindow {
-    GraphSaver(AssetId<AnimationGraph>, String, bool),
-    FsmSaver(AssetId<StateMachine>, String, bool),
     DynWindow(WindowId),
 }
 
@@ -301,8 +292,6 @@ impl From<WindowId> for EguiWindow {
 impl EguiWindow {
     pub fn display_name(&self, windows: &Windows) -> String {
         match self {
-            EguiWindow::GraphSaver(_, _, _) => "Save Graph".into(),
-            EguiWindow::FsmSaver(_, _, _) => "Save State Machine".into(),
             EguiWindow::DynWindow(id) => windows.name_for_window(*id),
         }
     }
@@ -318,19 +307,12 @@ impl egui_dock::TabViewer for TabViewer<'_> {
 
     fn ui(&mut self, ui: &mut egui_dock::egui::Ui, window: &mut Self::Tab) {
         match window {
-            EguiWindow::GraphSaver(graph, path, done) => {
-                Self::graph_saver(ui, self.context.editor_actions, *graph, path, done);
-            }
-            EguiWindow::FsmSaver(fsm, path, done) => {
-                Self::fsm_saver(ui, self.context.editor_actions, *fsm, path, done);
-            }
             EguiWindow::DynWindow(editor_window) => {
                 let mut ctx = EditorWindowContext {
                     window_id: *editor_window,
                     global_state: self.context.global_state,
                     global_changes: self.context.global_changes,
                     notifications: self.context.notifications,
-                    graph_changes: self.context.graph_changes,
                     editor_actions: self.context.editor_actions,
                 };
 
@@ -340,34 +322,9 @@ impl egui_dock::TabViewer for TabViewer<'_> {
             }
         }
 
-        while !self.context.graph_changes.is_empty() {
-            let must_regen_indices = self.world.resource_scope::<Assets<AnimationGraph>, _>(
-                |world, mut graph_assets| {
-                    world.resource_scope::<Assets<StateMachine>, _>(|_, fsm_assets| {
-                        update_graph_asset(
-                            self.context.graph_changes.clone(),
-                            &mut graph_assets,
-                            &fsm_assets,
-                        )
-                    })
-                },
-            );
-            self.context.graph_changes.clear();
-            if must_regen_indices {
-                if let Some(graph_selection) = self.context.global_state.graph_editor.as_mut() {
-                    graph_selection.graph_indices =
-                        utils::update_graph_indices(self.world, graph_selection.graph.clone());
-                }
-            }
-        }
-
         let must_regen_indices =
             apply_global_changes(self.world, self.context.global_changes.clone());
         if must_regen_indices {
-            if let Some(graph_selection) = self.context.global_state.graph_editor.as_mut() {
-                graph_selection.graph_indices =
-                    utils::update_graph_indices(self.world, graph_selection.graph.clone());
-            }
             if let Some(fsm_selection) = self.context.global_state.fsm_editor.as_mut() {
                 fsm_selection.graph_indices =
                     utils::update_fsm_indices(self.world, fsm_selection.fsm);
@@ -376,70 +333,18 @@ impl egui_dock::TabViewer for TabViewer<'_> {
         self.context.global_changes.clear();
     }
 
-    fn force_close(&mut self, tab: &mut Self::Tab) -> bool {
-        matches!(
-            tab,
-            EguiWindow::GraphSaver(_, _, true) | EguiWindow::FsmSaver(_, _, true)
-        )
-    }
-
     fn title(&mut self, window: &mut Self::Tab) -> egui_dock::egui::WidgetText {
         window.display_name(&self.context.windows).into()
     }
 
     fn closeable(&mut self, tab: &mut Self::Tab) -> bool {
         match tab {
-            EguiWindow::GraphSaver(_, _, _) => true,
-            EguiWindow::FsmSaver(_, _, _) => true,
             EguiWindow::DynWindow(window_id) => self
                 .context
                 .windows
                 .get_window(*window_id)
                 .map_or(false, |w| w.closeable()),
         }
-    }
-}
-
-/// Ui functions
-impl TabViewer<'_> {
-    fn graph_saver(
-        ui: &mut egui::Ui,
-        editor_actions: &mut PushQueue<EditorAction>,
-        graph_id: AssetId<AnimationGraph>,
-        path: &mut String,
-        done: &mut bool,
-    ) {
-        ui.label("Save graph as:");
-        ui.text_edit_singleline(path);
-        ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
-            if ui.button("Save").clicked() {
-                *done = true;
-                editor_actions.push(EditorAction::Save(SaveAction::Graph(SaveGraph {
-                    asset_id: graph_id,
-                    virtual_path: path.clone().into(),
-                })));
-            }
-        });
-    }
-
-    fn fsm_saver(
-        ui: &mut egui::Ui,
-        editor_actions: &mut PushQueue<EditorAction>,
-        fsm_id: AssetId<StateMachine>,
-        path: &mut String,
-        done: &mut bool,
-    ) {
-        ui.label("Save state machine as:");
-        ui.text_edit_singleline(path);
-        ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
-            if ui.button("Save").clicked() {
-                *done = true;
-                editor_actions.push(EditorAction::Save(SaveAction::Fsm(SaveFsm {
-                    asset_id: fsm_id,
-                    virtual_path: path.clone().into(),
-                })));
-            }
-        });
     }
 }
 

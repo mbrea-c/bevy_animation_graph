@@ -18,10 +18,18 @@ use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
 use egui_dock::egui;
 
 use crate::{
-    graph_update::{Change, FsmChange, FsmPropertiesChange, GlobalChange, GraphChange},
+    graph_update::{FsmChange, FsmPropertiesChange, GlobalChange},
     ui::{
+        actions::{
+            graph::{
+                CreateNode, EditNode, GraphAction, RenameNode, UpdateInputData, UpdateInputTimes,
+                UpdateOutputData, UpdateOutputTime,
+            },
+            EditorAction,
+        },
         core::{EditorWindowContext, EditorWindowExtension, FsmSelection, InspectorSelection},
-        utils,
+        egui_inspector_impls::OrderedMap,
+        utils::{self, using_inspector_env},
     },
 };
 
@@ -48,79 +56,57 @@ impl EditorWindowExtension for InspectorWindow {
 fn node_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorWindowContext) {
     ui.heading("Graph node");
 
-    let mut changes = Vec::new();
+    world.resource_scope::<Assets<AnimationGraph>, _>(|world, graph_assets| {
+        let InspectorSelection::Node(node_selection) = &mut ctx.global_state.inspector_selection
+        else {
+            return;
+        };
 
-    let InspectorSelection::Node(node_selection) = &mut ctx.global_state.inspector_selection else {
-        return;
-    };
+        let graph = graph_assets.get(&node_selection.graph).unwrap();
+        let Some(node) = graph.nodes.get(&node_selection.node) else {
+            ctx.global_state.inspector_selection = InspectorSelection::Nothing;
+            return;
+        };
 
-    let unsafe_world = world.as_unsafe_world_cell();
-    let type_registry = unsafe {
-        unsafe_world
-            .get_resource::<AppTypeRegistry>()
-            .unwrap()
-            .0
-            .clone()
-    };
-
-    let mut graph_assets = unsafe {
-        unsafe_world
-            .get_resource_mut::<Assets<AnimationGraph>>()
-            .unwrap()
-    };
-    let graph = graph_assets.get_mut(&node_selection.graph).unwrap();
-    let Some(node) = graph.nodes.get_mut(&node_selection.node) else {
-        ctx.global_state.inspector_selection = InspectorSelection::Nothing;
-        return;
-    };
-
-    let response = ui.text_edit_singleline(&mut node_selection.name_buf);
-    if response.lost_focus() {
-        changes.push(GraphChange {
-            change: Change::NodeRenamed(
-                node_selection.node.clone(),
-                node_selection.name_buf.clone(),
-            ),
-            graph: node_selection.graph.clone(),
-        });
-    }
-
-    let type_registry = type_registry.read();
-    let mut queue = CommandQueue::default();
-    let mut cx = Context {
-        world: Some(unsafe { unsafe_world.world_mut() }.into()),
-        queue: Some(&mut queue),
-    };
-    let mut env = InspectorUi::for_bevy(&type_registry, &mut cx);
-
-    // TODO: Make node update into a GraphChange
-    // (eventually we want all graph mutations to go through GraphChange, this
-    // will enable easier undo/redo support)
-    let changed = if let Some(edit_proxy) =
-        type_registry.get_type_data::<ReflectEditProxy>(node.inner.type_id())
-    {
-        let mut proxy = (edit_proxy.to_proxy)(node.inner.as_ref());
-        let changed = env.ui_for_reflect(proxy.as_partial_reflect_mut(), ui);
-        if changed {
-            let inner = (edit_proxy.from_proxy)(proxy.as_ref());
-            node.inner = inner;
+        let response = ui.text_edit_singleline(&mut node_selection.name_buf);
+        if response.lost_focus() {
+            ctx.editor_actions
+                .push(EditorAction::Graph(GraphAction::RenameNode(RenameNode {
+                    graph: node_selection.graph.clone(),
+                    node: node_selection.node.clone(),
+                    new_name: node_selection.name_buf.clone(),
+                })));
         }
-        changed
-    } else {
-        let changed = env.ui_for_reflect(node.inner.as_partial_reflect_mut(), ui);
-        changed
-    };
 
-    if changed {
-        changes.push(GraphChange {
-            change: Change::GraphValidate,
-            graph: node_selection.graph.clone(),
+        let changed = using_inspector_env(world, |mut env| {
+            if let Some(edit_proxy) = env
+                .type_registry
+                .get_type_data::<ReflectEditProxy>(node.inner.type_id())
+            {
+                let mut proxy = (edit_proxy.to_proxy)(node.inner.as_ref());
+                let changed = env.ui_for_reflect_with_options(
+                    proxy.as_partial_reflect_mut(),
+                    ui,
+                    ui.id(),
+                    &(),
+                );
+                changed.then(|| (edit_proxy.from_proxy)(proxy.as_ref()))
+            } else {
+                let mut current_inner = node.inner.clone();
+                let changed = env.ui_for_reflect(current_inner.as_partial_reflect_mut(), ui);
+                changed.then(|| current_inner)
+            }
         });
-    }
 
-    ctx.graph_changes.extend(changes);
-
-    queue.apply(world);
+        if let Some(changed) = changed {
+            ctx.editor_actions
+                .push(EditorAction::Graph(GraphAction::EditNode(EditNode {
+                    graph: node_selection.graph.clone(),
+                    node: node.name.clone(),
+                    new_inner: changed,
+                })));
+        }
+    });
 }
 
 fn state_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorWindowContext) {
@@ -245,48 +231,111 @@ fn graph_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorWindowC
 
     ui.collapsing("Create node", |ui| node_creator(world, ui, ctx));
 
-    let mut changes = Vec::new();
-
     let Some(graph_selection) = &mut ctx.global_state.graph_editor else {
         return;
     };
 
-    let unsafe_world = world.as_unsafe_world_cell();
-    let type_registry = unsafe {
-        unsafe_world
-            .get_resource::<AppTypeRegistry>()
-            .unwrap()
-            .0
-            .clone()
-    };
-    let mut graph_assets = unsafe {
-        unsafe_world
-            .get_resource_mut::<Assets<AnimationGraph>>()
-            .unwrap()
-    };
-    let graph = graph_assets.get_mut(&graph_selection.graph).unwrap();
+    world.resource_scope::<Assets<AnimationGraph>, _>(|world, graph_assets| {
+        let graph = graph_assets.get(&graph_selection.graph).unwrap();
 
-    let type_registry = type_registry.read();
-    let mut queue = CommandQueue::default();
-    let mut cx = Context {
-        world: Some(unsafe { unsafe_world.world_mut() }.into()),
-        queue: Some(&mut queue),
-    };
-    let mut env = InspectorUi::for_bevy(&type_registry, &mut cx);
+        using_inspector_env(world, |mut env| {
+            let mut input_data_changed = false;
+            let mut output_data_changed = false;
+            let mut input_times_changed = false;
+            let mut output_time_changed = false;
 
-    let changed =
-        env.ui_for_reflect_with_options(graph, ui, egui::Id::new(&graph_selection.graph), &());
+            let mut input_data = OrderedMap {
+                order: graph.extra.input_param_order.clone(),
+                values: graph.default_parameters.clone(),
+            };
 
-    if changed {
-        changes.push(GraphChange {
-            change: Change::GraphValidate,
-            graph: graph_selection.graph.clone(),
+            ui.collapsing("Default input data", |ui| {
+                input_data_changed = env.ui_for_reflect_with_options(
+                    &mut input_data,
+                    ui,
+                    ui.id().with("default input data"),
+                    &(),
+                );
+            });
+
+            let mut output_data = OrderedMap {
+                order: graph.extra.output_data_order.clone(),
+                values: graph.output_parameters.clone(),
+            };
+            ui.collapsing("Output data", |ui| {
+                output_data_changed = env.ui_for_reflect_with_options(
+                    &mut output_data,
+                    ui,
+                    ui.id().with("output data"),
+                    &(),
+                );
+            });
+
+            let mut input_times = OrderedMap {
+                order: graph.extra.input_time_order.clone(),
+                values: graph.input_times.clone(),
+            };
+            ui.collapsing("Input times", |ui| {
+                input_times_changed = env.ui_for_reflect_with_options(
+                    &mut input_times,
+                    ui,
+                    ui.id().with("input times"),
+                    &(),
+                );
+            });
+
+            let mut output_time = graph.output_time.clone();
+
+            ui.collapsing("Output time", |ui| {
+                output_time_changed = env.ui_for_reflect_with_options(
+                    &mut output_time,
+                    ui,
+                    ui.id().with("output time"),
+                    &(),
+                );
+            });
+
+            if input_data_changed {
+                ctx.editor_actions
+                    .push(EditorAction::Graph(GraphAction::UpdateInputData(
+                        UpdateInputData {
+                            graph: graph_selection.graph.clone(),
+                            input_data,
+                        },
+                    )));
+            }
+
+            if output_data_changed {
+                ctx.editor_actions
+                    .push(EditorAction::Graph(GraphAction::UpdateOutputData(
+                        UpdateOutputData {
+                            graph: graph_selection.graph.clone(),
+                            output_data,
+                        },
+                    )));
+            }
+
+            if input_times_changed {
+                ctx.editor_actions
+                    .push(EditorAction::Graph(GraphAction::UpdateInputTimes(
+                        UpdateInputTimes {
+                            graph: graph_selection.graph.clone(),
+                            input_times,
+                        },
+                    )));
+            }
+
+            if output_time_changed {
+                ctx.editor_actions
+                    .push(EditorAction::Graph(GraphAction::UpdateOutputTime(
+                        UpdateOutputTime {
+                            graph: graph_selection.graph.clone(),
+                            output_time,
+                        },
+                    )));
+            }
         });
-    }
-
-    ctx.graph_changes.extend(changes);
-
-    queue.apply(world);
+    });
 }
 
 fn fsm_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorWindowContext) {
@@ -535,10 +584,12 @@ fn node_creator(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorWindowCont
 
     if submit_response.clicked() && ctx.global_state.graph_editor.is_some() {
         let graph_selection = ctx.global_state.graph_editor.as_ref().unwrap();
-        ctx.graph_changes.push(GraphChange {
-            change: Change::NodeCreated(ctx.global_state.node_creation.node.clone()),
-            graph: graph_selection.graph.clone(),
-        });
+
+        ctx.editor_actions
+            .push(EditorAction::Graph(GraphAction::CreateNode(CreateNode {
+                graph: graph_selection.graph.clone(),
+                node: ctx.global_state.node_creation.node.clone(),
+            })));
     }
 
     queue.apply(world);

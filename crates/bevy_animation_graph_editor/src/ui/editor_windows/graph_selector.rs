@@ -53,7 +53,6 @@ impl EditorWindowExtension for GraphSelectorWindow {
         if let Some(chosen_id) = chosen_handle {
             ctx.global_state.graph_editor = Some(GraphSelection {
                 graph: chosen_id.clone(),
-                graph_indices: utils::update_graph_indices(world, chosen_id.clone()),
                 nodes_context: NodesContext::default(),
             });
             ctx.global_state.inspector_selection = InspectorSelection::Graph;

@@ -7,7 +7,7 @@ use bevy::{
 };
 use bevy_animation_graph::core::{
     animation_clip::EntityPath,
-    animation_graph::{AnimationGraph, PinId},
+    animation_graph::PinId,
     edge_data::{BoneMask, DataSpec, DataValue},
 };
 use bevy_inspector_egui::{
@@ -98,7 +98,6 @@ impl Plugin for BetterInspectorPlugin {
         let type_registry = &mut type_registry;
 
         add_no_many::<String>(type_registry, string_mut, string_readonly);
-        add_no_many::<AnimationGraph>(type_registry, animation_graph_mut, todo_readonly_ui);
         add_no_many::<BoneMask>(type_registry, bone_mask_ui_mut, todo_readonly_ui);
         add_no_many::<HashMap<EntityPath, f32>>(
             type_registry,
@@ -226,77 +225,6 @@ fn string_readonly(
 ) {
     let value = value.downcast_ref::<String>().unwrap();
     ui.label(value);
-}
-
-pub fn animation_graph_mut(
-    value: &mut dyn Any,
-    ui: &mut egui::Ui,
-    _options: &dyn Any,
-    id: egui::Id,
-    mut env: InspectorUi<'_, '_>,
-) -> bool {
-    let value: &mut AnimationGraph = value.downcast_mut::<AnimationGraph>().unwrap();
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    hasher.write_u64(unsafe { std::mem::transmute_copy(&id) });
-    hasher.write_usize(0);
-    let default_params_id = egui::Id::new(Hasher::finish(&hasher));
-    hasher.write_usize(0);
-    let output_params_id = egui::Id::new(Hasher::finish(&hasher));
-    hasher.write_usize(0);
-    let input_poses_id = egui::Id::new(Hasher::finish(&hasher));
-    hasher.write_usize(0);
-    let output_pose_id = egui::Id::new(Hasher::finish(&hasher));
-
-    let mut default_params_changed = false;
-    let mut output_params_changed = false;
-    let mut input_poses_changed = false;
-    let mut output_pose_changed = false;
-    //ui.heading("Default input parameters");
-    let mut default_params = OrderedMap {
-        order: value.extra.input_param_order.clone(),
-        values: value.default_parameters.clone(),
-    };
-    ui.collapsing("Default input data", |ui| {
-        default_params_changed =
-            env.ui_for_reflect_with_options(&mut default_params, ui, default_params_id, &());
-    });
-    if default_params_changed {
-        value.default_parameters = default_params.values.clone();
-        value.extra.input_param_order = default_params.order.clone();
-    }
-
-    let mut output_params = OrderedMap {
-        order: value.extra.output_data_order.clone(),
-        values: value.output_parameters.clone(),
-    };
-    ui.collapsing("Output data", |ui| {
-        output_params_changed =
-            env.ui_for_reflect_with_options(&mut output_params, ui, output_params_id, &());
-    });
-    if output_params_changed {
-        value.output_parameters = output_params.values.clone();
-        value.extra.output_data_order = output_params.order.clone();
-    }
-
-    let mut input_times = OrderedMap {
-        order: value.extra.input_time_order.clone(),
-        values: value.input_times.clone(),
-    };
-    ui.collapsing("Input times", |ui| {
-        input_poses_changed =
-            env.ui_for_reflect_with_options(&mut input_times, ui, input_poses_id, &());
-    });
-    if input_poses_changed {
-        value.input_times = input_times.values.clone();
-        value.extra.input_time_order = input_times.order.clone();
-    }
-
-    ui.collapsing("Output time", |ui| {
-        output_pose_changed =
-            env.ui_for_reflect_with_options(&mut value.output_time, ui, output_pose_id, &());
-    });
-
-    default_params_changed || output_params_changed || input_poses_changed || output_pose_changed
 }
 
 pub fn bone_mask_ui_mut(

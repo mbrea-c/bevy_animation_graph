@@ -31,20 +31,8 @@ impl DirtyAssets {
 }
 
 pub enum SaveAction {
-    RequestFsm(RequestSaveFsm),
-    RequestGraph(RequestSaveGraph),
-    Fsm(SaveFsm),
-    Graph(SaveGraph),
     RequestMultiple,
     Multiple(SaveMultiple),
-}
-
-pub struct RequestSaveGraph {
-    pub asset_id: AssetId<AnimationGraph>,
-}
-
-pub struct RequestSaveFsm {
-    pub asset_id: AssetId<StateMachine>,
 }
 
 pub struct SaveGraph {
@@ -64,30 +52,6 @@ pub struct SaveMultiple {
 
 pub fn handle_save_action(world: &mut World, action: SaveAction) {
     match action {
-        SaveAction::RequestFsm(request_save_fsm) => {
-            if let Err(err) =
-                world.run_system_cached_with(handle_request_save_fsm, request_save_fsm)
-            {
-                error!("Failed to apply save action: {:?}", err);
-            }
-        }
-        SaveAction::RequestGraph(request_save_graph) => {
-            if let Err(err) =
-                world.run_system_cached_with(handle_request_save_graph, request_save_graph)
-            {
-                error!("Failed to apply save action: {:?}", err);
-            }
-        }
-        SaveAction::Fsm(save_fsm) => {
-            if let Err(err) = world.run_system_cached_with(handle_save_fsm, save_fsm) {
-                error!("Failed to apply save action: {:?}", err);
-            }
-        }
-        SaveAction::Graph(save_graph) => {
-            if let Err(err) = world.run_system_cached_with(handle_save_graph, save_graph) {
-                error!("Failed to apply save action: {:?}", err);
-            }
-        }
         SaveAction::Multiple(action) => {
             if let Err(err) = world.run_system_cached_with(handle_save_multiple, action) {
                 error!("Failed to apply save action: {:?}", err);
@@ -98,38 +62,6 @@ pub fn handle_save_action(world: &mut World, action: SaveAction) {
                 error!("Failed to apply save action: {:?}", err);
             }
         }
-    }
-}
-
-pub fn handle_request_save_graph(
-    In(save_request): In<RequestSaveGraph>,
-    mut ui_state: ResMut<UiState>,
-    asset_server: Res<AssetServer>,
-) {
-    if let Some(active_view_idx) = ui_state.active_view {
-        let path = asset_server
-            .get_path(save_request.asset_id)
-            .map_or("".into(), |p| p.path().to_string_lossy().into());
-        let window = EguiWindow::GraphSaver(save_request.asset_id, path, false);
-        ui_state.views[active_view_idx]
-            .dock_state
-            .add_window(vec![window]);
-    }
-}
-
-pub fn handle_request_save_fsm(
-    In(save_request): In<RequestSaveFsm>,
-    mut ui_state: ResMut<UiState>,
-    asset_server: Res<AssetServer>,
-) {
-    if let Some(active_view_idx) = ui_state.active_view {
-        let path = asset_server
-            .get_path(save_request.asset_id)
-            .map_or("".into(), |p| p.path().to_string_lossy().into());
-        let window = EguiWindow::FsmSaver(save_request.asset_id, path, false);
-        ui_state.views[active_view_idx]
-            .dock_state
-            .add_window(vec![window]);
     }
 }
 

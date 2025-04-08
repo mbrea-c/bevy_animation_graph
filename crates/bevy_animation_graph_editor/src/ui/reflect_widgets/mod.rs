@@ -59,7 +59,7 @@ pub trait EguiInspectorExtension: Sized {
 pub trait EguiInspectorExtensionRegistration:
     EguiInspectorExtension + Sized + Send + Sync + 'static
 where
-    Self::Base: HashExt + std::fmt::Debug,
+    Self::Base: WidgetHash + std::fmt::Debug,
 {
     fn register(self, app: &mut App) {
         app.register_type::<Self::Base>();
@@ -113,12 +113,8 @@ where
 impl<T: EguiInspectorExtension + Sized + Send + Sync + 'static> EguiInspectorExtensionRegistration
     for T
 where
-    T::Base: HashExt + std::fmt::Debug,
+    T::Base: WidgetHash + std::fmt::Debug,
 {
-}
-
-pub trait HashExt {
-    fn hash_ext(&self) -> u64;
 }
 
 pub trait IntoBuffer<B> {
@@ -166,7 +162,7 @@ impl<S, B, M> Default for EguiInspectorBuffers<S, B, M> {
 
 impl<S, B, M> EguiInspectorBuffers<S, B, M>
 where
-    S: HashExt + IntoBuffer<B>,
+    S: WidgetHash + IntoBuffer<B>,
 {
     /// If the original value was changed and we need to flush the buffer, flush it
     pub fn reset_if_needed(&mut self, value: &S, id: egui::Id) {
@@ -178,7 +174,7 @@ where
     fn should_reset_field(&self, value: &S, id: egui::Id) -> bool {
         if let Some(field_hash) = self.bufs.get(&id).map(|f| f.start_hash) {
             // First we need to compute the hash of value
-            let hash = value.hash_ext();
+            let hash = value.widget_hash();
             field_hash != hash
         } else {
             true
@@ -190,7 +186,7 @@ where
             id,
             BufferField {
                 buffer: value.into_buffer(),
-                start_hash: value.hash_ext(),
+                start_hash: value.widget_hash(),
             },
         );
     }
@@ -202,7 +198,7 @@ fn get_buffered<'w, S, B, M>(
     id: egui::Id,
 ) -> &'w mut B
 where
-    S: HashExt + IntoBuffer<B> + Send + Sync + 'static,
+    S: WidgetHash + IntoBuffer<B> + Send + Sync + 'static,
     B: Send + Sync + 'static,
     M: Send + Sync + 'static,
 {
@@ -223,7 +219,7 @@ fn get_buffered_readonly<'w, S, B, M>(
     id: egui::Id,
 ) -> &'w B
 where
-    S: HashExt + IntoBuffer<B> + Send + Sync + 'static,
+    S: WidgetHash + IntoBuffer<B> + Send + Sync + 'static,
     B: Send + Sync + 'static,
     M: Send + Sync + 'static,
 {
@@ -270,14 +266,18 @@ type InspectorEguiImplFn =
 type InspectorEguiImplFnReadonly =
     fn(&dyn Any, &mut egui::Ui, &dyn Any, egui::Id, InspectorUi<'_, '_>);
 
+pub trait WidgetHash {
+    fn widget_hash(&self) -> u64;
+}
+
 /// We need a macro since `impl <T: Hash> HashExt for T` does not allow
 /// specialized impls
 #[macro_export]
-macro_rules! impl_hash_ext_from_hash {
+macro_rules! impl_widget_hash_from_hash {
     ( $($t:ty),* ) => {
-    $( impl crate::ui::reflect_widgets::HashExt for $t
+    $( impl crate::ui::reflect_widgets::WidgetHash for $t
     {
-        fn hash_ext(&self) -> u64 {
+        fn widget_hash(&self) -> u64 {
             use std::hash::{Hash, Hasher};
             let mut hasher = std::hash::DefaultHasher::new();
             self.hash(&mut hasher);
@@ -287,7 +287,7 @@ macro_rules! impl_hash_ext_from_hash {
     }
 }
 
-impl_hash_ext_from_hash! {
+impl_widget_hash_from_hash! {
     PatternMapper,
     EntityPath,
     bool,

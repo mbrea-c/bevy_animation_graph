@@ -11,7 +11,7 @@ use bevy::{
 use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
 use egui_dock::egui;
 
-use super::{get_buffered, EguiInspectorBuffers, HashExt, TopLevelBuffer};
+use super::{get_buffered, EguiInspectorBuffers, TopLevelBuffer, WidgetHash};
 
 pub struct WrapUi<'a, 'c> {
     inspector_ui: InspectorUi<'a, 'c>,
@@ -26,7 +26,7 @@ impl WrapUi<'_, '_> {
         options: &O,
     ) -> Option<T>
     where
-        T: PartialReflect + Clone + HashExt,
+        T: PartialReflect + Clone + WidgetHash,
         O: 'static,
     {
         self.initialize_buffer_if_missing::<T>();
@@ -46,7 +46,7 @@ impl WrapUi<'_, '_> {
 
     fn initialize_buffer_if_missing<T>(&mut self)
     where
-        T: PartialReflect + Clone + HashExt,
+        T: PartialReflect + Clone + WidgetHash,
     {
         let Some(world) = self.inspector_ui.context.world.as_mut() else {
             return;

@@ -13,6 +13,7 @@ use bevy::{
 };
 use egui_dock::DockState;
 use event_tracks::{handle_event_track_action, EventTrackAction};
+use graph::{handle_graph_action, GraphAction};
 use saving::{handle_save_action, SaveAction};
 
 use super::{
@@ -46,6 +47,7 @@ pub enum EditorAction {
     View(ViewAction),
     Save(SaveAction),
     EventTrack(EventTrackAction),
+    Graph(GraphAction),
 }
 
 pub fn handle_editor_action_queue(world: &mut World, actions: impl Iterator<Item = EditorAction>) {
@@ -70,6 +72,7 @@ pub fn handle_editor_action(world: &mut World, action: EditorAction) {
         EditorAction::EventTrack(event_track_action) => {
             handle_event_track_action(world, event_track_action)
         }
+        EditorAction::Graph(graph_action) => handle_graph_action(world, graph_action),
     }
 }
 

@@ -2,8 +2,6 @@ use std::f32::consts::{FRAC_PI_2, PI};
 use std::path::PathBuf;
 
 use crate::fsm_show::{make_fsm_indices, FsmIndices};
-use crate::graph_show::{make_graph_indices, GraphIndices};
-use crate::graph_update::{update_graph_asset, Change, GraphChange};
 use crate::tree::{Tree, TreeInternal, TreeResult};
 use bevy::asset::UntypedAssetId;
 use bevy::ecs::world::CommandQueue;
@@ -94,59 +92,11 @@ pub(crate) fn select_from_tree_internal<I, L>(
     }
 }
 
-pub(crate) fn update_graph(world: &mut World, changes: Vec<GraphChange>) -> bool {
-    world.resource_scope::<Assets<AnimationGraph>, _>(|world, mut graph_assets| {
-        world.resource_scope::<Assets<StateMachine>, _>(|_, fsm_assets| {
-            update_graph_asset(changes, &mut graph_assets, &fsm_assets)
-        })
-    })
-}
-
-pub(crate) fn update_graph_indices(
-    world: &mut World,
-    graph_handle: Handle<AnimationGraph>,
-) -> GraphIndices {
-    let mut res = indices_one_step(world, graph_handle.clone());
-
-    while let Err(changes) = &res {
-        update_graph(world, changes.clone());
-        res = indices_one_step(world, graph_handle.clone());
-    }
-
-    res.unwrap()
-}
-
 pub(crate) fn update_fsm_indices(world: &mut World, fsm_id: AssetId<StateMachine>) -> FsmIndices {
     world.resource_scope::<Assets<StateMachine>, FsmIndices>(|_, fsm_assets| {
         let fsm = fsm_assets.get(fsm_id).unwrap();
 
         make_fsm_indices(fsm, &fsm_assets).unwrap()
-    })
-}
-
-pub(crate) fn indices_one_step(
-    world: &mut World,
-    graph_handle: Handle<AnimationGraph>,
-) -> Result<GraphIndices, Vec<GraphChange>> {
-    world.resource_scope::<Assets<AnimationGraph>, _>(|world, graph_assets| {
-        world.resource_scope::<Assets<StateMachine>, _>(|_, fsm_assets| {
-            let graph = graph_assets.get(&graph_handle).unwrap();
-            let spec_context = SpecContext {
-                graph_assets: &graph_assets,
-                fsm_assets: &fsm_assets,
-            };
-
-            match make_graph_indices(graph, spec_context) {
-                Err(targets) => Err(targets
-                    .into_iter()
-                    .map(|t| GraphChange {
-                        graph: graph_handle.clone(),
-                        change: Change::LinkRemoved(t),
-                    })
-                    .collect()),
-                Ok(indices) => Ok(indices),
-            }
-        })
     })
 }
 

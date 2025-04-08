@@ -4,7 +4,7 @@ use bevy::reflect::{FromReflect, Reflect, Reflectable};
 use bevy_inspector_egui::reflect_inspector::InspectorUi;
 use egui_dock::egui;
 
-use super::{EguiInspectorExtension, HashExt, IntoBuffer};
+use super::{EguiInspectorExtension, IntoBuffer, WidgetHash};
 
 #[derive(Default)]
 pub struct SubmittableInspector<T> {
@@ -62,8 +62,8 @@ impl<T: Clone> IntoBuffer<T> for Submittable<T> {
     }
 }
 
-impl<T: HashExt> HashExt for Submittable<T> {
-    fn hash_ext(&self) -> u64 {
-        self.value.hash_ext()
+impl<T: WidgetHash> WidgetHash for Submittable<T> {
+    fn widget_hash(&self) -> u64 {
+        self.value.widget_hash()
     }
 }
