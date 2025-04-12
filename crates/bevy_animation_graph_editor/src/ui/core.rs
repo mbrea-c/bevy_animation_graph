@@ -21,6 +21,7 @@ use egui_notify::{Anchor, Toasts};
 
 use super::actions::saving::SaveAction;
 use super::actions::{EditorAction, PendingActions, PushQueue};
+use super::editor_windows::animation_clip_preview::ClipPreviewWindow;
 use super::editor_windows::debugger::DebuggerWindow;
 use super::editor_windows::event_sender::EventSenderWindow;
 use super::editor_windows::event_track_editor::EventTrackEditorWindow;
@@ -144,10 +145,17 @@ impl ViewState {
 
     pub fn event_track_view(windows: &mut Windows, name: impl Into<String>) -> Self {
         let event_track_window = windows.open(EventTrackEditorWindow::default());
+        let clip_preview_window = windows.open(ClipPreviewWindow::default());
+
+        let mut state = DockState::new(vec![event_track_window.into()]);
+
+        let tree = state.main_surface_mut();
+
+        tree.split_above(NodeIndex::root(), 0.5, vec![clip_preview_window.into()]);
 
         Self {
             name: name.into(),
-            dock_state: DockState::new(vec![event_track_window.into()]),
+            dock_state: state,
         }
     }
 
@@ -218,8 +226,8 @@ impl UiState {
                 .with_default_font(egui::FontId::proportional(12.)),
 
             views: vec![
-                ViewState::main_view(&mut windows, "main"),
-                ViewState::event_track_view(&mut windows, "other"),
+                ViewState::main_view(&mut windows, "Graph editing"),
+                ViewState::event_track_view(&mut windows, "Event tracks"),
             ],
             active_view: Some(0),
             windows,
@@ -262,6 +270,8 @@ pub struct EditorViewContext<'a> {
 
 pub struct EditorWindowContext<'a> {
     pub window_id: WindowId,
+    /// Read-only view on windows other than the current one
+    pub windows: &'a Windows,
     pub global_state: &'a mut GlobalState,
     #[allow(dead_code)] // Temporary while I migrate to extension pattern
     pub notifications: &'a mut Toasts,
@@ -295,24 +305,27 @@ struct TabViewer<'a> {
 impl egui_dock::TabViewer for TabViewer<'_> {
     type Tab = EguiWindow;
 
-    fn ui(&mut self, ui: &mut egui_dock::egui::Ui, window: &mut Self::Tab) {
+    fn ui(&mut self, ui: &mut egui::Ui, window: &mut Self::Tab) {
         match window {
             EguiWindow::DynWindow(editor_window) => {
-                let mut ctx = EditorWindowContext {
-                    window_id: *editor_window,
-                    global_state: self.context.global_state,
-                    notifications: self.context.notifications,
-                    editor_actions: self.context.editor_actions,
-                };
-
                 self.context
                     .windows
-                    .ui_for_window(ui, &mut self.world, &mut ctx);
+                    .with_window_mut(*editor_window, |window, windows| {
+                        let mut ctx = EditorWindowContext {
+                            window_id: *editor_window,
+                            global_state: self.context.global_state,
+                            notifications: self.context.notifications,
+                            editor_actions: self.context.editor_actions,
+                            windows,
+                        };
+
+                        window.ui(ui, &mut self.world, &mut ctx);
+                    });
             }
         }
     }
 
-    fn title(&mut self, window: &mut Self::Tab) -> egui_dock::egui::WidgetText {
+    fn title(&mut self, window: &mut Self::Tab) -> egui::WidgetText {
         window.display_name(&self.context.windows).into()
     }
 

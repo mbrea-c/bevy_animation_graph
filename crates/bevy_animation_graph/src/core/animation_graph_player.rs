@@ -173,6 +173,10 @@ impl AnimationGraphPlayer {
             }
         };
 
+        if let Some(pose) = self.outputs.get(DEFAULT_OUTPUT_POSE) {
+            let _ = pose.as_pose().map(|p| self.elapsed = p.timestamp);
+        }
+
         self.pending_update = TimeUpdate::Delta(0.);
     }
 
@@ -249,6 +253,10 @@ impl AnimationGraphPlayer {
         self.pending_update = TimeUpdate::Absolute(0.);
     }
 
+    pub fn seek(&mut self, time: f32) {
+        self.pending_update = TimeUpdate::Absolute(time);
+    }
+
     pub fn get_animation_source(&self) -> &AnimationSource {
         &self.animation
     }
@@ -261,6 +269,10 @@ impl AnimationGraphPlayer {
 
     pub fn get_outputs(&self) -> &HashMap<PinId, DataValue> {
         &self.outputs
+    }
+
+    pub fn elapsed(&self) -> f32 {
+        self.elapsed
     }
 
     /// Gets the default output pose from the graph, or the forced pose if set.

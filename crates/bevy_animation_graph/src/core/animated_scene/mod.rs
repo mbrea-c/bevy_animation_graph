@@ -17,27 +17,37 @@ use bevy::{
 #[derive(Clone, Asset, Reflect)]
 #[reflect(Asset)]
 pub struct AnimatedScene {
-    pub(crate) source: Handle<Scene>,
-    pub(crate) processed_scene: Option<Handle<Scene>>,
-    pub(crate) animation_graph: Handle<AnimationGraph>,
-    pub(crate) retargeting: Option<Retargeting>,
+    pub source: Handle<Scene>,
+    pub processed_scene: Option<Handle<Scene>>,
+    pub animation_graph: Handle<AnimationGraph>,
+    pub retargeting: Option<Retargeting>,
     /// Skeleton of the animations we want to play on the source scene.
     ///
     /// Usually this will be the source scene's skeleton, but it may differ if we're applying
     /// retargeting.
-    pub(crate) skeleton: Handle<Skeleton>,
+    pub skeleton: Handle<Skeleton>,
+}
+
+impl AnimatedScene {
+    pub fn new(
+        source: Handle<Scene>,
+        animation_graph: Handle<AnimationGraph>,
+        retargeting: Option<Retargeting>,
+        skeleton: Handle<Skeleton>,
+    ) {
+    }
 }
 
 /// Configuration needed to apply animation retargeting
 #[derive(Clone, Reflect)]
 pub struct Retargeting {
     /// *Actual* skeleton of the source scene.
-    source_skeleton: Handle<Skeleton>,
+    pub source_skeleton: Handle<Skeleton>,
     /// Allows renaming of individual components of bone paths.
     ///
     /// For example using an override `"bone_a": "bone_b"` will map a path `["parent_bone",
     /// "bone_a", "child_bone"]` to `["parent_bone", "bone_b", "child_bone"]`.
-    bone_path_overrides: HashMap<String, String>,
+    pub bone_path_overrides: HashMap<String, String>,
 }
 
 #[derive(Component)]

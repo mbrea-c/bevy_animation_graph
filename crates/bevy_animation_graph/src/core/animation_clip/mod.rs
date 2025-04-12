@@ -149,12 +149,12 @@ impl<'de> Deserialize<'de> for EntityPath {
 pub struct GraphClip {
     // AnimationCurves are non-reflectable
     #[reflect(ignore)]
-    pub(crate) curves: AnimationCurves,
+    pub curves: AnimationCurves,
     /// If loaded from a [`GraphClipSerial`], what was the source?
-    pub(crate) source: Option<GraphClipSource>,
-    pub(crate) duration: f32,
-    pub(crate) skeleton: Handle<Skeleton>,
-    pub(crate) event_tracks: HashMap<String, EventTrack>,
+    pub source: Option<GraphClipSource>,
+    pub duration: f32,
+    pub skeleton: Handle<Skeleton>,
+    pub event_tracks: HashMap<String, EventTrack>,
 }
 
 impl GraphClip {

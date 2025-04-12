@@ -1,4 +1,4 @@
-use std::{hash::Hash, usize};
+use std::{any::TypeId, hash::Hash, usize};
 
 use bevy::{
     asset::{Assets, Handle},
@@ -22,12 +22,15 @@ use uuid::Uuid;
 use crate::ui::{
     actions::{
         event_tracks::{EditEventAction, EventTrackAction, NewEventAction, NewTrackAction},
+        window::{DynWindowAction, TypeTargetedWindowAction},
         EditorAction,
     },
     core::{EditorWindowContext, EditorWindowExtension},
     reflect_widgets::{submittable::Submittable, wrap_ui::using_wrap_ui},
-    windows::WindowAction,
+    windows::WindowId,
 };
+
+use super::animation_clip_preview::{ClipPreviewAction, ClipPreviewWindow, TimingOrder};
 
 #[derive(Debug)]
 pub struct EventTrackEditorWindow {
@@ -87,6 +90,11 @@ impl EditorWindowExtension for EventTrackEditorWindow {
     fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
         let timeline_height = 30.;
 
+        let sister_window_id = ctx.windows.find_window_with_type::<ClipPreviewWindow>();
+        let sister_window = sister_window_id
+            .and_then(|id| ctx.windows.get_window(id))
+            .and_then(|w| w.as_inner::<ClipPreviewWindow>());
+
         egui::SidePanel::left("Track names")
             .resizable(true)
             .default_width(200.)
@@ -136,7 +144,12 @@ impl EditorWindowExtension for EventTrackEditorWindow {
             .exact_height(timeline_height)
             .frame(egui::Frame::NONE)
             .show_inside(ui, |ui| {
-                self.draw_timeline(ui);
+                self.draw_timeline(
+                    ui,
+                    sister_window.and_then(|w| w.current_time),
+                    sister_window_id,
+                    ctx,
+                );
             });
 
         Self::with_tracks(
@@ -156,9 +169,8 @@ impl EditorWindowExtension for EventTrackEditorWindow {
         "Edit tracks".to_string()
     }
 
-    fn handle_action(&mut self, event: WindowAction) {
-        let Ok(editor_action): Result<Box<EventTrackEditorAction>, _> = event.event.downcast()
-        else {
+    fn handle_action(&mut self, action: DynWindowAction) {
+        let Ok(editor_action): Result<Box<EventTrackEditorAction>, _> = action.downcast() else {
             return;
         };
 
@@ -428,7 +440,13 @@ impl EventTrackEditorWindow {
         );
     }
 
-    fn draw_timeline(&self, ui: &mut egui::Ui) {
+    fn draw_timeline(
+        &self,
+        ui: &mut egui::Ui,
+        current_time: Option<f32>,
+        sister_window_id: Option<WindowId>,
+        ctx: &mut EditorWindowContext,
+    ) {
         let available_size = ui.available_size();
         let (_, area_rect) = ui.allocate_space(available_size);
         let height = area_rect.height();
@@ -465,6 +483,46 @@ impl EventTrackEditorWindow {
                 egui::Color32::LIGHT_GRAY,
             );
         }
+
+        // Draw current time
+        if let Some(current_time) = current_time {
+            let current_time_pixel_pos = self.time_to_pixel(current_time, area_rect);
+
+            let points = vec![
+                egui::Pos2::new(current_time_pixel_pos, area_rect.bottom()),
+                egui::Pos2::new(current_time_pixel_pos - 8., area_rect.top()),
+                egui::Pos2::new(current_time_pixel_pos + 8., area_rect.top()),
+            ];
+
+            let path_shape = egui::epaint::PathShape::convex_polygon(
+                points,
+                egui::Color32::RED, // fill color for the triangle
+                egui::Stroke::new(0.0, egui::Color32::TRANSPARENT),
+            );
+
+            ui.painter().add(egui::Shape::Path(path_shape));
+        }
+
+        // Detect clicks on timeline to seek time
+        if let Some(sister_window_id) = sister_window_id {
+            if let Some(click_pos) = ui.input(|i| {
+                if i.pointer.primary_down()
+                    && i.pointer
+                        .latest_pos()
+                        .map_or(false, |p| area_rect.contains(p))
+                {
+                    i.pointer.latest_pos()
+                } else {
+                    None
+                }
+            }) {
+                let time = self.pixel_to_time(click_pos.x, area_rect);
+                ctx.editor_actions.window(
+                    sister_window_id,
+                    ClipPreviewAction::TimingOrder(TimingOrder::Seek { time }),
+                );
+            }
+        }
     }
 
     fn draw_track_source_selector(
@@ -484,8 +542,12 @@ impl EventTrackEditorWindow {
             }) {
                 ctx.editor_actions.window(
                     ctx.window_id,
-                    EventTrackEditorAction::SetTrackSource(new_selection),
+                    EventTrackEditorAction::SetTrackSource(new_selection.clone()),
                 );
+                ctx.editor_actions.dynamic(TypeTargetedWindowAction {
+                    target_window_type: TypeId::of::<ClipPreviewWindow>(),
+                    action: Box::new(ClipPreviewAction::SelectTarget(new_selection)),
+                });
             }
         });
     }
@@ -541,6 +603,11 @@ impl EventTrackEditorWindow {
     fn time_to_pixel(&self, time: f32, viewport: egui::Rect) -> f32 {
         let time_to_pixel = viewport.width() / self.scroll_config.time_range;
         viewport.left() + (time - self.left_time()) * time_to_pixel
+    }
+
+    fn pixel_to_time(&self, pixel: f32, viewport: egui::Rect) -> f32 {
+        let time_to_pixel = viewport.width() / self.scroll_config.time_range;
+        (pixel - viewport.left()) / time_to_pixel + self.left_time()
     }
 
     /// Supports track fractional numbers

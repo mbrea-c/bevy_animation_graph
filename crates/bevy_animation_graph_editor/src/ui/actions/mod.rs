@@ -3,10 +3,12 @@
 //!
 //! This will pave the way for undo/redo support later on.
 
+pub mod clip_preview;
 pub mod event_tracks;
 pub mod fsm;
 pub mod graph;
 pub mod saving;
+pub mod window;
 
 use std::{any::Any, fmt::Display};
 
@@ -22,10 +24,11 @@ use event_tracks::{handle_event_track_action, EventTrackAction};
 use fsm::{handle_fsm_action, FsmAction};
 use graph::{handle_graph_action, GraphAction};
 use saving::{handle_save_action, SaveAction};
+use window::WindowAction;
 
 use super::{
     core::{ViewAction, ViewState},
-    windows::{WindowAction, WindowId},
+    windows::WindowId,
     UiState,
 };
 
@@ -50,12 +53,12 @@ impl<T> PushQueue<T> {
 }
 
 pub enum EditorAction {
-    Window(WindowAction),
     View(ViewAction),
     Save(SaveAction),
     EventTrack(EventTrackAction),
     Graph(GraphAction),
     Fsm(FsmAction),
+    Dynamic(Box<dyn DynamicAction>),
 }
 
 pub fn handle_editor_action_queue(world: &mut World, actions: impl Iterator<Item = EditorAction>) {
@@ -66,11 +69,6 @@ pub fn handle_editor_action_queue(world: &mut World, actions: impl Iterator<Item
 
 pub fn handle_editor_action(world: &mut World, action: EditorAction) {
     match action {
-        EditorAction::Window(action) => {
-            if let Err(err) = world.run_system_cached_with(handle_window_action, action) {
-                error!("Failed to apply window action: {:?}", err);
-            }
-        }
         EditorAction::View(action) => {
             if let Err(err) = world.run_system_cached_with(handle_view_action, action) {
                 error!("Failed to apply view action: {:?}", err);
@@ -80,6 +78,7 @@ pub fn handle_editor_action(world: &mut World, action: EditorAction) {
         EditorAction::EventTrack(action) => handle_event_track_action(world, action),
         EditorAction::Graph(action) => handle_graph_action(world, action),
         EditorAction::Fsm(action) => handle_fsm_action(world, action),
+        EditorAction::Dynamic(action) => action.handle(world),
     }
 }
 
@@ -105,10 +104,6 @@ fn handle_view_action(In(view_action): In<ViewAction>, mut ui_state: ResMut<UiSt
     }
 }
 
-fn handle_window_action(In(window_action): In<WindowAction>, mut ui_state: ResMut<UiState>) {
-    ui_state.windows.handle_action(window_action);
-}
-
 pub fn process_actions_system(world: &mut World) {
     world.resource_scope::<PendingActions, ()>(|world, mut actions| {
         handle_editor_action_queue(world, actions.actions.0.drain(..));
@@ -117,10 +112,14 @@ pub fn process_actions_system(world: &mut World) {
 
 impl PushQueue<EditorAction> {
     pub fn window(&mut self, window: WindowId, event: impl Any + Send + Sync) {
-        self.push(EditorAction::Window(WindowAction {
+        self.push(EditorAction::Dynamic(Box::new(WindowAction {
             target: window,
-            event: Box::new(event),
-        }))
+            action: Box::new(event),
+        })))
+    }
+
+    pub fn dynamic(&mut self, action: impl DynamicAction) {
+        self.push(EditorAction::Dynamic(Box::new(action)));
     }
 }
 
@@ -138,4 +137,8 @@ where
             .run_system_cached_with(closure, input)
             .inspect_err(|err| error!("{}: {}", msg, err));
     }
+}
+
+pub trait DynamicAction: Send + Sync + 'static {
+    fn handle(self: Box<Self>, world: &mut World);
 }

@@ -1,3 +1,4 @@
+pub mod animation_clip_preview;
 pub mod debugger;
 pub mod event_sender;
 pub mod event_track_editor;

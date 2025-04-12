@@ -309,7 +309,7 @@ impl AnimationGraph {
         self.output_parameters.insert(pin_id.into(), spec);
     }
 
-    /// Enables pose output for this graph
+    /// Enables time "output" for this graph
     pub fn add_output_time(&mut self) {
         self.output_time = Some(());
     }

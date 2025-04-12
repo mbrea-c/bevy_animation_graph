@@ -15,7 +15,7 @@ use bevy_animation_graph::{
         animation_clip::EntityPath, event_track::TrackItemValue,
         state_machine::high_level::StateMachine,
     },
-    prelude::{config::PatternMapper, AnimationGraph, GraphClip},
+    prelude::{config::PatternMapper, AnimatedScene, AnimationGraph, GraphClip},
 };
 use bevy_inspector_egui::{
     inspector_egui_impls::InspectorEguiImpl,
@@ -295,6 +295,7 @@ impl_widget_hash_from_hash! {
     Handle<AnimationGraph>,
     Handle<GraphClip>,
     Handle<StateMachine>,
+    Handle<AnimatedScene>,
     String,
     PathBuf
 }

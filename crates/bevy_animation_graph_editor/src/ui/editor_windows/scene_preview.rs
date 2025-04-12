@@ -79,8 +79,8 @@ impl EditorWindowExtension for ScenePreviewWindow {
 
 #[derive(Clone, PartialEq)]
 pub struct ScenePreviewConfig {
-    animated_scene: Handle<AnimatedScene>,
-    view: OrbitView,
+    pub animated_scene: Handle<AnimatedScene>,
+    pub view: OrbitView,
 }
 
 impl SubSceneConfig for ScenePreviewConfig {

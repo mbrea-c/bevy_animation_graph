@@ -15,6 +15,7 @@ use fsm_show::FsmIndicesMap;
 use graph_show::GraphIndicesMap;
 use scanner::ScannerPlugin;
 use std::path::PathBuf;
+use ui::actions::clip_preview::ClipPreviewScenes;
 use ui::actions::saving::DirtyAssets;
 use ui::actions::PendingActions;
 use ui::egui_inspector_impls::BetterInspectorPlugin;
@@ -61,6 +62,7 @@ impl Plugin for AnimationGraphEditorPlugin {
             .insert_resource(DirtyAssets::default())
             .insert_resource(GraphIndicesMap::default())
             .insert_resource(FsmIndicesMap::default())
+            .insert_resource(ClipPreviewScenes::default())
             .insert_resource(cli)
             .add_systems(
                 Update,

@@ -82,11 +82,13 @@ pub fn run_animation_player(
     let _run_animation_player_span = info_span!("run_animation_player").entered();
     // Continue if paused unless the `AnimationPlayer` was changed
     // This allow the animation to still be updated if the player.elapsed field was manually updated in pause
-    if player.is_paused() || !player.animation.is_graph() {
+    if !player.animation.is_graph() {
         return;
     }
 
-    player.queue_time_update(TimeUpdate::Delta(time.delta_secs()));
+    if !player.is_paused() {
+        player.queue_time_update(TimeUpdate::Delta(time.delta_secs()));
+    }
 
     {
         let _entity_map_span = info_span!("build_entity_map").entered();

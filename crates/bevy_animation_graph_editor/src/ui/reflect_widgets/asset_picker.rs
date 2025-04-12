@@ -9,9 +9,16 @@ use egui_dock::egui;
 
 use super::{EguiInspectorExtension, IntoBuffer};
 
-#[derive(Default)]
 pub struct AssetPickerInspector<T> {
     _marker: PhantomData<T>,
+}
+
+impl<T> Default for AssetPickerInspector<T> {
+    fn default() -> Self {
+        Self {
+            _marker: PhantomData,
+        }
+    }
 }
 
 impl<T: Asset> EguiInspectorExtension for AssetPickerInspector<T> {
@@ -58,10 +65,10 @@ impl<T: Asset> EguiInspectorExtension for AssetPickerInspector<T> {
                         asset_id,
                         asset_server
                             .get_path(asset_id)
-                            .unwrap()
+                            .unwrap_or_default()
                             .path()
                             .to_str()
-                            .unwrap(),
+                            .unwrap_or_default(),
                     );
                 }
             });

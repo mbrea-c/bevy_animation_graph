@@ -1,7 +1,7 @@
 use bevy::app::{App, Plugin};
 use bevy_animation_graph::{
     core::{event_track::TrackItemValue, state_machine::high_level::StateMachine},
-    prelude::{AnimationGraph, GraphClip},
+    prelude::{AnimatedScene, AnimationGraph, GraphClip},
 };
 
 use super::{
@@ -19,6 +19,7 @@ impl Plugin for BetterInspectorPlugin {
         AssetPickerInspector::<AnimationGraph>::default().register(app);
         AssetPickerInspector::<StateMachine>::default().register(app);
         AssetPickerInspector::<GraphClip>::default().register(app);
+        AssetPickerInspector::<AnimatedScene>::default().register(app);
         TargetTracksInspector.register(app);
         SubmittableInspector::<String>::default().register(app);
         SubmittableInspector::<TrackItemValue>::default().register(app);
