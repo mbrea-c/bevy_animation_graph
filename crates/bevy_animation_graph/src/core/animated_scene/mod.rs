@@ -28,16 +28,6 @@ pub struct AnimatedScene {
     pub skeleton: Handle<Skeleton>,
 }
 
-impl AnimatedScene {
-    pub fn new(
-        source: Handle<Scene>,
-        animation_graph: Handle<AnimationGraph>,
-        retargeting: Option<Retargeting>,
-        skeleton: Handle<Skeleton>,
-    ) {
-    }
-}
-
 /// Configuration needed to apply animation retargeting
 #[derive(Clone, Reflect)]
 pub struct Retargeting {

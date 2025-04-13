@@ -1,0 +1,38 @@
+(
+    source: GltfNamed(
+        path: "models/AnimationLibrary_Godot.glb",
+        animation_name: "Jog_Left_Loop",
+    ),
+    skeleton: "skeletons/animlib.skn.ron",
+    event_tracks: {
+        "sync": (
+            name: "sync",
+            events: [
+                (
+                    id: "212d959a-3e8d-4b8e-8391-694195625854",
+                    value: (
+                        event: StringId("left_foot_down"),
+                        start_time: 0.0,
+                        end_time: 0.2,
+                    ),
+                ),
+                (
+                    id: "0e7a1e53-3503-4754-9414-76f014fc1b41",
+                    value: (
+                        event: StringId("right_foot_passing"),
+                        start_time: 0.2,
+                        end_time: 0.4,
+                    ),
+                ),
+                (
+                    id: "b0e6a1a5-8acb-4de1-b574-a60cf86095f7",
+                    value: (
+                        event: StringId("right_foot_down"),
+                        start_time: 0.4,
+                        end_time: 0.75,
+                    ),
+                ),
+            ],
+        ),
+    },
+)

@@ -1,10 +1,16 @@
 use bevy::{asset::Handle, prelude::World};
-use bevy_animation_graph::prelude::{AnimatedScene, AnimatedSceneInstance, AnimationGraphPlayer};
+use bevy_animation_graph::{
+    nodes::EventMarkupNode,
+    prelude::{AnimatedScene, AnimatedSceneInstance, AnimationGraphPlayer},
+};
 use egui_dock::egui;
 
 use crate::ui::{
     actions::{
-        clip_preview::{ClipPreviewScenes, CreateClipPreview},
+        clip_preview::{
+            ClipPreviewScenes, CreateClipPreview, CreateTrackNodePreview, NodePreviewKey,
+            NodePreviewScenes,
+        },
         window::DynWindowAction,
     },
     core::{EditorWindowContext, EditorWindowExtension},
@@ -80,7 +86,25 @@ impl EditorWindowExtension for ClipPreviewWindow {
                 preview_scene
             }
             TargetTracks::GraphNode { graph, node } => {
-                todo!("Need to implement this partial graph preview")
+                let key = NodePreviewKey {
+                    graph: graph.id(),
+                    node_id: node.clone(),
+                    pose_pin: EventMarkupNode::OUT_POSE.into(),
+                };
+
+                let Some(preview_scene) =
+                    world.resource_scope::<NodePreviewScenes, _>(|_, preview| {
+                        preview.previews.get(&key).cloned()
+                    })
+                else {
+                    ctx.editor_actions.dynamic(CreateTrackNodePreview {
+                        preview_key: key,
+                        scene: base_scene.clone(),
+                    });
+                    return;
+                };
+
+                preview_scene
             }
         };
 

@@ -1,0 +1,7 @@
+(
+    source: GltfNamed(
+        path: "models/AnimationLibrary_Godot.glb",
+        animation_name: "Idle_Loop",
+    ),
+    skeleton: "skeletons/animlib.skn.ron",
+)
