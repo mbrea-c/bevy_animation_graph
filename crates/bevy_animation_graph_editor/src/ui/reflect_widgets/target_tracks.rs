@@ -9,7 +9,7 @@ use egui_dock::egui;
 
 use crate::{impl_widget_hash_from_hash, ui::editor_windows::event_track_editor::TargetTracks};
 
-use super::{EguiInspectorExtension, IntoBuffer};
+use super::{EguiInspectorExtension, MakeBuffer};
 
 #[derive(Default)]
 pub struct TargetTracksInspector;
@@ -80,11 +80,7 @@ impl EguiInspectorExtension for TargetTracksInspector {
                         .as_ref()
                         .and_then(|g| {
                             let graph = g.get(current_handle.id());
-                            if let Some(graph) = graph {
-                                Some(combo_box_nodes(ui, &mut current_node, graph))
-                            } else {
-                                None
-                            }
+                            graph.map(|graph| combo_box_nodes(ui, &mut current_node, graph))
                         })
                         .unwrap_or(false);
 
@@ -172,8 +168,8 @@ fn validate(
         .is_some()
 }
 
-impl IntoBuffer<TargetTracksBuffer> for Option<TargetTracks> {
-    fn into_buffer(&self) -> TargetTracksBuffer {
+impl MakeBuffer<TargetTracksBuffer> for Option<TargetTracks> {
+    fn make_buffer(&self) -> TargetTracksBuffer {
         match self {
             Some(TargetTracks::Clip(_)) => TargetTracksBuffer {
                 selected: self.clone(),

@@ -5,7 +5,7 @@ use bevy_inspector_egui::reflect_inspector::InspectorUi;
 use egui::Widget;
 use egui_dock::egui;
 
-use super::{EguiInspectorExtension, IntoBuffer, WidgetHash};
+use super::{EguiInspectorExtension, MakeBuffer, WidgetHash};
 
 pub struct Vec2PlaneInspector;
 
@@ -87,8 +87,8 @@ impl WidgetHash for Vec2 {
     }
 }
 
-impl IntoBuffer<()> for Vec2 {
-    fn into_buffer(&self) -> () {
+impl MakeBuffer<()> for Vec2 {
+    fn make_buffer(&self) -> () {
         ()
     }
 }

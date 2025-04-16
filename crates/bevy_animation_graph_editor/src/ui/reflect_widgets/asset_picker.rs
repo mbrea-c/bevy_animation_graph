@@ -7,7 +7,7 @@ use bevy::asset::{Asset, AssetServer, Assets, Handle};
 use bevy_inspector_egui::reflect_inspector::InspectorUi;
 use egui_dock::egui;
 
-use super::{EguiInspectorExtension, IntoBuffer};
+use super::{EguiInspectorExtension, MakeBuffer};
 
 pub struct AssetPickerInspector<T> {
     _marker: PhantomData<T>,
@@ -94,8 +94,8 @@ impl<T: Asset> EguiInspectorExtension for AssetPickerInspector<T> {
     }
 }
 
-impl<T: Asset> IntoBuffer<()> for Handle<T> {
-    fn into_buffer(&self) -> () {
+impl<T: Asset> MakeBuffer<()> for Handle<T> {
+    fn make_buffer(&self) -> () {
         ()
     }
 }

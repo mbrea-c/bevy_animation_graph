@@ -135,8 +135,9 @@ impl Windows {
     }
 
     pub fn handle_action(&mut self, event: WindowAction) {
-        self.get_window_mut(event.target)
-            .map(|w| w.handle_action(event.action));
+        if let Some(w) = self.get_window_mut(event.target) {
+            w.handle_action(event.action);
+        }
     }
 
     pub fn with_window_mut<F, T>(&mut self, window_id: WindowId, f: F) -> Option<T>

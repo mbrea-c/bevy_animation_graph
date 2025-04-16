@@ -4,7 +4,7 @@ use bevy_animation_graph::prelude::config::{PatternMapper, PatternMapperSerial};
 use bevy_inspector_egui::reflect_inspector::InspectorUi;
 use egui_dock::egui;
 
-use super::{EguiInspectorExtension, IntoBuffer};
+use super::{EguiInspectorExtension, MakeBuffer};
 
 #[derive(Default)]
 pub struct PatternMapperInspector;
@@ -50,8 +50,8 @@ impl EguiInspectorExtension for PatternMapperInspector {
     }
 }
 
-impl IntoBuffer<PatternMapperSerial> for PatternMapper {
-    fn into_buffer(&self) -> PatternMapperSerial {
+impl MakeBuffer<PatternMapperSerial> for PatternMapper {
+    fn make_buffer(&self) -> PatternMapperSerial {
         self.clone().into()
     }
 }

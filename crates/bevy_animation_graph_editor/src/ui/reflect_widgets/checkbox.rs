@@ -3,7 +3,7 @@ use std::any::Any;
 use bevy_inspector_egui::reflect_inspector::InspectorUi;
 use egui_dock::egui;
 
-use super::{EguiInspectorExtension, IntoBuffer};
+use super::{EguiInspectorExtension, MakeBuffer};
 
 #[derive(Default)]
 pub struct CheckboxInspector;
@@ -36,8 +36,8 @@ impl EguiInspectorExtension for CheckboxInspector {
     }
 }
 
-impl IntoBuffer<()> for bool {
-    fn into_buffer(&self) -> () {
+impl MakeBuffer<()> for bool {
+    fn make_buffer(&self) -> () {
         ()
     }
 }

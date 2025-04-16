@@ -4,7 +4,7 @@ use bevy_animation_graph::core::animation_clip::EntityPath;
 use bevy_inspector_egui::reflect_inspector::InspectorUi;
 use egui_dock::egui;
 
-use super::{EguiInspectorExtension, IntoBuffer};
+use super::{EguiInspectorExtension, MakeBuffer};
 
 pub struct EntityPathInspector;
 
@@ -47,8 +47,8 @@ impl EguiInspectorExtension for EntityPathInspector {
     }
 }
 
-impl IntoBuffer<String> for EntityPath {
-    fn into_buffer(&self) -> String {
+impl MakeBuffer<String> for EntityPath {
+    fn make_buffer(&self) -> String {
         self.to_slashed_string()
     }
 }

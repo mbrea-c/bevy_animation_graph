@@ -35,7 +35,7 @@ pub mod vec2_plane;
 pub mod wrap_ui;
 
 pub trait EguiInspectorExtension: Sized {
-    type Base: Reflectable + Clone + IntoBuffer<Self::Buffer> + Sized + Send + Sync + 'static;
+    type Base: Reflectable + Clone + MakeBuffer<Self::Buffer> + Sized + Send + Sync + 'static;
     type Buffer: Default + Send + Sync + 'static;
 
     fn mutable(
@@ -118,12 +118,12 @@ where
 {
 }
 
-pub trait IntoBuffer<B> {
-    fn into_buffer(&self) -> B;
+pub trait MakeBuffer<B> {
+    fn make_buffer(&self) -> B;
 }
 
-impl<T: Clone> IntoBuffer<T> for T {
-    fn into_buffer(&self) -> T {
+impl<T: Clone> MakeBuffer<T> for T {
+    fn make_buffer(&self) -> T {
         self.clone()
     }
 }
@@ -163,7 +163,7 @@ impl<S, B, M> Default for EguiInspectorBuffers<S, B, M> {
 
 impl<S, B, M> EguiInspectorBuffers<S, B, M>
 where
-    S: WidgetHash + IntoBuffer<B>,
+    S: WidgetHash + MakeBuffer<B>,
 {
     /// If the original value was changed and we need to flush the buffer, flush it
     pub fn reset_if_needed(&mut self, value: &S, id: egui::Id) {
@@ -186,7 +186,7 @@ where
         self.bufs.insert(
             id,
             BufferField {
-                buffer: value.into_buffer(),
+                buffer: value.make_buffer(),
                 start_hash: value.widget_hash(),
             },
         );
@@ -199,7 +199,7 @@ fn get_buffered<'w, S, B, M>(
     id: egui::Id,
 ) -> &'w mut B
 where
-    S: WidgetHash + IntoBuffer<B> + Send + Sync + 'static,
+    S: WidgetHash + MakeBuffer<B> + Send + Sync + 'static,
     B: Send + Sync + 'static,
     M: Send + Sync + 'static,
 {
@@ -220,7 +220,7 @@ fn get_buffered_readonly<'w, S, B, M>(
     id: egui::Id,
 ) -> &'w B
 where
-    S: WidgetHash + IntoBuffer<B> + Send + Sync + 'static,
+    S: WidgetHash + MakeBuffer<B> + Send + Sync + 'static,
     B: Send + Sync + 'static,
     M: Send + Sync + 'static,
 {
