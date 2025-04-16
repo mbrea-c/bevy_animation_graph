@@ -97,9 +97,7 @@ impl EventTrack {
     /// If more than one occurrence of the given event is found, the time returned will correspond
     /// to the one with the earliest start time.
     pub fn seek_event(&self, event: &AnimationEvent, percent: f32) -> Option<f32> {
-        let track_item = self
-            .events
-            .iter().find(|ev| &ev.value.event == event)?;
+        let track_item = self.events.iter().find(|ev| &ev.value.event == event)?;
         Some(track_item.time_at_percentage(percent))
     }
 

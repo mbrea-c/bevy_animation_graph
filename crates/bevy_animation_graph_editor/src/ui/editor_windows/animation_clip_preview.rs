@@ -116,7 +116,8 @@ impl EditorWindowExtension for ClipPreviewWindow {
         let ui_texture_id = ui.id().with("clip preview texture");
         let mut query = world.query::<(&AnimatedSceneInstance, &PreviewScene, &PartOfSubScene)>();
         if let Some((instance, _, _)) = query
-            .iter(world).find(|(_, _, PartOfSubScene(uid))| *uid == ui_texture_id)
+            .iter(world)
+            .find(|(_, _, PartOfSubScene(uid))| *uid == ui_texture_id)
         {
             // Scene playback control will only be shown once the scene is created
             // (so from the second frame onwards)

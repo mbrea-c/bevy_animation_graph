@@ -76,7 +76,9 @@ pub fn handle_new_event_system(
         &mut animation_graph_assets,
         &mut dirty_assets,
         |t| {
-            if let Some(t) = t.get_mut(&action.track_id) { t.add_item_preassigned_id(action.item) }
+            if let Some(t) = t.get_mut(&action.track_id) {
+                t.add_item_preassigned_id(action.item)
+            }
         },
     );
 }
@@ -118,8 +120,9 @@ pub fn handle_edit_event_system(
         &mut animation_graph_assets,
         &mut dirty_assets,
         |tracks| {
-            if let Some(t) = tracks
-                .get_mut(&action.track_id) { t.edit_item(action.event_id, |_| action.item) }
+            if let Some(t) = tracks.get_mut(&action.track_id) {
+                t.edit_item(action.event_id, |_| action.item)
+            }
         },
     );
 }

@@ -338,7 +338,8 @@ impl egui_dock::TabViewer for TabViewer<'_> {
             EguiWindow::DynWindow(window_id) => self
                 .context
                 .windows
-                .get_window(*window_id).is_some_and(|w| w.closeable()),
+                .get_window(*window_id)
+                .is_some_and(|w| w.closeable()),
         }
     }
 }
