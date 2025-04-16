@@ -8,7 +8,7 @@ use super::{
     asset_picker::AssetPickerInspector, checkbox::CheckboxInspector,
     entity_path::EntityPathInspector, pattern_mapper::PatternMapperInspector,
     submittable::SubmittableInspector, target_tracks::TargetTracksInspector,
-    EguiInspectorExtensionRegistration,
+    vec2_plane::Vec2PlaneInspector, EguiInspectorExtensionRegistration,
 };
 pub struct BetterInspectorPlugin;
 impl Plugin for BetterInspectorPlugin {
@@ -23,5 +23,6 @@ impl Plugin for BetterInspectorPlugin {
         TargetTracksInspector.register(app);
         SubmittableInspector::<String>::default().register(app);
         SubmittableInspector::<TrackItemValue>::default().register(app);
+        Vec2PlaneInspector.register(app);
     }
 }

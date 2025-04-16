@@ -329,6 +329,10 @@ impl egui_dock::TabViewer for TabViewer<'_> {
         window.display_name(&self.context.windows).into()
     }
 
+    fn force_close(&mut self, EguiWindow::DynWindow(window_id): &mut Self::Tab) -> bool {
+        !self.context.windows.window_exists(*window_id)
+    }
+
     fn closeable(&mut self, tab: &mut Self::Tab) -> bool {
         match tab {
             EguiWindow::DynWindow(window_id) => self

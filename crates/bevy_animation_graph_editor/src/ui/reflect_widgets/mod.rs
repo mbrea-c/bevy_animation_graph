@@ -31,6 +31,7 @@ pub mod pattern_mapper;
 pub mod plugin;
 pub mod submittable;
 pub mod target_tracks;
+pub mod vec2_plane;
 pub mod wrap_ui;
 
 pub trait EguiInspectorExtension: Sized {

@@ -1,7 +1,0 @@
-(
-    source: GltfNamed(
-        path: "models/AnimationLibrary_Godot.glb",
-        animation_name: "Jog_Fwd_Loop",
-    ),
-    skeleton: "skeletons/animlib.skn.ron",
-)

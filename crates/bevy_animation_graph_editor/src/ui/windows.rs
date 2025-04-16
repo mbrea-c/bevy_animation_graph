@@ -97,6 +97,14 @@ impl Windows {
         id
     }
 
+    pub fn close(&mut self, window_id: WindowId) {
+        self.windows.remove(&window_id);
+    }
+
+    pub fn window_exists(&self, window_id: WindowId) -> bool {
+        self.windows.contains_key(&window_id)
+    }
+
     pub fn get_window(&self, id: WindowId) -> Option<&EditorWindow> {
         self.windows.get(&id)
     }

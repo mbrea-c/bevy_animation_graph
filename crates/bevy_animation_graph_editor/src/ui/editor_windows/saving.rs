@@ -13,6 +13,7 @@ use egui_dock::egui;
 use crate::ui::{
     actions::{
         saving::{SaveAction, SaveMultiple},
+        window::CloseWindowAction,
         EditorAction,
     },
     core::{EditorWindowContext, EditorWindowExtension},
@@ -75,6 +76,7 @@ impl EditorWindowExtension for SaveWindow {
                     assets: self
                         .assets
                         .iter()
+                        .filter(|meta| meta.should_save)
                         .map(|meta| {
                             (
                                 meta.id,
@@ -91,6 +93,9 @@ impl EditorWindowExtension for SaveWindow {
                         })
                         .collect(),
                 })));
+
+            ctx.editor_actions
+                .dynamic(CloseWindowAction { id: ctx.window_id });
         }
     }
 

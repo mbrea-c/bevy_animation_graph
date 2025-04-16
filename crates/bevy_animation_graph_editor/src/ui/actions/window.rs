@@ -60,3 +60,19 @@ impl TypeTargetedWindowAction {
         }
     }
 }
+
+pub struct CloseWindowAction {
+    pub id: WindowId,
+}
+
+impl DynamicAction for CloseWindowAction {
+    fn handle(self: Box<Self>, world: &mut World) {
+        run_handler(world, "Failed to close window")(Self::system, *self)
+    }
+}
+
+impl CloseWindowAction {
+    pub fn system(In(action): In<CloseWindowAction>, mut ui_state: ResMut<UiState>) {
+        ui_state.windows.close(action.id);
+    }
+}

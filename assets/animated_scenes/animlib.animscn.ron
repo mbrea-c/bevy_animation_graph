@@ -1,5 +1,0 @@
-(
-    source: "models/AnimationLibrary_Godot.glb#Scene0",
-    animation_graph: "animation_graphs/strafeblend.animgraph.ron",
-    skeleton: "skeletons/animlib.skn.ron",
-)
