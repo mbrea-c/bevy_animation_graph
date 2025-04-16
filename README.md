@@ -46,6 +46,7 @@ _NOTE: This project is separate from the animation graphs introduced in
   - Animation graph node.
   - Animation state machine node.
 - Nesting animation graphs as nodes within other graphs.
+- Animation synchronization using event tracks.
 - Output from graph nodes is cached to avoid unnecessary computations.
 - Support for custom nodes written in Rust.
   - Users can create their own editor binary by adding the editor plugin and
@@ -53,10 +54,6 @@ _NOTE: This project is separate from the animation graphs introduced in
     editor will automatically pick up all registered nodes.
 
 ## Planned Features
-
-Planned for short/medium term:
-
-1. Synchronization tracks.
 
 Wishlist:
 
