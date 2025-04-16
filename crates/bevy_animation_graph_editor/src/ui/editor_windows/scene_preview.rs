@@ -29,9 +29,9 @@ impl EditorWindowExtension for ScenePreviewWindow {
         &mut self,
         ui: &mut egui_dock::egui::Ui,
         world: &mut bevy::prelude::World,
-        ctx: &mut crate::ui::core::EditorContext,
+        ctx: &mut crate::ui::core::EditorWindowContext,
     ) {
-        let Some(scene_selection) = &ctx.selection.scene else {
+        let Some(scene_selection) = &ctx.global_state.scene else {
             return;
         };
 
@@ -52,7 +52,7 @@ impl EditorWindowExtension for ScenePreviewWindow {
 
             ui.horizontal(|ui| {
                 if ui.button("X").on_hover_text("Close preview").clicked() {
-                    ctx.selection.scene = None;
+                    ctx.global_state.scene = None;
                 }
 
                 if ui.button("||").on_hover_text("Pause").clicked() {
@@ -79,8 +79,8 @@ impl EditorWindowExtension for ScenePreviewWindow {
 
 #[derive(Clone, PartialEq)]
 pub struct ScenePreviewConfig {
-    animated_scene: Handle<AnimatedScene>,
-    view: OrbitView,
+    pub animated_scene: Handle<AnimatedScene>,
+    pub view: OrbitView,
 }
 
 impl SubSceneConfig for ScenePreviewConfig {

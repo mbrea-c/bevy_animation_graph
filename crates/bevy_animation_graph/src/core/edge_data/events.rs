@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::core::state_machine::high_level::{StateId, TransitionId};
 
 /// Event data
-#[derive(Clone, Debug, Reflect, Serialize, Deserialize)]
+#[derive(Clone, Debug, Reflect, Serialize, Deserialize, PartialEq, Hash)]
 #[reflect(Default)]
 pub enum AnimationEvent {
     /// Trigger the most specific transition from transitioning into the provided state. That
@@ -34,6 +34,8 @@ pub struct SampledEvent {
     pub weight: f32,
     /// Percentage of total event duration at sampling time, 0.0 to 1.0
     pub percentage: f32,
+    /// If the event comes from a markup track, contains the track id
+    pub track: Option<String>,
 }
 
 impl Default for SampledEvent {
@@ -42,6 +44,7 @@ impl Default for SampledEvent {
             event: AnimationEvent::default(),
             weight: 1.,
             percentage: 1.,
+            track: None,
         }
     }
 }
@@ -52,6 +55,7 @@ impl SampledEvent {
             event,
             weight: 1.,
             percentage: 1.,
+            track: None,
         }
     }
 }
@@ -68,5 +72,10 @@ impl EventQueue {
         Self {
             events: events.into(),
         }
+    }
+
+    pub fn concat(mut self, other: EventQueue) -> Self {
+        self.events.extend(other.events);
+        self
     }
 }

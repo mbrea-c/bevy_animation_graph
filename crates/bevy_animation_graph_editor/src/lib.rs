@@ -1,21 +1,23 @@
-mod asset_saving;
 mod egui_fsm;
 mod egui_nodes;
 mod fsm_show;
 mod graph_show;
-mod graph_update;
 mod scanner;
 mod tree;
 mod ui;
 
-use asset_saving::AssetSavingPlugin;
 use bevy::prelude::*;
 use bevy_animation_graph::core::plugin::AnimationGraphPlugin;
 use bevy_egui::EguiPlugin;
 use bevy_inspector_egui::{bevy_egui, DefaultInspectorConfigPlugin};
 use clap::Parser;
+use fsm_show::FsmIndicesMap;
+use graph_show::GraphIndicesMap;
 use scanner::ScannerPlugin;
 use std::path::PathBuf;
+use ui::actions::clip_preview::ClipPreviewScenes;
+use ui::actions::saving::DirtyAssets;
+use ui::actions::PendingActions;
 use ui::egui_inspector_impls::BetterInspectorPlugin;
 use ui::{graph_debug_draw_bone_system, UiState};
 
@@ -53,15 +55,20 @@ impl Plugin for AnimationGraphEditorPlugin {
             .add_plugins(AnimationGraphPlugin)
             .add_plugins(DefaultInspectorConfigPlugin)
             .add_plugins(BetterInspectorPlugin)
-            .add_plugins(AssetSavingPlugin)
             .add_plugins(ScannerPlugin)
+            // .add_plugins(WorldInspectorPlugin::new())
             .insert_resource(UiState::new())
+            .insert_resource(PendingActions::default())
+            .insert_resource(DirtyAssets::default())
+            .insert_resource(GraphIndicesMap::default())
+            .insert_resource(FsmIndicesMap::default())
+            .insert_resource(ClipPreviewScenes::default())
             .insert_resource(cli)
             .add_systems(
                 Update,
                 (
                     ui::show_ui_system,
-                    ui::asset_save_event_system,
+                    ui::actions::process_actions_system,
                     ui::override_scene_animations,
                     ui::render_pose_gizmos,
                     ui::propagate_layers,

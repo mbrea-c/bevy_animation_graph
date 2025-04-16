@@ -113,7 +113,7 @@ fn to_proxy<T: EditProxy + NodeLike>(node: &dyn NodeLike) -> Box<dyn Reflect> {
 }
 
 pub trait EditProxy {
-    type Proxy: Reflect;
+    type Proxy: Reflect + Clone;
 
     fn update_from_proxy(proxy: &Self::Proxy) -> Self;
     fn make_proxy(&self) -> Self::Proxy;

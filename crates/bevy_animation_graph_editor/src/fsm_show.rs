@@ -2,7 +2,12 @@ use crate::egui_fsm::{
     link::{LinkStyleArgs, TransitionSpec},
     node::StateSpec,
 };
-use bevy::{asset::Assets, math::Vec2, utils::HashMap};
+use bevy::{
+    asset::{AssetId, Assets},
+    ecs::system::Resource,
+    math::Vec2,
+    utils::HashMap,
+};
 use bevy_animation_graph::core::state_machine::{
     high_level::{State, StateId, StateMachine, Transition, TransitionId},
     low_level::{FSMState, LowLevelStateId},
@@ -98,10 +103,12 @@ impl FsmIndices {
     }
 }
 
-pub fn make_fsm_indices(
-    graph: &StateMachine,
-    _ctx: &Assets<StateMachine>,
-) -> Result<FsmIndices, Vec<TransitionId>> {
+#[derive(Resource, Default)]
+pub struct FsmIndicesMap {
+    pub indices: HashMap<AssetId<StateMachine>, FsmIndices>,
+}
+
+pub fn make_fsm_indices(graph: &StateMachine) -> Result<FsmIndices, Vec<TransitionId>> {
     let mut fsm_indices = FsmIndices::default();
 
     for state in graph.states.values() {

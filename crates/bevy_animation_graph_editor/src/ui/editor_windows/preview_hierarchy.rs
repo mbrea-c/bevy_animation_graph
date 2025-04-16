@@ -5,7 +5,7 @@ use egui_dock::egui;
 use crate::{
     tree::{Tree, TreeResult},
     ui::{
-        core::{EditorContext, EditorWindowExtension},
+        core::{EditorWindowContext, EditorWindowExtension},
         utils, PreviewScene,
     },
 };
@@ -14,8 +14,8 @@ use crate::{
 pub struct PreviewHierarchyWindow;
 
 impl EditorWindowExtension for PreviewHierarchyWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorContext) {
-        if ctx.selection.scene.is_none() {
+    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
+        if ctx.global_state.scene.is_none() {
             return;
         };
         let mut query = world.query::<(&AnimatedSceneInstance, &PreviewScene)>();
@@ -27,17 +27,23 @@ impl EditorWindowExtension for PreviewHierarchyWindow {
         match utils::select_from_branches(ui, tree.0) {
             TreeResult::Leaf((_, path)) => {
                 let path = EntityPath { parts: path };
-                ui.output_mut(|o| o.copied_text = path.to_slashed_string());
+                ui.output_mut(|o| {
+                    o.commands
+                        .push(egui::OutputCommand::CopyText(path.to_slashed_string()))
+                });
                 ctx.notifications
                     .info(format!("{} copied to clipboard", path.to_slashed_string()));
-                ctx.selection.entity_path = Some(path);
+                ctx.global_state.entity_path = Some(path);
             }
             TreeResult::Node((_, path)) => {
                 let path = EntityPath { parts: path };
-                ui.output_mut(|o| o.copied_text = path.to_slashed_string());
+                ui.output_mut(|o| {
+                    o.commands
+                        .push(egui::OutputCommand::CopyText(path.to_slashed_string()))
+                });
                 ctx.notifications
                     .info(format!("{} copied to clipboard", path.to_slashed_string()));
-                ctx.selection.entity_path = Some(path);
+                ctx.global_state.entity_path = Some(path);
             }
             TreeResult::None => (),
         }

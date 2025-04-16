@@ -337,6 +337,7 @@ impl FsmUiContext {
                 1.0,
                 self.settings.style.colors[ColorStyle::GridLine as usize],
             ),
+            egui::StrokeKind::Middle,
         );
         response
     }
@@ -417,7 +418,7 @@ impl FsmUiContext {
                     egui::Frame::default()
                         .outer_margin(egui::vec2(0.5, 0.5))
                         .inner_margin(egui::vec2(1.5, 1.5))
-                        .rounding(3.0)
+                        .corner_radius(3.0)
                         .stroke(egui::Stroke::new(
                             1.0,
                             self.settings.style.colors[ColorStyle::NodeOutline as usize],
@@ -719,6 +720,7 @@ impl FsmUiContext {
                             node.state.color_style.outline,
                         )
                     },
+                    egui::StrokeKind::Middle,
                 ),
             );
         }
@@ -844,8 +846,13 @@ impl FsmUiContext {
                     self.settings.style.colors[ColorStyle::BoxSelector as usize];
                 let box_selector_outline =
                     self.settings.style.colors[ColorStyle::BoxSelectorOutline as usize];
-                ui.painter()
-                    .rect(rect, 0.0, box_selector_color, (1.0, box_selector_outline));
+                ui.painter().rect(
+                    rect,
+                    0.0,
+                    box_selector_color,
+                    (1.0, box_selector_outline),
+                    egui::StrokeKind::Middle,
+                );
 
                 if self.state.interaction_state.left_mouse_released {
                     let selected_nodes = &self.state.selected_node_indices;

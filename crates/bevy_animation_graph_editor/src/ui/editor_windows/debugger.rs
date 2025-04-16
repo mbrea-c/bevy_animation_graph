@@ -18,7 +18,7 @@ use bevy_animation_graph::{
 use egui_dock::egui;
 
 use crate::ui::{
-    core::{EditorContext, EditorWindowExtension, InspectorSelection},
+    core::{EditorWindowContext, EditorWindowExtension, InspectorSelection},
     utils::{
         self, orbit_camera_scene_show, orbit_camera_transform, orbit_camera_update,
         using_inspector_env, OrbitView,
@@ -32,8 +32,8 @@ pub struct DebuggerWindow {
 }
 
 impl EditorWindowExtension for DebuggerWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorContext) {
-        if ctx.selection.scene.is_none() {
+    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
+        if ctx.global_state.scene.is_none() {
             return;
         };
         let mut query = world.query::<(&AnimatedSceneInstance, &PreviewScene)>();
@@ -43,14 +43,16 @@ impl EditorWindowExtension for DebuggerWindow {
         let entity = instance.player_entity();
         let mut query = world.query::<&AnimationGraphPlayer>();
 
-        let InspectorSelection::Node(node_selection) = &mut ctx.selection.inspector_selection
+        let InspectorSelection::Node(node_selection) = &mut ctx.global_state.inspector_selection
         else {
             return;
         };
 
-        let Some(data_pin_map) =
-            utils::get_node_output_data_pins(world, node_selection.graph, &node_selection.node)
-        else {
+        let Some(data_pin_map) = utils::get_node_output_data_pins(
+            world,
+            node_selection.graph.id(),
+            &node_selection.node,
+        ) else {
             return;
         };
 
@@ -58,17 +60,17 @@ impl EditorWindowExtension for DebuggerWindow {
             return;
         };
 
-        let Some(graph_selection) = &ctx.selection.graph_editor else {
+        let Some(graph_selection) = &ctx.global_state.graph_editor else {
             return;
         };
 
-        let Some(scene_selection) = ctx.selection.scene.as_ref() else {
+        let Some(scene_selection) = ctx.global_state.scene.as_ref() else {
             return;
         };
 
         let Some(graph_context) = scene_selection
             .active_context
-            .get(&graph_selection.graph.untyped())
+            .get(&graph_selection.graph.id().untyped())
             .and_then(|id| Some(id).zip(player.get_context_arena()))
             .and_then(|(id, ca)| ca.get_context(*id))
         else {
@@ -204,7 +206,7 @@ impl DebuggerWindow {
         ui: &mut egui::Ui,
         world: &mut World,
         id: egui::Id,
-        _ctx: &mut EditorContext,
+        _ctx: &mut EditorWindowContext,
     ) {
         let config = PoseSubSceneConfig {
             pose: pose.clone(),

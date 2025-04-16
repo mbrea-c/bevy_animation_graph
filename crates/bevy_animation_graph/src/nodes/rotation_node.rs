@@ -92,10 +92,10 @@ impl NodeLike for RotationNode {
         // We do this first to ensure that the time update is available for any other nodes that might need it
         ctx.set_time_update_back(Self::IN_TIME, input);
 
-        let target = ctx.data_back(Self::TARGET)?.into_entity_path().unwrap();
+        let target = ctx.data_back(Self::TARGET)?.into_entity_path()?;
         let mut target = target.id();
-        let rotation = ctx.data_back(Self::ROTATION)?.as_quat().unwrap();
-        let mut pose = ctx.data_back(Self::IN_POSE)?.into_pose().unwrap();
+        let rotation = ctx.data_back(Self::ROTATION)?.as_quat()?;
+        let mut pose = ctx.data_back(Self::IN_POSE)?.into_pose()?;
         let Some(skeleton) = ctx.resources.skeleton_assets.get(&pose.skeleton) else {
             return Err(GraphError::SkeletonMissing(ctx.node_id()));
         };

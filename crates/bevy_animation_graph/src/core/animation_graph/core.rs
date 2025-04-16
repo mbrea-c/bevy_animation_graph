@@ -4,7 +4,9 @@ use crate::{
         animation_node::AnimationNode,
         context::{CacheReadFilter, CacheWriteFilter},
         duration_data::DurationData,
+        edge_data::AnimationEvent,
         errors::{GraphError, GraphValidationError},
+        event_track::EventTrack,
         pose::{BoneId, Pose},
         prelude::GraphContextArena,
         state_machine::high_level::StateMachine,
@@ -33,10 +35,15 @@ pub struct Edge {
     pub target: TargetPin,
 }
 
-#[derive(Reflect, Clone, Debug, Copy)]
+#[derive(Reflect, Clone, Debug)]
 pub enum TimeUpdate {
     Delta(f32),
     Absolute(f32),
+    PercentOfEvent {
+        percent: f32,
+        event: AnimationEvent,
+        track: String,
+    },
 }
 
 impl Default for TimeUpdate {
@@ -46,57 +53,42 @@ impl Default for TimeUpdate {
 }
 
 impl TimeUpdate {
-    pub fn apply(&self, time: f32) -> f32 {
-        match self {
-            Self::Delta(dt) => time + dt,
-            Self::Absolute(t) => *t,
-        }
-    }
-}
-
-#[derive(Reflect, Clone, Debug, Copy)]
-pub struct TimeState {
-    pub update: TimeUpdate,
-    pub time: f32,
-}
-
-impl Default for TimeState {
-    fn default() -> Self {
-        Self {
-            update: TimeUpdate::Absolute(0.),
-            time: 0.,
-        }
-    }
-}
-
-pub trait UpdateTime<T> {
-    fn update(&self, update: T) -> Self;
-}
-
-impl UpdateTime<TimeUpdate> for TimeState {
-    fn update(&self, update: TimeUpdate) -> Self {
-        Self {
-            update,
-            time: match update {
-                TimeUpdate::Delta(dt) => self.time + dt,
-                TimeUpdate::Absolute(t) => t,
-            },
-        }
-    }
-}
-
-impl UpdateTime<Option<TimeUpdate>> for TimeState {
-    fn update(&self, update: Option<TimeUpdate>) -> Self {
-        if let Some(update) = update {
-            Self {
-                update,
-                time: match update {
-                    TimeUpdate::Delta(dt) => self.time + dt,
-                    TimeUpdate::Absolute(t) => t,
-                },
+    pub fn combine(&self, other: &Self) -> Self {
+        match (self, other) {
+            (TimeUpdate::Delta(t0), TimeUpdate::Delta(t1)) => TimeUpdate::Delta(t0 + t1),
+            (_, TimeUpdate::Absolute(_)) => other.clone(),
+            (_, TimeUpdate::PercentOfEvent { .. }) => other.clone(),
+            (TimeUpdate::Absolute(t_abs), TimeUpdate::Delta(t_delta)) => {
+                TimeUpdate::Absolute(t_abs + t_delta)
             }
-        } else {
-            *self
+            (TimeUpdate::PercentOfEvent { .. }, TimeUpdate::Delta(_)) => {
+                todo!("Need to decide what to do here")
+            }
+        }
+    }
+
+    pub fn partial_update_basic(&self, time: f32) -> Option<f32> {
+        match self {
+            TimeUpdate::Delta(dt) => Some(time + dt),
+            TimeUpdate::Absolute(t) => Some(*t),
+            // We lack enough information to compute a time update here
+            TimeUpdate::PercentOfEvent { .. } => None,
+        }
+    }
+
+    pub fn partial_update_with_tracks(
+        &self,
+        time: f32,
+        tracks: &HashMap<String, EventTrack>,
+    ) -> Option<f32> {
+        match self {
+            TimeUpdate::Delta(dt) => Some(time + dt),
+            TimeUpdate::Absolute(t) => Some(*t),
+            TimeUpdate::PercentOfEvent {
+                percent,
+                event,
+                track,
+            } => tracks.get(track)?.seek_event(event, *percent),
         }
     }
 }
@@ -317,7 +309,7 @@ impl AnimationGraph {
         self.output_parameters.insert(pin_id.into(), spec);
     }
 
-    /// Enables pose output for this graph
+    /// Enables time "output" for this graph
     pub fn add_output_time(&mut self) {
         self.output_time = Some(());
     }
@@ -446,29 +438,23 @@ impl AnimationGraph {
     /// It is not guaranteed that the edge will be legal after a single edge removal,
     /// so this function should be called repeatedly until it returns Ok(()) or Err(None)
     pub fn can_add_edge(&self, edge: Edge, ctx: SpecContext) -> Result<(), Option<Edge>> {
-        // --- Verify source and target exist
-        // -----------------------------------------------------------------
+        // Verify source and target exist
         if !self.edge_ends_exist(&edge.source, &edge.target, ctx) {
             return Err(None);
         }
-        // -----------------------------------------------------------------
 
-        // --- Verify matching types
-        // -----------------------------------------------------------------
+        // Verify matching types
         if !self.edge_end_types_match(&edge.source, &edge.target, ctx) {
             return Err(None);
         }
-        // -----------------------------------------------------------------
 
-        // --- Verify target does not already exist
-        // -----------------------------------------------------------------
+        // Verify target does not already exist
         if self.edges.contains_key(&edge.target) {
             return Err(Some(Edge {
                 source: self.edges.get(&edge.target).unwrap().clone(),
                 target: edge.target,
             }));
         }
-        // -----------------------------------------------------------------
 
         Ok(())
     }

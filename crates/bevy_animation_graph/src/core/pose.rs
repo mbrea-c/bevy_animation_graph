@@ -64,7 +64,9 @@ impl BonePose {
 
     pub fn linear_add(&self, other: &BonePose) -> Self {
         Self {
-            rotation: either_or_mix(self.rotation, other.rotation, |a, b| a + b),
+            rotation: either_or_mix(self.rotation, other.rotation, |a, b| {
+                linear_add_quaternion(a, b)
+            }),
             translation: either_or_mix(self.translation, other.translation, |a, b| a + b),
             scale: either_or_mix(self.scale, other.scale, |a, b| a + b),
             weights: either_or_mix(self.weights.clone(), other.weights.clone(), |a, b| {
@@ -186,5 +188,13 @@ fn either_or_mix<T>(a: Option<T>, b: Option<T>, mix: impl Fn(T, T) -> T) -> Opti
         (None, None) => None,
         (Some(a), None) => Some(a),
         (None, Some(b)) => Some(b),
+    }
+}
+
+fn linear_add_quaternion(a: Quat, b: Quat) -> Quat {
+    if a.dot(b) < 0. {
+        a - b
+    } else {
+        a + b
     }
 }

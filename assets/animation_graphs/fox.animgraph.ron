@@ -20,10 +20,10 @@
         ),
     ],
     edges_inverted: {
-        OutputData("pose"): NodeData("loop", "pose"),
         OutputTime: NodeTime("loop"),
         NodeTime("loop", "time"): NodeTime("Walk"),
         NodeData("loop", "pose"): NodeData("Walk", "pose"),
+        OutputData("pose"): NodeData("loop", "pose"),
     },
     default_parameters: {
         "speed": F32(1.0),
@@ -38,7 +38,7 @@
             "loop": (808.6153, 420.00003),
             "Walk": (548.30774, 418.1538),
         },
-        input_position: (326.84613, 420.15384),
+        input_position: (312.0769, 409.0769),
         output_position: (1130.0, 408.84613),
         input_param_order: {},
         input_time_order: {},

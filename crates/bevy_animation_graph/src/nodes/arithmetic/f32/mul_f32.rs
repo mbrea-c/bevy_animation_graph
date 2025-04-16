@@ -29,8 +29,8 @@ impl NodeLike for MulF32 {
     }
 
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let input_1 = ctx.data_back(Self::INPUT_1)?.as_f32().unwrap();
-        let input_2 = ctx.data_back(Self::INPUT_2)?.as_f32().unwrap();
+        let input_1 = ctx.data_back(Self::INPUT_1)?.as_f32()?;
+        let input_2 = ctx.data_back(Self::INPUT_2)?.as_f32()?;
 
         ctx.set_data_fwd(Self::OUTPUT, input_1 * input_2);
         Ok(())

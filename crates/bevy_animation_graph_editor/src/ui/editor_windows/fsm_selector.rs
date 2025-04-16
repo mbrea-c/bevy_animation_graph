@@ -1,5 +1,5 @@
 use bevy::{
-    asset::{AssetId, AssetServer, Assets},
+    asset::{AssetServer, Assets, Handle},
     ecs::world::CommandQueue,
     prelude::World,
 };
@@ -10,7 +10,7 @@ use crate::{
     egui_fsm::lib::FsmUiContext,
     tree::TreeResult,
     ui::{
-        core::{EditorContext, EditorWindowExtension, FsmSelection, InspectorSelection},
+        core::{EditorWindowContext, EditorWindowExtension, FsmSelection, InspectorSelection},
         utils,
     },
 };
@@ -19,12 +19,12 @@ use crate::{
 pub struct FsmSelectorWindow;
 
 impl EditorWindowExtension for FsmSelectorWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorContext) {
+    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
         let mut queue = CommandQueue::default();
-        let mut chosen_id: Option<AssetId<StateMachine>> = None;
+        let mut chosen_handle: Option<Handle<StateMachine>> = None;
 
         world.resource_scope::<AssetServer, ()>(|world, asset_server| {
-            world.resource_scope::<Assets<StateMachine>, ()>(|_world, graph_assets| {
+            world.resource_scope::<Assets<StateMachine>, ()>(|_world, mut graph_assets| {
                 let mut assets: Vec<_> = graph_assets.ids().collect();
                 assets.sort();
                 let paths = assets
@@ -32,7 +32,7 @@ impl EditorWindowExtension for FsmSelectorWindow {
                     .map(|id| (utils::handle_path(id.untyped(), &asset_server), id))
                     .collect();
                 if let TreeResult::Leaf(id) = utils::path_selector(ui, paths) {
-                    chosen_id = Some(id);
+                    chosen_handle = Some(graph_assets.get_strong_handle(id).unwrap());
                 }
                 // ui.with_layout(egui::Layout::bottom_up(egui::Align::Center), |ui| {
                 //     let mut graph_handles = world.get_resource_mut::<GraphHandles>().unwrap();
@@ -41,15 +41,14 @@ impl EditorWindowExtension for FsmSelectorWindow {
             });
         });
         queue.apply(world);
-        if let Some(chosen_id) = chosen_id {
-            ctx.selection.fsm_editor = Some(FsmSelection {
+        if let Some(chosen_id) = chosen_handle {
+            ctx.global_state.fsm_editor = Some(FsmSelection {
                 fsm: chosen_id,
-                graph_indices: utils::update_fsm_indices(world, chosen_id),
                 nodes_context: FsmUiContext::default(),
                 state_creation: State::default(),
                 transition_creation: Transition::default(),
             });
-            ctx.selection.inspector_selection = InspectorSelection::Fsm;
+            ctx.global_state.inspector_selection = InspectorSelection::Fsm;
         }
     }
 

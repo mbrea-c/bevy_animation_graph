@@ -20,7 +20,7 @@ impl InvertQuatNode {
 
 impl NodeLike for InvertQuatNode {
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let input: Quat = ctx.data_back(Self::INPUT)?.as_quat().unwrap();
+        let input: Quat = ctx.data_back(Self::INPUT)?.as_quat()?;
         let output: Quat = input.inverse();
 
         ctx.set_data_fwd(Self::OUTPUT, output);

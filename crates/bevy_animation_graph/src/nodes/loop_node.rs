@@ -36,7 +36,7 @@ impl NodeLike for LoopNode {
 
         let Some(duration) = duration else {
             ctx.set_time_update_back(Self::IN_TIME, input);
-            let pose_back = ctx.data_back(Self::IN_POSE)?.into_pose().unwrap();
+            let pose_back = ctx.data_back(Self::IN_POSE)?.into_pose()?;
             ctx.set_time(pose_back.timestamp);
             ctx.set_data_fwd(Self::OUT_POSE, pose_back);
 
@@ -46,27 +46,37 @@ impl NodeLike for LoopNode {
         let full_duration = duration + self.interpolation_period;
 
         let prev_time = ctx.prev_time();
-        let curr_time = input.apply(prev_time);
-        let t = curr_time.rem_euclid(full_duration);
 
-        let fw_upd = match input {
+        let (curr_time, t, fw_upd) = match input {
             TimeUpdate::Delta(dt) => {
-                if prev_time.div_euclid(full_duration) != curr_time.div_euclid(full_duration) {
-                    TimeUpdate::Absolute(t)
-                } else {
-                    TimeUpdate::Delta(dt)
-                }
+                let curr_time = prev_time + dt;
+                let t = curr_time.rem_euclid(full_duration);
+
+                let fw_upd =
+                    if prev_time.div_euclid(full_duration) != curr_time.div_euclid(full_duration) {
+                        TimeUpdate::Absolute(t)
+                    } else {
+                        TimeUpdate::Delta(dt)
+                    };
+
+                (curr_time, t, fw_upd)
             }
-            TimeUpdate::Absolute(_) => TimeUpdate::Absolute(t),
+            TimeUpdate::Absolute(curr_time) => {
+                let t = curr_time.rem_euclid(full_duration);
+                (curr_time, t, TimeUpdate::Absolute(t))
+            }
+            TimeUpdate::PercentOfEvent { .. } => {
+                todo!("we probably want to return here and issue a warning")
+            }
         };
 
         ctx.set_time_update_back(Self::IN_TIME, fw_upd);
-        let mut pose = ctx.data_back(Self::IN_POSE)?.into_pose().unwrap();
+        let mut pose = ctx.data_back(Self::IN_POSE)?.into_pose()?;
 
         if t > duration && t < full_duration {
             let mut ctx_temp = ctx.with_temp(true);
             ctx_temp.set_time_update_back(Self::IN_TIME, TimeUpdate::Absolute(0.));
-            let start_pose = ctx_temp.data_back(Self::IN_POSE)?.into_pose().unwrap();
+            let start_pose = ctx_temp.data_back(Self::IN_POSE)?.into_pose()?;
             // TODO: How to clear cache? time? pose?
             // ctx.clear_temp_cache(Self::IN_POSE);
             let old_time = pose.timestamp;

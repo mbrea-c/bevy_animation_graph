@@ -1,9 +1,6 @@
 use std::f32::consts::{FRAC_PI_2, PI};
 use std::path::PathBuf;
 
-use crate::fsm_show::{make_fsm_indices, FsmIndices};
-use crate::graph_show::{make_graph_indices, GraphIndices};
-use crate::graph_update::{update_graph_asset, Change, GraphChange};
 use crate::tree::{Tree, TreeInternal, TreeResult};
 use bevy::asset::UntypedAssetId;
 use bevy::ecs::world::CommandQueue;
@@ -19,7 +16,7 @@ use bevy_inspector_egui::bevy_egui::EguiUserTextures;
 use bevy_inspector_egui::egui;
 use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
 
-use super::core::{EditorSelection, EguiWindow, RequestSave};
+use super::core::GlobalState;
 use super::{provide_texture_for_scene, PartOfSubScene, PreviewScene, SubSceneConfig};
 
 pub(crate) fn get_node_output_data_pins(
@@ -37,23 +34,6 @@ pub(crate) fn get_node_output_data_pins(
             let node = graph.nodes.get(node_id)?;
             Some(node.inner.data_output_spec(spec_context))
         })
-    })
-}
-
-pub(crate) fn create_saver_window(world: &mut World, save_request: RequestSave) -> EguiWindow {
-    world.resource_scope::<AssetServer, EguiWindow>(|_, asset_server| match save_request {
-        RequestSave::Graph(graph) => {
-            let path = asset_server
-                .get_path(graph)
-                .map_or("".into(), |p| p.path().to_string_lossy().into());
-            EguiWindow::GraphSaver(graph, path, false)
-        }
-        RequestSave::Fsm(fsm_id) => {
-            let path = asset_server
-                .get_path(fsm_id)
-                .map_or("".into(), |p| p.path().to_string_lossy().into());
-            EguiWindow::FsmSaver(fsm_id, path, false)
-        }
     })
 }
 
@@ -111,72 +91,16 @@ pub(crate) fn select_from_tree_internal<I, L>(
     }
 }
 
-pub(crate) fn update_graph(world: &mut World, changes: Vec<GraphChange>) -> bool {
-    world.resource_scope::<Assets<AnimationGraph>, _>(|world, mut graph_assets| {
-        world.resource_scope::<Assets<StateMachine>, _>(|_, fsm_assets| {
-            update_graph_asset(changes, &mut graph_assets, &fsm_assets)
-        })
-    })
-}
-
-pub(crate) fn update_graph_indices(
-    world: &mut World,
-    graph_id: AssetId<AnimationGraph>,
-) -> GraphIndices {
-    let mut res = indices_one_step(world, graph_id);
-
-    while let Err(changes) = &res {
-        update_graph(world, changes.clone());
-        res = indices_one_step(world, graph_id);
-    }
-
-    res.unwrap()
-}
-
-pub(crate) fn update_fsm_indices(world: &mut World, fsm_id: AssetId<StateMachine>) -> FsmIndices {
-    world.resource_scope::<Assets<StateMachine>, FsmIndices>(|_, fsm_assets| {
-        let fsm = fsm_assets.get(fsm_id).unwrap();
-
-        make_fsm_indices(fsm, &fsm_assets).unwrap()
-    })
-}
-
-pub(crate) fn indices_one_step(
-    world: &mut World,
-    graph_id: AssetId<AnimationGraph>,
-) -> Result<GraphIndices, Vec<GraphChange>> {
-    world.resource_scope::<Assets<AnimationGraph>, _>(|world, graph_assets| {
-        world.resource_scope::<Assets<StateMachine>, _>(|_, fsm_assets| {
-            let graph = graph_assets.get(graph_id).unwrap();
-            let spec_context = SpecContext {
-                graph_assets: &graph_assets,
-                fsm_assets: &fsm_assets,
-            };
-
-            match make_graph_indices(graph, spec_context) {
-                Err(targets) => Err(targets
-                    .into_iter()
-                    .map(|t| GraphChange {
-                        graph: graph_id,
-                        change: Change::LinkRemoved(t),
-                    })
-                    .collect()),
-                Ok(indices) => Ok(indices),
-            }
-        })
-    })
-}
-
 pub(crate) fn select_graph_context(
     world: &mut World,
     ui: &mut egui::Ui,
-    selection: &mut EditorSelection,
+    selection: &mut GlobalState,
 ) {
     let Some(graph) = &selection.graph_editor else {
         return;
     };
 
-    let Some(available) = list_graph_contexts(world, |ctx| ctx.get_graph_id() == graph.graph)
+    let Some(available) = list_graph_contexts(world, |ctx| ctx.get_graph_id() == graph.graph.id())
     else {
         return;
     };
@@ -185,7 +109,10 @@ pub(crate) fn select_graph_context(
         return;
     };
 
-    let mut selected = scene.active_context.get(&graph.graph.untyped()).copied();
+    let mut selected = scene
+        .active_context
+        .get(&graph.graph.id().untyped())
+        .copied();
     egui::ComboBox::from_label("Active context")
         .selected_text(format!("{:?}", selected))
         .show_ui(ui, |ui| {
@@ -196,9 +123,11 @@ pub(crate) fn select_graph_context(
         });
 
     if let Some(selected) = selected {
-        scene.active_context.insert(graph.graph.untyped(), selected);
+        scene
+            .active_context
+            .insert(graph.graph.id().untyped(), selected);
     } else {
-        scene.active_context.remove(&graph.graph.untyped());
+        scene.active_context.remove(&graph.graph.id().untyped());
     }
 }
 
@@ -223,7 +152,7 @@ pub(crate) fn list_graph_contexts(
 pub(crate) fn select_graph_context_fsm(
     world: &mut World,
     ui: &mut egui::Ui,
-    selection: &mut EditorSelection,
+    selection: &mut GlobalState,
 ) {
     let Some(fsm) = &selection.fsm_editor else {
         return;
@@ -233,8 +162,10 @@ pub(crate) fn select_graph_context_fsm(
         world.resource_scope::<Assets<AnimationGraph>, _>(|world, graph_assets| {
             list_graph_contexts(world, |ctx| {
                 let graph_id = ctx.get_graph_id();
-                let graph = graph_assets.get(graph_id).unwrap();
-                graph.contains_state_machine(fsm.fsm).is_some()
+                let Some(graph) = graph_assets.get(graph_id) else {
+                    return false;
+                };
+                graph.contains_state_machine(fsm.fsm.id()).is_some()
             })
         })
     else {
@@ -245,7 +176,7 @@ pub(crate) fn select_graph_context_fsm(
         return;
     };
 
-    let mut selected = scene.active_context.get(&fsm.fsm.untyped()).copied();
+    let mut selected = scene.active_context.get(&fsm.fsm.id().untyped()).copied();
     egui::ComboBox::from_label("Active context")
         .selected_text(format!("{:?}", selected))
         .show_ui(ui, |ui| {
@@ -256,9 +187,11 @@ pub(crate) fn select_graph_context_fsm(
         });
 
     if let Some(selected) = selected {
-        scene.active_context.insert(fsm.fsm.untyped(), selected);
+        scene
+            .active_context
+            .insert(fsm.fsm.id().untyped(), selected);
     } else {
-        scene.active_context.remove(&fsm.fsm.untyped());
+        scene.active_context.remove(&fsm.fsm.id().untyped());
     }
 }
 

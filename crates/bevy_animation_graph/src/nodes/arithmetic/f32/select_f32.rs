@@ -26,9 +26,9 @@ impl NodeLike for SelectF32 {
     }
 
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let bool: bool = ctx.data_back(Self::INPUT_BOOL)?.as_bool().unwrap();
-        let if_false: f32 = ctx.data_back(Self::INPUT_FALSE)?.as_f32().unwrap();
-        let if_true: f32 = ctx.data_back(Self::INPUT_TRUE)?.as_f32().unwrap();
+        let bool: bool = ctx.data_back(Self::INPUT_BOOL)?.as_bool()?;
+        let if_false: f32 = ctx.data_back(Self::INPUT_FALSE)?.as_f32()?;
+        let if_true: f32 = ctx.data_back(Self::INPUT_TRUE)?.as_f32()?;
 
         let output = if bool { if_true } else { if_false };
 

@@ -1,0 +1,7 @@
+(
+    source: GltfNamed(
+        path: "models/character_rigged.glb",
+        animation_name: "Wave",
+    ),
+    skeleton: "skeletons/human.skn.ron",
+)

@@ -10,7 +10,7 @@ use egui_dock::egui;
 use crate::{
     tree::TreeResult,
     ui::{
-        core::{EditorContext, EditorWindowExtension, SceneSelection},
+        core::{EditorWindowContext, EditorWindowExtension, SceneSelection},
         utils,
     },
 };
@@ -19,7 +19,7 @@ use crate::{
 pub struct SceneSelectorWindow;
 
 impl EditorWindowExtension for SceneSelectorWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorContext) {
+    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
         let mut queue = CommandQueue::default();
 
         let mut chosen_handle: Option<Handle<AnimatedScene>> = None;
@@ -49,12 +49,12 @@ impl EditorWindowExtension for SceneSelectorWindow {
         //       when changing scene selection.
 
         if let Some(chosen_handle) = chosen_handle {
-            let event_table = if let Some(scn) = &ctx.selection.scene {
+            let event_table = if let Some(scn) = &ctx.global_state.scene {
                 scn.event_table.clone()
             } else {
                 Vec::new()
             };
-            ctx.selection.scene = Some(SceneSelection {
+            ctx.global_state.scene = Some(SceneSelection {
                 scene: chosen_handle,
                 active_context: HashMap::default(),
                 event_table,

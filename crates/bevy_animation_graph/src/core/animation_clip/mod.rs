@@ -5,10 +5,12 @@ use bevy::{
     asset::{prelude::*, ReflectAsset},
     core::prelude::*,
     reflect::prelude::*,
+    utils::HashMap,
 };
+use loader::GraphClipSource;
 use serde::{Deserialize, Serialize};
 
-use super::{id, skeleton::Skeleton};
+use super::{event_track::EventTrack, id, skeleton::Skeleton};
 
 /// Interpolation method to use between keyframes.
 #[derive(Reflect, Serialize, Deserialize, Clone, Copy, Debug, Default)]
@@ -147,9 +149,12 @@ impl<'de> Deserialize<'de> for EntityPath {
 pub struct GraphClip {
     // AnimationCurves are non-reflectable
     #[reflect(ignore)]
-    pub(crate) curves: AnimationCurves,
-    pub(crate) duration: f32,
-    pub(crate) skeleton: Handle<Skeleton>,
+    pub curves: AnimationCurves,
+    /// If loaded from a [`GraphClipSerial`], what was the source?
+    pub source: Option<GraphClipSource>,
+    pub duration: f32,
+    pub skeleton: Handle<Skeleton>,
+    pub event_tracks: HashMap<String, EventTrack>,
 }
 
 impl GraphClip {
@@ -181,14 +186,26 @@ impl GraphClip {
         self.skeleton = skeleton;
     }
 
+    pub fn event_tracks(&self) -> &HashMap<String, EventTrack> {
+        &self.event_tracks
+    }
+
+    pub fn event_tracks_mut(&mut self) -> &mut HashMap<String, EventTrack> {
+        &mut self.event_tracks
+    }
+
     pub fn from_bevy_clip(
         bevy_clip: bevy::animation::AnimationClip,
         skeleton: Handle<Skeleton>,
+        event_tracks: HashMap<String, EventTrack>,
+        source: Option<GraphClipSource>,
     ) -> Self {
         Self {
             curves: bevy_clip.curves().clone(),
             duration: bevy_clip.duration(),
             skeleton,
+            event_tracks,
+            source,
         }
     }
 }

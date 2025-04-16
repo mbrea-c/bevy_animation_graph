@@ -4,7 +4,7 @@ use crate::egui_nodes::{
     node::{NodeArgs, NodeSpec},
     pin::{PinSpec, PinType},
 };
-use bevy::utils::HashMap;
+use bevy::{asset::AssetId, ecs::system::Resource, utils::HashMap};
 use bevy_animation_graph::core::{
     animation_graph::{AnimationGraph, PinId, SourcePin, TargetPin},
     animation_node::AnimationNode,
@@ -324,10 +324,13 @@ impl GraphIndices {
     }
 }
 
-pub fn make_graph_indices(
-    graph: &AnimationGraph,
-    ctx: SpecContext,
-) -> Result<GraphIndices, Vec<TargetPin>> {
+#[derive(Resource, Default)]
+pub struct GraphIndicesMap {
+    pub indices: HashMap<AssetId<AnimationGraph>, GraphIndices>,
+}
+
+// TODO: Make an error type that makes sense and use it here
+pub fn make_graph_indices(graph: &AnimationGraph, ctx: SpecContext) -> Option<GraphIndices> {
     let mut graph_indices = GraphIndices::default();
 
     for node in graph.nodes.values() {
@@ -387,32 +390,19 @@ pub fn make_graph_indices(
             .add_mapping(Pin::Target(TargetPin::OutputTime));
     }
 
-    let mut remove_edges = vec![];
-
     // Add edges
     for (target_pin, source_pin) in graph.edges.iter() {
-        let Some(source_id) = graph_indices
+        let source_id = graph_indices
             .pin_indices
-            .id(&Pin::Source(source_pin.clone()))
-        else {
-            remove_edges.push(target_pin.clone());
-            continue;
-        };
-        let Some(target_id) = graph_indices
+            .id(&Pin::Source(source_pin.clone()))?;
+        let target_id = graph_indices
             .pin_indices
-            .id(&Pin::Target(target_pin.clone()))
-        else {
-            remove_edges.push(target_pin.clone());
-            continue;
-        };
+            .id(&Pin::Target(target_pin.clone()))?;
+
         graph_indices.edge_indices.add_mapping(source_id, target_id);
     }
 
-    if remove_edges.is_empty() {
-        Ok(graph_indices)
-    } else {
-        Err(remove_edges)
-    }
+    Some(graph_indices)
 }
 
 #[derive(Default)]

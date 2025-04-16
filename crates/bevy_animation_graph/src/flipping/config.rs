@@ -1,3 +1,5 @@
+use std::hash::Hash;
+
 use bevy::reflect::{std_traits::ReflectDefault, Reflect};
 use regex::{escape, Regex};
 use serde::{Deserialize, Serialize};
@@ -20,6 +22,15 @@ pub struct PatternMapper {
     pattern_after: String,
     #[reflect(ignore, default = "default_regex")]
     regex: Regex,
+}
+
+impl Hash for PatternMapper {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.key_1.hash(state);
+        self.key_2.hash(state);
+        self.pattern_before.hash(state);
+        self.pattern_after.hash(state);
+    }
 }
 
 pub fn default_regex() -> Regex {
@@ -125,7 +136,7 @@ impl PatternMapper {
     }
 }
 
-#[derive(Debug, Reflect, Serialize, Deserialize, Clone)]
+#[derive(Debug, Reflect, Serialize, Deserialize, Clone, Hash)]
 pub struct PatternMapperSerial {
     pub key_1: String,
     pub key_2: String,
