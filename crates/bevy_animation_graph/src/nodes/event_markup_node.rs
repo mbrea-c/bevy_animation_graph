@@ -62,7 +62,7 @@ impl NodeLike for EventMarkupNode {
                 if let Some(abs_time) = self
                     .event_tracks
                     .get(track)
-                    .and_then(|track| track.seek_event(&event, *percent))
+                    .and_then(|track| track.seek_event(event, *percent))
                 {
                     TimeUpdate::Absolute(abs_time)
                 } else {

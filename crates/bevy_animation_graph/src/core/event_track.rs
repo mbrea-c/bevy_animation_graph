@@ -99,9 +99,7 @@ impl EventTrack {
     pub fn seek_event(&self, event: &AnimationEvent, percent: f32) -> Option<f32> {
         let track_item = self
             .events
-            .iter()
-            .filter(|ev| &ev.value.event == event)
-            .next()?;
+            .iter().find(|ev| &ev.value.event == event)?;
         Some(track_item.time_at_percentage(percent))
     }
 
