@@ -88,7 +88,7 @@ impl WidgetHash for Vec2 {
 }
 
 impl MakeBuffer<()> for Vec2 {
-    fn make_buffer(&self) -> () {
-        ()
+    fn make_buffer(&self) {
+        
     }
 }

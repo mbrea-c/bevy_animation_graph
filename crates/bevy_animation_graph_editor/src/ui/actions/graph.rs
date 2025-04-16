@@ -370,9 +370,7 @@ impl GraphAndContext<'_> {
             fsm_assets: &self.fsm_assets,
         };
 
-        let Some(graph) = self.graph_assets.get(graph_handle) else {
-            return None;
-        };
+        let graph = self.graph_assets.get(graph_handle)?;
 
         f(graph, ctx)
     }
@@ -390,7 +388,7 @@ impl GraphAndContext<'_> {
 
     pub fn generate_indices(&mut self, graph_id: impl Into<AssetId<AnimationGraph>>) {
         let graph_id = graph_id.into();
-        let indices = self.provide_ref(graph_id, |graph, ctx| make_graph_indices(graph, ctx));
+        let indices = self.provide_ref(graph_id, make_graph_indices);
         if let Some(indices) = indices {
             self.graph_indices_map.indices.insert(graph_id, indices);
         }

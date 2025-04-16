@@ -276,7 +276,7 @@ pub trait WidgetHash {
 #[macro_export]
 macro_rules! impl_widget_hash_from_hash {
     ( $($t:ty),* ) => {
-    $( impl crate::ui::reflect_widgets::WidgetHash for $t
+    $( impl $crate::ui::reflect_widgets::WidgetHash for $t
     {
         fn widget_hash(&self) -> u64 {
             use std::hash::{Hash, Hasher};

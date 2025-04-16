@@ -80,7 +80,7 @@ pub struct GenerateIndices {
     pub fsm: AssetId<StateMachine>,
 }
 
-const FSM_ERR: &'static str = "Failed to run FSM action";
+const FSM_ERR: &str = "Failed to run FSM action";
 
 pub fn handle_fsm_action(world: &mut World, action: FsmAction) {
     match action {

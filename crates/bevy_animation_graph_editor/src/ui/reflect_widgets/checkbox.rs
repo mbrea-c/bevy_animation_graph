@@ -37,7 +37,7 @@ impl EguiInspectorExtension for CheckboxInspector {
 }
 
 impl MakeBuffer<()> for bool {
-    fn make_buffer(&self) -> () {
-        ()
+    fn make_buffer(&self) {
+        
     }
 }

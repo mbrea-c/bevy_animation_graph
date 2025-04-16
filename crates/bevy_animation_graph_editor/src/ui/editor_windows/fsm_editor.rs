@@ -99,7 +99,7 @@ impl EditorWindowExtension for FsmEditorWindow {
                             });
 
                         let fsm_repr_spec =
-                            FsmReprSpec::from_fsm(fsm, &fsm_indices, &fsm_assets, maybe_fsm_state);
+                            FsmReprSpec::from_fsm(fsm, fsm_indices, &fsm_assets, maybe_fsm_state);
 
                         fsm_selection.nodes_context.show(
                             fsm_repr_spec.states,
@@ -109,7 +109,7 @@ impl EditorWindowExtension for FsmEditorWindow {
                         fsm_selection.nodes_context.get_changes().clone()
                     }
                     .into_iter()
-                    .filter_map(|c| convert_fsm_change(c, &fsm_indices, fsm_selection.fsm.clone()))
+                    .filter_map(|c| convert_fsm_change(c, fsm_indices, fsm_selection.fsm.clone()))
                     .for_each(|action| ctx.editor_actions.push(EditorAction::Fsm(action)));
 
                     // --- Update selection for state inspector.

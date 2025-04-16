@@ -88,14 +88,10 @@ impl<T: Asset> EguiInspectorExtension for AssetPickerInspector<T> {
         id: egui::Id,
         mut env: InspectorUi<'_, '_>,
     ) {
-        let buffer = buffer;
-
         env.ui_for_reflect_readonly_with_options(buffer, ui, id, &());
     }
 }
 
 impl<T: Asset> MakeBuffer<()> for Handle<T> {
-    fn make_buffer(&self) -> () {
-        ()
-    }
+    fn make_buffer(&self) {}
 }

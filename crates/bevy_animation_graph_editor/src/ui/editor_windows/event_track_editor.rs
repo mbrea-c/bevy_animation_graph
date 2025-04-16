@@ -1,4 +1,4 @@
-use std::{any::TypeId, hash::Hash, usize};
+use std::{any::TypeId, hash::Hash};
 
 use bevy::{
     asset::{Assets, Handle},
@@ -509,7 +509,7 @@ impl EventTrackEditorWindow {
                 if i.pointer.primary_down()
                     && i.pointer
                         .latest_pos()
-                        .map_or(false, |p| area_rect.contains(p))
+                        .is_some_and(|p| area_rect.contains(p))
                 {
                     i.pointer.latest_pos()
                 } else {
@@ -574,7 +574,7 @@ impl EventTrackEditorWindow {
                     EditEventAction {
                         target_tracks: self.target_tracks.clone().unwrap(),
                         track_id: self.selected_track.clone().unwrap(),
-                        event_id: self.selected_event.clone().unwrap(),
+                        event_id: self.selected_event.unwrap(),
                         item: edited_event.value,
                     },
                 )));
@@ -642,7 +642,7 @@ impl EventTrackEditorWindow {
                 if let Some(event) = active_tracks
                     .tracks
                     .get(track_id)
-                    .and_then(|track| track.events.iter().filter(|e| e.id == *event_id).next())
+                    .and_then(|track| track.events.iter().find(|e| e.id == *event_id))
                 {
                     f(ui, world, event)
                 } else {
@@ -697,7 +697,7 @@ impl EventTrackEditorWindow {
     }
 
     /// Returns the tracks sorted lexicographically
-    fn sorted_tracks<'a>(tracks: ActiveTracks<'a>) -> impl Iterator<Item = &'a EventTrack> {
+    fn sorted_tracks(tracks: ActiveTracks<'_>) -> impl Iterator<Item = &EventTrack> {
         let mut track_vec = tracks.tracks.iter().collect::<Vec<_>>();
         track_vec.sort_by_key(|(k, _)| *k);
         track_vec.into_iter().map(|t| t.1)
@@ -713,22 +713,19 @@ impl EventTrackEditorWindow {
     ) -> Option<T> {
         let popup_id = ui.id().with(&salt);
 
-        if allow_opening {
-            if ui.input(|i| i.pointer.secondary_clicked())
-                && ui
-                    .input(|i| i.pointer.interact_pos())
-                    .map_or(false, |p| allowable_rect.contains(p))
-            {
-                let pointer_pos = ui
-                    .input(|i| i.pointer.interact_pos())
-                    .unwrap_or(egui::Pos2::default());
-                ui.memory_mut(|mem| mem.open_popup(popup_id));
-                if let Some(save_on_click) = save_on_click {
-                    ui.memory_mut(|mem| {
-                        mem.data
-                            .insert_persisted(popup_id, (pointer_pos, save_on_click))
-                    })
-                }
+        if allow_opening
+            && ui.input(|i| i.pointer.secondary_clicked())
+            && ui
+                .input(|i| i.pointer.interact_pos())
+                .is_some_and(|p| allowable_rect.contains(p))
+        {
+            let pointer_pos = ui.input(|i| i.pointer.interact_pos()).unwrap_or_default();
+            ui.memory_mut(|mem| mem.open_popup(popup_id));
+            if let Some(save_on_click) = save_on_click {
+                ui.memory_mut(|mem| {
+                    mem.data
+                        .insert_persisted(popup_id, (pointer_pos, save_on_click))
+                })
             }
         }
 

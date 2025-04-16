@@ -392,18 +392,12 @@ pub fn make_graph_indices(graph: &AnimationGraph, ctx: SpecContext) -> Option<Gr
 
     // Add edges
     for (target_pin, source_pin) in graph.edges.iter() {
-        let Some(source_id) = graph_indices
+        let source_id = graph_indices
             .pin_indices
-            .id(&Pin::Source(source_pin.clone()))
-        else {
-            return None;
-        };
-        let Some(target_id) = graph_indices
+            .id(&Pin::Source(source_pin.clone()))?;
+        let target_id = graph_indices
             .pin_indices
-            .id(&Pin::Target(target_pin.clone()))
-        else {
-            return None;
-        };
+            .id(&Pin::Target(target_pin.clone()))?;
 
         graph_indices.edge_indices.add_mapping(source_id, target_id);
     }

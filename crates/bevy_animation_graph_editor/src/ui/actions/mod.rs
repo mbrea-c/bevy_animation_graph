@@ -10,7 +10,7 @@ pub mod graph;
 pub mod saving;
 pub mod window;
 
-use std::{any::Any, fmt::Display};
+use std::{any::Any, cmp::Ordering, fmt::Display};
 
 use bevy::{
     ecs::{
@@ -87,10 +87,14 @@ fn handle_view_action(In(view_action): In<ViewAction>, mut ui_state: ResMut<UiSt
         ViewAction::Close(index) => {
             ui_state.views.remove(index);
             if let Some(idx) = ui_state.active_view {
-                if idx == index {
-                    ui_state.active_view = None;
-                } else if idx > index {
-                    ui_state.active_view = Some(idx - 1);
+                match idx.cmp(&index) {
+                    Ordering::Less => {}
+                    Ordering::Equal => {
+                        ui_state.active_view = None;
+                    }
+                    Ordering::Greater => {
+                        ui_state.active_view = Some(idx - 1);
+                    }
                 }
             }
         }
@@ -123,10 +127,10 @@ impl PushQueue<EditorAction> {
     }
 }
 
-pub fn run_handler<'w, I, O, M, S>(
-    world: &'w mut World,
+pub fn run_handler<I, O, M, S>(
+    world: &mut World,
     msg: impl Display + 'static,
-) -> impl FnOnce(S, I::Inner<'_>) + 'w
+) -> impl FnOnce(S, I::Inner<'_>) + '_
 where
     I: SystemInput + 'static,
     O: 'static,

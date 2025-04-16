@@ -76,8 +76,7 @@ pub fn handle_new_event_system(
         &mut animation_graph_assets,
         &mut dirty_assets,
         |t| {
-            t.get_mut(&action.track_id)
-                .map(|t| t.add_item_preassigned_id(action.item));
+            if let Some(t) = t.get_mut(&action.track_id) { t.add_item_preassigned_id(action.item) }
         },
     );
 }
@@ -119,9 +118,8 @@ pub fn handle_edit_event_system(
         &mut animation_graph_assets,
         &mut dirty_assets,
         |tracks| {
-            tracks
-                .get_mut(&action.track_id)
-                .map(|t| t.edit_item(action.event_id, |_| action.item));
+            if let Some(t) = tracks
+                .get_mut(&action.track_id) { t.edit_item(action.event_id, |_| action.item) }
         },
     );
 }
@@ -142,7 +140,7 @@ where
             graph_clip_assets
                 .get_mut(handle.id())
                 .map(|c| c.event_tracks_mut())
-                .map(|t| f(t))
+                .map(f)
         }
         TargetTracks::GraphNode { graph, node } => {
             dirty_assets.add(graph.clone());
@@ -151,7 +149,7 @@ where
                 .and_then(|g| g.nodes.get_mut(node))
                 .and_then(|n| n.inner.as_any_mut().downcast_mut::<EventMarkupNode>())
                 .map(|n| &mut n.event_tracks)
-                .map(|t| f(t))
+                .map(f)
         }
     }
 }

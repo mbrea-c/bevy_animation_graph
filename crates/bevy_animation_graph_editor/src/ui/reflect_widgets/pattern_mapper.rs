@@ -21,8 +21,6 @@ impl EguiInspectorExtension for PatternMapperInspector {
         id: egui::Id,
         mut env: InspectorUi<'_, '_>,
     ) -> bool {
-        let buffer = buffer;
-
         match env.ui_for_reflect_with_options(buffer, ui, id, &()) {
             true => {
                 if let Ok(mapper) = PatternMapper::try_from(buffer.clone()) {
@@ -44,8 +42,6 @@ impl EguiInspectorExtension for PatternMapperInspector {
         id: egui::Id,
         mut env: InspectorUi<'_, '_>,
     ) {
-        let buffer = buffer;
-
         env.ui_for_reflect_readonly_with_options(buffer, ui, id, &());
     }
 }

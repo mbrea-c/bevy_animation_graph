@@ -133,17 +133,12 @@ impl NodeLike for BlendSpaceNode {
                 let event_queue_0 = ctx
                     .data_back(Self::events_pin_id(self.vertex_key(v0.id.index())))?
                     .into_event_queue()?;
-                if let Some(event) = event_queue_0
-                    .events
-                    .iter()
-                    .filter(|ev| {
-                        ev.track
-                            .as_ref()
-                            .map(|track| track == track_name)
-                            .unwrap_or(false)
-                    })
-                    .next()
-                {
+                if let Some(event) = event_queue_0.events.iter().find(|ev| {
+                    ev.track
+                        .as_ref()
+                        .map(|track| track == track_name)
+                        .unwrap_or(false)
+                }) {
                     let time_update = TimeUpdate::PercentOfEvent {
                         percent: event.percentage,
                         event: event.event.clone(),

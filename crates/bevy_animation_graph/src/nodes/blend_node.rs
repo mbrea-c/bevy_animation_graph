@@ -84,17 +84,12 @@ impl NodeLike for BlendNode {
             }
             BlendSyncMode::EventTrack(track_name) => {
                 let event_queue_1 = ctx.data_back(Self::IN_EVENT_A)?.into_event_queue()?;
-                if let Some(event) = event_queue_1
-                    .events
-                    .iter()
-                    .filter(|ev| {
-                        ev.track
-                            .as_ref()
-                            .map(|track| track == track_name)
-                            .unwrap_or(false)
-                    })
-                    .next()
-                {
+                if let Some(event) = event_queue_1.events.iter().find(|ev| {
+                    ev.track
+                        .as_ref()
+                        .map(|track| track == track_name)
+                        .unwrap_or(false)
+                }) {
                     ctx.set_time_update_back(
                         Self::IN_TIME_B,
                         TimeUpdate::PercentOfEvent {

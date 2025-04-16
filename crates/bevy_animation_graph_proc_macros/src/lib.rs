@@ -123,7 +123,7 @@ fn is_trivial_copy(variant: &Variant) -> bool {
 
 fn parse_error_attribute(attrs: &[Attribute]) -> (Path, syn::Ident) {
     let Some((Some(error_type), Some(error_variant))) = attrs
-        .into_iter()
+        .iter()
         .filter_map(|attr| match &attr.meta {
             Meta::List(meta_list) => Some(meta_list),
             _ => None,

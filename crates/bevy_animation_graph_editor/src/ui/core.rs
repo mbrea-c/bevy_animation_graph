@@ -319,14 +319,14 @@ impl egui_dock::TabViewer for TabViewer<'_> {
                             windows,
                         };
 
-                        window.ui(ui, &mut self.world, &mut ctx);
+                        window.ui(ui, self.world, &mut ctx);
                     });
             }
         }
     }
 
     fn title(&mut self, window: &mut Self::Tab) -> egui::WidgetText {
-        window.display_name(&self.context.windows).into()
+        window.display_name(self.context.windows).into()
     }
 
     fn force_close(&mut self, EguiWindow::DynWindow(window_id): &mut Self::Tab) -> bool {
@@ -338,8 +338,7 @@ impl egui_dock::TabViewer for TabViewer<'_> {
             EguiWindow::DynWindow(window_id) => self
                 .context
                 .windows
-                .get_window(*window_id)
-                .map_or(false, |w| w.closeable()),
+                .get_window(*window_id).is_some_and(|w| w.closeable()),
         }
     }
 }

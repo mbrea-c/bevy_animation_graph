@@ -95,7 +95,7 @@ fn node_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorWindowCo
             } else {
                 let mut current_inner = node.inner.clone();
                 let changed = env.ui_for_reflect(current_inner.as_partial_reflect_mut(), ui);
-                changed.then(|| current_inner)
+                changed.then_some(current_inner)
             }
         });
 
@@ -236,7 +236,7 @@ fn graph_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorWindowC
                 );
             });
 
-            let mut output_time = graph.output_time.clone();
+            let mut output_time = graph.output_time;
 
             ui.collapsing("Output time", |ui| {
                 output_time_changed = env.ui_for_reflect_with_options(
