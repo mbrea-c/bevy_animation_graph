@@ -22,7 +22,7 @@ use crate::{
     ui::egui_inspector_impls::OrderedMap,
 };
 
-use super::saving::DirtyAssets;
+use super::{run_handler, saving::DirtyAssets, DynamicAction};
 
 pub enum GraphAction {
     CreateLink(CreateLink),
@@ -392,5 +392,24 @@ impl GraphAndContext<'_> {
         if let Some(indices) = indices {
             self.graph_indices_map.indices.insert(graph_id, indices);
         }
+    }
+}
+
+pub struct CreateGraphAction;
+
+impl DynamicAction for CreateGraphAction {
+    fn handle(self: Box<Self>, world: &mut World) {
+        run_handler(world, "Could not create clip preview")(
+            |In(_),
+             mut graph_assets: ResMut<Assets<AnimationGraph>>,
+             mut dirty_assets: ResMut<DirtyAssets>| {
+                let new_handle = graph_assets.add(AnimationGraph::default());
+                info!("Creating graph with id: {:?}", new_handle.id());
+                dirty_assets
+                    .assets
+                    .insert(new_handle.id().untyped(), new_handle.untyped());
+            },
+            *self,
+        )
     }
 }

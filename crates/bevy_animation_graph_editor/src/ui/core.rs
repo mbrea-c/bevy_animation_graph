@@ -132,6 +132,7 @@ impl ViewState {
 
         DockArea::new(&mut self.dock_state)
             .style(Style::from_egui(ctx.style().as_ref()))
+            .id(egui::Id::new(self.name.clone()))
             .show(ctx, &mut tab_viewer);
     }
 
@@ -319,7 +320,9 @@ impl egui_dock::TabViewer for TabViewer<'_> {
                             windows,
                         };
 
-                        window.ui(ui, self.world, &mut ctx);
+                        ui.push_id(ui.id().with(*editor_window), |ui| {
+                            window.ui(ui, self.world, &mut ctx);
+                        })
                     });
             }
         }

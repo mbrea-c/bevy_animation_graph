@@ -16,7 +16,7 @@ use egui_dock::egui;
 use crate::ui::{
     core::EditorWindowExtension,
     utils::{orbit_camera_scene_show, orbit_camera_transform, orbit_camera_update, OrbitView},
-    PreviewScene, SubSceneConfig, SubSceneSyncAction,
+    PartOfSubScene, PreviewScene, SubSceneConfig, SubSceneSyncAction,
 };
 
 #[derive(Debug, Default)]
@@ -40,8 +40,12 @@ impl EditorWindowExtension for ScenePreviewWindow {
             view: self.orbit_view.clone(),
         };
 
-        let mut query = world.query::<(&AnimatedSceneInstance, &PreviewScene)>();
-        if let Ok((instance, _)) = query.get_single(world) {
+        let ui_texture_id = ui.id().with("Scene preview texture");
+        let mut query = world.query::<(&AnimatedSceneInstance, &PreviewScene, &PartOfSubScene)>();
+        if let Some((instance, _, _)) = query
+            .iter(world)
+            .find(|(_, _, PartOfSubScene(uid))| *uid == ui_texture_id)
+        {
             // Scene playback control will only be shown once the scene is created
             // (so from the second frame onwards)
             let entity = instance.player_entity();
@@ -69,7 +73,7 @@ impl EditorWindowExtension for ScenePreviewWindow {
             });
         }
 
-        orbit_camera_scene_show(&config, &mut self.orbit_view, ui, world, ui.id());
+        orbit_camera_scene_show(&config, &mut self.orbit_view, ui, world, ui_texture_id);
     }
 
     fn display_name(&self) -> String {
