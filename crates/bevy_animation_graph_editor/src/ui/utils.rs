@@ -19,6 +19,34 @@ use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
 use super::core::GlobalState;
 use super::{provide_texture_for_scene, PartOfSubScene, PreviewScene, SubSceneConfig};
 
+pub fn asset_sort_key<T: Asset>(asset_id: AssetId<T>, asset_server: &AssetServer) -> String {
+    format!(
+        "{} {}",
+        asset_server
+            .get_path(asset_id)
+            .map_or("zzzzz".to_string(), |p| p.path().to_string_lossy().into()),
+        asset_id
+    )
+}
+
+pub fn tree_asset_selector<T: Asset>(ui: &mut egui::Ui, world: &mut World) -> Option<Handle<T>> {
+    world.resource_scope::<AssetServer, _>(|world, asset_server| {
+        world.resource_scope::<Assets<T>, _>(|_, mut graph_assets| {
+            let mut assets: Vec<_> = graph_assets.ids().collect();
+            assets.sort_by_key(|id| asset_sort_key(*id, &asset_server));
+            let paths = assets
+                .into_iter()
+                .map(|id| (handle_path(id.untyped(), &asset_server), id))
+                .collect();
+            if let TreeResult::Leaf(id) = path_selector(ui, paths) {
+                Some(graph_assets.get_strong_handle(id).unwrap())
+            } else {
+                None
+            }
+        })
+    })
+}
+
 pub(crate) fn get_node_output_data_pins(
     world: &mut World,
     graph_id: AssetId<AnimationGraph>,

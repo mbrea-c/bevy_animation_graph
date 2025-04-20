@@ -7,6 +7,8 @@ use bevy::asset::{Asset, AssetServer, Assets, Handle};
 use bevy_inspector_egui::reflect_inspector::InspectorUi;
 use egui_dock::egui;
 
+use crate::ui::utils::asset_sort_key;
+
 use super::{EguiInspectorExtension, MakeBuffer};
 
 pub struct AssetPickerInspector<T> {
@@ -58,7 +60,7 @@ impl<T: Asset> EguiInspectorExtension for AssetPickerInspector<T> {
             })
             .show_ui(ui, |ui| {
                 let mut assets_ids: Vec<_> = t_assets.ids().collect();
-                assets_ids.sort();
+                assets_ids.sort_by_key(|id| asset_sort_key(*id, &asset_server));
                 for asset_id in assets_ids {
                     ui.selectable_value(
                         &mut selected,
@@ -91,6 +93,8 @@ impl<T: Asset> EguiInspectorExtension for AssetPickerInspector<T> {
         env.ui_for_reflect_readonly_with_options(buffer, ui, id, &());
     }
 }
+
+impl<T: Asset> AssetPickerInspector<T> {}
 
 impl<T: Asset> MakeBuffer<()> for Handle<T> {
     fn make_buffer(&self) {}
