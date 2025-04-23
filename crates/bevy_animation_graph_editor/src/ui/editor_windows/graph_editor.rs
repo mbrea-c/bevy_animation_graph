@@ -1,10 +1,14 @@
+use std::any::TypeId;
+
 use bevy::{
     asset::{Assets, Handle},
+    ecs::reflect::AppTypeRegistry,
     prelude::World,
+    reflect::{prelude::ReflectDefault, TypeRegistry},
 };
 use bevy_animation_graph::{
     core::state_machine::high_level::StateMachine,
-    prelude::{AnimationGraph, SpecContext},
+    prelude::{AnimationGraph, ReflectNodeLike, SpecContext},
 };
 use egui_dock::egui;
 
@@ -14,15 +18,23 @@ use crate::{
     ui::{
         actions::{
             graph::{
-                CreateLink, GenerateIndices, GraphAction, MoveInput, MoveNode, MoveOutput,
-                RemoveLink, RemoveNode,
+                CreateLink, CreateNode, GenerateIndices, GraphAction, MoveInput, MoveNode,
+                MoveOutput, RemoveLink, RemoveNode,
             },
             EditorAction,
         },
         core::{EditorWindowContext, EditorWindowExtension, InspectorSelection, NodeSelection},
-        utils,
+        utils::{self, popup::CustomPopup, using_inspector_env},
     },
 };
+
+struct TypeInfo {
+    id: TypeId,
+    /// Full type path
+    path: String,
+    /// Last component of the type path (when separated on `::`)
+    short: String,
+}
 
 #[derive(Debug)]
 pub struct GraphEditorWindow;
@@ -153,10 +165,175 @@ impl EditorWindowExtension for GraphEditorWindow {
                 });
             });
         });
+
+        let available_size = ui.available_size();
+        let (id, rect) = ui.allocate_space(available_size);
+
+        CustomPopup::new()
+            .with_salt(id.with("Graph editor right click popup"))
+            .with_sense_rect(rect)
+            .with_allow_opening(true)
+            .with_save_on_click(Some(()))
+            .with_default_size(egui::Vec2::new(500., 300.))
+            .show_if_saved(ui, |ui, ()| {
+                self.node_creator_popup(ui, world, ctx);
+            });
     }
 
     fn display_name(&self) -> String {
         "Graph Editor".to_string()
+    }
+}
+
+impl GraphEditorWindow {
+    fn node_creator_popup(
+        &self,
+        ui: &mut egui::Ui,
+        world: &mut World,
+        ctx: &mut EditorWindowContext,
+    ) {
+        let Some(mut types): Option<Vec<_>> = world
+            .get_resource::<AppTypeRegistry>()
+            .map(|atr| atr.0.read())
+            .map(|tr| {
+                Self::get_all_nodes_type_info(&tr)
+                    .into_iter()
+                    .filter(|ty| {
+                        let query = &ctx.global_state.node_creation.node_type_search;
+
+                        if query.is_empty() {
+                            true
+                        } else if query.chars().any(|c| c.is_uppercase()) {
+                            ty.path.contains(query)
+                        } else {
+                            ty.path.to_lowercase().contains(query)
+                        }
+                    })
+                    .collect()
+            })
+        else {
+            return;
+        };
+
+        types.sort_unstable_by(|a, b| a.path.cmp(&b.path));
+
+        let original_type_id = ctx.global_state.node_creation.node.inner.type_id();
+        let mut new_type_id = original_type_id;
+
+        egui::SidePanel::left("Node type selector")
+            .resizable(true)
+            .default_width(175.)
+            .min_width(150.)
+            .show_inside(ui, |ui| {
+                ui.text_edit_singleline(&mut ctx.global_state.node_creation.node_type_search);
+                egui::ScrollArea::vertical()
+                    .auto_shrink(false)
+                    .show(ui, |ui| {
+                        for type_info in &types {
+                            let response = ui
+                                .selectable_label(false, &type_info.short)
+                                .on_hover_text(&type_info.path);
+                            if response.clicked() {
+                                new_type_id = type_info.id;
+                            }
+                        }
+                    });
+            });
+
+        if new_type_id != original_type_id {
+            // TODO actual error handling
+            if let Some(type_registry) = world
+                .get_resource::<AppTypeRegistry>()
+                .map(|atr| atr.0.read())
+            {
+                let _ = (|| {
+                    let reflect_default = type_registry
+                        .get_type_data::<ReflectDefault>(new_type_id)
+                        .ok_or("type doesn't `#[reflect(Default)]`")?;
+                    let node_like = type_registry
+                        .get_type_data::<ReflectNodeLike>(new_type_id)
+                        .ok_or("type doesn't `#[reflect(NodeLike)]`")?;
+                    let inner = node_like
+                        .get_boxed(reflect_default.default())
+                        .map_err(|_| "default-created value is not a `NodeLike`")?;
+                    ctx.global_state.node_creation.node.inner = inner;
+                    Ok::<_, &str>(())
+                })();
+            }
+        }
+
+        egui::Frame::new().outer_margin(3).show(ui, |ui| {
+            egui::ScrollArea::vertical()
+                .auto_shrink(false)
+                .show(ui, |ui| {
+                    using_inspector_env(world, |mut env| {
+                        let node = &mut ctx.global_state.node_creation.node;
+
+                        ui.horizontal(|ui| {
+                            ui.label("Name:");
+                            env.ui_for_reflect_with_options(
+                                &mut node.name,
+                                ui,
+                                ui.id().with("Node creator name edit"),
+                                &(),
+                            );
+                        });
+
+                        env.ui_for_reflect_with_options(
+                            node.inner.as_partial_reflect_mut(),
+                            ui,
+                            ui.id().with("Create node reflect"),
+                            &(),
+                        );
+                    });
+
+                    let submit_response = ui
+                        .with_layout(egui::Layout::bottom_up(egui::Align::RIGHT), |ui| {
+                            ui.button("Create node")
+                        })
+                        .inner;
+
+                    if submit_response.clicked() && ctx.global_state.graph_editor.is_some() {
+                        let graph_selection = ctx.global_state.graph_editor.as_ref().unwrap();
+
+                        ctx.editor_actions
+                            .push(EditorAction::Graph(GraphAction::CreateNode(CreateNode {
+                                graph: graph_selection.graph.clone(),
+                                node: ctx.global_state.node_creation.node.clone(),
+                            })));
+                    }
+                });
+        });
+    }
+
+    fn get_all_nodes_type_info(type_registry: &TypeRegistry) -> Vec<TypeInfo> {
+        type_registry
+            .iter_with_data::<ReflectNodeLike>()
+            .map(|(registration, _)| {
+                let path = registration.type_info().type_path().to_string();
+
+                // `bevy_animation_graph::node::f32::Add` ->
+                // - `Add`
+                // - `f32::Add`
+                // - `node::f32::Add`
+                // - `bevy_animation_graph::node::f32::Add`
+                let mut segments = Vec::new();
+                for segment in path.split("::") {
+                    segments.push(segment.to_string());
+                }
+
+                TypeInfo {
+                    id: registration.type_id(),
+                    path,
+                    short: if let Some(last) = segments.last() {
+                        last.clone()
+                    } else {
+                        debug_assert!(false, "Did not find a short type name for node");
+                        String::from("<No type path>")
+                    },
+                }
+            })
+            .collect::<Vec<_>>()
     }
 }
 

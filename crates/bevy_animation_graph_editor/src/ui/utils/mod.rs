@@ -19,6 +19,8 @@ use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
 use super::core::GlobalState;
 use super::{provide_texture_for_scene, PartOfSubScene, PreviewScene, SubSceneConfig};
 
+pub mod popup;
+
 pub fn asset_sort_key<T: Asset>(asset_id: AssetId<T>, asset_server: &AssetServer) -> String {
     format!(
         "{} {}",

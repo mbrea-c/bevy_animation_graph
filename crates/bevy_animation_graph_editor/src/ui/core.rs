@@ -108,6 +108,7 @@ pub struct SceneSelection {
 
 #[derive(Default)]
 pub struct NodeCreation {
+    pub(crate) node_type_search: String,
     pub(crate) node: AnimationNode,
 }
 

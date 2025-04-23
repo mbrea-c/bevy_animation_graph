@@ -15,7 +15,6 @@ use bevy_animation_graph::{
     nodes::EventMarkupNode,
     prelude::{AnimationGraph, GraphClip},
 };
-use egui::Sense;
 use egui_dock::egui;
 use uuid::Uuid;
 
@@ -27,6 +26,7 @@ use crate::ui::{
     },
     core::{EditorWindowContext, EditorWindowExtension},
     reflect_widgets::{submittable::Submittable, wrap_ui::using_wrap_ui},
+    utils::popup::CustomPopup,
     windows::WindowId,
 };
 
@@ -279,13 +279,12 @@ impl EventTrackEditorWindow {
             });
         }
 
-        Self::popup(
-            ui,
-            "Create event popup",
-            rect,
-            hovered_track.is_some(),
-            hovered_track,
-            |ui, last_hovered_track| {
+        CustomPopup::new()
+            .with_salt("Create event popup")
+            .with_sense_rect(rect)
+            .with_allow_opening(hovered_track.is_some())
+            .with_save_on_click(hovered_track)
+            .show_if_saved(ui, |ui, last_hovered_track| {
                 ui.menu_button("New event", |ui| {
                     if let Some(new_item) = using_wrap_ui(world, |mut env| {
                         env.mutable_buffered(
@@ -306,8 +305,7 @@ impl EventTrackEditorWindow {
                         ));
                     }
                 });
-            },
-        );
+            });
     }
 
     /// Draw a single event in the track editor window
@@ -410,13 +408,12 @@ impl EventTrackEditorWindow {
             }
         }
 
-        Self::popup(
-            ui,
-            "Create track popup",
-            area_rect,
-            true,
-            Some(()),
-            |ui, ()| {
+        CustomPopup::new()
+            .with_salt("Create track popup")
+            .with_sense_rect(area_rect)
+            .with_allow_opening(true)
+            .with_save_on_click(Some(()))
+            .show_if_saved(ui, |ui, ()| {
                 ui.menu_button("New track", |ui| {
                     if let Some(new_track) = using_wrap_ui(world, |mut env| {
                         env.mutable_buffered(
@@ -436,8 +433,7 @@ impl EventTrackEditorWindow {
                         ));
                     }
                 })
-            },
-        );
+            });
     }
 
     fn draw_timeline(
@@ -701,72 +697,5 @@ impl EventTrackEditorWindow {
         let mut track_vec = tracks.tracks.iter().collect::<Vec<_>>();
         track_vec.sort_by_key(|(k, _)| *k);
         track_vec.into_iter().map(|t| t.1)
-    }
-
-    fn popup<T, S: Default + Clone + Send + Sync + 'static>(
-        ui: &mut egui::Ui,
-        salt: impl Hash,
-        allowable_rect: egui::Rect,
-        allow_opening: bool,
-        save_on_click: Option<S>,
-        popup_ui: impl FnOnce(&mut egui::Ui, S) -> T,
-    ) -> Option<T> {
-        let popup_id = ui.id().with(&salt);
-
-        if allow_opening
-            && ui.input(|i| i.pointer.secondary_clicked())
-            && ui
-                .input(|i| i.pointer.interact_pos())
-                .is_some_and(|p| allowable_rect.contains(p))
-        {
-            let pointer_pos = ui.input(|i| i.pointer.interact_pos()).unwrap_or_default();
-            ui.memory_mut(|mem| mem.open_popup(popup_id));
-            if let Some(save_on_click) = save_on_click {
-                ui.memory_mut(|mem| {
-                    mem.data
-                        .insert_persisted(popup_id, (pointer_pos, save_on_click))
-                })
-            }
-        }
-
-        let (pointer_pos, saved_on_click) = ui
-            .memory_mut(|mem| mem.data.get_persisted(popup_id))
-            .unwrap_or_default();
-
-        // We need to do some response hacking, since it's otherwise nontrivial
-        // to draw a popup on right click position.
-        //
-        // The alternative is to implement our own popup widget, which I'm reluctant
-        // to do now given that egui 0.32 is overhauling popups.
-        let new_rect = egui::Rect {
-            min: pointer_pos,
-            max: pointer_pos + egui::Vec2::new(80., 0.),
-        };
-
-        let response = egui::Response {
-            ctx: ui.ctx().clone(),
-            layer_id: ui.layer_id(),
-            id: popup_id,
-            rect: new_rect,
-            interact_rect: new_rect,
-            sense: Sense::click(),
-            interact_pointer_pos: None,
-            intrinsic_size: None,
-            flags: egui::response::Flags::ENABLED,
-        };
-
-        egui::popup_above_or_below_widget(
-            ui,
-            popup_id,
-            &response,
-            egui::AboveOrBelow::Below,
-            egui::popup::PopupCloseBehavior::IgnoreClicks,
-            |ui| {
-                if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
-                    ui.memory_mut(|mem| mem.close_popup());
-                }
-                popup_ui(ui, saved_on_click)
-            },
-        )
     }
 }
