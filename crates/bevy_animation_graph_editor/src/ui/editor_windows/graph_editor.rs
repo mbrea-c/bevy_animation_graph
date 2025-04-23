@@ -203,12 +203,10 @@ impl GraphEditorWindow {
 
                         if query.is_empty() {
                             true
+                        } else if query.chars().any(|c| c.is_uppercase()) {
+                            ty.path.contains(query)
                         } else {
-                            if query.chars().find(|c| c.is_uppercase()).is_some() {
-                                ty.path.contains(query)
-                            } else {
-                                ty.path.to_lowercase().contains(query)
-                            }
+                            ty.path.to_lowercase().contains(query)
                         }
                     })
                     .collect()

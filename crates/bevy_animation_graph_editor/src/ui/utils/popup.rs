@@ -100,7 +100,7 @@ where
 
     fn is_open(ui: &mut egui::Ui, id: egui::Id) -> bool {
         ui.memory_mut(|mem| mem.data.get_persisted::<PopupState>(id))
-            .map_or(false, |p| p.open)
+            .is_some_and(|p| p.open)
     }
 
     fn mut_popup_state(ui: &mut egui::Ui, id: egui::Id, mutate: impl FnOnce(&mut PopupState)) {
