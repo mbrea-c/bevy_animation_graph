@@ -3,8 +3,8 @@ use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
 use crate::prelude::{PassContext, SpecContext};
-use bevy::reflect::std_traits::ReflectDefault;
 use bevy::reflect::Reflect;
+use bevy::reflect::std_traits::ReflectDefault;
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default, NodeLike)]

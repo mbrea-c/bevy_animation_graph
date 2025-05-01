@@ -12,8 +12,8 @@ use crate::{
     fsm_show::{FsmIndices, FsmIndicesMap, FsmReprSpec},
     ui::{
         actions::{
-            fsm::{FsmAction, GenerateIndices, MoveState, RemoveState, RemoveTransition},
             EditorAction,
+            fsm::{FsmAction, GenerateIndices, MoveState, RemoveState, RemoveTransition},
         },
         core::{
             EditorWindowContext, EditorWindowExtension, FsmStateSelection, FsmTransitionSelection,

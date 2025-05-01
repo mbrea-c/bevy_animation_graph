@@ -10,7 +10,7 @@ use crate::{
 use bevy::{
     color::LinearRgba,
     math::{Quat, Vec3},
-    reflect::{std_traits::ReflectDefault, Reflect},
+    reflect::{Reflect, std_traits::ReflectDefault},
     transform::components::Transform,
 };
 

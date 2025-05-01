@@ -11,7 +11,7 @@ use bevy::{
 use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
 use egui_dock::egui;
 
-use super::{get_buffered, EguiInspectorBuffers, TopLevelBuffer, WidgetHash};
+use super::{EguiInspectorBuffers, TopLevelBuffer, WidgetHash, get_buffered};
 
 pub struct WrapUi<'a, 'c> {
     inspector_ui: InspectorUi<'a, 'c>,

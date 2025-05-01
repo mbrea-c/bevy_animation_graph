@@ -1,4 +1,4 @@
-use bevy::reflect::{std_traits::ReflectDefault, Reflect};
+use bevy::reflect::{Reflect, std_traits::ReflectDefault};
 use serde::{Deserialize, Serialize};
 
 use crate::core::state_machine::high_level::{StateId, TransitionId};

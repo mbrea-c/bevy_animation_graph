@@ -1,18 +1,18 @@
-use super::animation_clip::loader::GraphClipLoader;
 use super::animation_clip::Interpolation;
+use super::animation_clip::loader::GraphClipLoader;
 use super::edge_data::{AnimationEvent, EventQueue, SampledEvent};
 use super::pose::Pose;
 use super::prelude::loader::AnimatedSceneLoader;
-use super::prelude::{locate_animated_scene_player, GraphClip};
-use super::skeleton::loader::SkeletonLoader;
+use super::prelude::{GraphClip, locate_animated_scene_player};
 use super::skeleton::Skeleton;
+use super::skeleton::loader::SkeletonLoader;
 use super::state_machine::high_level::GlobalTransition;
 use super::systems::apply_animation_to_targets;
 use super::{
-    animated_scene::{spawn_animated_scenes, AnimatedScene},
+    animated_scene::{AnimatedScene, spawn_animated_scenes},
     animation_graph::loader::AnimationGraphLoader,
     edge_data::{BoneMask, DataSpec, DataValue},
-    state_machine::high_level::{loader::StateMachineLoader, StateMachine},
+    state_machine::high_level::{StateMachine, loader::StateMachineLoader},
     systems::{animation_player, animation_player_deferred_gizmos},
 };
 use crate::nodes::blend_space_node::BlendSpaceNode;
@@ -22,8 +22,8 @@ use crate::nodes::{
     PaddingNode, RotationArcNode, RotationNode, SpeedNode, SubF32, TwoBoneIKNode,
 };
 use crate::prelude::{
-    config::{FlipConfig, FlipNameMapper, PatternMapper, PatternMapperSerial},
     AnimationGraph, AnimationGraphPlayer,
+    config::{FlipConfig, FlipNameMapper, PatternMapper, PatternMapperSerial},
 };
 use crate::{core::animation_clip::EntityPath, prelude::AnimationNode};
 use bevy::{prelude::*, transform::TransformSystem};

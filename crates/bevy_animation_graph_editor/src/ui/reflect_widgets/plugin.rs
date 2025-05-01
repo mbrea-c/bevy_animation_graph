@@ -5,10 +5,10 @@ use bevy_animation_graph::{
 };
 
 use super::{
-    asset_picker::AssetPickerInspector, checkbox::CheckboxInspector,
-    entity_path::EntityPathInspector, pattern_mapper::PatternMapperInspector,
-    submittable::SubmittableInspector, target_tracks::TargetTracksInspector,
-    vec2_plane::Vec2PlaneInspector, EguiInspectorExtensionRegistration,
+    EguiInspectorExtensionRegistration, asset_picker::AssetPickerInspector,
+    checkbox::CheckboxInspector, entity_path::EntityPathInspector,
+    pattern_mapper::PatternMapperInspector, submittable::SubmittableInspector,
+    target_tracks::TargetTracksInspector, vec2_plane::Vec2PlaneInspector,
 };
 pub struct BetterInspectorPlugin;
 impl Plugin for BetterInspectorPlugin {
