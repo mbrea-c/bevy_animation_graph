@@ -17,7 +17,7 @@ use bevy_inspector_egui::egui;
 use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
 
 use super::core::GlobalState;
-use super::{provide_texture_for_scene, PartOfSubScene, PreviewScene, SubSceneConfig};
+use super::{PartOfSubScene, PreviewScene, SubSceneConfig, provide_texture_for_scene};
 
 pub mod popup;
 
@@ -227,7 +227,7 @@ pub(crate) fn select_graph_context_fsm(
 
 pub(crate) fn get_animation_graph_player(world: &mut World) -> Option<&AnimationGraphPlayer> {
     let mut query = world.query::<(&AnimatedSceneInstance, &PreviewScene)>();
-    let Ok((instance, _)) = query.get_single(world) else {
+    let Ok((instance, _)) = query.single(world) else {
         return None;
     };
     let entity = instance.player_entity();
@@ -239,7 +239,7 @@ pub(crate) fn get_animation_graph_player_mut(
     world: &mut World,
 ) -> Option<&mut AnimationGraphPlayer> {
     let mut query = world.query::<(&AnimatedSceneInstance, &PreviewScene)>();
-    let Ok((instance, _)) = query.get_single(world) else {
+    let Ok((instance, _)) = query.single(world) else {
         return None;
     };
     let entity = instance.player_entity();

@@ -12,11 +12,11 @@ use crate::core::prelude::{DataSpec, DataValue};
 use crate::prelude::{PassContext, SpecContext};
 use bevy::asset::Handle;
 use bevy::math::{Quat, Vec3};
+use bevy::platform::hash::Hashed;
 use bevy::prelude::{
     Animatable, AnimatableProperty, AnimationNodeIndex, EvaluatorId, Transform, VariableCurve,
 };
 use bevy::reflect::prelude::*;
-use bevy::utils::Hashed;
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default, NodeLike)]

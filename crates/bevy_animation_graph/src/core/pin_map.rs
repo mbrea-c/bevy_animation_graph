@@ -1,4 +1,4 @@
-use bevy::{reflect::Reflect, utils::HashMap};
+use bevy::{platform::collections::HashMap, reflect::Reflect};
 
 use super::animation_graph::PinId;
 

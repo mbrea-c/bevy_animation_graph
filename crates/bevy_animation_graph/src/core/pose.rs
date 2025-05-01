@@ -1,7 +1,8 @@
 pub use super::id::BoneId;
 use super::skeleton::Skeleton;
 use bevy::{
-    asset::prelude::*, math::prelude::*, reflect::prelude::*, transform::prelude::*, utils::HashMap,
+    asset::prelude::*, math::prelude::*, platform::collections::HashMap, reflect::prelude::*,
+    transform::prelude::*,
 };
 use serde::{Deserialize, Serialize};
 
@@ -192,9 +193,5 @@ fn either_or_mix<T>(a: Option<T>, b: Option<T>, mix: impl Fn(T, T) -> T) -> Opti
 }
 
 fn linear_add_quaternion(a: Quat, b: Quat) -> Quat {
-    if a.dot(b) < 0. {
-        a - b
-    } else {
-        a + b
-    }
+    if a.dot(b) < 0. { a - b } else { a + b }
 }

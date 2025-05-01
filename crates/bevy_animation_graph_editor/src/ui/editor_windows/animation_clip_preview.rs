@@ -6,6 +6,7 @@ use bevy_animation_graph::{
 use egui_dock::egui;
 
 use crate::ui::{
+    PartOfSubScene, PreviewScene,
     actions::{
         clip_preview::{
             ClipPreviewScenes, CreateClipPreview, CreateTrackNodePreview, NodePreviewKey,
@@ -15,8 +16,7 @@ use crate::ui::{
     },
     core::{EditorWindowContext, EditorWindowExtension},
     reflect_widgets::wrap_ui::using_wrap_ui,
-    utils::{orbit_camera_scene_show, OrbitView},
-    PartOfSubScene, PreviewScene,
+    utils::{OrbitView, orbit_camera_scene_show},
 };
 
 use super::{event_track_editor::TargetTracks, scene_preview::ScenePreviewConfig};

@@ -1,7 +1,7 @@
-use super::{serial::AnimationGraphLoadDeserializer, AnimationGraph};
+use super::{AnimationGraph, serial::AnimationGraphLoadDeserializer};
 use crate::core::errors::AssetLoaderError;
 use bevy::{
-    asset::{io::Reader, AssetLoader, LoadContext},
+    asset::{AssetLoader, LoadContext, io::Reader},
     prelude::*,
     reflect::TypeRegistryArc,
 };

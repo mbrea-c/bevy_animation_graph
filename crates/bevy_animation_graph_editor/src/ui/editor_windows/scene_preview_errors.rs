@@ -3,8 +3,8 @@ use bevy_animation_graph::prelude::{AnimatedSceneInstance, AnimationGraphPlayer}
 use egui_dock::egui;
 
 use crate::ui::{
-    core::{EditorWindowContext, EditorWindowExtension},
     PreviewScene,
+    core::{EditorWindowContext, EditorWindowExtension},
 };
 
 #[derive(Debug)]
@@ -16,7 +16,7 @@ impl EditorWindowExtension for ScenePreviewErrorsWindow {
             return;
         };
         let mut query = world.query::<(&AnimatedSceneInstance, &PreviewScene)>();
-        let Ok((instance, _)) = query.get_single(world) else {
+        let Ok((instance, _)) = query.single(world) else {
             return;
         };
         let entity = instance.player_entity();

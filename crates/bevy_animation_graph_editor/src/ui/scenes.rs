@@ -1,13 +1,13 @@
 use std::rc::Rc;
 
 use bevy::color::palettes::css::WHITE;
+use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 use bevy::render::render_resource::{
     Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
 };
 
 use bevy::render::view::RenderLayers;
-use bevy::utils::HashMap;
 use bevy_animation_graph::core::animated_scene::AnimatedSceneInstance;
 use bevy_animation_graph::core::animation_graph_player::AnimationGraphPlayer;
 use bevy_animation_graph::core::pose::Pose;
@@ -34,7 +34,7 @@ pub fn graph_debug_draw_bone_system(
     if ui_state.global_state.scene.is_none() {
         return;
     };
-    let Ok(instance) = scene_instance_query.get_single() else {
+    let Ok(instance) = scene_instance_query.single() else {
         return;
     };
     let entity = instance.player_entity();
@@ -229,7 +229,7 @@ pub enum SubSceneSyncAction {
 }
 
 pub trait SubSceneConfig: Clone + PartialEq + Send + Sync + 'static {
-    fn spawn(&self, builder: &mut ChildBuilder, render_target: Handle<Image>);
+    fn spawn(&self, builder: &mut ChildSpawnerCommands, render_target: Handle<Image>);
     fn sync_action(&self, new_config: &Self) -> SubSceneSyncAction;
     fn update(&self, id: egui::Id, world: &mut World);
 }
@@ -318,7 +318,7 @@ pub fn cleanup_render_layer<T: SubSceneConfig>(
 ) {
     for (entity, &PartOfSubScene(id)) in &query {
         if widget_id == id {
-            commands.entity(entity).despawn_recursive();
+            commands.entity(entity).despawn();
         }
     }
 

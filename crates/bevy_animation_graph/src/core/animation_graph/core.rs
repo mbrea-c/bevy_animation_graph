@@ -18,8 +18,8 @@ use crate::{
 };
 use bevy::{
     asset::ReflectAsset,
+    platform::collections::{HashMap, HashSet},
     prelude::*,
-    utils::{HashMap, HashSet},
 };
 use serde::{Deserialize, Serialize};
 
@@ -412,17 +412,17 @@ impl AnimationGraph {
                     (SourceType::Parameter, SourceType::Pose) => {
                         return Err(GraphValidationError::UnknownError(
                             "Inconsistent edge types connected to the same pin".into(),
-                        ))
+                        ));
                     }
                     (SourceType::Pose, SourceType::Parameter) => {
                         return Err(GraphValidationError::UnknownError(
                             "Inconsistent edge types connected to the same pin".into(),
-                        ))
+                        ));
                     }
                     (SourceType::Pose, SourceType::Pose) => {
                         return Err(GraphValidationError::UnknownError(
                             "Only one target can be connected to each pose output".into(),
-                        ))
+                        ));
                     }
                     _ => (),
                 };

@@ -7,8 +7,8 @@ use bevy::{
     asset::Assets,
     ecs::world::CommandQueue,
     log::warn,
+    platform::collections::HashMap,
     prelude::{AppTypeRegistry, ReflectDefault, World},
-    utils::HashMap,
 };
 use bevy_animation_graph::{
     core::state_machine::high_level::{State, StateMachine, Transition},
@@ -19,6 +19,7 @@ use egui_dock::egui;
 
 use crate::ui::{
     actions::{
+        EditorAction,
         fsm::{
             CreateState, CreateTransition, FsmAction, FsmProperties, UpdateProperties, UpdateState,
             UpdateTransition,
@@ -27,7 +28,6 @@ use crate::ui::{
             CreateNode, EditNode, GraphAction, RenameNode, UpdateInputData, UpdateInputTimes,
             UpdateOutputData, UpdateOutputTime,
         },
-        EditorAction,
     },
     core::{EditorWindowContext, EditorWindowExtension, FsmSelection, InspectorSelection},
     egui_inspector_impls::OrderedMap,

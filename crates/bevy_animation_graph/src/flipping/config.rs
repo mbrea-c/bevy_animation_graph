@@ -1,7 +1,7 @@
 use std::hash::Hash;
 
-use bevy::reflect::{std_traits::ReflectDefault, Reflect};
-use regex::{escape, Regex};
+use bevy::reflect::{Reflect, std_traits::ReflectDefault};
+use regex::{Regex, escape};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Default, Reflect, Clone, Serialize, Deserialize)]

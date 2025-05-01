@@ -8,8 +8,8 @@ use bevy::{
     log::warn,
 };
 
-use super::{run_handler, DynamicAction};
-use crate::ui::{windows::WindowId, UiState};
+use super::{DynamicAction, run_handler};
+use crate::ui::{UiState, windows::WindowId};
 
 pub type DynWindowAction = Box<dyn Any + Send + Sync>;
 

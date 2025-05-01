@@ -20,7 +20,9 @@ pub enum GraphError {
     FSMExpectedTransitionFoundState,
     #[error("FSM sub-graph requested data that isn't available")]
     FSMRequestedMissingData,
-    #[error("The current state id does not match any known states, perhaps you deleted a state while the state machine was running?")]
+    #[error(
+        "The current state id does not match any known states, perhaps you deleted a state while the state machine was running?"
+    )]
     FSMCurrentStateMissing,
     #[error("The asset for a state's graph is missing.")]
     FSMGraphAssetMissing,

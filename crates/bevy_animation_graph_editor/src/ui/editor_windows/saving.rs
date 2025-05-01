@@ -12,9 +12,9 @@ use egui_dock::egui;
 
 use crate::ui::{
     actions::{
+        EditorAction,
         saving::{SaveAction, SaveMultiple},
         window::CloseWindowAction,
-        EditorAction,
     },
     core::{EditorWindowContext, EditorWindowExtension},
     reflect_widgets::wrap_ui::using_wrap_ui,

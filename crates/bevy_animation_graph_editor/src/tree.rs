@@ -1,8 +1,4 @@
-use bevy::{
-    core::Name,
-    ecs::{entity::Entity, world::World},
-    hierarchy::Children,
-};
+use bevy::ecs::{entity::Entity, hierarchy::Children, name::Name, world::World};
 
 pub struct Tree<I, L>(pub Vec<TreeInternal<I, L>>);
 impl<I, T> Default for Tree<I, T> {

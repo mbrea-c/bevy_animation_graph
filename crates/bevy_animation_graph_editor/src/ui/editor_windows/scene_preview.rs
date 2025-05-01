@@ -1,10 +1,11 @@
 use bevy::{
     asset::Handle,
     color::{Color, LinearRgba},
+    ecs::hierarchy::ChildSpawnerCommands,
     image::Image,
     math::Vec3,
     pbr::PointLight,
-    prelude::{Camera, Camera3d, ChildBuild, ChildBuilder, ClearColorConfig, Transform, World},
+    prelude::{Camera, Camera3d, ClearColorConfig, Transform, World},
     render::camera::RenderTarget,
     utils::default,
 };
@@ -14,9 +15,9 @@ use bevy_animation_graph::prelude::{
 use egui_dock::egui;
 
 use crate::ui::{
-    core::EditorWindowExtension,
-    utils::{orbit_camera_scene_show, orbit_camera_transform, orbit_camera_update, OrbitView},
     PartOfSubScene, PreviewScene, SubSceneConfig, SubSceneSyncAction,
+    core::EditorWindowExtension,
+    utils::{OrbitView, orbit_camera_scene_show, orbit_camera_transform, orbit_camera_update},
 };
 
 #[derive(Debug, Default)]
@@ -88,7 +89,7 @@ pub struct ScenePreviewConfig {
 }
 
 impl SubSceneConfig for ScenePreviewConfig {
-    fn spawn(&self, builder: &mut ChildBuilder, render_target: Handle<Image>) {
+    fn spawn(&self, builder: &mut ChildSpawnerCommands, render_target: Handle<Image>) {
         builder.spawn((
             PointLight::default(),
             Transform::from_translation(Vec3::new(0.0, 0.0, 10.0)),
@@ -102,7 +103,7 @@ impl SubSceneConfig for ScenePreviewConfig {
                 clear_color: ClearColorConfig::Custom(Color::from(LinearRgba::new(
                     1.0, 1.0, 1.0, 0.0,
                 ))),
-                target: RenderTarget::Image(render_target),
+                target: RenderTarget::Image(render_target.into()),
                 ..default()
             },
             orbit_camera_transform(&self.view),

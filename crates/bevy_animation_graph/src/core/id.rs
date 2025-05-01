@@ -1,6 +1,6 @@
 use bevy::{
     animation::AnimationTargetId,
-    reflect::{std_traits::ReflectDefault, Reflect},
+    reflect::{Reflect, std_traits::ReflectDefault},
 };
 use serde::{Deserialize, Serialize};
 use std::hash::{Hash, Hasher};

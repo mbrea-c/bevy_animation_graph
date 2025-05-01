@@ -14,22 +14,23 @@ use std::{any::Any, cmp::Ordering, fmt::Display};
 
 use bevy::{
     ecs::{
-        system::{In, IntoSystem, ResMut, Resource, SystemInput},
+        resource::Resource,
+        system::{In, IntoSystem, ResMut, SystemInput},
         world::World,
     },
     log::error,
 };
 use egui_dock::DockState;
-use event_tracks::{handle_event_track_action, EventTrackAction};
-use fsm::{handle_fsm_action, FsmAction};
-use graph::{handle_graph_action, GraphAction};
-use saving::{handle_save_action, SaveAction};
+use event_tracks::{EventTrackAction, handle_event_track_action};
+use fsm::{FsmAction, handle_fsm_action};
+use graph::{GraphAction, handle_graph_action};
+use saving::{SaveAction, handle_save_action};
 use window::WindowAction;
 
 use super::{
+    UiState,
     core::{ViewAction, ViewState},
     windows::WindowId,
-    UiState,
 };
 
 #[derive(Resource, Default)]

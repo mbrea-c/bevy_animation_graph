@@ -1,10 +1,11 @@
 use bevy::{
     asset::{AssetId, Assets, Handle},
     ecs::{
-        system::{In, ResMut, Resource},
+        resource::Resource,
+        system::{In, ResMut},
         world::World,
     },
-    utils::HashMap,
+    platform::collections::HashMap,
 };
 use bevy_animation_graph::{
     core::animation_graph::{NodeId, PinId, SourcePin, TargetPin},
@@ -12,7 +13,7 @@ use bevy_animation_graph::{
     prelude::{AnimatedScene, AnimationGraph, AnimationNode, DataSpec, GraphClip},
 };
 
-use super::{run_handler, DynamicAction};
+use super::{DynamicAction, run_handler};
 
 #[derive(Resource, Default)]
 pub struct ClipPreviewScenes {

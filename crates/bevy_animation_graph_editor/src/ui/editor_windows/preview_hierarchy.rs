@@ -5,8 +5,9 @@ use egui_dock::egui;
 use crate::{
     tree::{Tree, TreeResult},
     ui::{
+        PreviewScene,
         core::{EditorWindowContext, EditorWindowExtension},
-        utils, PreviewScene,
+        utils,
     },
 };
 
@@ -19,7 +20,7 @@ impl EditorWindowExtension for PreviewHierarchyWindow {
             return;
         };
         let mut query = world.query::<(&AnimatedSceneInstance, &PreviewScene)>();
-        let Ok((instance, _)) = query.get_single(world) else {
+        let Ok((instance, _)) = query.single(world) else {
             return;
         };
         let entity = instance.player_entity();

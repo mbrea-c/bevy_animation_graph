@@ -1,5 +1,5 @@
 use crate::Cli;
-use bevy::{asset::LoadedUntypedAsset, prelude::*, utils::HashSet};
+use bevy::{asset::LoadedUntypedAsset, platform::collections::HashSet, prelude::*};
 use std::{
     fs, io,
     path::{Path, PathBuf},
@@ -31,7 +31,7 @@ pub fn core_setup(
     mut evw_rescan_events: EventWriter<RescanAssets>,
     mut gizmo_config: ResMut<GizmoConfigStore>,
 ) {
-    evw_rescan_events.send(RescanAssets);
+    evw_rescan_events.write(RescanAssets);
 
     let config = gizmo_config.config_mut::<DefaultGizmoConfigGroup>().0;
     config.depth_bias = -1.;

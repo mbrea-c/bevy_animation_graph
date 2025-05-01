@@ -2,7 +2,7 @@ use std::cmp::Ordering;
 
 use crate::core::{
     animation_graph::{
-        AnimationGraph, InputOverlay, PinMap, SourcePin, TargetPin, TimeUpdate, DEFAULT_OUTPUT_POSE,
+        AnimationGraph, DEFAULT_OUTPUT_POSE, InputOverlay, PinMap, SourcePin, TargetPin, TimeUpdate,
     },
     context::{CacheReadFilter, CacheWriteFilter, FsmContext, PassContext, StateRole, StateStack},
     duration_data::DurationData,
@@ -12,8 +12,8 @@ use crate::core::{
 use bevy::{
     asset::{Asset, Handle},
     log::warn,
+    platform::collections::HashMap,
     reflect::Reflect,
-    utils::HashMap,
 };
 
 use super::high_level;

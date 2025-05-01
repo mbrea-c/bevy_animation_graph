@@ -1,8 +1,8 @@
 use super::{
+    DeferredGizmosContext, GraphContext, PoseFallbackContext, SpecContext, SystemResources,
     deferred_gizmos::DeferredGizmoRef,
     graph_context::{CacheReadFilter, CacheWriteFilter, GraphStateStack},
     graph_context_arena::{GraphContextArena, GraphContextId, SubContextId},
-    DeferredGizmosContext, GraphContext, PoseFallbackContext, SpecContext, SystemResources,
 };
 use crate::{
     core::{
@@ -16,7 +16,7 @@ use crate::{
     nodes::{FSMNode, GraphNode},
     prelude::{AnimationGraph, DataValue},
 };
-use bevy::{ecs::entity::Entity, utils::HashMap};
+use bevy::{ecs::entity::Entity, platform::collections::HashMap};
 
 #[derive(Clone, Copy)]
 pub struct NodeContext<'a> {

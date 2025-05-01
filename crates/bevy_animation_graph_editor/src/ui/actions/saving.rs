@@ -1,17 +1,17 @@
 use crate::{
+    Cli,
     ui::{
+        UiState,
         core::EguiWindow,
         editor_windows::saving::{SaveWindow, SaveWindowAssetMeta},
-        UiState,
     },
-    Cli,
 };
-use bevy::{asset::UntypedAssetId, prelude::*, utils::HashMap};
+use bevy::{asset::UntypedAssetId, platform::collections::HashMap, prelude::*};
 use bevy_animation_graph::{
     core::{
         animation_clip::loader::GraphClipSerial,
-        animation_graph::{serial::AnimationGraphSerializer, AnimationGraph},
-        state_machine::high_level::{serial::StateMachineSerial, StateMachine},
+        animation_graph::{AnimationGraph, serial::AnimationGraphSerializer},
+        state_machine::high_level::{StateMachine, serial::StateMachineSerial},
     },
     prelude::GraphClip,
 };

@@ -2,10 +2,10 @@ pub mod loader;
 
 use bevy::{
     animation::{AnimationCurves, AnimationTargetId},
-    asset::{prelude::*, ReflectAsset},
-    core::prelude::*,
+    asset::{ReflectAsset, prelude::*},
+    ecs::name::Name,
+    platform::collections::HashMap,
     reflect::prelude::*,
-    utils::HashMap,
 };
 use loader::GraphClipSource;
 use serde::{Deserialize, Serialize};

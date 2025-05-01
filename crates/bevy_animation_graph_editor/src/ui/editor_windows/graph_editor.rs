@@ -4,7 +4,7 @@ use bevy::{
     asset::{Assets, Handle},
     ecs::reflect::AppTypeRegistry,
     prelude::World,
-    reflect::{prelude::ReflectDefault, TypeRegistry},
+    reflect::{TypeRegistry, prelude::ReflectDefault},
 };
 use bevy_animation_graph::{
     core::state_machine::high_level::StateMachine,
@@ -17,11 +17,11 @@ use crate::{
     graph_show::{GraphIndices, GraphIndicesMap, GraphReprSpec, Pin},
     ui::{
         actions::{
+            EditorAction,
             graph::{
                 CreateLink, CreateNode, GenerateIndices, GraphAction, MoveInput, MoveNode,
                 MoveOutput, RemoveLink, RemoveNode,
             },
-            EditorAction,
         },
         core::{EditorWindowContext, EditorWindowExtension, InspectorSelection, NodeSelection},
         utils::{self, popup::CustomPopup, using_inspector_env},

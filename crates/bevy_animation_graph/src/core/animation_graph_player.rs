@@ -1,5 +1,5 @@
 use super::{
-    animation_graph::{AnimationGraph, InputOverlay, PinId, TimeUpdate, DEFAULT_OUTPUT_POSE},
+    animation_graph::{AnimationGraph, DEFAULT_OUTPUT_POSE, InputOverlay, PinId, TimeUpdate},
     context::{DeferredGizmos, PassContext},
     edge_data::{AnimationEvent, DataValue, EventQueue, SampledEvent},
     errors::GraphError,
@@ -9,8 +9,8 @@ use super::{
 };
 use crate::prelude::SystemResources;
 use bevy::{
-    asset::prelude::*, color::palettes::css::WHITE, ecs::prelude::*, reflect::prelude::*,
-    utils::HashMap,
+    asset::prelude::*, color::palettes::css::WHITE, ecs::prelude::*,
+    platform::collections::HashMap, reflect::prelude::*,
 };
 
 #[derive(Default, Reflect, Clone, Copy)]

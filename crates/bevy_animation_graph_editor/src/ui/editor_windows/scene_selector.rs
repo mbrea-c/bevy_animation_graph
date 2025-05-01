@@ -1,4 +1,4 @@
-use bevy::{prelude::World, utils::HashMap};
+use bevy::{platform::collections::HashMap, prelude::World};
 use bevy_animation_graph::{core::edge_data::AnimationEvent, prelude::AnimatedScene};
 use egui_dock::egui;
 

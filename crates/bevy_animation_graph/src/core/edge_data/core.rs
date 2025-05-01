@@ -1,8 +1,8 @@
-use super::{bone_mask::BoneMask, EventQueue};
+use super::{EventQueue, bone_mask::BoneMask};
 use crate::core::{animation_clip::EntityPath, pose::Pose};
 use bevy::{
     math::{Quat, Vec2, Vec3},
-    reflect::{std_traits::ReflectDefault, Reflect},
+    reflect::{Reflect, std_traits::ReflectDefault},
 };
 use bevy_animation_graph_proc_macros::ValueWrapper;
 use serde::{Deserialize, Serialize};

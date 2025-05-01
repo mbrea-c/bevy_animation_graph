@@ -4,7 +4,7 @@ use crate::egui_nodes::{
     node::{NodeArgs, NodeSpec},
     pin::{PinSpec, PinType},
 };
-use bevy::{asset::AssetId, ecs::system::Resource, utils::HashMap};
+use bevy::{asset::AssetId, ecs::resource::Resource, platform::collections::HashMap};
 use bevy_animation_graph::core::{
     animation_graph::{AnimationGraph, PinId, SourcePin, TargetPin},
     animation_node::AnimationNode,

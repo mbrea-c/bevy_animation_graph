@@ -15,7 +15,7 @@ use bevy_animation_graph::{
     prelude::DataValue,
 };
 
-use crate::fsm_show::{make_fsm_indices, FsmIndicesMap};
+use crate::fsm_show::{FsmIndicesMap, make_fsm_indices};
 
 use super::{run_handler, saving::DirtyAssets};
 

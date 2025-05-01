@@ -1,7 +1,7 @@
 use proc_macro::TokenStream;
 use quote::quote;
 use syn::{
-    parenthesized, parse_macro_input, Attribute, Data, DeriveInput, Fields, Meta, Path, Variant,
+    Attribute, Data, DeriveInput, Fields, Meta, Path, Variant, parenthesized, parse_macro_input,
 };
 
 #[proc_macro_derive(ValueWrapper, attributes(unwrap_error, trivial_copy))]
