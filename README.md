@@ -108,7 +108,7 @@ This project is divided in two crates:
 
 | `bevy` | `bevy_animation_graph` | `bevy_animation_graph_editor` | 
 | ------ | ---------------------- | ----------------------------- |
-| 0.15   | master                 | master |
+| 0.16   | master                 | master |
 | 0.15   | 0.6                    | 0.6    |
 | 0.14 | 0.5 | 0.5 |
 | 0.13 | 0.4 | 0.4 |
