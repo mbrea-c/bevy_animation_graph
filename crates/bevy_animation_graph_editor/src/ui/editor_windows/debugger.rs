@@ -1,11 +1,9 @@
 use bevy::{
     color::LinearRgba,
+    ecs::hierarchy::ChildSpawnerCommands,
     math::Vec3,
     pbr::PointLight,
-    prelude::{
-        Camera, Camera3d, ChildBuild, ChildBuilder, ClearColorConfig, Handle, Image, In, Query,
-        Transform, World,
-    },
+    prelude::{Camera, Camera3d, ClearColorConfig, Handle, Image, In, Query, Transform, World},
     render::camera::RenderTarget,
     utils::default,
 };
@@ -18,12 +16,12 @@ use bevy_animation_graph::{
 use egui_dock::egui;
 
 use crate::ui::{
+    OverrideSceneAnimation, PartOfSubScene, PreviewScene, SubSceneConfig, SubSceneSyncAction,
     core::{EditorWindowContext, EditorWindowExtension, InspectorSelection},
     utils::{
-        self, orbit_camera_scene_show, orbit_camera_transform, orbit_camera_update,
-        using_inspector_env, OrbitView,
+        self, OrbitView, orbit_camera_scene_show, orbit_camera_transform, orbit_camera_update,
+        using_inspector_env,
     },
-    OverrideSceneAnimation, PartOfSubScene, PreviewScene, SubSceneConfig, SubSceneSyncAction,
 };
 
 #[derive(Debug, Default)]
@@ -37,7 +35,7 @@ impl EditorWindowExtension for DebuggerWindow {
             return;
         };
         let mut query = world.query::<(&AnimatedSceneInstance, &PreviewScene)>();
-        let Ok((instance, _)) = query.get_single(world) else {
+        let Ok((instance, _)) = query.single(world) else {
             return;
         };
         let entity = instance.player_entity();
@@ -135,7 +133,7 @@ pub struct PoseSubSceneConfig {
 }
 
 impl SubSceneConfig for PoseSubSceneConfig {
-    fn spawn(&self, builder: &mut ChildBuilder, render_target: Handle<Image>) {
+    fn spawn(&self, builder: &mut ChildSpawnerCommands, render_target: Handle<Image>) {
         builder.spawn((
             PointLight::default(),
             Transform::from_translation(Vec3::new(0.0, 0.0, 10.0)),
@@ -147,7 +145,7 @@ impl SubSceneConfig for PoseSubSceneConfig {
                 // render before the "main pass" camera
                 order: -1,
                 clear_color: ClearColorConfig::Custom(LinearRgba::new(1.0, 1.0, 1.0, 0.0).into()),
-                target: RenderTarget::Image(render_target),
+                target: RenderTarget::Image(render_target.into()),
                 ..default()
             },
             // Position based on orbit camera parameters

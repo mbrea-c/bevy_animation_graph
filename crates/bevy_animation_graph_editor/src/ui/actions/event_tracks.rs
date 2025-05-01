@@ -7,7 +7,7 @@ use bevy::{
         world::World,
     },
     log::error,
-    utils::HashMap,
+    platform::collections::HashMap,
 };
 use bevy_animation_graph::{
     core::event_track::{EventTrack, TrackItem, TrackItemValue},

@@ -9,8 +9,8 @@ use crate::{
 };
 use bevy::{
     asset::AssetId,
+    platform::collections::{HashMap, HashSet},
     reflect::prelude::*,
-    utils::{HashMap, HashSet},
 };
 
 #[derive(Reflect, Debug, Default, Clone)]
@@ -40,21 +40,13 @@ impl CacheReadFilter {
     };
 
     pub fn for_temp(is_temp: bool) -> Self {
-        if is_temp {
-            Self::TEMP
-        } else {
-            Self::PRIMARY
-        }
+        if is_temp { Self::TEMP } else { Self::PRIMARY }
     }
 }
 
 impl CacheWriteFilter {
     pub fn for_temp(is_temp: bool) -> Self {
-        if is_temp {
-            Self::Temp
-        } else {
-            Self::Primary
-        }
+        if is_temp { Self::Temp } else { Self::Primary }
     }
 }
 

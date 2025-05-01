@@ -6,9 +6,9 @@ resolver = "2"
 version = "0.6.0"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
-edition = "2021"
+edition = "2024"
 repository = "https://github.com/mbrea-c/bevy_animation_graph"
 
 [workspace.dependencies]
-bevy = { version = "0.15" }
+bevy = { version = "0.16" }
 ron = "0.8.1"

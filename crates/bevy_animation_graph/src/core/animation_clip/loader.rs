@@ -1,8 +1,8 @@
 use bevy::{
-    asset::{io::Reader, AssetLoader, LoadContext},
+    asset::{AssetLoader, LoadContext, io::Reader},
     gltf::Gltf,
+    platform::collections::HashMap,
     reflect::Reflect,
-    utils::HashMap,
 };
 use serde::{Deserialize, Serialize};
 

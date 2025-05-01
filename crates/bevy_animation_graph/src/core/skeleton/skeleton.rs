@@ -1,5 +1,5 @@
 use crate::core::{animation_clip::EntityPath, id::BoneId};
-use bevy::{asset::Asset, reflect::Reflect, utils::HashMap};
+use bevy::{asset::Asset, platform::collections::HashMap, reflect::Reflect};
 use std::fmt::Debug;
 
 #[derive(Asset, Reflect, Default)]
@@ -13,7 +13,9 @@ pub struct Skeleton {
 impl Skeleton {
     pub fn add_bone(&mut self, path: EntityPath) {
         if path.parts.is_empty() {
-            panic!("Cannot have a bone path with length 0! Something must be wrong in the skeleton asset loader...");
+            panic!(
+                "Cannot have a bone path with length 0! Something must be wrong in the skeleton asset loader..."
+            );
         }
 
         let maybe_parent = path.parent();

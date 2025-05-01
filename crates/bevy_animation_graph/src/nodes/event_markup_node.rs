@@ -5,8 +5,8 @@ use crate::core::errors::GraphError;
 use crate::core::event_track::EventTrack;
 use crate::core::prelude::DataSpec;
 use crate::prelude::{PassContext, SpecContext};
+use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
-use bevy::utils::HashMap;
 use serde::{Deserialize, Serialize};
 
 /// This node enables "decorating" arbitrary animations with event tracks.

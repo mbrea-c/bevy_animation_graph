@@ -2,7 +2,7 @@ use super::GraphContext;
 use crate::core::{
     animation_graph::NodeId, prelude::AnimationGraph, state_machine::low_level::LowLevelStateId,
 };
-use bevy::{asset::AssetId, reflect::Reflect, utils::HashMap};
+use bevy::{asset::AssetId, platform::collections::HashMap, reflect::Reflect};
 
 #[derive(Reflect, Clone, Copy, Debug, Eq, PartialEq, Hash, Default)]
 pub struct GraphContextId(usize);

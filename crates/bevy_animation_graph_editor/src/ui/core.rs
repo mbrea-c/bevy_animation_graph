@@ -1,8 +1,8 @@
 use crate::egui_fsm::lib::FsmUiContext;
 use crate::egui_nodes::lib::NodesContext;
 use bevy::asset::UntypedAssetId;
+use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
-use bevy::utils::HashMap;
 use bevy::window::PrimaryWindow;
 use bevy_animation_graph::core::animated_scene::AnimatedScene;
 use bevy_animation_graph::core::animation_clip::EntityPath;
@@ -41,7 +41,7 @@ use super::windows::{WindowId, Windows};
 pub fn show_ui_system(world: &mut World) {
     let Ok(egui_context) = world
         .query_filtered::<&mut EguiContext, With<PrimaryWindow>>()
-        .get_single(world)
+        .single(world)
     else {
         return;
     };

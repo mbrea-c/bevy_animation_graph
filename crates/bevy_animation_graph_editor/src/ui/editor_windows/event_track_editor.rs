@@ -2,9 +2,10 @@ use std::{any::TypeId, hash::Hash};
 
 use bevy::{
     asset::{Assets, Handle},
+    platform::collections::HashMap,
     prelude::World,
     reflect::Reflect,
-    utils::{default, HashMap},
+    utils::default,
 };
 use bevy_animation_graph::{
     core::{
@@ -20,9 +21,9 @@ use uuid::Uuid;
 
 use crate::ui::{
     actions::{
+        EditorAction,
         event_tracks::{EditEventAction, EventTrackAction, NewEventAction, NewTrackAction},
         window::{DynWindowAction, TypeTargetedWindowAction},
-        EditorAction,
     },
     core::{EditorWindowContext, EditorWindowExtension},
     reflect_widgets::{submittable::Submittable, wrap_ui::using_wrap_ui},

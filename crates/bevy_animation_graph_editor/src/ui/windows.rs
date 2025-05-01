@@ -1,6 +1,6 @@
-use std::any::{type_name, Any, TypeId};
+use std::any::{Any, TypeId, type_name};
 
-use bevy::{ecs::world::World, utils::HashMap};
+use bevy::{ecs::world::World, platform::collections::HashMap};
 use egui_dock::egui;
 use uuid::Uuid;
 

@@ -4,9 +4,7 @@ use crate::{
 };
 use bevy::{
     asset::Assets,
-    core::Name,
     ecs::{prelude::*, system::SystemParam},
-    hierarchy::{Children, Parent},
     transform::prelude::*,
 };
 
@@ -22,5 +20,5 @@ pub struct SystemResources<'w, 's> {
     pub transform_query: Query<'w, 's, (&'static mut Transform, &'static GlobalTransform)>,
     pub names_query: Query<'w, 's, &'static Name>,
     pub children_query: Query<'w, 's, &'static Children>,
-    pub parent_query: Query<'w, 's, &'static Parent>,
+    pub parent_query: Query<'w, 's, &'static ChildOf>,
 }

@@ -9,17 +9,17 @@ mod ui;
 use bevy::prelude::*;
 use bevy_animation_graph::core::plugin::AnimationGraphPlugin;
 use bevy_egui::EguiPlugin;
-use bevy_inspector_egui::{bevy_egui, DefaultInspectorConfigPlugin};
+use bevy_inspector_egui::{DefaultInspectorConfigPlugin, bevy_egui};
 use clap::Parser;
 use fsm_show::FsmIndicesMap;
 use graph_show::GraphIndicesMap;
 use scanner::ScannerPlugin;
 use std::path::PathBuf;
+use ui::actions::PendingActions;
 use ui::actions::clip_preview::ClipPreviewScenes;
 use ui::actions::saving::DirtyAssets;
-use ui::actions::PendingActions;
 use ui::egui_inspector_impls::BetterInspectorPlugin;
-use ui::{graph_debug_draw_bone_system, UiState};
+use ui::{UiState, graph_debug_draw_bone_system};
 
 #[derive(Parser, Resource)]
 struct Cli {
@@ -51,7 +51,9 @@ impl Plugin for AnimationGraphEditorPlugin {
                     ..Default::default()
                 }),
             )
-            .add_plugins(EguiPlugin)
+            .add_plugins(EguiPlugin {
+                enable_multipass_for_primary_context: false,
+            })
             .add_plugins(AnimationGraphPlugin)
             .add_plugins(DefaultInspectorConfigPlugin)
             .add_plugins(BetterInspectorPlugin)

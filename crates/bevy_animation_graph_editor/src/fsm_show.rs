@@ -4,9 +4,9 @@ use crate::egui_fsm::{
 };
 use bevy::{
     asset::{AssetId, Assets},
-    ecs::system::Resource,
+    ecs::resource::Resource,
     math::Vec2,
-    utils::HashMap,
+    platform::collections::HashMap,
 };
 use bevy_animation_graph::core::state_machine::{
     high_level::{State, StateId, StateMachine, Transition, TransitionId},

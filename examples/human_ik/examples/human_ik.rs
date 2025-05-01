@@ -13,10 +13,10 @@ fn main() {
             ..default()
         }))
         .add_plugins(AnimationGraphPlugin)
-        .add_plugins(bevy_inspector_egui::quick::WorldInspectorPlugin::default())
         .insert_resource(AmbientLight {
             color: Color::WHITE,
             brightness: 0.1,
+            ..default()
         })
         .insert_resource(Params::default())
         .add_systems(Startup, setup)
@@ -98,7 +98,7 @@ fn keyboard_animation_control(
     mut params: ResMut<Params>,
     time: Res<Time>,
 ) {
-    let Ok(player_entity) = human_character.get_single().map(|i| i.player_entity()) else {
+    let Ok(player_entity) = human_character.single().map(|i| i.player_entity()) else {
         return;
     };
 

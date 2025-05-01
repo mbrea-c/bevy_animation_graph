@@ -6,16 +6,16 @@ use std::{
 use bevy::{
     app::App,
     asset::Handle,
-    ecs::{reflect::AppTypeRegistry, system::Resource},
+    ecs::{reflect::AppTypeRegistry, resource::Resource},
+    platform::collections::HashMap,
     reflect::{PartialReflect, Reflect, Reflectable, TypeRegistry},
-    utils::HashMap,
 };
 use bevy_animation_graph::{
     core::{
         animation_clip::EntityPath, event_track::TrackItemValue,
         state_machine::high_level::StateMachine,
     },
-    prelude::{config::PatternMapper, AnimatedScene, AnimationGraph, GraphClip},
+    prelude::{AnimatedScene, AnimationGraph, GraphClip, config::PatternMapper},
 };
 use bevy_inspector_egui::{
     inspector_egui_impls::InspectorEguiImpl,

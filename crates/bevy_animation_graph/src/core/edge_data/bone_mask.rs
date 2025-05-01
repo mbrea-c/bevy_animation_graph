@@ -1,7 +1,7 @@
 use crate::core::pose::BoneId;
 use bevy::{
-    reflect::{std_traits::ReflectDefault, Reflect},
-    utils::HashMap,
+    platform::collections::HashMap,
+    reflect::{Reflect, std_traits::ReflectDefault},
 };
 use serde::{Deserialize, Serialize};
 

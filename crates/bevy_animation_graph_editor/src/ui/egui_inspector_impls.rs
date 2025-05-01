@@ -1,9 +1,9 @@
 use bevy::{
     app::Plugin,
-    ecs::{prelude::AppTypeRegistry, system::Resource},
+    ecs::{prelude::AppTypeRegistry, resource::Resource},
+    platform::collections::HashMap,
     prelude::{App, Reflect},
     reflect::{FromReflect, PartialReflect, TypePath, TypeRegistry},
-    utils::HashMap,
 };
 use bevy_animation_graph::core::{
     animation_clip::EntityPath,

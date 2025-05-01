@@ -8,9 +8,9 @@ use bevy::{
     color::LinearRgba,
     gizmos::gizmos::Gizmos,
     math::{Isometry3d, Quat, Vec3},
+    platform::collections::HashMap,
     prelude::Entity,
     reflect::Reflect,
-    utils::HashMap,
 };
 
 #[derive(Clone)]

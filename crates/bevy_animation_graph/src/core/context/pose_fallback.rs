@@ -1,6 +1,6 @@
 use bevy::{
+    platform::collections::HashMap,
     prelude::{Entity, GlobalTransform, Transform},
-    utils::HashMap,
 };
 
 use crate::core::{id::BoneId, skeleton::Skeleton};

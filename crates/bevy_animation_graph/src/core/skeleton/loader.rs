@@ -2,10 +2,9 @@ use super::Skeleton;
 use crate::core::{animation_clip::EntityPath, errors::AssetLoaderError};
 use bevy::{
     animation::AnimationPlayer,
-    asset::{io::Reader, AssetLoader, LoadContext, LoadedAsset},
-    core::Name,
+    asset::{AssetLoader, LoadContext, LoadedAsset, io::Reader},
+    ecs::{hierarchy::Children, name::Name},
     gltf::Gltf,
-    hierarchy::Children,
     prelude::{Entity, With, World},
     scene::Scene,
 };
@@ -64,12 +63,9 @@ fn build_skeleton(world: &World) -> Result<Skeleton, AssetLoaderError> {
         return Err(AssetLoaderError::AnimatedSceneMissingRoot);
     };
 
-    let mut query = unsafe {
-        world
-            .as_unsafe_world_cell_readonly()
-            .world_mut()
-            .query::<(Option<&Children>, &Name)>()
-    };
+    let mut query = world
+        .try_query::<(Option<&Children>, &Name)>()
+        .expect("This query should be readonly");
 
     skeleton.set_root(EntityPath::default().child(root_name).id());
     let mut pending_children: Vec<(Entity, EntityPath)> = vec![(root, EntityPath::default())];
@@ -91,12 +87,9 @@ fn build_skeleton(world: &World) -> Result<Skeleton, AssetLoaderError> {
 }
 
 fn find_root(world: &World) -> Option<(Entity, Name)> {
-    let mut query = unsafe {
-        world
-            .as_unsafe_world_cell_readonly()
-            .world_mut()
-            .query_filtered::<(Entity, &Name), With<AnimationPlayer>>()
-    };
+    let mut query = world
+        .try_query_filtered::<(Entity, &Name), With<AnimationPlayer>>()
+        .expect("This query should be readonly");
 
     let (entity, name) = query.iter(world).next()?;
 

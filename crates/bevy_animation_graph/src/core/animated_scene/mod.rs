@@ -6,12 +6,12 @@ use bevy::{
     animation::AnimationTarget,
     asset::{Asset, Handle, ReflectAsset},
     ecs::{entity::Entity, query::Without},
+    platform::collections::HashMap,
     prelude::*,
     reflect::Reflect,
     render::view::Visibility,
     scene::{Scene, SceneInstance, SceneInstanceReady},
     transform::components::Transform,
-    utils::HashMap,
 };
 
 #[derive(Clone, Asset, Reflect)]
@@ -113,7 +113,7 @@ fn process_scene_into_animscn(
         .world
         .query_filtered::<Entity, With<bevy::animation::AnimationPlayer>>();
 
-    let Ok(animation_player) = query.get_single(&scene.world) else {
+    let Ok(animation_player) = query.single(&scene.world) else {
         return Err(AssetLoaderError::AnimatedSceneMissingRoot);
     };
 
@@ -182,7 +182,7 @@ pub(crate) fn locate_animated_scene_player(
     player_query: Query<(), With<AnimationGraphPlayer>>,
     mut commands: Commands,
 ) {
-    let root_entity = trigger.entity();
+    let root_entity = trigger.target();
     let Ok(scene_instance) = root_query.get(root_entity) else {
         return;
     };

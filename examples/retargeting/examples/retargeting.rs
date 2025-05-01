@@ -15,6 +15,7 @@ fn main() {
         .insert_resource(AmbientLight {
             color: Color::WHITE,
             brightness: 0.1,
+            ..default()
         })
         .add_systems(Startup, setup)
         .run();

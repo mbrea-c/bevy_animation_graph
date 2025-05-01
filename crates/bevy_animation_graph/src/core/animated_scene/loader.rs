@@ -1,7 +1,7 @@
 use bevy::{
-    asset::{io::Reader, AssetLoader, AssetPath, Handle, LoadContext},
+    asset::{AssetLoader, AssetPath, Handle, LoadContext, io::Reader},
+    platform::collections::HashMap,
     scene::Scene,
-    utils::HashMap,
 };
 use serde::{Deserialize, Serialize};
 

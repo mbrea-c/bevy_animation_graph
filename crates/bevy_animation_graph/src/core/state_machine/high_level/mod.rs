@@ -13,9 +13,9 @@ use crate::core::{
 use bevy::{
     asset::{Asset, Handle, ReflectAsset},
     math::Vec2,
+    platform::collections::HashMap,
     prelude::ReflectDefault,
     reflect::Reflect,
-    utils::HashMap,
 };
 use serde::{Deserialize, Serialize};
 

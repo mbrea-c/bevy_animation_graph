@@ -8,9 +8,9 @@ use crate::{
     prelude::{PassContext, SpecContext},
 };
 use bevy::{
+    platform::collections::HashMap,
     prelude::{Deref, DerefMut},
-    reflect::{prelude::*, FromType},
-    utils::HashMap,
+    reflect::{FromType, prelude::*},
 };
 use std::{any::TypeId, fmt::Debug};
 
@@ -376,12 +376,12 @@ const _: () = {
             ));
             dynamic.insert_boxed(
                 "name",
-                bevy::reflect::PartialReflect::clone_value(&self.name),
+                bevy::reflect::PartialReflect::to_dynamic(&self.name),
             );
             dynamic.insert_boxed(
                 "inner",
                 // manual reflect impl
-                bevy::reflect::PartialReflect::clone_value(&*self.inner),
+                bevy::reflect::PartialReflect::to_dynamic(&*self.inner),
             );
             dynamic
         }
@@ -408,7 +408,7 @@ const _: () = {
         }
         #[inline]
         fn clone_value(&self) -> ::std::boxed::Box<dyn bevy::reflect::PartialReflect> {
-            ::std::boxed::Box::new(bevy::reflect::Struct::clone_dynamic(self))
+            ::std::boxed::Box::new(bevy::reflect::Struct::to_dynamic_struct(self))
         }
         #[inline]
         fn try_apply(

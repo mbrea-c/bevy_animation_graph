@@ -1,23 +1,23 @@
 use std::fmt;
 
-use super::{pin, AnimationGraph, Extra};
+use super::{AnimationGraph, Extra, pin};
 use crate::prelude::{AnimationNode, DataSpec, DataValue, NodeLike, ReflectNodeLike};
 use bevy::{
     asset::{AssetPath, LoadContext, ReflectHandle},
+    platform::collections::HashMap,
     prelude::*,
     reflect::{
+        ReflectFromReflect, TypeRegistration, TypeRegistry,
         serde::{
             ReflectDeserializer, ReflectDeserializerProcessor, ReflectSerializerProcessor,
             TypedReflectSerializer,
         },
-        ReflectFromReflect, TypeRegistration, TypeRegistry,
     },
-    utils::HashMap,
 };
 use serde::{
+    Deserialize, Deserializer, Serialize,
     de::{self, DeserializeSeed, IgnoredAny, Visitor},
     ser::SerializeStruct,
-    Deserialize, Deserializer, Serialize,
 };
 
 // What's up with the `AnimationNodeLoadDeserializer`?
@@ -543,7 +543,7 @@ const _: () = {
                             return _serde::__private::Err(_serde::de::Error::invalid_length(
                                 0usize,
                                 &"struct AnimationGraphSerial with 7 elements",
-                            ))
+                            ));
                         }
                     };
                     let __field1 = match _serde::de::SeqAccess::next_element::<
@@ -555,7 +555,7 @@ const _: () = {
                             return _serde::__private::Err(_serde::de::Error::invalid_length(
                                 1usize,
                                 &"struct AnimationGraphSerial with 7 elements",
-                            ))
+                            ));
                         }
                     };
                     let __field2 = match _serde::de::SeqAccess::next_element::<
@@ -567,7 +567,7 @@ const _: () = {
                             return _serde::__private::Err(_serde::de::Error::invalid_length(
                                 2usize,
                                 &"struct AnimationGraphSerial with 7 elements",
-                            ))
+                            ));
                         }
                     };
                     let __field3 = match _serde::de::SeqAccess::next_element::<
@@ -579,7 +579,7 @@ const _: () = {
                             return _serde::__private::Err(_serde::de::Error::invalid_length(
                                 3usize,
                                 &"struct AnimationGraphSerial with 7 elements",
-                            ))
+                            ));
                         }
                     };
                     let __field4 = match _serde::de::SeqAccess::next_element::<
@@ -591,7 +591,7 @@ const _: () = {
                             return _serde::__private::Err(_serde::de::Error::invalid_length(
                                 4usize,
                                 &"struct AnimationGraphSerial with 7 elements",
-                            ))
+                            ));
                         }
                     };
                     let __field5 =
@@ -601,7 +601,7 @@ const _: () = {
                                 return _serde::__private::Err(_serde::de::Error::invalid_length(
                                     5usize,
                                     &"struct AnimationGraphSerial with 7 elements",
-                                ))
+                                ));
                             }
                         };
                     let __field6 = match _serde::de::SeqAccess::next_element::<Extra>(&mut __seq)? {
@@ -610,7 +610,7 @@ const _: () = {
                             return _serde::__private::Err(_serde::de::Error::invalid_length(
                                 6usize,
                                 &"struct AnimationGraphSerial with 7 elements",
-                            ))
+                            ));
                         }
                     };
                     _serde::__private::Ok(AnimationGraphSerial {
