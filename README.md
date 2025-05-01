@@ -1,7 +1,9 @@
-![Crates.io](https://img.shields.io/crates/v/bevy_animation_graph)
-![Crates.io](https://img.shields.io/crates/d/bevy_animation_graph)
-![Crates.io](https://img.shields.io/crates/v/bevy_animation_graph_editor)
-![Crates.io](https://img.shields.io/crates/d/bevy_animation_graph_editor)
+_Library crate:_ [![Crates.io](https://img.shields.io/crates/v/bevy_animation_graph)](https://crates.io/crates/bevy_animation_graph)
+[![Crates.io](https://img.shields.io/crates/d/bevy_animation_graph)](https://crates.io/crates/bevy_animation_graph)
+
+_Editor crate:_ [![Crates.io](https://img.shields.io/crates/v/bevy_animation_graph_editor)](https://crates.io/crates/bevy_animation_graph_editor)
+[![Crates.io](https://img.shields.io/crates/d/bevy_animation_graph_editor)](https://crates.io/crates/bevy_animation_graph_editor)
+
 [![CI](https://github.com/mbrea-c/bevy_animation_graph/actions/workflows/ci.yaml/badge.svg)](https://github.com/mbrea-c/bevy_animation_graph/actions/workflows/ci.yaml)
 
 # Bevy Animation Graph
