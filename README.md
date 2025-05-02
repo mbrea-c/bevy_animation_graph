@@ -108,14 +108,15 @@ This project is divided in two crates:
 
 ## Version table
 
-| `bevy` | `bevy_animation_graph` | `bevy_animation_graph_editor` | 
-| ------ | ---------------------- | ----------------------------- |
-| 0.16   | master                 | master |
-| 0.15   | 0.6                    | 0.6    |
-| 0.14 | 0.5 | 0.5 |
-| 0.13 | 0.4 | 0.4 |
-| 0.13 | 0.3 | 0.3 |
-| 0.12 | 0.2 | 0.2 |
+| `bevy` | `bevy_animation_graph` |
+| ------ | ---------------------- |
+| 0.16   | master                 |
+| 0.16   | 0.7                    |
+| 0.15   | 0.6                    |
+| 0.14 | 0.5 |
+| 0.13 | 0.4 |
+| 0.13 | 0.3 |
+| 0.12 | 0.2 |
 
 ## Usage and examples
 
