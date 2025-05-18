@@ -166,7 +166,7 @@ pub fn convert_fsm_change(
     fsm_indices: &FsmIndices,
     fsm: Handle<StateMachine>,
 ) -> Option<FsmAction> {
-    let change = match fsm_change {
+    match fsm_change {
         EguiFsmChange::StateMoved(state_id, delta) => {
             let node_id = fsm_indices.state_indices.name(state_id).unwrap();
             Some(FsmAction::MoveState(MoveState {
@@ -192,7 +192,5 @@ pub fn convert_fsm_change(
             }))
         }
         EguiFsmChange::TransitionCreated(_, _) => None,
-    };
-
-    change
+    }
 }
