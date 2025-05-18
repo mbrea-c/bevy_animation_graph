@@ -43,15 +43,15 @@ impl ClipNode {
     }
 
     #[inline]
-    pub fn clip_duration(&self, ctx: &PassContext) -> f32 {
+    pub fn clip_duration(&self, ctx: &PassContext) -> Result<f32, GraphError> {
         if let Some(duration) = self.override_duration {
-            duration
+            Ok(duration)
         } else {
             ctx.resources
                 .graph_clip_assets
                 .get(&self.clip)
-                .unwrap()
-                .duration()
+                .ok_or(GraphError::ClipMissing)
+                .map(|c| c.duration())
         }
     }
 
@@ -72,12 +72,12 @@ impl ClipNode {
 
 impl NodeLike for ClipNode {
     fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        ctx.set_duration_fwd(Some(self.clip_duration(&ctx)));
+        ctx.set_duration_fwd(Some(self.clip_duration(&ctx)?));
         Ok(())
     }
 
     fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let clip_duration = self.clip_duration(&ctx);
+        let clip_duration = self.clip_duration(&ctx)?;
 
         let Some(clip) = ctx.resources.graph_clip_assets.get(&self.clip) else {
             // TODO: Should we propagate a GraphError instead?
