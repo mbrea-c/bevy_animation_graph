@@ -3,7 +3,7 @@
 //!
 //! Adapted from: https://github.com/bevyengine/bevy/blob/73970d0c1215ee2f290513da7aed2e619a77bd7b/examples/stress_tests/many_foxes.rs
 
-use std::{f32::consts::PI, time::Duration};
+use std::f32::consts::PI;
 
 use argh::FromArgs;
 use bevy::{
@@ -260,13 +260,7 @@ fn update_fox_rings(
     }
 }
 
-fn keyboard_animation_control(
-    keyboard_input: Res<ButtonInput<KeyCode>>,
-    mut animation_player: Query<(&mut AnimationPlayer, &mut AnimationTransitions)>,
-    animations: Res<Animations>,
-    mut current_animation: Local<usize>,
-    mut foxes: ResMut<Foxes>,
-) {
+fn keyboard_animation_control(keyboard_input: Res<ButtonInput<KeyCode>>, mut foxes: ResMut<Foxes>) {
     if keyboard_input.just_pressed(KeyCode::Space) {
         foxes.moving = !foxes.moving;
     }
@@ -279,43 +273,43 @@ fn keyboard_animation_control(
         foxes.speed *= 0.8;
     }
 
-    if keyboard_input.just_pressed(KeyCode::Enter) {
-        *current_animation = (*current_animation + 1) % animations.node_indices.len();
-    }
+    // if keyboard_input.just_pressed(KeyCode::Enter) {
+    //     *current_animation = (*current_animation + 1) % animations.node_indices.len();
+    // }
 
-    for (mut player, mut transitions) in &mut animation_player {
-        if keyboard_input.just_pressed(KeyCode::Space) {
-            if player.all_paused() {
-                player.resume_all();
-            } else {
-                player.pause_all();
-            }
-        }
+    // for (mut player, mut transitions) in &mut animation_player {
+    //     if keyboard_input.just_pressed(KeyCode::Space) {
+    //         if player.all_paused() {
+    //             player.resume_all();
+    //         } else {
+    //             player.pause_all();
+    //         }
+    //     }
 
-        if keyboard_input.just_pressed(KeyCode::ArrowUp) {
-            player.adjust_speeds(1.25);
-        }
+    //     if keyboard_input.just_pressed(KeyCode::ArrowUp) {
+    //         player.adjust_speeds(1.25);
+    //     }
 
-        if keyboard_input.just_pressed(KeyCode::ArrowDown) {
-            player.adjust_speeds(0.8);
-        }
+    //     if keyboard_input.just_pressed(KeyCode::ArrowDown) {
+    //         player.adjust_speeds(0.8);
+    //     }
 
-        if keyboard_input.just_pressed(KeyCode::ArrowLeft) {
-            player.seek_all_by(-0.1);
-        }
+    //     if keyboard_input.just_pressed(KeyCode::ArrowLeft) {
+    //         player.seek_all_by(-0.1);
+    //     }
 
-        if keyboard_input.just_pressed(KeyCode::ArrowRight) {
-            player.seek_all_by(0.1);
-        }
+    //     if keyboard_input.just_pressed(KeyCode::ArrowRight) {
+    //         player.seek_all_by(0.1);
+    //     }
 
-        if keyboard_input.just_pressed(KeyCode::Enter) {
-            transitions
-                .play(
-                    &mut player,
-                    animations.node_indices[*current_animation],
-                    Duration::from_millis(250),
-                )
-                .repeat();
-        }
-    }
+    //     if keyboard_input.just_pressed(KeyCode::Enter) {
+    //         transitions
+    //             .play(
+    //                 &mut player,
+    //                 animations.node_indices[*current_animation],
+    //                 Duration::from_millis(250),
+    //             )
+    //             .repeat();
+    //     }
+    // }
 }

@@ -10,7 +10,7 @@ use bevy::{
     prelude::*,
     reflect::Reflect,
     render::view::Visibility,
-    scene::{Scene, SceneInstance, SceneInstanceReady},
+    scene::{Scene, SceneInstanceReady},
     transform::components::Transform,
 };
 
@@ -177,17 +177,13 @@ fn apply_bone_path_overrides(
 /// spawned
 pub(crate) fn locate_animated_scene_player(
     trigger: Trigger<SceneInstanceReady>,
-    scene_spawner: Res<SceneSpawner>,
-    root_query: Query<&SceneInstance, With<AnimatedSceneHandle>>,
     player_query: Query<(), With<AnimationGraphPlayer>>,
+    children_query: Query<&Children>,
     mut commands: Commands,
 ) {
     let root_entity = trigger.target();
-    let Ok(scene_instance) = root_query.get(root_entity) else {
-        return;
-    };
 
-    for child in scene_spawner.iter_instance_entities(**scene_instance) {
+    for child in children_query.iter_descendants(root_entity) {
         let Ok(_) = player_query.get(child) else {
             continue;
         };

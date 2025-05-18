@@ -344,7 +344,7 @@ impl LowLevelStateMachine {
             .states
             .get(&state_id)
             .ok_or(GraphError::FSMCurrentStateMissing)?;
-        let out = match &target_pin {
+        match &target_pin {
             TargetPin::OutputData(s) => {
                 if let Some(default) = self.input_data.get(s) {
                     ctx.data_back(s).or_else(|_| Ok(default.clone()))
@@ -406,10 +406,9 @@ impl LowLevelStateMachine {
                 }
             }
             _ => panic!("State machine received data query without `OutputData` target"),
-        };
-
-        out
+        }
     }
+
     pub fn get_time_update(
         &self,
         mut state_stack: StateStack,
@@ -476,7 +475,7 @@ impl LowLevelStateMachine {
             .get(&state_id)
             .ok_or(GraphError::FSMCurrentStateMissing)?;
 
-        let out = match &source_pin {
+        match &source_pin {
             SourcePin::InputTime(p) => {
                 let (queried_state, queried_role) = if p == Self::SOURCE_TIME {
                     (
@@ -535,8 +534,6 @@ impl LowLevelStateMachine {
                 )
             }
             _ => panic!("State machine received data query without `OutputData` target"),
-        };
-
-        out
+        }
     }
 }
