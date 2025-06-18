@@ -1,4 +1,7 @@
-use super::Skeleton;
+use super::{
+    Skeleton,
+    serial::{SkeletonSerial, SkeletonSource},
+};
 use crate::core::{animation_clip::EntityPath, errors::AssetLoaderError};
 use bevy::{
     animation::AnimationPlayer,
@@ -8,18 +11,6 @@ use bevy::{
     prelude::{Entity, With, World},
     scene::Scene,
 };
-use serde::{Deserialize, Serialize};
-
-#[derive(Serialize, Deserialize)]
-struct SkeletonSerial {
-    /// Path to animated scene source
-    source: SkeletonSource,
-}
-
-#[derive(Serialize, Deserialize)]
-enum SkeletonSource {
-    Gltf { source: String, label: String },
-}
 
 #[derive(Default)]
 pub struct SkeletonLoader;

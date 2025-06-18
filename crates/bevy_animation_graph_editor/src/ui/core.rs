@@ -35,6 +35,7 @@ use super::editor_windows::scene_preview::ScenePreviewWindow;
 use super::editor_windows::scene_preview_errors::ScenePreviewErrorsWindow;
 use super::editor_windows::scene_selector::SceneSelectorWindow;
 
+use super::editor_windows::skeleton_preview::SkeletonCollidersPreviewWindow;
 pub use super::windows::EditorWindowExtension;
 use super::windows::{WindowId, Windows};
 
@@ -161,6 +162,17 @@ impl ViewState {
         }
     }
 
+    pub fn skeleton_colliders_view(windows: &mut Windows, name: impl Into<String>) -> Self {
+        let preview_window = windows.open(SkeletonCollidersPreviewWindow::default());
+
+        let state = DockState::new(vec![preview_window.into()]);
+
+        Self {
+            name: name.into(),
+            dock_state: state,
+        }
+    }
+
     pub fn main_view(windows: &mut Windows, name: impl Into<String>) -> Self {
         let graph_editor = windows.open(GraphEditorWindow);
         let fsm_editor = windows.open(FsmEditorWindow);
@@ -230,6 +242,7 @@ impl UiState {
             views: vec![
                 ViewState::main_view(&mut windows, "Graph editing"),
                 ViewState::event_track_view(&mut windows, "Event tracks"),
+                ViewState::skeleton_colliders_view(&mut windows, "Skeleton colliders"),
             ],
             active_view: Some(0),
             windows,

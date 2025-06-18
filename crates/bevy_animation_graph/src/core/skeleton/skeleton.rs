@@ -63,6 +63,10 @@ impl Skeleton {
         self.parent_map.get(id).copied()
     }
 
+    pub fn children(&self, id: BoneId) -> Vec<BoneId> {
+        self.children_map.get(&id).cloned().unwrap_or_default()
+    }
+
     /// Given an `AnimationTargetId`, returns its path or None if the id is not in this skeleton
     pub fn id_to_path(&self, id: BoneId) -> Option<EntityPath> {
         self.id_to_path.get(&id).cloned()

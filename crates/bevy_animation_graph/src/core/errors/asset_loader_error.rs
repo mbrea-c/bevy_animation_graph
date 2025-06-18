@@ -32,4 +32,7 @@ pub enum AssetLoaderError {
     AnimatedSceneMissingRoot,
     #[error("Graph does not satisfy constraints: {0}")]
     InconsistentGraphError(#[from] GraphValidationError),
+    #[cfg(feature = "physics_avian")]
+    #[error("Failed to load skeleton colliders object")]
+    SkeletonColliderLoadError,
 }

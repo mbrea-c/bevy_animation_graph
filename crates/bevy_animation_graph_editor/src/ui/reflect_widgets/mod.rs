@@ -12,8 +12,8 @@ use bevy::{
 };
 use bevy_animation_graph::{
     core::{
-        animation_clip::EntityPath, event_track::TrackItemValue,
-        state_machine::high_level::StateMachine,
+        animation_clip::EntityPath, colliders::core::SkeletonColliders,
+        event_track::TrackItemValue, state_machine::high_level::StateMachine,
     },
     prelude::{AnimatedScene, AnimationGraph, GraphClip, config::PatternMapper},
 };
@@ -297,6 +297,7 @@ impl_widget_hash_from_hash! {
     Handle<GraphClip>,
     Handle<StateMachine>,
     Handle<AnimatedScene>,
+    Handle<SkeletonColliders>,
     String,
     PathBuf
 }

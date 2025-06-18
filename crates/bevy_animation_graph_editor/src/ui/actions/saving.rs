@@ -88,12 +88,13 @@ pub fn handle_save_graph(
         "Saving graph with id {:?} to {:?}",
         save_graph.asset_id, final_path
     );
-    ron::ser::to_writer_pretty(
-        std::fs::File::create(final_path).unwrap(),
-        &graph_serial,
-        ron::ser::PrettyConfig::default(),
-    )
-    .unwrap();
+    ron::Options::default()
+        .to_io_writer_pretty(
+            std::fs::File::create(final_path).unwrap(),
+            &graph_serial,
+            ron::ser::PrettyConfig::default(),
+        )
+        .unwrap();
 
     // If we just saved a newly created graph, unload the in-memory asset from the
     // editor selection.
@@ -118,12 +119,13 @@ pub fn handle_save_fsm(
         "Saving FSM with id {:?} to {:?}",
         save_fsm.asset_id, final_path
     );
-    ron::ser::to_writer_pretty(
-        std::fs::File::create(final_path).unwrap(),
-        &graph_serial,
-        ron::ser::PrettyConfig::default(),
-    )
-    .unwrap();
+    ron::Options::default()
+        .to_io_writer_pretty(
+            std::fs::File::create(final_path).unwrap(),
+            &graph_serial,
+            ron::ser::PrettyConfig::default(),
+        )
+        .unwrap();
 
     // If we just saved a newly created graph, unload the in-memory asset from the
     // editor selection.
@@ -151,12 +153,13 @@ pub fn handle_save_animation_clip(
         "Saving animation clip with id {:?} to {:?}",
         save_fsm.asset_id, final_path
     );
-    ron::ser::to_writer_pretty(
-        std::fs::File::create(final_path).unwrap(),
-        &clip_serial,
-        ron::ser::PrettyConfig::default(),
-    )
-    .unwrap();
+    ron::Options::default()
+        .to_io_writer_pretty(
+            std::fs::File::create(final_path).unwrap(),
+            &clip_serial,
+            ron::ser::PrettyConfig::default(),
+        )
+        .unwrap();
 
     // If we just saved a newly created graph, unload the in-memory asset from the
     // editor selection.

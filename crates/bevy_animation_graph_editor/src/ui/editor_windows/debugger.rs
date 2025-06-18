@@ -153,7 +153,7 @@ impl SubSceneConfig for PoseSubSceneConfig {
         ));
 
         builder.spawn((
-            AnimatedSceneHandle(self.animated_scene.clone()),
+            AnimatedSceneHandle::new(self.animated_scene.clone()),
             OverrideSceneAnimation(self.pose.clone()),
         ));
     }

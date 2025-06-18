@@ -1,6 +1,9 @@
 pub mod loader;
 
-use super::{animation_clip::EntityPath, errors::AssetLoaderError, id::BoneId, skeleton::Skeleton};
+use super::{
+    animation_clip::EntityPath, errors::AssetLoaderError, id::BoneId, prelude::AnimationSource,
+    skeleton::Skeleton,
+};
 use crate::prelude::{AnimationGraph, AnimationGraphPlayer};
 use bevy::{
     animation::AnimationTarget,
@@ -14,6 +17,9 @@ use bevy::{
     transform::components::Transform,
 };
 
+#[cfg(feature = "physics_avian")]
+use super::colliders::core::SkeletonColliders;
+
 #[derive(Clone, Asset, Reflect)]
 #[reflect(Asset)]
 pub struct AnimatedScene {
@@ -26,6 +32,8 @@ pub struct AnimatedScene {
     /// Usually this will be the source scene's skeleton, but it may differ if we're applying
     /// retargeting.
     pub skeleton: Handle<Skeleton>,
+    #[cfg(feature = "physics_avian")]
+    pub colliders: Option<Handle<SkeletonColliders>>,
 }
 
 /// Configuration needed to apply animation retargeting
@@ -53,7 +61,19 @@ impl AnimatedSceneInstance {
 
 #[derive(Component, Default)]
 #[require(Transform, Visibility)]
-pub struct AnimatedSceneHandle(pub Handle<AnimatedScene>);
+pub struct AnimatedSceneHandle {
+    pub handle: Handle<AnimatedScene>,
+    pub override_source: Option<AnimationSource>,
+}
+
+impl AnimatedSceneHandle {
+    pub fn new(handle: Handle<AnimatedScene>) -> Self {
+        Self {
+            handle,
+            override_source: None,
+        }
+    }
+}
 
 /// Processed animated scenes are "cached".
 pub(crate) fn spawn_animated_scenes(
@@ -65,7 +85,7 @@ pub(crate) fn spawn_animated_scenes(
     app_type_registry: Res<AppTypeRegistry>,
 ) {
     for (entity, animscn_handle) in &unloaded_scenes {
-        let Some(animscn) = animated_scene_assets.get_mut(&animscn_handle.0) else {
+        let Some(animscn) = animated_scene_assets.get_mut(&animscn_handle.handle) else {
             continue;
         };
 
@@ -147,6 +167,12 @@ fn process_scene_into_animscn(
         }
     }
 
+    #[cfg(feature = "physics_avian")]
+    {
+        let mut query = scene.world.query::<(Entity, &AnimationTarget)>();
+        // todo!("unimplemented");
+    }
+
     Ok(scene)
 }
 
@@ -177,16 +203,25 @@ fn apply_bone_path_overrides(
 /// spawned
 pub(crate) fn locate_animated_scene_player(
     trigger: Trigger<SceneInstanceReady>,
-    player_query: Query<(), With<AnimationGraphPlayer>>,
+    handle_query: Query<&AnimatedSceneHandle>,
+    mut player_query: Query<&mut AnimationGraphPlayer>,
     children_query: Query<&Children>,
     mut commands: Commands,
 ) {
     let root_entity = trigger.target();
 
+    let Ok(animscn_handle) = handle_query.get(root_entity) else {
+        return;
+    };
+
     for child in children_query.iter_descendants(root_entity) {
-        let Ok(_) = player_query.get(child) else {
+        let Ok(mut player) = player_query.get_mut(child) else {
             continue;
         };
+
+        if let Some(override_source) = animscn_handle.override_source.clone() {
+            player.set_animation(override_source);
+        }
 
         commands.entity(root_entity).insert(AnimatedSceneInstance {
             player_entity: child,

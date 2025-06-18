@@ -1,4 +1,5 @@
 use bevy::ecs::{entity::Entity, hierarchy::Children, name::Name, world::World};
+use bevy_animation_graph::core::{id::BoneId, skeleton::Skeleton};
 
 pub struct Tree<I, L>(pub Vec<TreeInternal<I, L>>);
 impl<I, T> Default for Tree<I, T> {
@@ -26,6 +27,18 @@ impl<I, L> TreeResult<I, L> {
             TreeResult::None => other,
             _ => self,
         }
+    }
+}
+
+impl<I, L> Tree<I, L> {
+    /// Widget
+    pub fn picker_selector(
+        &self,
+        ui: &mut egui::Ui,
+        render_inner: impl FnMut(&I, &mut egui::Ui),
+        render_leaf: impl FnMut(&L, &mut egui::Ui),
+    ) {
+        todo!()
     }
 }
 
@@ -100,6 +113,44 @@ impl Tree<(Entity, Vec<Name>), (Entity, Vec<Name>)> {
                 branch.push(tree);
             }
             TreeInternal::Node(name, (entity, path_to_entity), branch)
+        }
+    }
+}
+
+pub struct SkeletonNode {
+    bone_id: BoneId,
+}
+
+impl Tree<SkeletonNode, SkeletonNode> {
+    pub fn skeleton_tree(skeleton: &Skeleton) -> Self {
+        Tree(vec![Self::skeleton_subtree(skeleton, skeleton.root())])
+    }
+
+    fn skeleton_subtree(
+        skeleton: &Skeleton,
+        starting_at: BoneId,
+    ) -> TreeInternal<SkeletonNode, SkeletonNode> {
+        let path = skeleton.id_to_path(starting_at).unwrap();
+        let children = skeleton.children(starting_at);
+
+        if children.is_empty() {
+            TreeInternal::Leaf(
+                path.last().unwrap_or("ROOT".into()).to_string(),
+                SkeletonNode {
+                    bone_id: starting_at,
+                },
+            )
+        } else {
+            TreeInternal::Node(
+                path.last().unwrap_or("ROOT".into()).to_string(),
+                SkeletonNode {
+                    bone_id: starting_at,
+                },
+                children
+                    .into_iter()
+                    .map(|c| Self::skeleton_subtree(skeleton, c))
+                    .collect(),
+            )
         }
     }
 }
