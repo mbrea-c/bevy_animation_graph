@@ -1,5 +1,6 @@
 use bevy::ecs::{entity::Entity, hierarchy::Children, name::Name, world::World};
 use bevy_animation_graph::core::{id::BoneId, skeleton::Skeleton};
+use egui::Sense;
 
 pub struct Tree<I, L>(pub Vec<TreeInternal<I, L>>);
 impl<I, T> Default for Tree<I, T> {
@@ -13,32 +14,86 @@ pub enum TreeInternal<I, L> {
     Node(String, I, Vec<TreeInternal<I, L>>),
 }
 
-pub enum TreeResult<I, L> {
-    Leaf(L),
-    Node(I),
+#[derive(Default)]
+pub enum TreeResult<I, L, O = ()> {
+    Leaf(L, O),
+    Node(I, O),
+    #[default]
     None,
 }
 
-impl<I, L> TreeResult<I, L> {
+pub trait TreeResponse {
+    fn combine(&self, other: &Self) -> Self;
+}
+
+impl TreeResponse for () {
+    fn combine(&self, other: &Self) -> Self {
+        ()
+    }
+}
+
+impl<I, L, O: TreeResponse> TreeResult<I, L, O> {
     // We implement several functions that work similarly to Option<T>
 
     pub fn or(self, other: Self) -> Self {
         match self {
             TreeResult::None => other,
-            _ => self,
+            TreeResult::Leaf(data, response) => match other {
+                TreeResult::None => TreeResult::Leaf(data, response),
+                TreeResult::Leaf(_, other_response) | TreeResult::Node(_, other_response) => {
+                    TreeResult::Leaf(data, response.combine(&other_response))
+                }
+            },
+            TreeResult::Node(data, response) => match other {
+                TreeResult::Leaf(_, other_response) | TreeResult::Node(_, other_response) => {
+                    TreeResult::Node(data, response.combine(&other_response))
+                }
+                TreeResult::None => TreeResult::Node(data, response),
+            },
         }
     }
 }
 
+pub trait TreeRenderer<I, L, O> {
+    fn render_inner(
+        &self,
+        label: &str,
+        data: &I,
+        children: &[TreeInternal<I, L>],
+        ui: &mut egui::Ui,
+        render_child: impl Fn(&TreeInternal<I, L>, &mut egui::Ui) -> TreeResult<I, L, O>,
+    ) -> TreeResult<I, L, O>;
+
+    fn render_leaf(&self, label: &str, data: &L, ui: &mut egui::Ui) -> TreeResult<I, L, O>;
+}
+
 impl<I, L> Tree<I, L> {
-    /// Widget
-    pub fn picker_selector(
+    pub fn picker_selector<O: TreeResponse>(
         &self,
         ui: &mut egui::Ui,
-        render_inner: impl FnMut(&I, &mut egui::Ui),
-        render_leaf: impl FnMut(&L, &mut egui::Ui),
-    ) {
-        todo!()
+        renderer: impl TreeRenderer<I, L, O> + Copy,
+    ) -> TreeResult<I, L, O> {
+        self.0
+            .iter()
+            .map(|i| self.picker_selector_internal(i, ui, renderer))
+            .reduce(|l, r| l.or(r))
+            .unwrap_or_default()
+    }
+
+    pub fn picker_selector_internal<O: TreeResponse>(
+        &self,
+        internal: &TreeInternal<I, L>,
+        ui: &mut egui::Ui,
+        renderer: impl TreeRenderer<I, L, O> + Copy,
+    ) -> TreeResult<I, L, O> {
+        match internal {
+            TreeInternal::Leaf(label, data) => renderer.render_leaf(label, data, ui),
+            TreeInternal::Node(label, data, tree_internals) => {
+                renderer.render_inner(label, data, tree_internals, ui, |internal, ui| {
+                    self.picker_selector_internal(internal, ui, renderer)
+                })
+            }
+        }
     }
 }
 
@@ -117,8 +172,9 @@ impl Tree<(Entity, Vec<Name>), (Entity, Vec<Name>)> {
     }
 }
 
+#[derive(Clone)]
 pub struct SkeletonNode {
-    bone_id: BoneId,
+    pub bone_id: BoneId,
 }
 
 impl Tree<SkeletonNode, SkeletonNode> {
@@ -152,5 +208,83 @@ impl Tree<SkeletonNode, SkeletonNode> {
                     .collect(),
             )
         }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct SkeletonTreeRenderer {}
+
+pub struct SkeletonResponse {
+    pub hovered: Option<BoneId>,
+    pub clicked: Option<BoneId>,
+}
+
+impl TreeResponse for SkeletonResponse {
+    fn combine(&self, other: &Self) -> Self {
+        SkeletonResponse {
+            hovered: self.hovered.or(other.hovered),
+            clicked: self.clicked.or(other.clicked),
+        }
+    }
+}
+
+impl TreeRenderer<SkeletonNode, SkeletonNode, SkeletonResponse> for SkeletonTreeRenderer {
+    fn render_inner(
+        &self,
+        label: &str,
+        data: &SkeletonNode,
+        children: &[TreeInternal<SkeletonNode, SkeletonNode>],
+        ui: &mut egui::Ui,
+        render_child: impl Fn(
+            &TreeInternal<SkeletonNode, SkeletonNode>,
+            &mut egui::Ui,
+        ) -> TreeResult<SkeletonNode, SkeletonNode, SkeletonResponse>,
+    ) -> TreeResult<SkeletonNode, SkeletonNode, SkeletonResponse> {
+        let collapsing_response =
+            egui::CollapsingHeader::new(label)
+                .default_open(true)
+                .show(ui, |ui| {
+                    children
+                        .iter()
+                        .map(|c| render_child(c, ui))
+                        .reduce(|l, r| l.or(r))
+                        .unwrap_or_default()
+                });
+
+        let response = TreeResult::Node(
+            data.clone(),
+            SkeletonResponse {
+                hovered: collapsing_response
+                    .header_response
+                    .hovered()
+                    .then_some(data.bone_id),
+                clicked: collapsing_response
+                    .header_response
+                    .clicked()
+                    .then_some(data.bone_id),
+            },
+        );
+
+        response.or(collapsing_response
+            .body_returned
+            .map(|r| r)
+            .unwrap_or_default())
+    }
+
+    fn render_leaf(
+        &self,
+        label: &str,
+        data: &SkeletonNode,
+        ui: &mut egui::Ui,
+    ) -> TreeResult<SkeletonNode, SkeletonNode, SkeletonResponse> {
+        let response = ui.add(egui::Label::new(label).sense(Sense::click()));
+
+        TreeResult::Leaf(
+            data.clone(),
+            SkeletonResponse {
+                hovered: response.hovered().then_some(data.bone_id),
+                clicked: response.clicked().then_some(data.bone_id),
+            },
+        )
     }
 }

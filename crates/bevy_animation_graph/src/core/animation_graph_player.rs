@@ -7,10 +7,13 @@ use super::{
     prelude::GraphContextArena,
     skeleton::Skeleton,
 };
-use crate::prelude::SystemResources;
+use crate::prelude::{CustomRelativeDrawCommand, SystemResources};
 use bevy::{
-    asset::prelude::*, color::palettes::css::WHITE, ecs::prelude::*,
-    platform::collections::HashMap, reflect::prelude::*,
+    asset::prelude::*,
+    color::{Color, palettes::css::WHITE},
+    ecs::prelude::*,
+    platform::collections::HashMap,
+    reflect::prelude::*,
 };
 
 #[derive(Default, Reflect, Clone, Copy)]
@@ -60,7 +63,9 @@ pub struct AnimationGraphPlayer {
     pub(crate) elapsed: f32,
     pub(crate) pending_update: TimeUpdate,
     pub(crate) deferred_gizmos: DeferredGizmos,
-    pub(crate) debug_draw_bones: Vec<BoneId>,
+    pub(crate) debug_draw_bones: Vec<(BoneId, Color)>,
+    #[reflect(ignore)]
+    pub(crate) debug_draw_custom: Vec<CustomRelativeDrawCommand>,
     pub(crate) entity_map: HashMap<BoneId, Entity>,
     pub(crate) queued_events: EventQueue,
     pub(crate) outputs: HashMap<PinId, DataValue>,
@@ -199,7 +204,16 @@ impl AnimationGraphPlayer {
     }
 
     pub fn gizmo_for_bones(&mut self, bones: impl IntoIterator<Item = BoneId>) {
+        self.debug_draw_bones
+            .extend(bones.into_iter().map(|b| (b, WHITE.into())));
+    }
+
+    pub fn gizmo_for_bones_with_color(&mut self, bones: impl IntoIterator<Item = (BoneId, Color)>) {
         self.debug_draw_bones.extend(bones);
+    }
+
+    pub fn custom_relative_gizmo(&mut self, gizmo: CustomRelativeDrawCommand) {
+        self.debug_draw_custom.push(gizmo);
     }
 
     pub(crate) fn debug_draw_bones(
@@ -212,6 +226,7 @@ impl AnimationGraphPlayer {
         }
 
         let mut bones = std::mem::take(&mut self.debug_draw_bones);
+        let mut custom_gizmos = std::mem::take(&mut self.debug_draw_custom);
 
         let skeleton_handle = self.skeleton.clone();
 
@@ -223,9 +238,14 @@ impl AnimationGraphPlayer {
             return;
         };
 
-        for bone_id in bones.drain(..) {
+        for (bone_id, color) in bones.drain(..) {
             ctx.gizmos()
-                .bone_gizmo(bone_id, WHITE.into(), skeleton, None);
+                .bone_gizmo(bone_id, color.into(), skeleton, None);
+        }
+
+        for custom_cmd in custom_gizmos.drain(..) {
+            ctx.gizmos()
+                .relative_custom_gizmo(custom_cmd, skeleton, None);
         }
     }
 

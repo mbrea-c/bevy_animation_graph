@@ -228,7 +228,7 @@ pub enum SubSceneSyncAction {
     Update,
 }
 
-pub trait SubSceneConfig: Clone + PartialEq + Send + Sync + 'static {
+pub trait SubSceneConfig: Clone + Send + Sync + 'static {
     fn spawn(&self, builder: &mut ChildSpawnerCommands, render_target: Handle<Image>);
     fn sync_action(&self, new_config: &Self) -> SubSceneSyncAction;
     fn update(&self, id: egui::Id, world: &mut World);

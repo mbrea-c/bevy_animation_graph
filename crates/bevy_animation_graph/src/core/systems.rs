@@ -80,19 +80,20 @@ pub fn run_animation_player(
     system_resources: &SystemResources,
 ) {
     let _run_animation_player_span = info_span!("run_animation_player").entered();
-    // Continue if paused unless the `AnimationPlayer` was changed
-    // This allow the animation to still be updated if the player.elapsed field was manually updated in pause
+
+    // The entity map is updated regardless of animation type.
+    // Important as the entity map is relied upon for e.g. debug bone drawing
+    {
+        let _entity_map_span = info_span!("build_entity_map").entered();
+        player.entity_map = build_entity_map(root, system_resources);
+    }
+
     if !player.animation.is_graph() {
         return;
     }
 
     if !player.is_paused() {
         player.queue_time_update(TimeUpdate::Delta(time.delta_secs()));
-    }
-
-    {
-        let _entity_map_span = info_span!("build_entity_map").entered();
-        player.entity_map = build_entity_map(root, system_resources);
     }
 
     {

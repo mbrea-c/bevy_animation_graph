@@ -40,7 +40,7 @@ pub fn tree_asset_selector<T: Asset>(ui: &mut egui::Ui, world: &mut World) -> Op
                 .into_iter()
                 .map(|id| (handle_path(id.untyped(), &asset_server), id))
                 .collect();
-            if let TreeResult::Leaf(id) = path_selector(ui, paths) {
+            if let TreeResult::Leaf(id, ()) = path_selector(ui, paths) {
                 Some(graph_assets.get_strong_handle(id).unwrap())
             } else {
                 None
@@ -102,7 +102,7 @@ pub(crate) fn select_from_tree_internal<I, L>(
     match tree {
         TreeInternal::Leaf(name, val) => {
             if ui.selectable_label(false, name).clicked() {
-                TreeResult::Leaf(val)
+                TreeResult::Leaf(val, ())
             } else {
                 TreeResult::None
             }
@@ -110,7 +110,7 @@ pub(crate) fn select_from_tree_internal<I, L>(
         TreeInternal::Node(name, val, subtree) => {
             let res = ui.collapsing(name, |ui| select_from_branches(ui, subtree));
             if res.header_response.clicked() {
-                TreeResult::Node(val)
+                TreeResult::Node(val, ())
             } else {
                 TreeResult::None
             }

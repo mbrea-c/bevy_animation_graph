@@ -1,0 +1,24 @@
+(
+    colliders: [
+        (
+            id: ("505e7d48-bbdb-440b-ad3f-5886d332b294"),
+            shape: Capsule((
+                radius: 0.1,
+                half_length: 0.15,
+            )),
+            layers: 0,
+            attached_to: [
+                "metarig",
+                "spine",
+                "thigh.R",
+                "shin.R",
+                "foot.R",
+            ],
+            offset: (
+                rotation: (0.52268726, 0.0, 0.0, 0.8525245),
+                translation: (0.0, -0.15, -0.2),
+            ),
+        ),
+    ],
+    skeleton: "skeletons/human.skn.ron",
+)

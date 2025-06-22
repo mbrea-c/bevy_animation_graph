@@ -1,5 +1,6 @@
 use std::{
     any::{Any, TypeId},
+    hash::{DefaultHasher, Hash, Hasher},
     path::PathBuf,
 };
 
@@ -7,13 +8,16 @@ use bevy::{
     app::App,
     asset::Handle,
     ecs::{reflect::AppTypeRegistry, resource::Resource},
+    math::{Isometry3d, UVec3},
     platform::collections::HashMap,
     reflect::{PartialReflect, Reflect, Reflectable, TypeRegistry},
 };
 use bevy_animation_graph::{
     core::{
-        animation_clip::EntityPath, colliders::core::SkeletonColliders,
-        event_track::TrackItemValue, state_machine::high_level::StateMachine,
+        animation_clip::EntityPath,
+        colliders::core::{ColliderShape, SkeletonColliders},
+        event_track::TrackItemValue,
+        state_machine::high_level::StateMachine,
     },
     prelude::{AnimatedScene, AnimationGraph, GraphClip, config::PatternMapper},
 };
@@ -300,4 +304,38 @@ impl_widget_hash_from_hash! {
     Handle<SkeletonColliders>,
     String,
     PathBuf
+}
+
+impl WidgetHash for ColliderShape {
+    fn widget_hash(&self) -> u64 {
+        let mut hasher = DefaultHasher::new();
+
+        match self {
+            ColliderShape::Sphere(sphere) => unsafe {
+                std::mem::transmute::<_, u32>(sphere.radius).hash(&mut hasher);
+            },
+            ColliderShape::Capsule(capsule3d) => unsafe {
+                std::mem::transmute::<_, u32>(capsule3d.half_length).hash(&mut hasher);
+                std::mem::transmute::<_, u32>(capsule3d.radius).hash(&mut hasher);
+            },
+            ColliderShape::Cuboid(cuboid) => unsafe {
+                std::mem::transmute::<_, UVec3>(cuboid.half_size).hash(&mut hasher);
+            },
+        }
+
+        hasher.finish()
+    }
+}
+
+impl WidgetHash for Isometry3d {
+    fn widget_hash(&self) -> u64 {
+        let mut hasher = DefaultHasher::new();
+
+        unsafe {
+            std::mem::transmute::<_, u128>(self.translation).hash(&mut hasher);
+            std::mem::transmute::<_, u128>(self.rotation).hash(&mut hasher);
+        }
+
+        hasher.finish()
+    }
 }
