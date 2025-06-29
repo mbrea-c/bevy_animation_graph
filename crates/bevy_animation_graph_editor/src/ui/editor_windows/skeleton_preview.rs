@@ -321,13 +321,13 @@ impl SkeletonCollidersPreviewWindow {
                         return;
                     };
 
-                    ui.heading(format!(
-                        "{}",
+                    ui.heading(
                         bone_path
                             .last()
                             .map(|n| n.to_string())
                             .unwrap_or("ROOT".to_string())
-                    ));
+                            .to_string(),
+                    );
 
                     let bone_colliders = skeleton_colliders
                         .get_colliders(bone_id)
@@ -343,7 +343,7 @@ impl SkeletonCollidersPreviewWindow {
                         if ui
                             .selectable_label(
                                 self.selectable_collider == selectable,
-                                format!("{:?}", selectable),
+                                format!("{selectable:?}"),
                             )
                             .clicked()
                         {
@@ -496,7 +496,7 @@ impl SkeletonCollidersPreviewWindow {
             draw_colliders.extend(
                 bone_colliders
                     .iter()
-                    .filter(|c| active_collider.as_ref().map_or(true, |cfg| c.id != cfg.id))
+                    .filter(|c| active_collider.as_ref().is_none_or(|cfg| c.id != cfg.id))
                     .cloned()
                     .map(|c| (c, bone_colliders_color)),
             );
@@ -534,10 +534,7 @@ impl SkeletonCollidersPreviewWindow {
 
         // Other bones' colliders not mapping to this bone
         if show_all_colliders {
-            for other_bone_id in skeleton
-                .iter_bones()
-                .filter(|b| bone_id.map_or(true, |ob| *b != ob))
-            {
+            for other_bone_id in skeleton.iter_bones().filter(|b| bone_id != Some(*b)) {
                 let other_bone_colliders = skeleton_colliders
                     .get_colliders(other_bone_id)
                     .cloned()
@@ -719,7 +716,7 @@ fn highlight_bones(
         }
 
         if let Some(hovered) = input.hovered {
-            if !input.selected.is_some_and(|b| b == hovered) {
+            if input.selected.is_none_or(|b| b != hovered) {
                 drawable.push((hovered, GRAY.into()));
             }
         }
@@ -732,7 +729,7 @@ fn highlight_bones(
                 continue;
             };
 
-            println!("that's the defaults bro: {:#?}", default_transforms);
+            println!("that's the defaults bro: {default_transforms:#?}");
 
             player.custom_relative_gizmo(CustomRelativeDrawCommand {
                 bone_id: cfg.attached_to,

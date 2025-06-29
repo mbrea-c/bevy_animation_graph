@@ -86,7 +86,7 @@ impl EditorWindowExtension for DebuggerWindow {
                 for (id, spec) in data_pin_map.iter() {
                     ui.selectable_value(&mut selected_pin_id, id.clone(), id)
                         .on_hover_ui(|ui| {
-                            ui.label(format!("{:?}", spec));
+                            ui.label(format!("{spec:?}"));
                         });
                 }
             });

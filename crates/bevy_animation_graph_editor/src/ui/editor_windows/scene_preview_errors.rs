@@ -27,7 +27,7 @@ impl EditorWindowExtension for ScenePreviewErrorsWindow {
         if let Some(error) = player.get_error() {
             ui.horizontal(|ui| {
                 ui.label("⚠");
-                ui.label(format!("{}", error));
+                ui.label(format!("{error}"));
             });
         } else {
             ui.centered_and_justified(|ui| {

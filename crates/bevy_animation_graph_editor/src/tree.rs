@@ -27,9 +27,7 @@ pub trait TreeResponse {
 }
 
 impl TreeResponse for () {
-    fn combine(&self, _: &Self) -> Self {
-        ()
-    }
+    fn combine(&self, _: &Self) -> Self {}
 }
 
 impl<I, L, O: TreeResponse> TreeResult<I, L, O> {
@@ -265,10 +263,7 @@ impl TreeRenderer<SkeletonNode, SkeletonNode, SkeletonResponse> for SkeletonTree
             },
         );
 
-        response.or(collapsing_response
-            .body_returned
-            .map(|r| r)
-            .unwrap_or_default())
+        response.or(collapsing_response.body_returned.unwrap_or_default())
     }
 
     fn render_leaf(

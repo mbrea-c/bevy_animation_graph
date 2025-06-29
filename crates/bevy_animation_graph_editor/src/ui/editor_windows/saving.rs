@@ -48,7 +48,7 @@ impl EditorWindowExtension for SaveWindow {
             ui.horizontal(|ui| {
                 ui.checkbox(&mut meta.should_save, "Save");
                 if let Some(path) = &meta.current_path {
-                    ui.label(format!("{}", path));
+                    ui.label(format!("{path}"));
                 } else {
                     ui.label("<new asset>");
                 }

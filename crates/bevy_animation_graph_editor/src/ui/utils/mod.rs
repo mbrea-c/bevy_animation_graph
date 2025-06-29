@@ -144,7 +144,7 @@ pub(crate) fn select_graph_context(
         .get(&graph.graph.id().untyped())
         .copied();
     egui::ComboBox::from_label("Active context")
-        .selected_text(format!("{:?}", selected))
+        .selected_text(format!("{selected:?}"))
         .show_ui(ui, |ui| {
             ui.selectable_value(&mut selected, None, format!("{:?}", None::<GraphContextId>));
             for id in available {
@@ -208,7 +208,7 @@ pub(crate) fn select_graph_context_fsm(
 
     let mut selected = scene.active_context.get(&fsm.fsm.id().untyped()).copied();
     egui::ComboBox::from_label("Active context")
-        .selected_text(format!("{:?}", selected))
+        .selected_text(format!("{selected:?}"))
         .show_ui(ui, |ui| {
             ui.selectable_value(&mut selected, None, format!("{:?}", None::<GraphContextId>));
             for id in available {

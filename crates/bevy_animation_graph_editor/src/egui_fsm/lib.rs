@@ -425,7 +425,7 @@ impl FsmUiContext {
                         ))
                         .show(ui, |ui| {
                             ui.label("Runtime data");
-                            ui.label(format!("Time: {:.2} / {:.2}", time, duration));
+                            ui.label(format!("Time: {time:.2} / {duration:.2}"));
                             ui.add(egui::ProgressBar::new(time / duration).desired_height(5.));
                         });
                 }
