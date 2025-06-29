@@ -20,7 +20,6 @@ struct AnimatedSceneSerial {
     #[serde(default)]
     retargeting: Option<RetargetingSerial>,
 
-    #[cfg(feature = "physics_avian")]
     #[serde(default)]
     colliders: Option<AssetPath<'static>>,
 }
@@ -63,7 +62,6 @@ impl AssetLoader for AnimatedSceneLoader {
             animation_graph,
             skeleton,
             retargeting,
-            #[cfg(feature = "physics_avian")]
             colliders: serial.colliders.map(|c| load_context.load(c)),
         })
     }

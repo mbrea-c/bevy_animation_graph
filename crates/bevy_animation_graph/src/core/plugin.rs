@@ -26,7 +26,6 @@ use crate::prelude::{AnimationGraph, AnimationGraphPlayer, config::SymmetryConfi
 use crate::{core::animation_clip::EntityPath, prelude::AnimationNode};
 use bevy::{prelude::*, transform::TransformSystem};
 
-#[cfg(feature = "physics_avian")]
 use super::colliders::{core::SkeletonColliders, loader::SkeletonCollidersLoader};
 
 /// Adds animation support to an app
@@ -73,7 +72,6 @@ impl AnimationGraphPlugin {
         app.init_asset::<Skeleton>()
             .init_asset_loader::<SkeletonLoader>()
             .register_asset_reflect::<Skeleton>();
-        #[cfg(feature = "physics_avian")]
         app.init_asset::<SkeletonColliders>()
             .init_asset_loader::<SkeletonCollidersLoader>()
             .register_asset_reflect::<SkeletonColliders>();

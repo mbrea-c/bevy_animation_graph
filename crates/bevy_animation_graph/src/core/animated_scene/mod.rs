@@ -17,7 +17,6 @@ use bevy::{
     transform::components::Transform,
 };
 
-#[cfg(feature = "physics_avian")]
 use super::colliders::core::SkeletonColliders;
 
 #[derive(Clone, Asset, Reflect)]
@@ -32,7 +31,6 @@ pub struct AnimatedScene {
     /// Usually this will be the source scene's skeleton, but it may differ if we're applying
     /// retargeting.
     pub skeleton: Handle<Skeleton>,
-    #[cfg(feature = "physics_avian")]
     pub colliders: Option<Handle<SkeletonColliders>>,
 }
 

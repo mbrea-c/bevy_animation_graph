@@ -23,10 +23,7 @@ use bevy::{
 };
 use bevy_animation_graph::{
     core::{
-        colliders::core::{
-            ColliderConfig, ColliderOffsetMode, ColliderShape, SkeletonColliderId,
-            SkeletonColliders,
-        },
+        colliders::core::{ColliderConfig, ColliderShape, SkeletonColliderId, SkeletonColliders},
         id::BoneId,
         skeleton::Skeleton,
     },

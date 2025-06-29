@@ -21,5 +21,5 @@ bevy_animation_graph_proc_macros = { workspace = true }
 avian3d = { workspace = true, optional = true }
 
 [features]
-default = ["physics_avian"]
+default = []
 physics_avian = ["dep:avian3d"]

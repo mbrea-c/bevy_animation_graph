@@ -26,5 +26,5 @@ rand = "0.9.0"
 uuid = { version = "1.16.0", features = ["v4"] }
 
 [features]
-default = ["physics_avian"]
-physics_avian = ["dep:avian3d"]
+default = []
+physics_avian = ["dep:avian3d", "bevy_animation_graph/physics_avian"]
