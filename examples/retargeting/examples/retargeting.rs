@@ -58,14 +58,14 @@ fn setup(
 
     // Animated scene without retargeting required
     commands.spawn((
-        AnimatedSceneHandle(asset_server.load("animated_scenes/snake_a.animscn.ron")),
+        AnimatedSceneHandle::new(asset_server.load("animated_scenes/snake_a.animscn.ron")),
         Transform::from_xyz(-2., 0., 0.),
     ));
 
     // Animated scene with retargeting applied
     // The retargeting is configured in the scene asset file
     commands.spawn((
-        AnimatedSceneHandle(asset_server.load("animated_scenes/snake_b.animscn.ron")),
+        AnimatedSceneHandle::new(asset_server.load("animated_scenes/snake_b.animscn.ron")),
         Transform::from_xyz(2., 0., 0.),
     ));
 }
