@@ -8,7 +8,7 @@ use bevy::{
     app::App,
     asset::Handle,
     ecs::{reflect::AppTypeRegistry, resource::Resource},
-    math::{Isometry3d, UVec3},
+    math::{Isometry3d, Quat, UVec3, Vec3, Vec3A},
     platform::collections::HashMap,
     reflect::{PartialReflect, Reflect, Reflectable, TypeRegistry},
 };
@@ -320,7 +320,7 @@ impl WidgetHash for ColliderShape {
                 capsule3d.radius.to_bits().hash(&mut hasher);
             }
             ColliderShape::Cuboid(cuboid) => unsafe {
-                std::mem::transmute::<_, UVec3>(cuboid.half_size).hash(&mut hasher);
+                std::mem::transmute::<Vec3, UVec3>(cuboid.half_size).hash(&mut hasher);
             },
         }
 
@@ -333,8 +333,8 @@ impl WidgetHash for Isometry3d {
         let mut hasher = DefaultHasher::new();
 
         unsafe {
-            std::mem::transmute::<_, u128>(self.translation).hash(&mut hasher);
-            std::mem::transmute::<_, u128>(self.rotation).hash(&mut hasher);
+            std::mem::transmute::<Vec3A, u128>(self.translation).hash(&mut hasher);
+            std::mem::transmute::<Quat, u128>(self.rotation).hash(&mut hasher);
         }
 
         hasher.finish()
