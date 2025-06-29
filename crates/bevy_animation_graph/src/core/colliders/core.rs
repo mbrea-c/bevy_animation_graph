@@ -1,17 +1,21 @@
 use bevy::{
     asset::{Asset, Handle},
     math::{
-        Isometry3d,
+        Isometry3d, Vec3,
         primitives::{Capsule3d, Cuboid, Sphere},
     },
     platform::collections::HashMap,
     reflect::Reflect,
+    transform::components::Transform,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::{
-    core::{id::BoneId, skeleton::Skeleton},
+    core::{
+        id::BoneId,
+        skeleton::{DefaultBoneTransform, Skeleton},
+    },
     prelude::config::SymmetryConfig,
 };
 
@@ -50,6 +54,20 @@ pub struct ColliderConfig {
     pub attached_to: BoneId,
     pub offset: Isometry3d,
     pub offset_mode: ColliderOffsetMode,
+}
+
+impl ColliderConfig {
+    pub fn local_transform(&self, default_transforms: &DefaultBoneTransform) -> Transform {
+        match self.offset_mode {
+            ColliderOffsetMode::Local => Transform::from_isometry(self.offset),
+            ColliderOffsetMode::Global => Transform {
+                translation: default_transforms.global.rotation.inverse()
+                    * Vec3::from(self.offset.translation),
+                rotation: default_transforms.global.rotation.inverse() * self.offset.rotation,
+                scale: Vec3::ONE,
+            },
+        }
+    }
 }
 
 impl Default for ColliderConfig {

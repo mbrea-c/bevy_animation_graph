@@ -740,21 +740,8 @@ fn highlight_bones(
             player.custom_relative_gizmo(CustomRelativeDrawCommand {
                 bone_id: cfg.attached_to,
                 f: Arc::new(move |bone_transform, gizmos| {
-                    let offset_transform = match cfg.offset_mode {
-                        ColliderOffsetMode::Local => {
-                            bone_transform * Transform::from_isometry(cfg.offset)
-                        }
-                        ColliderOffsetMode::Global => {
-                            bone_transform
-                                * Transform {
-                                    translation: default_transforms.global.rotation.inverse()
-                                        * Vec3::from(cfg.offset.translation),
-                                    rotation: default_transforms.global.rotation.inverse()
-                                        * cfg.offset.rotation,
-                                    scale: Vec3::ONE,
-                                }
-                        }
-                    };
+                    let offset_transform =
+                        bone_transform * cfg.local_transform(&default_transforms);
 
                     match cfg.shape {
                         ColliderShape::Sphere(sphere) => {

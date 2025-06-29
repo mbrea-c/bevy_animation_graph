@@ -82,6 +82,7 @@ pub(crate) fn spawn_animated_scenes(
     mut animated_scene_assets: ResMut<Assets<AnimatedScene>>,
     mut scenes: ResMut<Assets<Scene>>,
     skeletons: Res<Assets<Skeleton>>,
+    skeleton_colliders: Res<Assets<SkeletonColliders>>,
     app_type_registry: Res<AppTypeRegistry>,
 ) {
     for (entity, animscn_handle) in &unloaded_scenes {
@@ -102,8 +103,10 @@ pub(crate) fn spawn_animated_scenes(
             let scene = process_scene_into_animscn(
                 scene,
                 animscn.skeleton.clone(),
+                animscn.colliders.clone(),
                 animscn.animation_graph.clone(),
                 &skeletons,
+                &skeleton_colliders,
                 animscn.retargeting.as_ref(),
             )
             .unwrap();
@@ -125,8 +128,10 @@ pub(crate) fn spawn_animated_scenes(
 fn process_scene_into_animscn(
     mut scene: Scene,
     skeleton_handle: Handle<Skeleton>,
+    skeleton_colliders_handle: Option<Handle<SkeletonColliders>>,
     graph: Handle<AnimationGraph>,
     skeletons: &Assets<Skeleton>,
+    skeleton_colliders: &Assets<SkeletonColliders>,
     retargeting: Option<&Retargeting>,
 ) -> Result<Scene, AssetLoaderError> {
     let mut query = scene
@@ -140,7 +145,7 @@ fn process_scene_into_animscn(
     let mut entity_mut = scene.world.entity_mut(animation_player);
 
     entity_mut.remove::<bevy::animation::AnimationPlayer>();
-    entity_mut.insert(AnimationGraphPlayer::new(skeleton_handle).with_graph(graph));
+    entity_mut.insert(AnimationGraphPlayer::new(skeleton_handle.clone()).with_graph(graph));
 
     if let Some(retargeting) = retargeting {
         if let Some(skeleton) = skeletons.get(&retargeting.source_skeleton) {
@@ -168,9 +173,100 @@ fn process_scene_into_animscn(
     }
 
     #[cfg(feature = "physics_avian")]
+    if let Some(skeleton_colliders_handle) = skeleton_colliders_handle
+        && let Some(skeleton_colliders) = skeleton_colliders.get(&skeleton_colliders_handle)
+        && let Some(skeleton) = skeletons.get(&skeleton_handle)
     {
+        use crate::core::colliders::core::ColliderConfig;
+
+        let mut foreach_bone: HashMap<BoneId, Vec<ColliderConfig>> = HashMap::new();
+
+        for cfg in skeleton_colliders.iter_colliders() {
+            let bone_id = cfg.attached_to;
+            let Some(bone_path) = skeleton.id_to_path(bone_id) else {
+                continue;
+            };
+
+            let bone_collider_list = foreach_bone.entry(bone_id).or_insert(Vec::new());
+
+            bone_collider_list.push(cfg.clone());
+
+            if skeleton_colliders.symmetry_enabled {
+                use crate::core::colliders::core::SkeletonColliderId;
+
+                let mirror_bone_path = skeleton_colliders.symmetry.name_mapper.flip(&bone_path);
+                let mirror_bone_id = mirror_bone_path.id();
+
+                let mirror_cfg = ColliderConfig {
+                    id: SkeletonColliderId::generate(),
+                    shape: cfg.shape.clone(),
+                    layers: cfg.layers,
+                    attached_to: mirror_bone_id,
+                    offset: Isometry3d {
+                        rotation: skeleton_colliders
+                            .symmetry
+                            .mode
+                            .apply_quat(cfg.offset.rotation),
+                        translation: skeleton_colliders
+                            .symmetry
+                            .mode
+                            .apply_position(cfg.offset.translation.into())
+                            .into(),
+                    },
+                    offset_mode: cfg.offset_mode,
+                };
+                let mirror_bone_collider_list =
+                    foreach_bone.entry(mirror_bone_id).or_insert(Vec::new());
+                mirror_bone_collider_list.push(mirror_cfg);
+            }
+        }
+
+        let mut queued_bundles = Vec::new();
+
         let mut query = scene.world.query::<(Entity, &AnimationTarget)>();
-        // todo!("unimplemented");
+        for (entity, target) in query.iter(&mut scene.world) {
+            let bone_id = BoneId::from(target.id);
+            let Some(default_transforms) = skeleton.default_transforms(bone_id) else {
+                continue;
+            };
+
+            use crate::core::colliders::core::{ColliderConfig, ColliderShape};
+            use avian3d::prelude::ColliderConstructor;
+
+            let cfg_to_bundle = |cfg: ColliderConfig| {
+                (
+                    cfg.local_transform(default_transforms),
+                    match cfg.shape {
+                        ColliderShape::Sphere(Sphere { radius }) => {
+                            ColliderConstructor::Sphere { radius }
+                        }
+                        ColliderShape::Capsule(Capsule3d {
+                            radius,
+                            half_length,
+                        }) => ColliderConstructor::Capsule {
+                            radius,
+                            height: 2. * half_length,
+                        },
+                        ColliderShape::Cuboid(Cuboid { half_size }) => {
+                            ColliderConstructor::Cuboid {
+                                x_length: 2. * half_size.x,
+                                y_length: 2. * half_size.y,
+                                z_length: 2. * half_size.z,
+                            }
+                        }
+                    },
+                )
+            };
+
+            for collider_cfg in foreach_bone.get(&bone_id).cloned().unwrap_or_default() {
+                queued_bundles.push((entity, cfg_to_bundle(collider_cfg)));
+            }
+        }
+
+        for (entity, bundle) in queued_bundles {
+            let child = scene.world.spawn(bundle).id();
+            scene.world.entity_mut(entity).add_child(child);
+        }
     }
 
     Ok(scene)
