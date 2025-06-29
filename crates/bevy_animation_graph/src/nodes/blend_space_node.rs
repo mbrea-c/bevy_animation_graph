@@ -57,15 +57,15 @@ impl BlendSpaceNode {
     }
 
     pub fn pose_pin_id(key: &str) -> String {
-        format!("pose {}", key)
+        format!("pose {key}")
     }
 
     pub fn events_pin_id(key: &str) -> String {
-        format!("events {}", key)
+        format!("events {key}")
     }
 
     pub fn time_pin_id(key: &str) -> String {
-        format!("time {}", key)
+        format!("time {key}")
     }
 
     fn vertex_key(&self, id: usize) -> &str {
