@@ -3,17 +3,17 @@ use std::sync::Arc;
 use bevy::{
     asset::{Assets, Handle},
     color::{
-        Color, LinearRgba,
-        palettes::css::{self, DARK_RED, GRAY, ORANGE},
+        Alpha, Color, LinearRgba,
+        palettes::css::{self, DARK_RED, GRAY, ORANGE, YELLOW},
     },
     core_pipeline::core_3d::Camera3d,
     ecs::{
         hierarchy::ChildSpawnerCommands,
-        system::{In, Query},
+        system::{In, Query, Res},
     },
     gizmos::primitives::dim3::GizmoPrimitive3d,
     image::Image,
-    math::{Isometry3d, Vec3, primitives::Cuboid},
+    math::{Vec3, primitives::Cuboid},
     pbr::PointLight,
     platform::collections::HashMap,
     prelude::World,
@@ -23,13 +23,17 @@ use bevy::{
 };
 use bevy_animation_graph::{
     core::{
-        colliders::core::{ColliderConfig, ColliderShape, SkeletonColliderId, SkeletonColliders},
+        colliders::core::{
+            ColliderConfig, ColliderOffsetMode, ColliderShape, SkeletonColliderId,
+            SkeletonColliders,
+        },
         id::BoneId,
         skeleton::Skeleton,
     },
     prelude::{
         AnimatedScene, AnimatedSceneHandle, AnimationGraphPlayer, AnimationSource,
         CustomRelativeDrawCommand,
+        config::{FlipNameMapper, SymmertryMode, SymmetryConfig},
     },
 };
 use egui_dock::egui;
@@ -39,7 +43,9 @@ use crate::{
     ui::{
         PartOfSubScene, PreviewScene, SubSceneConfig, SubSceneSyncAction,
         actions::{
-            colliders::{CreateOrEditCollider, DeleteCollider},
+            colliders::{
+                CreateOrEditCollider, DeleteCollider, UpdateSymmetryConfig, UpdateSymmetryEnabled,
+            },
             window::DynWindowAction,
         },
         core::{EditorWindowContext, EditorWindowExtension},
@@ -52,12 +58,15 @@ use crate::{
 pub struct SkeletonCollidersPreviewWindow {
     pub orbit_view: OrbitView,
     pub target: Option<Handle<SkeletonColliders>>,
+    pub reverse_index: Option<ReverseSkeletonIndex>,
     pub base_scene: Option<Handle<AnimatedScene>>,
     pub hovered: Option<BoneId>,
     pub selected: Option<BoneId>,
     pub edit_buffers: HashMap<SelectableCollider, ColliderConfig>,
     pub selectable_collider: SelectableCollider,
     pub draw_colliders: Vec<(ColliderConfig, Color)>,
+    pub show_global_settings: bool,
+    pub show_all_colliders: bool,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
@@ -73,12 +82,15 @@ impl Default for SkeletonCollidersPreviewWindow {
         Self {
             orbit_view: OrbitView::default(),
             target: None,
+            reverse_index: None,
             base_scene: None,
             hovered: None,
             selected: None,
             selectable_collider: SelectableCollider::default(),
             edit_buffers: HashMap::default(),
             draw_colliders: Vec::default(),
+            show_global_settings: false,
+            show_all_colliders: true,
         }
     }
 }
@@ -96,9 +108,9 @@ impl EditorWindowExtension for SkeletonCollidersPreviewWindow {
         egui::TopBottomPanel::top("Top panel")
             .resizable(false)
             .exact_height(timeline_height)
-            .frame(egui::Frame::NONE)
+            .frame(egui::Frame::NONE.inner_margin(5.))
             .show_inside(ui, |ui| {
-                self.draw_base_scene_selector(ui, world, ctx);
+                self.draw_top_panel(ui, world, ctx);
             });
 
         egui::SidePanel::left("Hierarchical tree view")
@@ -114,6 +126,12 @@ impl EditorWindowExtension for SkeletonCollidersPreviewWindow {
             .show_inside(ui, |ui| {
                 self.draw_bone_inspector(ui, world, ctx);
             });
+
+        if self.show_global_settings {
+            egui::Window::new("Skeleton collider settings").show(ui.ctx(), |ui| {
+                self.draw_settings_panel(ui, world, ctx);
+            });
+        }
 
         let Some(base_scene) = &self.base_scene else {
             ui.centered_and_justified(|ui| {
@@ -147,14 +165,73 @@ impl EditorWindowExtension for SkeletonCollidersPreviewWindow {
             CollidersPreviewAction::SelectBaseScene(handle) => {
                 self.base_scene = Some(handle);
             }
-            CollidersPreviewAction::SelectTarget(handle) => self.target = Some(handle),
+            CollidersPreviewAction::SelectTarget(handle) => {
+                self.target = Some(handle);
+                self.reverse_index = None;
+            }
         }
     }
 }
 
 impl SkeletonCollidersPreviewWindow {
-    pub fn draw_base_scene_selector(
-        &self,
+    pub fn draw_settings_panel(
+        &mut self,
+        ui: &mut egui::Ui,
+        world: &mut World,
+        ctx: &mut EditorWindowContext,
+    ) {
+        let Some(target) = &self.target else {
+            ui.centered_and_justified(|ui| {
+                ui.label("No target selected");
+            });
+            return;
+        };
+
+        ui.heading("Symmetry configuration");
+        world.resource_scope::<Assets<SkeletonColliders>, _>(|world, skeleton_colliders| {
+            let Some(skeleton_colliders) = skeleton_colliders.get(target) else {
+                return;
+            };
+
+            let mut symmetry_enabled = skeleton_colliders.symmetry_enabled;
+            if ui
+                .checkbox(&mut symmetry_enabled, "Enable symmetry (mirror along X)")
+                .changed()
+            {
+                ctx.editor_actions.dynamic(UpdateSymmetryEnabled {
+                    colliders: target.clone(),
+                    symmetry_enabled,
+                });
+            }
+
+            using_wrap_ui(world, |mut env| {
+                let FlipNameMapper::Pattern(pattern_mapper) =
+                    &skeleton_colliders.symmetry.name_mapper;
+                if let Some(new_mapper) = env.mutable_buffered(
+                    pattern_mapper,
+                    ui,
+                    ui.id().with("skeleton colliders symmetry configuration"),
+                    &(),
+                ) {
+                    ctx.editor_actions.dynamic(UpdateSymmetryConfig {
+                        colliders: target.clone(),
+                        symmetry: SymmetryConfig {
+                            name_mapper: FlipNameMapper::Pattern(new_mapper),
+                            mode: SymmertryMode::MirrorX,
+                        },
+                    });
+                }
+            });
+        });
+
+        ui.separator();
+
+        ui.heading("Preview settings");
+        ui.checkbox(&mut self.show_all_colliders, "Show all colliders");
+    }
+
+    pub fn draw_top_panel(
+        &mut self,
         ui: &mut egui::Ui,
         world: &mut World,
         ctx: &mut EditorWindowContext,
@@ -187,6 +264,12 @@ impl SkeletonCollidersPreviewWindow {
                     );
                 }
             });
+
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if ui.button("⚙").clicked() {
+                    self.show_global_settings = !self.show_global_settings;
+                }
+            });
         });
     }
 
@@ -210,11 +293,30 @@ impl SkeletonCollidersPreviewWindow {
                         return;
                     };
 
-                    let Some(bone_id) = self.selected else {
+                    let Some(skeleton) = skeletons.get(&skeleton_colliders.skeleton) else {
                         return;
                     };
 
-                    let Some(skeleton) = skeletons.get(&skeleton_colliders.skeleton) else {
+                    let reverse_index = if let Some(reverse_index) = &self.reverse_index {
+                        reverse_index
+                    } else {
+                        self.reverse_index = Some(ReverseSkeletonIndex::new(
+                            skeleton,
+                            &skeleton_colliders.symmetry,
+                        ));
+
+                        self.reverse_index.as_ref().unwrap()
+                    };
+
+                    let Some(bone_id) = self.selected else {
+                        self.draw_colliders = Self::collect_drawable_colliders(
+                            None,
+                            skeleton_colliders,
+                            skeleton,
+                            reverse_index,
+                            None,
+                            self.show_all_colliders,
+                        );
                         return;
                     };
 
@@ -254,27 +356,39 @@ impl SkeletonCollidersPreviewWindow {
 
                     ui.separator();
 
-                    let edit_ui =
-                        |ui: &mut egui::Ui, world: &mut World, config: &mut ColliderConfig| {
-                            using_wrap_ui(world, |mut env| {
-                                let id = ui.id().with("Collider creation shape");
-                                ui.label("Shape");
-                                if let Some(new_shape) =
-                                    env.mutable_buffered(&mut config.shape, ui, id, &())
-                                {
-                                    config.shape = new_shape;
-                                }
+                    let edit_ui = |ui: &mut egui::Ui,
+                                   world: &mut World,
+                                   config: &mut ColliderConfig| {
+                        using_wrap_ui(world, |mut env| {
+                            let id = ui.id().with("Collider creation shape");
+                            ui.label("Shape");
 
-                                ui.add(egui::DragValue::new(&mut config.layers));
+                            if let Some(new_shape) =
+                                env.mutable_buffered(&mut config.shape, ui, id.with("shape"), &())
+                            {
+                                config.shape = new_shape;
+                            }
 
-                                ui.label("Offsets");
-                                if let Some(new_isometry) =
-                                    env.mutable_buffered(&mut config.offset, ui, id, &())
-                                {
-                                    config.offset = new_isometry;
-                                }
-                            });
-                        };
+                            ui.add(egui::DragValue::new(&mut config.layers));
+
+                            ui.label("Offsets");
+
+                            if let Some(offset_mode) = env.mutable_buffered(
+                                &mut config.offset_mode,
+                                ui,
+                                id.with("offset_mode"),
+                                &(),
+                            ) {
+                                config.offset_mode = offset_mode;
+                            }
+
+                            if let Some(new_isometry) =
+                                env.mutable_buffered(&mut config.offset, ui, id.with("offset"), &())
+                            {
+                                config.offset = new_isometry;
+                            }
+                        });
+                    };
 
                     let cfg = if let Some(selectable) =
                         self.edit_buffers.get_mut(&self.selectable_collider)
@@ -291,7 +405,7 @@ impl SkeletonCollidersPreviewWindow {
                                         shape: ColliderShape::Cuboid(Cuboid::new(1., 1., 1.)),
                                         layers: 0,
                                         attached_to: bone_id,
-                                        offset: Isometry3d::default(),
+                                        ..default()
                                     },
                                 );
                             }
@@ -311,17 +425,18 @@ impl SkeletonCollidersPreviewWindow {
                         self.edit_buffers.get_mut(&self.selectable_collider)
                     };
 
-                    self.draw_colliders.extend(
-                        bone_colliders
-                            .iter()
-                            .filter(|c| cfg.as_ref().map_or(true, |cfg| c.id != cfg.id))
-                            .cloned()
-                            .map(|c| (c, DARK_RED.into())),
+                    let active_collider = cfg.as_ref().map(|c| (*c).clone());
+
+                    self.draw_colliders = Self::collect_drawable_colliders(
+                        Some(bone_id),
+                        skeleton_colliders,
+                        skeleton,
+                        reverse_index,
+                        active_collider,
+                        self.show_all_colliders,
                     );
 
                     if let Some(cfg) = cfg {
-                        self.draw_colliders.push((cfg.clone(), ORANGE.into()));
-
                         let mut should_clear = false;
                         edit_ui(ui, world, cfg);
 
@@ -351,6 +466,127 @@ impl SkeletonCollidersPreviewWindow {
                 });
             });
         });
+    }
+
+    pub fn collect_drawable_colliders(
+        bone_id: Option<BoneId>,
+        skeleton_colliders: &SkeletonColliders,
+        skeleton: &Skeleton,
+        reverse_index: &ReverseSkeletonIndex,
+        active_collider: Option<ColliderConfig>,
+        show_all_colliders: bool,
+    ) -> Vec<(ColliderConfig, Color)> {
+        let active_collider_color: Color = YELLOW.into();
+        let bone_colliders_color: Color = ORANGE.into();
+        let bone_symmetry_colliders_color: Color = ORANGE.with_alpha(0.4).into();
+        let other_colliders_color: Color = DARK_RED.into();
+        let other_symmetry_colliders_color: Color = DARK_RED.with_alpha(0.4).into();
+
+        let mut draw_colliders = Vec::new();
+
+        if let Some(bone_id) = bone_id {
+            let bone_colliders = skeleton_colliders
+                .get_colliders(bone_id)
+                .cloned()
+                .unwrap_or_default();
+
+            // Active collider
+            if let Some(active_collider) = &active_collider {
+                draw_colliders.push((active_collider.clone(), active_collider_color));
+            }
+
+            // This bone's colliders
+            draw_colliders.extend(
+                bone_colliders
+                    .iter()
+                    .filter(|c| active_collider.as_ref().map_or(true, |cfg| c.id != cfg.id))
+                    .cloned()
+                    .map(|c| (c, bone_colliders_color)),
+            );
+
+            // Other bone's colliders that map to this one via symmetry
+            if skeleton_colliders.symmetry_enabled {
+                draw_colliders.extend(
+                    reverse_index
+                        .mapping_to_bone(bone_id)
+                        .into_iter()
+                        .flat_map(|bone_id| {
+                            skeleton_colliders
+                                .get_colliders(bone_id)
+                                .cloned()
+                                .unwrap_or_default()
+                        })
+                        .map(|mut c| {
+                            c.offset.translation = skeleton_colliders
+                                .symmetry
+                                .mode
+                                .apply_position(c.offset.translation.into())
+                                .into();
+                            c.offset.rotation = skeleton_colliders
+                                .symmetry
+                                .mode
+                                .apply_quat(c.offset.rotation);
+                            c.attached_to = bone_id;
+
+                            c
+                        })
+                        .map(|c| (c, bone_symmetry_colliders_color)),
+                );
+            }
+        }
+
+        // Other bones' colliders not mapping to this bone
+        if show_all_colliders {
+            for other_bone_id in skeleton
+                .iter_bones()
+                .filter(|b| bone_id.map_or(true, |ob| *b != ob))
+            {
+                let other_bone_colliders = skeleton_colliders
+                    .get_colliders(other_bone_id)
+                    .cloned()
+                    .unwrap_or_default();
+
+                // Owned colliders
+                draw_colliders.extend(
+                    other_bone_colliders
+                        .iter()
+                        .cloned()
+                        .map(|c| (c, other_colliders_color)),
+                );
+
+                // Colliders applied via symmetry
+                if skeleton_colliders.symmetry_enabled {
+                    draw_colliders.extend(
+                        reverse_index
+                            .mapping_to_bone(other_bone_id)
+                            .into_iter()
+                            .flat_map(|bone_id| {
+                                skeleton_colliders
+                                    .get_colliders(bone_id)
+                                    .cloned()
+                                    .unwrap_or_default()
+                            })
+                            .map(|mut c| {
+                                c.offset.translation = skeleton_colliders
+                                    .symmetry
+                                    .mode
+                                    .apply_position(c.offset.translation.into())
+                                    .into();
+                                c.offset.rotation = skeleton_colliders
+                                    .symmetry
+                                    .mode
+                                    .apply_quat(c.offset.rotation);
+                                c.attached_to = other_bone_id;
+
+                                c
+                            })
+                            .map(|c| (c, other_symmetry_colliders_color)),
+                    );
+                }
+            }
+        }
+
+        draw_colliders
     }
 
     pub fn draw_tree_view(
@@ -417,9 +653,7 @@ impl SubSceneConfig for SkeletonCollidersPreviewConfig {
             Camera {
                 // render before the "main pass" camera
                 order: -1,
-                clear_color: ClearColorConfig::Custom(Color::from(LinearRgba::new(
-                    1.0, 1.0, 1.0, 0.0,
-                ))),
+                clear_color: ClearColorConfig::Custom(Color::from(LinearRgba::new(0., 0., 0., 1.))),
                 target: RenderTarget::Image(render_target.into()),
                 ..default()
             },
@@ -471,11 +705,16 @@ struct HighlightSettings {
 fn highlight_bones(
     In((id, mut input)): In<(egui::Id, HighlightSettings)>,
     mut q_animation_players: Query<(&mut AnimationGraphPlayer, &PartOfSubScene)>,
+    skeletons: Res<Assets<Skeleton>>,
 ) {
     for (mut player, PartOfSubScene(target_id)) in &mut q_animation_players {
         if id != *target_id {
             continue;
         }
+
+        let Some(skeleton) = skeletons.get(player.skeleton()) else {
+            continue;
+        };
 
         let mut drawable = vec![];
         if let Some(clicked) = input.selected {
@@ -491,10 +730,31 @@ fn highlight_bones(
         player.gizmo_for_bones_with_color(drawable);
 
         for (cfg, color) in input.draw_colliders.drain(..) {
+            let Some(default_transforms) = skeleton.default_transforms(cfg.attached_to).cloned()
+            else {
+                continue;
+            };
+
+            println!("that's the defaults bro: {:#?}", default_transforms);
+
             player.custom_relative_gizmo(CustomRelativeDrawCommand {
                 bone_id: cfg.attached_to,
                 f: Arc::new(move |bone_transform, gizmos| {
-                    let offset_transform = bone_transform * Transform::from_isometry(cfg.offset);
+                    let offset_transform = match cfg.offset_mode {
+                        ColliderOffsetMode::Local => {
+                            bone_transform * Transform::from_isometry(cfg.offset)
+                        }
+                        ColliderOffsetMode::Global => {
+                            bone_transform
+                                * Transform {
+                                    translation: default_transforms.global.rotation.inverse()
+                                        * Vec3::from(cfg.offset.translation),
+                                    rotation: default_transforms.global.rotation.inverse()
+                                        * cfg.offset.rotation,
+                                    scale: Vec3::ONE,
+                                }
+                        }
+                    };
 
                     match cfg.shape {
                         ColliderShape::Sphere(sphere) => {
@@ -510,5 +770,37 @@ fn highlight_bones(
                 }),
             });
         }
+    }
+}
+
+/// Reverse index mapping bones that map to each bone via symmetry
+#[derive(Default, Debug)]
+pub struct ReverseSkeletonIndex {
+    mapping: HashMap<BoneId, Vec<BoneId>>,
+}
+
+impl ReverseSkeletonIndex {
+    pub fn new(skeleton: &Skeleton, symmetry: &SymmetryConfig) -> Self {
+        let mut mapping = HashMap::default();
+
+        for bone_id in skeleton.iter_bones() {
+            let Some(path) = skeleton.id_to_path(bone_id) else {
+                continue;
+            };
+
+            let target_path = symmetry.name_mapper.flip(&path);
+            let Some(target_id) = skeleton.path_to_id(target_path) else {
+                continue;
+            };
+
+            mapping.entry(target_id).or_insert(Vec::new()).push(bone_id);
+        }
+
+        Self { mapping }
+    }
+
+    /// Access to the list of bones that map to the current bone under the provided symmetry
+    pub fn mapping_to_bone(&self, bone_id: BoneId) -> Vec<BoneId> {
+        self.mapping.get(&bone_id).cloned().unwrap_or_default()
     }
 }

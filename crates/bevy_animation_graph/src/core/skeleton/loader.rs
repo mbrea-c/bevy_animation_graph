@@ -10,6 +10,7 @@ use bevy::{
     gltf::Gltf,
     prelude::{Entity, With, World},
     scene::Scene,
+    transform::components::Transform,
 };
 
 #[derive(Default)]
@@ -55,21 +56,25 @@ fn build_skeleton(world: &World) -> Result<Skeleton, AssetLoaderError> {
     };
 
     let mut query = world
-        .try_query::<(Option<&Children>, &Name)>()
+        .try_query::<(Option<&Children>, &Name, &Transform)>()
         .expect("This query should be readonly");
 
     skeleton.set_root(EntityPath::default().child(root_name).id());
-    let mut pending_children: Vec<(Entity, EntityPath)> = vec![(root, EntityPath::default())];
 
-    while let Some((cur_entity, parent_path)) = pending_children.pop() {
-        let (maybe_children, cur_name) = query.get(world, cur_entity).unwrap();
+    let mut pending_children: Vec<(Entity, EntityPath, Transform)> =
+        vec![(root, EntityPath::default(), Transform::IDENTITY)];
+
+    while let Some((cur_entity, parent_path, parent_global_transform)) = pending_children.pop() {
+        let (maybe_children, cur_name, cur_transform) = query.get(world, cur_entity).unwrap();
         let cur_path = parent_path.child(cur_name.clone());
 
-        skeleton.add_bone(cur_path.clone());
+        let cur_global_transform = parent_global_transform * *cur_transform;
+
+        skeleton.add_bone(cur_path.clone(), *cur_transform, cur_global_transform);
 
         if let Some(children) = maybe_children {
             for &child in children {
-                pending_children.push((child, cur_path.clone()));
+                pending_children.push((child, cur_path.clone(), cur_global_transform));
             }
         }
     }

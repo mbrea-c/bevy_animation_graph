@@ -10,7 +10,10 @@ use bevy::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::core::{id::BoneId, skeleton::Skeleton};
+use crate::{
+    core::{id::BoneId, skeleton::Skeleton},
+    prelude::config::SymmetryConfig,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Reflect, Serialize, Deserialize)]
 pub struct SkeletonColliderId(Uuid);
@@ -32,6 +35,13 @@ pub enum ColliderShape {
     Cuboid(Cuboid),
 }
 
+#[derive(Debug, Default, Clone, Copy, Reflect, PartialEq, Serialize, Deserialize, Hash)]
+pub enum ColliderOffsetMode {
+    #[default]
+    Local,
+    Global,
+}
+
 #[derive(Debug, Clone, Reflect)]
 pub struct ColliderConfig {
     pub id: SkeletonColliderId,
@@ -39,6 +49,7 @@ pub struct ColliderConfig {
     pub layers: u32,
     pub attached_to: BoneId,
     pub offset: Isometry3d,
+    pub offset_mode: ColliderOffsetMode,
 }
 
 impl Default for ColliderConfig {
@@ -49,6 +60,7 @@ impl Default for ColliderConfig {
             layers: 0,
             attached_to: BoneId::default(),
             offset: Isometry3d::default(),
+            offset_mode: ColliderOffsetMode::default(),
         }
     }
 }
@@ -60,6 +72,8 @@ pub struct SkeletonColliders {
     /// to use different collider setups depending on the situation, hence why we store them as a
     /// separate asset rather than making them part of a skeleton.
     pub skeleton: Handle<Skeleton>,
+    pub symmetry: SymmetryConfig,
+    pub symmetry_enabled: bool,
 }
 
 impl SkeletonColliders {
@@ -91,5 +105,9 @@ impl SkeletonColliders {
 
     pub fn iter_colliders(&self) -> impl Iterator<Item = &ColliderConfig> {
         self.colliders.values().flatten()
+    }
+
+    pub fn iter_bones(&self) -> impl Iterator<Item = BoneId> {
+        self.colliders.keys().copied()
     }
 }

@@ -21,10 +21,8 @@ use crate::nodes::{
     DivF32, DummyNode, FSMNode, FireEventNode, FlipLRNode, GraphNode, LoopNode, MulF32,
     PaddingNode, RotationArcNode, RotationNode, SpeedNode, SubF32, TwoBoneIKNode,
 };
-use crate::prelude::{
-    AnimationGraph, AnimationGraphPlayer,
-    config::{FlipConfig, FlipNameMapper, PatternMapper, PatternMapperSerial},
-};
+use crate::prelude::serial::SymmetryConfigSerial;
+use crate::prelude::{AnimationGraph, AnimationGraphPlayer, config::SymmetryConfig};
 use crate::{core::animation_clip::EntityPath, prelude::AnimationNode};
 use bevy::{prelude::*, transform::TransformSystem};
 
@@ -128,11 +126,8 @@ impl AnimationGraphPlugin {
             .register_type::<DataValue>()
             .register_type::<DataSpec>()
             .register_type::<AnimationNode>()
-            .register_type::<FlipConfig>()
-            .register_type::<FlipNameMapper<PatternMapper>>()
-            .register_type::<FlipNameMapper<PatternMapperSerial>>()
-            .register_type::<PatternMapper>()
-            .register_type::<PatternMapperSerial>()
+            .register_type::<SymmetryConfig>()
+            .register_type::<SymmetryConfigSerial>()
             .register_type::<BlendMode>()
             .register_type::<BlendSyncMode>()
             .register_type::<GlobalTransition>()

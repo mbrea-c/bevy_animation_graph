@@ -27,7 +27,7 @@ pub trait TreeResponse {
 }
 
 impl TreeResponse for () {
-    fn combine(&self, other: &Self) -> Self {
+    fn combine(&self, _: &Self) -> Self {
         ()
     }
 }

@@ -95,6 +95,10 @@ impl AnimationGraphPlayer {
         self.animation = animation;
     }
 
+    pub fn skeleton(&self) -> &Handle<Skeleton> {
+        &self.skeleton
+    }
+
     /// Set the animation graph to play
     pub fn with_graph(mut self, animation: Handle<AnimationGraph>) -> Self {
         self.context_arena = Some(GraphContextArena::new(animation.id()));
@@ -221,7 +225,7 @@ impl AnimationGraphPlayer {
         system_resources: &SystemResources,
         root_entity: Entity,
     ) {
-        if self.debug_draw_bones.is_empty() {
+        if self.debug_draw_bones.is_empty() && self.debug_draw_custom.is_empty() {
             return;
         }
 

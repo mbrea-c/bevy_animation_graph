@@ -15,10 +15,21 @@
                 "foot.R",
             ],
             offset: (
-                rotation: (0.52268726, 0.0, 0.0, 0.8525245),
-                translation: (0.0, -0.15, -0.2),
+                rotation: (0.0, -0.0, 0.0, 1.0),
+                translation: (0.0, 0.25, -0.025),
             ),
+            offset_mode: Global,
         ),
     ],
     skeleton: "skeletons/human.skn.ron",
+    symmetry: (
+        name_mapper: Pattern((
+            key_1: "L",
+            key_2: "R",
+            pattern_before: "^.*",
+            pattern_after: "$",
+        )),
+        mode: MirrorX,
+    ),
+    symmetry_enabled: true,
 )

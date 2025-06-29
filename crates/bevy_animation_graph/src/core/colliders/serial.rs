@@ -5,11 +5,12 @@ use bevy::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::core::{
-    animation_clip::EntityPath, colliders::core::SkeletonColliderId, skeleton::Skeleton,
+use crate::{
+    core::{animation_clip::EntityPath, colliders::core::SkeletonColliderId, skeleton::Skeleton},
+    prelude::serial::SymmetryConfigSerial,
 };
 
-use super::core::{ColliderConfig, ColliderShape, SkeletonColliders};
+use super::core::{ColliderConfig, ColliderOffsetMode, ColliderShape, SkeletonColliders};
 
 #[derive(Debug, Clone, Reflect, Serialize, Deserialize)]
 pub struct ColliderConfigSerial {
@@ -18,6 +19,8 @@ pub struct ColliderConfigSerial {
     pub layers: u32,
     pub attached_to: EntityPath,
     pub offset: Isometry3d,
+    #[serde(default)]
+    pub offset_mode: ColliderOffsetMode,
 }
 
 #[derive(Debug, Clone, Default, Reflect, Serialize, Deserialize)]
@@ -25,6 +28,10 @@ pub struct SkeletonCollidersSerial {
     #[serde(default)]
     pub colliders: Vec<ColliderConfigSerial>,
     pub skeleton: AssetPath<'static>,
+    #[serde(default)]
+    pub symmetry: SymmetryConfigSerial,
+    #[serde(default)]
+    pub symmetry_enabled: bool,
 }
 
 impl SkeletonCollidersSerial {
@@ -38,6 +45,7 @@ impl SkeletonCollidersSerial {
                 attached_to: skeleton.id_to_path(config.attached_to)?,
                 offset: config.offset,
                 id: config.id,
+                offset_mode: config.offset_mode,
             };
 
             colliders.push(config_serial);
@@ -46,6 +54,8 @@ impl SkeletonCollidersSerial {
         Some(Self {
             colliders,
             skeleton: value.skeleton.path()?.to_owned(),
+            symmetry: SymmetryConfigSerial::from_value(&value.symmetry),
+            symmetry_enabled: value.symmetry_enabled,
         })
     }
 
@@ -62,6 +72,8 @@ impl SkeletonCollidersSerial {
         let mut colliders = SkeletonColliders::default();
 
         colliders.skeleton = skeleton_handle;
+        colliders.symmetry = self.symmetry.to_value().ok()?;
+        colliders.symmetry_enabled = self.symmetry_enabled;
 
         for config_serial in &self.colliders {
             let config = ColliderConfig {
@@ -70,6 +82,7 @@ impl SkeletonCollidersSerial {
                 attached_to: skeleton.path_to_id(config_serial.attached_to.clone())?,
                 offset: config_serial.offset,
                 id: config_serial.id,
+                offset_mode: config_serial.offset_mode,
             };
 
             colliders.add_collider(config);

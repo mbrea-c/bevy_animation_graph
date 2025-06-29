@@ -5,9 +5,12 @@ use bevy::{
         world::World,
     },
 };
-use bevy_animation_graph::core::{
-    colliders::core::{ColliderConfig, SkeletonColliderId, SkeletonColliders},
-    id::BoneId,
+use bevy_animation_graph::{
+    core::{
+        colliders::core::{ColliderConfig, SkeletonColliderId, SkeletonColliders},
+        id::BoneId,
+    },
+    prelude::config::SymmetryConfig,
 };
 
 use crate::ui::actions::{DynamicAction, run_handler, saving::DirtyAssets};
@@ -71,5 +74,57 @@ impl DeleteCollider {
         dirty_assets.add(input.colliders);
 
         skeleton_colliders.delete_collider(input.bone_id, input.collider_id);
+    }
+}
+
+pub struct UpdateSymmetryConfig {
+    pub colliders: Handle<SkeletonColliders>,
+    pub symmetry: SymmetryConfig,
+}
+
+impl DynamicAction for UpdateSymmetryConfig {
+    fn handle(self: Box<Self>, world: &mut World) {
+        run_handler(world, "Could not update symmetry config")(Self::system, *self)
+    }
+}
+
+impl UpdateSymmetryConfig {
+    pub fn system(
+        In(input): In<Self>,
+        mut skeleton_collider_assets: ResMut<Assets<SkeletonColliders>>,
+        mut dirty_assets: ResMut<DirtyAssets>,
+    ) {
+        let Some(skeleton_colliders) = skeleton_collider_assets.get_mut(&input.colliders) else {
+            return;
+        };
+
+        dirty_assets.add(input.colliders);
+        skeleton_colliders.symmetry = input.symmetry;
+    }
+}
+
+pub struct UpdateSymmetryEnabled {
+    pub colliders: Handle<SkeletonColliders>,
+    pub symmetry_enabled: bool,
+}
+
+impl DynamicAction for UpdateSymmetryEnabled {
+    fn handle(self: Box<Self>, world: &mut World) {
+        run_handler(world, "Could not update symmetry config")(Self::system, *self)
+    }
+}
+
+impl UpdateSymmetryEnabled {
+    pub fn system(
+        In(input): In<Self>,
+        mut skeleton_collider_assets: ResMut<Assets<SkeletonColliders>>,
+        mut dirty_assets: ResMut<DirtyAssets>,
+    ) {
+        let Some(skeleton_colliders) = skeleton_collider_assets.get_mut(&input.colliders) else {
+            return;
+        };
+
+        dirty_assets.add(input.colliders);
+        skeleton_colliders.symmetry_enabled = input.symmetry_enabled;
     }
 }

@@ -15,7 +15,7 @@ use bevy::{
 use bevy_animation_graph::{
     core::{
         animation_clip::EntityPath,
-        colliders::core::{ColliderShape, SkeletonColliders},
+        colliders::core::{ColliderOffsetMode, ColliderShape, SkeletonColliders},
         event_track::TrackItemValue,
         state_machine::high_level::StateMachine,
     },
@@ -303,6 +303,7 @@ impl_widget_hash_from_hash! {
     Handle<AnimatedScene>,
     Handle<SkeletonColliders>,
     String,
+    ColliderOffsetMode,
     PathBuf
 }
 
@@ -311,13 +312,13 @@ impl WidgetHash for ColliderShape {
         let mut hasher = DefaultHasher::new();
 
         match self {
-            ColliderShape::Sphere(sphere) => unsafe {
-                std::mem::transmute::<_, u32>(sphere.radius).hash(&mut hasher);
-            },
-            ColliderShape::Capsule(capsule3d) => unsafe {
-                std::mem::transmute::<_, u32>(capsule3d.half_length).hash(&mut hasher);
-                std::mem::transmute::<_, u32>(capsule3d.radius).hash(&mut hasher);
-            },
+            ColliderShape::Sphere(sphere) => {
+                sphere.radius.to_bits().hash(&mut hasher);
+            }
+            ColliderShape::Capsule(capsule3d) => {
+                capsule3d.half_length.to_bits().hash(&mut hasher);
+                capsule3d.radius.to_bits().hash(&mut hasher);
+            }
             ColliderShape::Cuboid(cuboid) => unsafe {
                 std::mem::transmute::<_, UVec3>(cuboid.half_size).hash(&mut hasher);
             },
