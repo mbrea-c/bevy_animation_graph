@@ -112,8 +112,9 @@ impl SkeletonColliders {
     }
 
     pub fn delete_collider(&mut self, bone_id: BoneId, collider_id: SkeletonColliderId) {
-        if let Some(colls) = self.colliders
-            .get_mut(&bone_id) { colls.retain(|cfg| cfg.id != collider_id) }
+        if let Some(colls) = self.colliders.get_mut(&bone_id) {
+            colls.retain(|cfg| cfg.id != collider_id)
+        }
     }
 
     pub fn collider_count(&self) -> usize {
