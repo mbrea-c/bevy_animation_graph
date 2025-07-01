@@ -73,13 +73,12 @@ impl<I, L> Tree<I, L> {
     ) -> TreeResult<I, L, O> {
         self.0
             .iter()
-            .map(|i| self.picker_selector_internal(i, ui, renderer))
+            .map(|i| Self::picker_selector_internal(i, ui, renderer))
             .reduce(|l, r| l.or(r))
             .unwrap_or_default()
     }
 
     pub fn picker_selector_internal<O: TreeResponse>(
-        &self,
         internal: &TreeInternal<I, L>,
         ui: &mut egui::Ui,
         renderer: impl TreeRenderer<I, L, O> + Copy,
@@ -88,7 +87,7 @@ impl<I, L> Tree<I, L> {
             TreeInternal::Leaf(label, data) => renderer.render_leaf(label, data, ui),
             TreeInternal::Node(label, data, tree_internals) => {
                 renderer.render_inner(label, data, tree_internals, ui, |internal, ui| {
-                    self.picker_selector_internal(internal, ui, renderer)
+                    Self::picker_selector_internal(internal, ui, renderer)
                 })
             }
         }

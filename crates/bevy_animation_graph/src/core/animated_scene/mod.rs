@@ -185,7 +185,7 @@ fn process_scene_into_animscn(
                 continue;
             };
 
-            let bone_collider_list = foreach_bone.entry(bone_id).or_insert(Vec::new());
+            let bone_collider_list = foreach_bone.entry(bone_id).or_default();
 
             bone_collider_list.push(cfg.clone());
 
@@ -213,8 +213,7 @@ fn process_scene_into_animscn(
                     },
                     offset_mode: cfg.offset_mode,
                 };
-                let mirror_bone_collider_list =
-                    foreach_bone.entry(mirror_bone_id).or_insert(Vec::new());
+                let mirror_bone_collider_list = foreach_bone.entry(mirror_bone_id).or_default();
                 mirror_bone_collider_list.push(mirror_cfg);
             }
         }
@@ -222,7 +221,7 @@ fn process_scene_into_animscn(
         let mut queued_bundles = Vec::new();
 
         let mut query = scene.world.query::<(Entity, &AnimationTarget)>();
-        for (entity, target) in query.iter(&mut scene.world) {
+        for (entity, target) in query.iter(&scene.world) {
             let bone_id = BoneId::from(target.id);
             let Some(default_transforms) = skeleton.default_transforms(bone_id) else {
                 continue;

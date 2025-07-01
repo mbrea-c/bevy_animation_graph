@@ -76,6 +76,7 @@ impl DeferredGizmos {
 
 pub struct CustomRelativeDrawCommand {
     pub bone_id: BoneId,
+    #[allow(clippy::type_complexity)]
     pub f: Arc<dyn Fn(Transform, &mut Gizmos) + Send + Sync + 'static>,
 }
 
