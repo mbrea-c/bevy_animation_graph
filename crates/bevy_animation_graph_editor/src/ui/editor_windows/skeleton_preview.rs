@@ -728,8 +728,6 @@ fn highlight_bones(
                 continue;
             };
 
-            println!("that's the defaults bro: {default_transforms:#?}");
-
             player.custom_relative_gizmo(CustomRelativeDrawCommand {
                 bone_id: cfg.attached_to,
                 f: Arc::new(move |bone_transform, gizmos| {
