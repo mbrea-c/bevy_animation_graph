@@ -198,7 +198,9 @@ fn process_scene_into_animscn(
                 let mirror_cfg = ColliderConfig {
                     id: SkeletonColliderId::generate(),
                     shape: cfg.shape.clone(),
-                    layers: cfg.layers,
+                    override_layers: cfg.override_layers,
+                    layer_membership: cfg.layer_membership,
+                    layer_filter: cfg.layer_filter,
                     attached_to: mirror_bone_id,
                     offset: Isometry3d {
                         rotation: skeleton_colliders
@@ -228,7 +230,7 @@ fn process_scene_into_animscn(
             };
 
             use crate::core::colliders::core::{ColliderConfig, ColliderShape};
-            use avian3d::prelude::ColliderConstructor;
+            use avian3d::prelude::{ColliderConstructor, CollisionLayers};
 
             let cfg_to_bundle = |cfg: ColliderConfig| {
                 (
@@ -251,6 +253,14 @@ fn process_scene_into_animscn(
                                 z_length: 2. * half_size.z,
                             }
                         }
+                    },
+                    if cfg.override_layers {
+                        CollisionLayers::new(cfg.layer_membership, cfg.layer_filter)
+                    } else {
+                        CollisionLayers::new(
+                            skeleton_colliders.default_layer_membership,
+                            skeleton_colliders.default_layer_filter,
+                        )
                     },
                 )
             };

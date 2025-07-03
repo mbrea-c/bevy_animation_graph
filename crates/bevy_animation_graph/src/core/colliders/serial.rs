@@ -16,7 +16,9 @@ use super::core::{ColliderConfig, ColliderOffsetMode, ColliderShape, SkeletonCol
 pub struct ColliderConfigSerial {
     pub id: SkeletonColliderId,
     pub shape: ColliderShape,
-    pub layers: u32,
+    pub override_layers: bool,
+    pub layer_membership: u32,
+    pub layer_filter: u32,
     pub attached_to: EntityPath,
     pub offset: Isometry3d,
     #[serde(default)]
@@ -41,7 +43,9 @@ impl SkeletonCollidersSerial {
         for config in value.iter_colliders() {
             let config_serial = ColliderConfigSerial {
                 shape: config.shape.clone(),
-                layers: config.layers,
+                override_layers: config.override_layers,
+                layer_membership: config.layer_membership,
+                layer_filter: config.layer_filter,
                 attached_to: skeleton.id_to_path(config.attached_to)?,
                 offset: config.offset,
                 id: config.id,
@@ -78,7 +82,9 @@ impl SkeletonCollidersSerial {
         for config_serial in &self.colliders {
             let config = ColliderConfig {
                 shape: config_serial.shape.clone(),
-                layers: config_serial.layers,
+                override_layers: config_serial.override_layers,
+                layer_membership: config_serial.layer_membership,
+                layer_filter: config_serial.layer_filter,
                 attached_to: skeleton.path_to_id(config_serial.attached_to.clone())?,
                 offset: config_serial.offset,
                 id: config_serial.id,

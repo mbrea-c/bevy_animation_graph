@@ -6,7 +6,9 @@
                 radius: 0.1,
                 half_length: 0.15,
             )),
-            layers: 0,
+            override_layers: false,
+            layer_membership: 0,
+            layer_filter: 0,
             attached_to: [
                 "metarig",
                 "spine",

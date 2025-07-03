@@ -50,7 +50,9 @@ pub enum ColliderOffsetMode {
 pub struct ColliderConfig {
     pub id: SkeletonColliderId,
     pub shape: ColliderShape,
-    pub layers: u32,
+    pub layer_membership: u32,
+    pub layer_filter: u32,
+    pub override_layers: bool,
     pub attached_to: BoneId,
     pub offset: Isometry3d,
     pub offset_mode: ColliderOffsetMode,
@@ -75,7 +77,9 @@ impl Default for ColliderConfig {
         Self {
             id: SkeletonColliderId::placeholder(),
             shape: ColliderShape::Cuboid(Cuboid::new(1., 1., 1.)),
-            layers: 0,
+            layer_membership: 0,
+            layer_filter: 0,
+            override_layers: false,
             attached_to: BoneId::default(),
             offset: Isometry3d::default(),
             offset_mode: ColliderOffsetMode::default(),

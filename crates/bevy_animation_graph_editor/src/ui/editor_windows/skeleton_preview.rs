@@ -41,7 +41,8 @@ use crate::{
         PartOfSubScene, PreviewScene, SubSceneConfig, SubSceneSyncAction,
         actions::{
             colliders::{
-                CreateOrEditCollider, DeleteCollider, UpdateSymmetryConfig, UpdateSymmetryEnabled,
+                CreateOrEditCollider, DeleteCollider, UpdateDefaultLayers, UpdateSymmetryConfig,
+                UpdateSymmetryEnabled,
             },
             window::DynWindowAction,
         },
@@ -184,7 +185,6 @@ impl SkeletonCollidersPreviewWindow {
             return;
         };
 
-        ui.heading("Symmetry configuration");
         world.resource_scope::<Assets<SkeletonColliders>, _>(|world, skeleton_colliders| {
             let Some(skeleton_colliders) = skeleton_colliders.get(target) else {
                 return;
@@ -219,6 +219,37 @@ impl SkeletonCollidersPreviewWindow {
                     });
                 }
             });
+
+            ui.separator();
+
+            ui.heading("Default physics layers");
+            let mut layer_membership = skeleton_colliders.default_layer_membership;
+            let mut layer_filter = skeleton_colliders.default_layer_filter;
+            let mut changed = false;
+
+            ui.horizontal(|ui| {
+                ui.label("Membership");
+                if ui
+                    .add(egui::DragValue::new(&mut layer_membership))
+                    .changed()
+                {
+                    changed = true;
+                }
+            });
+            ui.horizontal(|ui| {
+                ui.label("Filters");
+                if ui.add(egui::DragValue::new(&mut layer_filter)).changed() {
+                    changed = true
+                }
+            });
+
+            if changed {
+                ctx.editor_actions.dynamic(UpdateDefaultLayers {
+                    colliders: target.clone(),
+                    layer_membership,
+                    layer_filter,
+                });
+            }
         });
 
         ui.separator();
@@ -343,7 +374,16 @@ impl SkeletonCollidersPreviewWindow {
                         if ui
                             .selectable_label(
                                 self.selectable_collider == selectable,
-                                format!("{selectable:?}"),
+                                match selectable {
+                                    SelectableCollider::None => "NONE".to_string(),
+                                    SelectableCollider::New => "New collider".to_string(),
+                                    SelectableCollider::Existing(skeleton_collider_id) => {
+                                        format!(
+                                            "Existing: {}...",
+                                            &format!("{skeleton_collider_id:?}")[0..10]
+                                        )
+                                    }
+                                },
                             )
                             .clicked()
                         {
@@ -366,7 +406,10 @@ impl SkeletonCollidersPreviewWindow {
                                     ColliderConfig {
                                         id: SkeletonColliderId::generate(),
                                         shape: ColliderShape::Cuboid(Cuboid::new(1., 1., 1.)),
-                                        layers: 0,
+                                        override_layers: false,
+                                        layer_membership: skeleton_colliders
+                                            .default_layer_membership,
+                                        layer_filter: skeleton_colliders.default_layer_filter,
                                         attached_to: bone_id,
                                         ..default()
                                     },
@@ -445,9 +488,21 @@ impl SkeletonCollidersPreviewWindow {
                 config.shape = new_shape;
             }
 
+            ui.label("Physics layers");
+            ui.checkbox(&mut config.override_layers, "Override global");
             ui.horizontal(|ui| {
-                ui.label("Physics layers");
-                ui.add(egui::DragValue::new(&mut config.layers));
+                ui.label("Membership");
+                ui.add_enabled(
+                    config.override_layers,
+                    egui::DragValue::new(&mut config.layer_membership),
+                );
+            });
+            ui.horizontal(|ui| {
+                ui.label("Filters");
+                ui.add_enabled(
+                    config.override_layers,
+                    egui::DragValue::new(&mut config.layer_filter),
+                );
             });
 
             ui.label("Offsets");
