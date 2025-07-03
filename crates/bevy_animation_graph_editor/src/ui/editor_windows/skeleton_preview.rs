@@ -353,39 +353,6 @@ impl SkeletonCollidersPreviewWindow {
 
                     ui.separator();
 
-                    let edit_ui =
-                        |ui: &mut egui::Ui, world: &mut World, config: &mut ColliderConfig| {
-                            using_wrap_ui(world, |mut env| {
-                                let id = ui.id().with("Collider creation shape");
-                                ui.label("Shape");
-
-                                if let Some(new_shape) =
-                                    env.mutable_buffered(&config.shape, ui, id.with("shape"), &())
-                                {
-                                    config.shape = new_shape;
-                                }
-
-                                ui.add(egui::DragValue::new(&mut config.layers));
-
-                                ui.label("Offsets");
-
-                                if let Some(offset_mode) = env.mutable_buffered(
-                                    &config.offset_mode,
-                                    ui,
-                                    id.with("offset_mode"),
-                                    &(),
-                                ) {
-                                    config.offset_mode = offset_mode;
-                                }
-
-                                if let Some(new_isometry) =
-                                    env.mutable_buffered(&config.offset, ui, id.with("offset"), &())
-                                {
-                                    config.offset = new_isometry;
-                                }
-                            });
-                        };
-
                     let cfg = if let Some(selectable) =
                         self.edit_buffers.get_mut(&self.selectable_collider)
                     {
@@ -434,7 +401,7 @@ impl SkeletonCollidersPreviewWindow {
 
                     if let Some(cfg) = cfg {
                         let mut should_clear = false;
-                        edit_ui(ui, world, cfg);
+                        Self::draw_collider_inspector(ui, world, cfg);
 
                         if ui.button("Apply").clicked() {
                             ctx.editor_actions.dynamic(CreateOrEditCollider {
@@ -461,6 +428,41 @@ impl SkeletonCollidersPreviewWindow {
                     }
                 });
             });
+        });
+    }
+
+    pub fn draw_collider_inspector(
+        ui: &mut egui::Ui,
+        world: &mut World,
+        config: &mut ColliderConfig,
+    ) {
+        using_wrap_ui(world, |mut env| {
+            let id = ui.id().with("Collider creation shape");
+            ui.label("Shape");
+
+            if let Some(new_shape) = env.mutable_buffered(&config.shape, ui, id.with("shape"), &())
+            {
+                config.shape = new_shape;
+            }
+
+            ui.horizontal(|ui| {
+                ui.label("Physics layers");
+                ui.add(egui::DragValue::new(&mut config.layers));
+            });
+
+            ui.label("Offsets");
+
+            if let Some(offset_mode) =
+                env.mutable_buffered(&config.offset_mode, ui, id.with("offset_mode"), &())
+            {
+                config.offset_mode = offset_mode;
+            }
+
+            if let Some(new_isometry) =
+                env.mutable_buffered(&config.offset, ui, id.with("offset"), &())
+            {
+                config.offset = new_isometry;
+            }
         });
     }
 

@@ -33,7 +33,8 @@ jobs:
       - name: Install Dependencies
         run: sudo apt-get update; sudo apt-get install --no-install-recommends libasound2-dev libudev-dev libwayland-dev libxkbcommon-dev
       - name: Run cargo test
-        run: cargo test
+        # set parallel jobs to 1 to reduce chance of github killing it
+        run: cargo test -j 1
 
   # Run cargo clippy -- -D warnings
   clippy_check:

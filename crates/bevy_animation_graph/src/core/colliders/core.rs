@@ -92,6 +92,10 @@ pub struct SkeletonColliders {
     pub skeleton: Handle<Skeleton>,
     pub symmetry: SymmetryConfig,
     pub symmetry_enabled: bool,
+    /// Default physics layer memberships if not overriden
+    pub default_layer_membership: u32,
+    /// Default physics layer filters if not overriden
+    pub default_layer_filter: u32,
 }
 
 impl SkeletonColliders {
