@@ -26,7 +26,7 @@ impl EditorWindowExtension for PreviewHierarchyWindow {
         let entity = instance.player_entity();
         let tree = Tree::entity_tree(world, entity);
         match utils::select_from_branches(ui, tree.0) {
-            TreeResult::Leaf((_, path)) => {
+            TreeResult::Leaf((_, path), _) => {
                 let path = EntityPath { parts: path };
                 ui.output_mut(|o| {
                     o.commands
@@ -36,7 +36,7 @@ impl EditorWindowExtension for PreviewHierarchyWindow {
                     .info(format!("{} copied to clipboard", path.to_slashed_string()));
                 ctx.global_state.entity_path = Some(path);
             }
-            TreeResult::Node((_, path)) => {
+            TreeResult::Node((_, path), _) => {
                 let path = EntityPath { parts: path };
                 ui.output_mut(|o| {
                     o.commands

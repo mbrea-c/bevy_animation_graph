@@ -73,23 +73,21 @@ impl EditorWindowExtension for GraphEditorWindow {
                         };
 
                         // Autoselect context if none selected and some available
-                        if let (Some(scene), Some(available_contexts)) = (
-                            &mut ctx.global_state.scene,
-                            utils::list_graph_contexts(world, |ctx| {
-                                ctx.get_graph_id() == graph_selection.graph.id()
-                            }),
-                        ) {
-                            if scene
+                        if let Some(scene) = &mut ctx.global_state.scene
+                            && let Some(available_contexts) =
+                                utils::list_graph_contexts(world, |ctx| {
+                                    ctx.get_graph_id() == graph_selection.graph.id()
+                                })
+                            && scene
                                 .active_context
                                 .get(&graph_selection.graph.id().untyped())
                                 .is_none()
-                                && !available_contexts.is_empty()
-                            {
-                                scene.active_context.insert(
-                                    graph_selection.graph.id().untyped(),
-                                    available_contexts[0],
-                                );
-                            }
+                            && !available_contexts.is_empty()
+                        {
+                            scene.active_context.insert(
+                                graph_selection.graph.id().untyped(),
+                                available_contexts[0],
+                            );
                         }
 
                         let graph_player = utils::get_animation_graph_player(world);
@@ -135,30 +133,28 @@ impl EditorWindowExtension for GraphEditorWindow {
                         .iter()
                         .rev()
                         .find(|id| **id > 1)
+                        && *selected_node > 1
                     {
-                        if *selected_node > 1 {
-                            let node_name =
-                                graph_indices.node_indices.name(*selected_node).unwrap();
-                            graph.nodes.get_mut(node_name).unwrap().should_debug = true;
-                            if let InspectorSelection::Node(node_selection) =
-                                &mut ctx.global_state.inspector_selection
+                        let node_name = graph_indices.node_indices.name(*selected_node).unwrap();
+                        graph.nodes.get_mut(node_name).unwrap().should_debug = true;
+                        if let InspectorSelection::Node(node_selection) =
+                            &mut ctx.global_state.inspector_selection
+                        {
+                            if &node_selection.node != node_name
+                                || node_selection.graph != graph_selection.graph
                             {
-                                if &node_selection.node != node_name
-                                    || node_selection.graph != graph_selection.graph
-                                {
-                                    node_selection.node.clone_from(node_name);
-                                    node_selection.name_buf.clone_from(node_name);
-                                    node_selection.graph = graph_selection.graph.clone();
-                                }
-                            } else if graph_selection.nodes_context.is_node_just_selected() {
-                                ctx.global_state.inspector_selection =
-                                    InspectorSelection::Node(NodeSelection {
-                                        graph: graph_selection.graph.clone(),
-                                        node: node_name.clone(),
-                                        name_buf: node_name.clone(),
-                                        selected_pin_id: None,
-                                    });
+                                node_selection.node.clone_from(node_name);
+                                node_selection.name_buf.clone_from(node_name);
+                                node_selection.graph = graph_selection.graph.clone();
                             }
+                        } else if graph_selection.nodes_context.is_node_just_selected() {
+                            ctx.global_state.inspector_selection =
+                                InspectorSelection::Node(NodeSelection {
+                                    graph: graph_selection.graph.clone(),
+                                    node: node_name.clone(),
+                                    name_buf: node_name.clone(),
+                                    selected_pin_id: None,
+                                });
                         }
                     }
                     // ----------------------------------------------------------------

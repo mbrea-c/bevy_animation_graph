@@ -14,4 +14,5 @@ bevy_animation_graph_proc_macros = { version = "0.7.0", path = "./crates/bevy_an
 bevy_animation_graph = { version = "0.7.0", path = "./crates/bevy_animation_graph" }
 
 bevy = { version = "0.16" }
-ron = "0.8.1"
+avian3d = { version = "0.3.1" }
+ron = "0.10.1"

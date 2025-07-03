@@ -110,7 +110,7 @@ impl SubSceneConfig for ScenePreviewConfig {
         ));
 
         builder.spawn((
-            AnimatedSceneHandle(self.animated_scene.clone()),
+            AnimatedSceneHandle::new(self.animated_scene.clone()),
             PreviewScene,
         ));
     }

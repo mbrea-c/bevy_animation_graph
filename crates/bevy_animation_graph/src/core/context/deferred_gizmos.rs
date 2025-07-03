@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use super::SystemResources;
 use crate::core::{
     pose::{BoneId, Pose},
@@ -11,6 +13,7 @@ use bevy::{
     platform::collections::HashMap,
     prelude::Entity,
     reflect::Reflect,
+    transform::components::Transform,
 };
 
 #[derive(Clone)]
@@ -32,6 +35,7 @@ impl DeferredGizmoRef {
 
 #[derive(Clone, Reflect, Default)]
 pub struct DeferredGizmos {
+    #[reflect(ignore)]
     commands: Vec<DeferredGizmoCommand>,
 }
 
@@ -70,11 +74,18 @@ impl DeferredGizmos {
     }
 }
 
-#[derive(Clone, Reflect)]
+pub struct CustomRelativeDrawCommand {
+    pub bone_id: BoneId,
+    #[allow(clippy::type_complexity)]
+    pub f: Arc<dyn Fn(Transform, &mut Gizmos) + Send + Sync + 'static>,
+}
+
+#[derive(Clone)]
 pub enum DeferredGizmoCommand {
     Sphere(Vec3, Quat, f32, LinearRgba),
     Ray(Vec3, Vec3, LinearRgba),
     Bone(Vec3, Vec3, LinearRgba),
+    Custom(Arc<dyn Fn(&mut Gizmos) + Send + Sync + 'static>),
 }
 
 impl DeferredGizmoCommand {
@@ -95,6 +106,9 @@ impl DeferredGizmoCommand {
             }
             DeferredGizmoCommand::Bone(start, end, color) => {
                 bone_gizmo(gizmos, start, end, color);
+            }
+            DeferredGizmoCommand::Custom(f) => {
+                f(gizmos);
             }
         }
     }
@@ -164,6 +178,25 @@ impl DeferredGizmosContext<'_> {
             global_bone_transform.translation,
             color,
         ));
+    }
+
+    pub fn relative_custom_gizmo(
+        &mut self,
+        command: CustomRelativeDrawCommand,
+        skeleton: &Skeleton,
+        pose: Option<&Pose>,
+    ) {
+        let default_pose = Pose::default();
+        let pose = pose.unwrap_or(&default_pose);
+
+        let global_bone_transform =
+            self.space_conversion
+                .global_transform_of_bone(pose, skeleton, command.bone_id);
+
+        self.gizmos
+            .queue(DeferredGizmoCommand::Custom(Arc::new(move |gizmos| {
+                (command.f)(global_bone_transform, gizmos)
+            })));
     }
 
     pub fn bone_sphere(&mut self, bone_id: BoneId, radius: f32, color: LinearRgba) {

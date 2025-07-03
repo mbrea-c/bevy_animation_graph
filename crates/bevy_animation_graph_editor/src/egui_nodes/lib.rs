@@ -620,10 +620,10 @@ impl NodesContext {
                     .show(ui, |ui| {
                         ui.label("Runtime data");
                         if let (Some(time), Some(duration)) = (node.spec.time, node.spec.duration) {
-                            ui.label(format!("Time: {:.2} / {:.2}", time, duration));
+                            ui.label(format!("Time: {time:.2} / {duration:.2}"));
                             ui.add(egui::ProgressBar::new(time / duration).desired_height(5.));
                         } else if let Some(time) = node.spec.time {
-                            ui.label(format!("Time: {:.2}", time));
+                            ui.label(format!("Time: {time:.2}"));
                         } else {
                             ui.label("Empty");
                         }

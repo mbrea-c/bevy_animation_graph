@@ -1,5 +1,6 @@
 use std::{
     any::{Any, TypeId},
+    hash::{DefaultHasher, Hash, Hasher},
     path::PathBuf,
 };
 
@@ -7,12 +8,15 @@ use bevy::{
     app::App,
     asset::Handle,
     ecs::{reflect::AppTypeRegistry, resource::Resource},
+    math::{Isometry3d, Quat, UVec3, Vec3, Vec3A},
     platform::collections::HashMap,
     reflect::{PartialReflect, Reflect, Reflectable, TypeRegistry},
 };
 use bevy_animation_graph::{
     core::{
-        animation_clip::EntityPath, event_track::TrackItemValue,
+        animation_clip::EntityPath,
+        colliders::core::{ColliderOffsetMode, ColliderShape, SkeletonColliders},
+        event_track::TrackItemValue,
         state_machine::high_level::StateMachine,
     },
     prelude::{AnimatedScene, AnimationGraph, GraphClip, config::PatternMapper},
@@ -297,6 +301,42 @@ impl_widget_hash_from_hash! {
     Handle<GraphClip>,
     Handle<StateMachine>,
     Handle<AnimatedScene>,
+    Handle<SkeletonColliders>,
     String,
+    ColliderOffsetMode,
     PathBuf
+}
+
+impl WidgetHash for ColliderShape {
+    fn widget_hash(&self) -> u64 {
+        let mut hasher = DefaultHasher::new();
+
+        match self {
+            ColliderShape::Sphere(sphere) => {
+                sphere.radius.to_bits().hash(&mut hasher);
+            }
+            ColliderShape::Capsule(capsule3d) => {
+                capsule3d.half_length.to_bits().hash(&mut hasher);
+                capsule3d.radius.to_bits().hash(&mut hasher);
+            }
+            ColliderShape::Cuboid(cuboid) => unsafe {
+                std::mem::transmute::<Vec3, UVec3>(cuboid.half_size).hash(&mut hasher);
+            },
+        }
+
+        hasher.finish()
+    }
+}
+
+impl WidgetHash for Isometry3d {
+    fn widget_hash(&self) -> u64 {
+        let mut hasher = DefaultHasher::new();
+
+        unsafe {
+            std::mem::transmute::<Vec3A, u128>(self.translation).hash(&mut hasher);
+            std::mem::transmute::<Quat, u128>(self.rotation).hash(&mut hasher);
+        }
+
+        hasher.finish()
+    }
 }

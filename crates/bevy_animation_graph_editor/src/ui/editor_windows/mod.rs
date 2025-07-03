@@ -12,3 +12,4 @@ pub mod saving;
 pub mod scene_preview;
 pub mod scene_preview_errors;
 pub mod scene_selector;
+pub mod skeleton_preview;

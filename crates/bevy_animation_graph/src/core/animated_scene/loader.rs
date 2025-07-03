@@ -19,6 +19,9 @@ struct AnimatedSceneSerial {
     skeleton: AssetPath<'static>,
     #[serde(default)]
     retargeting: Option<RetargetingSerial>,
+
+    #[serde(default)]
+    colliders: Option<AssetPath<'static>>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -59,6 +62,7 @@ impl AssetLoader for AnimatedSceneLoader {
             animation_graph,
             skeleton,
             retargeting,
+            colliders: serial.colliders.map(|c| load_context.load(c)),
         })
     }
 

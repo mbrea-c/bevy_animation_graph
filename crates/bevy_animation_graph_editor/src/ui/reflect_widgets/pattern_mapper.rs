@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use bevy_animation_graph::prelude::config::{PatternMapper, PatternMapperSerial};
+use bevy_animation_graph::prelude::{config::PatternMapper, serial::PatternMapperSerial};
 use bevy_inspector_egui::reflect_inspector::InspectorUi;
 use egui_dock::egui;
 
@@ -23,7 +23,7 @@ impl EguiInspectorExtension for PatternMapperInspector {
     ) -> bool {
         match env.ui_for_reflect_with_options(buffer, ui, id, &()) {
             true => {
-                if let Ok(mapper) = PatternMapper::try_from(buffer.clone()) {
+                if let Ok(mapper) = buffer.to_value() {
                     *value = mapper;
                     true
                 } else {
@@ -48,6 +48,6 @@ impl EguiInspectorExtension for PatternMapperInspector {
 
 impl MakeBuffer<PatternMapperSerial> for PatternMapper {
     fn make_buffer(&self) -> PatternMapperSerial {
-        self.clone().into()
+        PatternMapperSerial::from_value(self)
     }
 }

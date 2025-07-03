@@ -25,7 +25,7 @@ impl EditorWindowExtension for EventSenderWindow {
                     .stroke(egui::Stroke::new(1., egui::Color32::WHITE))
                     .show(ui, |ui| {
                         ui.horizontal(|ui| {
-                            if ui.button(format!("{:?}", ev)).clicked() {
+                            if ui.button(format!("{ev:?}")).clicked() {
                                 graph_player.send_event(ev.clone());
                             }
                             !ui.button("×").clicked()

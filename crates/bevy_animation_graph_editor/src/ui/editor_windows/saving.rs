@@ -5,7 +5,7 @@ use bevy::{
     prelude::World,
 };
 use bevy_animation_graph::{
-    core::state_machine::high_level::StateMachine,
+    core::{colliders::core::SkeletonColliders, state_machine::high_level::StateMachine},
     prelude::{AnimationGraph, GraphClip},
 };
 use egui_dock::egui;
@@ -48,7 +48,7 @@ impl EditorWindowExtension for SaveWindow {
             ui.horizontal(|ui| {
                 ui.checkbox(&mut meta.should_save, "Save");
                 if let Some(path) = &meta.current_path {
-                    ui.label(format!("{}", path));
+                    ui.label(format!("{path}"));
                 } else {
                     ui.label("<new asset>");
                 }
@@ -116,6 +116,8 @@ impl SaveWindow {
             "State Machine".into()
         } else if type_id == TypeId::of::<GraphClip>() {
             "Animation Clip".into()
+        } else if type_id == TypeId::of::<SkeletonColliders>() {
+            "Skeleton Colliders".into()
         } else {
             "Unknown type (?)".into()
         }

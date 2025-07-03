@@ -4,6 +4,7 @@
 //! This will pave the way for undo/redo support later on.
 
 pub mod clip_preview;
+pub mod colliders;
 pub mod event_tracks;
 pub mod fsm;
 pub mod graph;

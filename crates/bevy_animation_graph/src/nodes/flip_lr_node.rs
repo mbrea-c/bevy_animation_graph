@@ -2,21 +2,22 @@ use crate::core::animation_graph::PinMap;
 use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
-use crate::flipping::flip_pose;
-use crate::prelude::config::{FlipConfig, FlipConfigProxy};
+use crate::prelude::config::SymmetryConfig;
+use crate::prelude::serial::SymmetryConfigSerial;
 use crate::prelude::{EditProxy, PassContext, SpecContext};
+use crate::symmetry::flip_pose;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Reflect, Clone, Debug, Serialize, Deserialize)]
 #[reflect(Default, NodeLike, Serialize, Deserialize)]
 pub struct FlipLRNode {
-    pub config: FlipConfig,
+    pub config: SymmetryConfig,
 }
 
 impl Default for FlipLRNode {
     fn default() -> Self {
-        Self::new(FlipConfig::default())
+        Self::new(SymmetryConfig::default())
     }
 }
 
@@ -25,7 +26,7 @@ impl FlipLRNode {
     pub const IN_TIME: &'static str = "time";
     pub const OUT_POSE: &'static str = "pose";
 
-    pub fn new(config: FlipConfig) -> Self {
+    pub fn new(config: SymmetryConfig) -> Self {
         Self { config }
     }
 }
@@ -74,7 +75,7 @@ impl NodeLike for FlipLRNode {
 
 #[derive(Clone, Reflect)]
 pub struct FlipLRProxy {
-    pub config: FlipConfigProxy,
+    pub config: SymmetryConfigSerial,
 }
 
 impl EditProxy for FlipLRNode {
@@ -83,13 +84,13 @@ impl EditProxy for FlipLRNode {
     fn update_from_proxy(proxy: &Self::Proxy) -> Self {
         Self {
             // TODO: This will fail if the regex is incorrect, may cause some editor crashes
-            config: proxy.config.clone().try_into().unwrap(),
+            config: proxy.config.to_value().unwrap(),
         }
     }
 
     fn make_proxy(&self) -> Self::Proxy {
         Self::Proxy {
-            config: FlipConfigProxy::from(self.config.clone()),
+            config: SymmetryConfigSerial::from_value(&self.config),
         }
     }
 }

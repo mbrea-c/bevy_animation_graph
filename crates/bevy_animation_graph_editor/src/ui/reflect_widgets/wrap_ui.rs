@@ -18,6 +18,7 @@ pub struct WrapUi<'a, 'c> {
 }
 
 impl WrapUi<'_, '_> {
+    #[must_use]
     pub fn mutable_buffered<T, O>(
         &mut self,
         value: &T,

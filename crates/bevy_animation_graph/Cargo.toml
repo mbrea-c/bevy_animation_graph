@@ -18,3 +18,8 @@ regex = "1.10.3"
 uuid = "1.0"
 rmp-serde = "1.3.0"
 bevy_animation_graph_proc_macros = { workspace = true }
+avian3d = { workspace = true, optional = true }
+
+[features]
+default = []
+physics_avian = ["dep:avian3d"]

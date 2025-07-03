@@ -38,7 +38,7 @@ impl EguiInspectorExtension for Vec2PlaneInspector {
                 let clipped_pos = area_rect.clamp(interact_pos);
                 let bevy_vec = Vec2::new(
                     (clipped_pos.x - area_rect.left()) / area_rect.width() * 2. - 1.,
-                    ((clipped_pos.y - area_rect.top()) / area_rect.height() * 2. - 1.) * (-1.),
+                    -((clipped_pos.y - area_rect.top()) / area_rect.height() * 2. - 1.),
                 );
                 *value = bevy_vec;
                 changed = true;

@@ -1,17 +1,32 @@
 use crate::core::{animation_clip::EntityPath, id::BoneId};
-use bevy::{asset::Asset, platform::collections::HashMap, reflect::Reflect};
+use bevy::{
+    asset::Asset, platform::collections::HashMap, reflect::Reflect,
+    transform::components::Transform,
+};
 use std::fmt::Debug;
+
+#[derive(Debug, Clone, Reflect, Default)]
+pub struct DefaultBoneTransform {
+    pub local: Transform,
+    pub global: Transform,
+}
 
 #[derive(Asset, Reflect, Default)]
 pub struct Skeleton {
     root: BoneId,
+    default_transforms: HashMap<BoneId, DefaultBoneTransform>,
     id_to_path: HashMap<BoneId, EntityPath>,
     children_map: HashMap<BoneId, Vec<BoneId>>,
     parent_map: HashMap<BoneId, BoneId>,
 }
 
 impl Skeleton {
-    pub fn add_bone(&mut self, path: EntityPath) {
+    pub fn add_bone(
+        &mut self,
+        path: EntityPath,
+        local_transform: Transform,
+        global_transform: Transform,
+    ) {
         if path.parts.is_empty() {
             panic!(
                 "Cannot have a bone path with length 0! Something must be wrong in the skeleton asset loader..."
@@ -22,6 +37,13 @@ impl Skeleton {
         let id = path.id();
 
         self.id_to_path.insert(id, path);
+        self.default_transforms.insert(
+            id,
+            DefaultBoneTransform {
+                local: local_transform,
+                global: global_transform,
+            },
+        );
 
         if !self.children_map.contains_key(&id) {
             self.children_map.insert(id, vec![]);
@@ -63,6 +85,14 @@ impl Skeleton {
         self.parent_map.get(id).copied()
     }
 
+    pub fn children(&self, id: BoneId) -> Vec<BoneId> {
+        self.children_map.get(&id).cloned().unwrap_or_default()
+    }
+
+    pub fn default_transforms(&self, id: BoneId) -> Option<&DefaultBoneTransform> {
+        self.default_transforms.get(&id)
+    }
+
     /// Given an `AnimationTargetId`, returns its path or None if the id is not in this skeleton
     pub fn id_to_path(&self, id: BoneId) -> Option<EntityPath> {
         self.id_to_path.get(&id).cloned()
@@ -79,6 +109,11 @@ impl Skeleton {
         let id = path.id();
 
         self.id_to_path.contains_key(&id).then_some(id)
+    }
+
+    /// Iterate through all of the bones in this skeleton
+    pub fn iter_bones(&self) -> impl Iterator<Item = BoneId> {
+        self.id_to_path.keys().cloned()
     }
 
     fn indent(f: &mut std::fmt::Formatter<'_>, level: u32) -> std::fmt::Result {

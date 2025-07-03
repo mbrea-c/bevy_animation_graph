@@ -1,9 +1,10 @@
 extern crate bevy;
 extern crate bevy_animation_graph;
 
+use avian3d::PhysicsPlugins;
+use avian3d::prelude::PhysicsDebugPlugin;
 use bevy::{pbr::CascadeShadowConfigBuilder, prelude::*};
 use bevy_animation_graph::core::animated_scene::AnimatedSceneInstance;
-use bevy_animation_graph::core::edge_data::AnimationEvent;
 use bevy_animation_graph::prelude::*;
 use std::f32::consts::PI;
 
@@ -13,6 +14,8 @@ fn main() {
             file_path: "../../assets".to_string(),
             ..default()
         }))
+        .add_plugins(PhysicsPlugins::default())
+        .add_plugins(PhysicsDebugPlugin::default())
         .add_plugins(AnimationGraphPlugin)
         .insert_resource(AmbientLight {
             color: Color::WHITE,
@@ -80,7 +83,7 @@ fn setup(
 
     // Animated character
     commands.spawn((
-        AnimatedSceneHandle::new(asset_server.load("animated_scenes/fsm.animscn.ron")),
+        AnimatedSceneHandle::new(asset_server.load("animated_scenes/human_colliders.animscn.ron")),
         Transform::from_xyz(0., 0., 0.),
         Human,
     ));
@@ -88,8 +91,8 @@ fn setup(
     println!("Controls:");
     println!("\tSPACE: Play/Pause animation");
     println!("\tR: Reset animation");
-    println!("\tUp: Fire 'speed_up' animation event");
-    println!("\tDown: Fire 'slow_down' animation event");
+    println!("\tUp/Down: Increase/decrease movement speed");
+    println!("\tLeft/Right: Rotate character");
 }
 
 fn keyboard_animation_control(
@@ -97,6 +100,7 @@ fn keyboard_animation_control(
     human_character: Query<&AnimatedSceneInstance, With<Human>>,
     mut animation_players: Query<&mut AnimationGraphPlayer>,
     mut params: ResMut<Params>,
+    time: Res<Time>,
 ) {
     let Ok(player_entity) = human_character.single().map(|i| i.player_entity()) else {
         return;
@@ -118,15 +122,25 @@ fn keyboard_animation_control(
     }
 
     if keyboard_input.pressed(KeyCode::ArrowUp) {
-        player.send_event(AnimationEvent::TransitionToState("run".into()));
+        params.speed += 0.5 * time.delta_secs();
     }
     if keyboard_input.pressed(KeyCode::ArrowDown) {
-        player.send_event(AnimationEvent::TransitionToState("walk".into()));
+        params.speed -= 0.5 * time.delta_secs();
     }
 
     if params.direction == Vec3::ZERO {
         params.direction = Vec3::Z;
     }
 
+    if keyboard_input.pressed(KeyCode::ArrowRight) {
+        params.direction =
+            (Quat::from_rotation_y(1. * time.delta_secs()) * params.direction).normalize();
+    }
+    if keyboard_input.pressed(KeyCode::ArrowLeft) {
+        params.direction =
+            (Quat::from_rotation_y(-1. * time.delta_secs()) * params.direction).normalize();
+    }
+
     player.set_input_parameter("target_speed", params.speed.into());
+    player.set_input_parameter("target_direction", params.direction.into());
 }

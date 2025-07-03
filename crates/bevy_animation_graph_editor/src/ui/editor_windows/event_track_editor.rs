@@ -362,7 +362,7 @@ impl EventTrackEditorWindow {
                 egui::Align2::LEFT_CENTER,
                 match &event.event {
                     AnimationEvent::StringId(s) => s.clone(),
-                    x => format!("{:?}", x),
+                    x => format!("{x:?}"),
                 },
                 egui::FontId::default(),
                 egui::Color32::LIGHT_GRAY,
@@ -472,7 +472,7 @@ impl EventTrackEditorWindow {
             ui.painter().text(
                 egui::Pos2::new(pixel_pos, area_rect.bottom() - height / 2.),
                 egui::Align2::CENTER_BOTTOM,
-                format!("{:.2}s", indicator),
+                format!("{indicator:.2}s"),
                 egui::FontId {
                     size: 10.,
                     ..default()

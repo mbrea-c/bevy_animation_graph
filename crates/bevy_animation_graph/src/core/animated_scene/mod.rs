@@ -1,6 +1,9 @@
 pub mod loader;
 
-use super::{animation_clip::EntityPath, errors::AssetLoaderError, id::BoneId, skeleton::Skeleton};
+use super::{
+    animation_clip::EntityPath, errors::AssetLoaderError, id::BoneId, prelude::AnimationSource,
+    skeleton::Skeleton,
+};
 use crate::prelude::{AnimationGraph, AnimationGraphPlayer};
 use bevy::{
     animation::AnimationTarget,
@@ -14,6 +17,8 @@ use bevy::{
     transform::components::Transform,
 };
 
+use super::colliders::core::SkeletonColliders;
+
 #[derive(Clone, Asset, Reflect)]
 #[reflect(Asset)]
 pub struct AnimatedScene {
@@ -26,6 +31,7 @@ pub struct AnimatedScene {
     /// Usually this will be the source scene's skeleton, but it may differ if we're applying
     /// retargeting.
     pub skeleton: Handle<Skeleton>,
+    pub colliders: Option<Handle<SkeletonColliders>>,
 }
 
 /// Configuration needed to apply animation retargeting
@@ -53,7 +59,19 @@ impl AnimatedSceneInstance {
 
 #[derive(Component, Default)]
 #[require(Transform, Visibility)]
-pub struct AnimatedSceneHandle(pub Handle<AnimatedScene>);
+pub struct AnimatedSceneHandle {
+    pub handle: Handle<AnimatedScene>,
+    pub override_source: Option<AnimationSource>,
+}
+
+impl AnimatedSceneHandle {
+    pub fn new(handle: Handle<AnimatedScene>) -> Self {
+        Self {
+            handle,
+            override_source: None,
+        }
+    }
+}
 
 /// Processed animated scenes are "cached".
 pub(crate) fn spawn_animated_scenes(
@@ -62,10 +80,11 @@ pub(crate) fn spawn_animated_scenes(
     mut animated_scene_assets: ResMut<Assets<AnimatedScene>>,
     mut scenes: ResMut<Assets<Scene>>,
     skeletons: Res<Assets<Skeleton>>,
+    skeleton_colliders: Res<Assets<SkeletonColliders>>,
     app_type_registry: Res<AppTypeRegistry>,
 ) {
     for (entity, animscn_handle) in &unloaded_scenes {
-        let Some(animscn) = animated_scene_assets.get_mut(&animscn_handle.0) else {
+        let Some(animscn) = animated_scene_assets.get_mut(&animscn_handle.handle) else {
             continue;
         };
 
@@ -82,8 +101,10 @@ pub(crate) fn spawn_animated_scenes(
             let scene = process_scene_into_animscn(
                 scene,
                 animscn.skeleton.clone(),
+                animscn.colliders.clone(),
                 animscn.animation_graph.clone(),
                 &skeletons,
+                &skeleton_colliders,
                 animscn.retargeting.as_ref(),
             )
             .unwrap();
@@ -105,8 +126,10 @@ pub(crate) fn spawn_animated_scenes(
 fn process_scene_into_animscn(
     mut scene: Scene,
     skeleton_handle: Handle<Skeleton>,
+    skeleton_colliders_handle: Option<Handle<SkeletonColliders>>,
     graph: Handle<AnimationGraph>,
     skeletons: &Assets<Skeleton>,
+    skeleton_colliders: &Assets<SkeletonColliders>,
     retargeting: Option<&Retargeting>,
 ) -> Result<Scene, AssetLoaderError> {
     let mut query = scene
@@ -120,7 +143,7 @@ fn process_scene_into_animscn(
     let mut entity_mut = scene.world.entity_mut(animation_player);
 
     entity_mut.remove::<bevy::animation::AnimationPlayer>();
-    entity_mut.insert(AnimationGraphPlayer::new(skeleton_handle).with_graph(graph));
+    entity_mut.insert(AnimationGraphPlayer::new(skeleton_handle.clone()).with_graph(graph));
 
     if let Some(retargeting) = retargeting {
         if let Some(skeleton) = skeletons.get(&retargeting.source_skeleton) {
@@ -144,6 +167,112 @@ fn process_scene_into_animscn(
                     player: target.player,
                 }
             }
+        }
+    }
+
+    #[cfg(feature = "physics_avian")]
+    if let Some(skeleton_colliders_handle) = skeleton_colliders_handle
+        && let Some(skeleton_colliders) = skeleton_colliders.get(&skeleton_colliders_handle)
+        && let Some(skeleton) = skeletons.get(&skeleton_handle)
+    {
+        use crate::core::colliders::core::ColliderConfig;
+
+        let mut foreach_bone: HashMap<BoneId, Vec<ColliderConfig>> = HashMap::new();
+
+        for cfg in skeleton_colliders.iter_colliders() {
+            let bone_id = cfg.attached_to;
+            let Some(bone_path) = skeleton.id_to_path(bone_id) else {
+                continue;
+            };
+
+            let bone_collider_list = foreach_bone.entry(bone_id).or_default();
+
+            bone_collider_list.push(cfg.clone());
+
+            if skeleton_colliders.symmetry_enabled {
+                use crate::core::colliders::core::SkeletonColliderId;
+
+                let mirror_bone_path = skeleton_colliders.symmetry.name_mapper.flip(&bone_path);
+                let mirror_bone_id = mirror_bone_path.id();
+
+                let mirror_cfg = ColliderConfig {
+                    id: SkeletonColliderId::generate(),
+                    shape: cfg.shape.clone(),
+                    override_layers: cfg.override_layers,
+                    layer_membership: cfg.layer_membership,
+                    layer_filter: cfg.layer_filter,
+                    attached_to: mirror_bone_id,
+                    offset: Isometry3d {
+                        rotation: skeleton_colliders
+                            .symmetry
+                            .mode
+                            .apply_quat(cfg.offset.rotation),
+                        translation: skeleton_colliders
+                            .symmetry
+                            .mode
+                            .apply_position(cfg.offset.translation.into())
+                            .into(),
+                    },
+                    offset_mode: cfg.offset_mode,
+                };
+                let mirror_bone_collider_list = foreach_bone.entry(mirror_bone_id).or_default();
+                mirror_bone_collider_list.push(mirror_cfg);
+            }
+        }
+
+        let mut queued_bundles = Vec::new();
+
+        let mut query = scene.world.query::<(Entity, &AnimationTarget)>();
+        for (entity, target) in query.iter(&scene.world) {
+            let bone_id = BoneId::from(target.id);
+            let Some(default_transforms) = skeleton.default_transforms(bone_id) else {
+                continue;
+            };
+
+            use crate::core::colliders::core::{ColliderConfig, ColliderShape};
+            use avian3d::prelude::{ColliderConstructor, CollisionLayers};
+
+            let cfg_to_bundle = |cfg: ColliderConfig| {
+                (
+                    cfg.local_transform(default_transforms),
+                    match cfg.shape {
+                        ColliderShape::Sphere(Sphere { radius }) => {
+                            ColliderConstructor::Sphere { radius }
+                        }
+                        ColliderShape::Capsule(Capsule3d {
+                            radius,
+                            half_length,
+                        }) => ColliderConstructor::Capsule {
+                            radius,
+                            height: 2. * half_length,
+                        },
+                        ColliderShape::Cuboid(Cuboid { half_size }) => {
+                            ColliderConstructor::Cuboid {
+                                x_length: 2. * half_size.x,
+                                y_length: 2. * half_size.y,
+                                z_length: 2. * half_size.z,
+                            }
+                        }
+                    },
+                    if cfg.override_layers {
+                        CollisionLayers::new(cfg.layer_membership, cfg.layer_filter)
+                    } else {
+                        CollisionLayers::new(
+                            skeleton_colliders.default_layer_membership,
+                            skeleton_colliders.default_layer_filter,
+                        )
+                    },
+                )
+            };
+
+            for collider_cfg in foreach_bone.get(&bone_id).cloned().unwrap_or_default() {
+                queued_bundles.push((entity, cfg_to_bundle(collider_cfg)));
+            }
+        }
+
+        for (entity, bundle) in queued_bundles {
+            let child = scene.world.spawn(bundle).id();
+            scene.world.entity_mut(entity).add_child(child);
         }
     }
 
@@ -177,16 +306,25 @@ fn apply_bone_path_overrides(
 /// spawned
 pub(crate) fn locate_animated_scene_player(
     trigger: Trigger<SceneInstanceReady>,
-    player_query: Query<(), With<AnimationGraphPlayer>>,
+    handle_query: Query<&AnimatedSceneHandle>,
+    mut player_query: Query<&mut AnimationGraphPlayer>,
     children_query: Query<&Children>,
     mut commands: Commands,
 ) {
     let root_entity = trigger.target();
 
+    let Ok(animscn_handle) = handle_query.get(root_entity) else {
+        return;
+    };
+
     for child in children_query.iter_descendants(root_entity) {
-        let Ok(_) = player_query.get(child) else {
+        let Ok(mut player) = player_query.get_mut(child) else {
             continue;
         };
+
+        if let Some(override_source) = animscn_handle.override_source.clone() {
+            player.set_animation(override_source);
+        }
 
         commands.entity(root_entity).insert(AnimatedSceneInstance {
             player_entity: child,
