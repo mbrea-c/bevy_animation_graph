@@ -5,6 +5,8 @@ use bevy_inspector_egui::reflect_inspector::InspectorUi;
 use egui::Widget;
 use egui_dock::egui;
 
+use crate::ui::utils::popup::CustomPopup;
+
 use super::{EguiInspectorExtension, MakeBuffer, WidgetHash};
 
 pub struct Vec2PlaneInspector;
@@ -18,51 +20,86 @@ impl EguiInspectorExtension for Vec2PlaneInspector {
         (): &mut Self::Buffer,
         ui: &mut egui::Ui,
         _options: &dyn Any,
-        _id: egui::Id,
+        id: egui::Id,
         _env: InspectorUi<'_, '_>,
     ) -> bool {
-        let available_size = ui.available_size();
-        let desired_size = egui::Vec2::new(available_size.x, 140.);
-        let (_, area_rect) = ui.allocate_space(desired_size);
-
-        let response = ui.interact(
-            area_rect,
-            ui.id().with("vec2 plane editor"),
-            egui::Sense::click_and_drag(),
-        );
-
         let mut changed = false;
 
-        if let Some(interact_pos) = response.interact_pointer_pos() {
-            if response.clicked() || response.dragged_by(egui::PointerButton::Primary) {
-                let clipped_pos = area_rect.clamp(interact_pos);
-                let bevy_vec = Vec2::new(
-                    (clipped_pos.x - area_rect.left()) / area_rect.width() * 2. - 1.,
-                    -((clipped_pos.y - area_rect.top()) / area_rect.height() * 2. - 1.),
-                );
-                *value = bevy_vec;
-                changed = true;
-            }
-        }
+        ui.push_id(id, |ui| {
+            let mut should_open_picker = false;
 
-        let scaled_vec = Vec2::new(
-            ((value.x + 1.) / 2.) * area_rect.width() + area_rect.left(),
-            ((-value.y + 1.) / 2.) * area_rect.height() + area_rect.top(),
-        );
+            ui.horizontal(|ui| {
+                if egui::DragValue::new(&mut value.x).ui(ui).changed() {
+                    changed = true;
+                }
+                if egui::DragValue::new(&mut value.y).ui(ui).changed() {
+                    changed = true;
+                }
 
-        ui.horizontal(|ui| {
-            egui::DragValue::new(&mut value.x).ui(ui);
-            egui::DragValue::new(&mut value.y).ui(ui);
+                if ui.button("⌖").clicked() {
+                    should_open_picker = true;
+                }
+            });
+
+            CustomPopup::new()
+                .with_allow_opening(false)
+                .with_force_open(should_open_picker)
+                .with_save_on_click(Some(()))
+                .show_if_saved(ui, |ui, ()| {
+                    let desired_size = egui::Vec2::new(150., 150.);
+                    let (_, area_rect) = ui.allocate_space(desired_size);
+
+                    let response = ui.interact(
+                        area_rect,
+                        ui.id().with("vec2 plane editor"),
+                        egui::Sense::click_and_drag(),
+                    );
+
+                    if let Some(interact_pos) = response.interact_pointer_pos() {
+                        if response.clicked() || response.dragged_by(egui::PointerButton::Primary) {
+                            let clipped_pos = area_rect.clamp(interact_pos);
+                            let bevy_vec = Vec2::new(
+                                (clipped_pos.x - area_rect.left()) / area_rect.width() * 2. - 1.,
+                                -((clipped_pos.y - area_rect.top()) / area_rect.height() * 2. - 1.),
+                            );
+                            *value = bevy_vec;
+                            changed = true;
+                        }
+                    }
+
+                    let scaled_vec = Vec2::new(
+                        ((value.x + 1.) / 2.) * area_rect.width() + area_rect.left(),
+                        ((-value.y + 1.) / 2.) * area_rect.height() + area_rect.top(),
+                    );
+
+                    let axes_color = egui::Color32::GRAY;
+
+                    ui.painter()
+                        .rect_filled(area_rect, 3., egui::Color32::BLACK);
+
+                    ui.painter().line_segment(
+                        [area_rect.left_center(), area_rect.right_center()],
+                        egui::Stroke {
+                            width: 1.,
+                            color: axes_color,
+                        },
+                    );
+
+                    ui.painter().line_segment(
+                        [area_rect.center_top(), area_rect.center_bottom()],
+                        egui::Stroke {
+                            width: 1.,
+                            color: axes_color,
+                        },
+                    );
+
+                    ui.painter().circle_filled(
+                        egui::Pos2::new(scaled_vec.x, scaled_vec.y),
+                        2.,
+                        egui::Color32::RED,
+                    );
+                });
         });
-
-        ui.painter()
-            .rect_filled(area_rect, 3., egui::Color32::BLACK);
-
-        ui.painter().circle_filled(
-            egui::Pos2::new(scaled_vec.x, scaled_vec.y),
-            2.,
-            egui::Color32::RED,
-        );
 
         changed
     }

@@ -6,6 +6,7 @@ pub struct CustomPopup<S> {
     pub sense_rect: egui::Rect,
     pub default_size: egui::Vec2,
     pub salt: egui::Id,
+    pub force_open: bool,
 }
 
 impl<S> CustomPopup<S>
@@ -19,6 +20,7 @@ where
             sense_rect: egui::Rect::ZERO,
             salt: egui::Id::new(0),
             default_size: egui::Vec2::ZERO,
+            force_open: false,
         }
     }
 
@@ -47,6 +49,11 @@ where
         self
     }
 
+    pub fn with_force_open(mut self, force_open: bool) -> Self {
+        self.force_open = force_open;
+        self
+    }
+
     pub fn show_if_saved<T>(
         self,
         ui: &mut egui::Ui,
@@ -54,11 +61,12 @@ where
     ) -> Option<T> {
         let popup_id = ui.id().with(self.salt);
 
-        if self.allow_opening
-            && ui.input(|i| i.pointer.secondary_clicked())
-            && ui
-                .input(|i| i.pointer.interact_pos())
-                .is_some_and(|p| self.sense_rect.contains(p))
+        if self.force_open
+            || self.allow_opening
+                && ui.input(|i| i.pointer.secondary_clicked())
+                && ui
+                    .input(|i| i.pointer.interact_pos())
+                    .is_some_and(|p| self.sense_rect.contains(p))
         {
             let pointer_pos = ui.input(|i| i.pointer.interact_pos()).unwrap_or_default();
 
