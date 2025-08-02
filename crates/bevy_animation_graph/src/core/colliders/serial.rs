@@ -23,6 +23,8 @@ pub struct ColliderConfigSerial {
     pub offset: Isometry3d,
     #[serde(default)]
     pub offset_mode: ColliderOffsetMode,
+    #[serde(default)]
+    pub label: String,
 }
 
 #[derive(Debug, Clone, Default, Reflect, Serialize, Deserialize)]
@@ -50,6 +52,7 @@ impl SkeletonCollidersSerial {
                 offset: config.offset,
                 id: config.id,
                 offset_mode: config.offset_mode,
+                label: config.label.clone(),
             };
 
             colliders.push(config_serial);
@@ -89,6 +92,7 @@ impl SkeletonCollidersSerial {
                 offset: config_serial.offset,
                 id: config_serial.id,
                 offset_mode: config_serial.offset_mode,
+                label: config_serial.label.clone(),
             };
 
             colliders.add_collider(config);

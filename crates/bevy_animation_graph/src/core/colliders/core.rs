@@ -1,5 +1,6 @@
 use bevy::{
     asset::{Asset, Handle},
+    ecs::component::Component,
     math::{
         Isometry3d, Vec3,
         primitives::{Capsule3d, Cuboid, Sphere},
@@ -46,6 +47,9 @@ pub enum ColliderOffsetMode {
     Global,
 }
 
+#[derive(Component, Default, Clone, Reflect, PartialEq, Eq)]
+pub struct ColliderLabel(pub String);
+
 #[derive(Debug, Clone, Reflect)]
 pub struct ColliderConfig {
     pub id: SkeletonColliderId,
@@ -56,6 +60,8 @@ pub struct ColliderConfig {
     pub attached_to: BoneId,
     pub offset: Isometry3d,
     pub offset_mode: ColliderOffsetMode,
+    /// Label that will be attached to the created collider in a [`ColliderLabel`] component.
+    pub label: String,
 }
 
 impl ColliderConfig {
@@ -83,6 +89,7 @@ impl Default for ColliderConfig {
             attached_to: BoneId::default(),
             offset: Isometry3d::default(),
             offset_mode: ColliderOffsetMode::default(),
+            label: "".to_string(),
         }
     }
 }
