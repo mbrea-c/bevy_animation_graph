@@ -2,9 +2,11 @@ extern crate bevy;
 extern crate bevy_animation_graph;
 
 use avian3d::PhysicsPlugins;
-use avian3d::prelude::PhysicsDebugPlugin;
+use avian3d::prelude::{PhysicsDebugPlugin, SpatialQuery, SpatialQueryFilter};
+use bevy::window::PrimaryWindow;
 use bevy::{pbr::CascadeShadowConfigBuilder, prelude::*};
 use bevy_animation_graph::core::animated_scene::AnimatedSceneInstance;
+use bevy_animation_graph::core::colliders::core::ColliderLabel;
 use bevy_animation_graph::prelude::*;
 use std::f32::consts::PI;
 
@@ -24,7 +26,11 @@ fn main() {
         })
         .insert_resource(Params::default())
         .add_systems(Startup, setup)
-        .add_systems(Update, keyboard_animation_control)
+        .add_systems(Update, (keyboard_animation_control, raycast_ui))
+        .add_plugins(bevy_inspector_egui::bevy_egui::EguiPlugin {
+            enable_multipass_for_primary_context: true,
+        })
+        .add_plugins(bevy_inspector_egui::quick::WorldInspectorPlugin::default())
         .run();
 }
 
@@ -88,6 +94,9 @@ fn setup(
         Human,
     ));
 
+    // Collider label text
+    commands.spawn(Text::new(""));
+
     println!("Controls:");
     println!("\tSPACE: Play/Pause animation");
     println!("\tR: Reset animation");
@@ -143,4 +152,36 @@ fn keyboard_animation_control(
 
     player.set_input_parameter("target_speed", params.speed.into());
     player.set_input_parameter("target_direction", params.direction.into());
+}
+
+fn raycast_ui(
+    spatial_query: SpatialQuery,
+    main_camera: Single<(&Camera, &GlobalTransform)>,
+    main_window: Single<&Window, With<PrimaryWindow>>,
+    collider_label_query: Query<&ColliderLabel>,
+    debug_text: Single<(&mut Text, &mut Node)>,
+) {
+    let (camera, camera_transform) = main_camera.into_inner();
+    let cursor = main_window.cursor_position().unwrap_or_default();
+    let Ok(ray) = camera.viewport_to_world(camera_transform, cursor) else {
+        return;
+    };
+
+    let (mut debug_text, mut debug_node) = debug_text.into_inner();
+
+    if let Some(hit) = spatial_query.cast_ray(
+        ray.origin,
+        ray.direction,
+        100000.,
+        true,
+        &SpatialQueryFilter::DEFAULT,
+    ) && let Ok(label) = collider_label_query.get(hit.entity)
+    {
+        debug_text.0 = label.0.clone();
+        debug_node.position_type = PositionType::Absolute;
+        debug_node.top = Val::Px(cursor.y - 5.);
+        debug_node.left = Val::Px(cursor.x + 5.);
+    } else {
+        debug_text.0 = "".into();
+    }
 }

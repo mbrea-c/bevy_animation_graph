@@ -156,3 +156,31 @@ impl UpdateDefaultLayers {
         skeleton_colliders.default_layer_filter = input.layer_filter;
     }
 }
+
+pub struct UpdateSuffixes {
+    pub colliders: Handle<SkeletonColliders>,
+    pub suffix: String,
+    pub mirror_suffix: String,
+}
+
+impl DynamicAction for UpdateSuffixes {
+    fn handle(self: Box<Self>, world: &mut World) {
+        run_handler(world, "Could not update suffixes config")(Self::system, *self)
+    }
+}
+
+impl UpdateSuffixes {
+    pub fn system(
+        In(input): In<Self>,
+        mut skeleton_collider_assets: ResMut<Assets<SkeletonColliders>>,
+        mut dirty_assets: ResMut<DirtyAssets>,
+    ) {
+        let Some(skeleton_colliders) = skeleton_collider_assets.get_mut(&input.colliders) else {
+            return;
+        };
+
+        dirty_assets.add(input.colliders);
+        skeleton_colliders.suffix = input.suffix;
+        skeleton_colliders.mirror_suffix = input.mirror_suffix;
+    }
+}

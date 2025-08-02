@@ -215,6 +215,8 @@ fn process_scene_into_animscn(
                     },
                     offset_mode: cfg.offset_mode,
                     label: cfg.label.clone(),
+                    use_suffixes: cfg.use_suffixes,
+                    is_mirrored: true,
                 };
                 let mirror_bone_collider_list = foreach_bone.entry(mirror_bone_id).or_default();
                 mirror_bone_collider_list.push(mirror_cfg);
@@ -265,7 +267,19 @@ fn process_scene_into_animscn(
                             skeleton_colliders.default_layer_filter,
                         )
                     },
-                    ColliderLabel(cfg.label.clone()),
+                    ColliderLabel(if cfg.use_suffixes {
+                        format!(
+                            "{}{}",
+                            cfg.label.clone(),
+                            if cfg.is_mirrored {
+                                &skeleton_colliders.mirror_suffix
+                            } else {
+                                &skeleton_colliders.suffix
+                            }
+                        )
+                    } else {
+                        cfg.label.clone()
+                    }),
                 )
             };
 

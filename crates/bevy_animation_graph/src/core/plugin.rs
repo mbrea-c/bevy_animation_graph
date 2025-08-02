@@ -15,6 +15,7 @@ use super::{
     state_machine::high_level::{StateMachine, loader::StateMachineLoader},
     systems::{animation_player, animation_player_deferred_gizmos},
 };
+use crate::core::colliders::core::ColliderLabel;
 use crate::nodes::blend_space_node::BlendSpaceNode;
 use crate::nodes::{
     AbsF32, AddF32, BlendMode, BlendNode, BlendSyncMode, ChainNode, ClampF32, ClipNode, CompareF32,
@@ -129,6 +130,7 @@ impl AnimationGraphPlugin {
             .register_type::<BlendMode>()
             .register_type::<BlendSyncMode>()
             .register_type::<GlobalTransition>()
+            .register_type::<ColliderLabel>()
             .register_type::<()>()
             .register_type_data::<(), ReflectDefault>();
     }

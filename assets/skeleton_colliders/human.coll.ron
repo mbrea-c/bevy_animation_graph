@@ -21,6 +21,8 @@
                 translation: (0.0, 0.25, -0.025),
             ),
             offset_mode: Global,
+            label: "shin",
+            use_suffixes: true,
         ),
     ],
     skeleton: "skeletons/human.skn.ron",
@@ -34,4 +36,8 @@
         mode: MirrorX,
     ),
     symmetry_enabled: true,
+    default_layer_membership: 1,
+    default_layer_filter: 0,
+    suffix: ".R",
+    mirror_suffix: ".L",
 )

@@ -1,6 +1,6 @@
 use bevy::{
     asset::{Asset, Handle},
-    ecs::component::Component,
+    ecs::{component::Component, reflect::ReflectComponent},
     math::{
         Isometry3d, Vec3,
         primitives::{Capsule3d, Cuboid, Sphere},
@@ -48,6 +48,7 @@ pub enum ColliderOffsetMode {
 }
 
 #[derive(Component, Default, Clone, Reflect, PartialEq, Eq)]
+#[reflect(Component)]
 pub struct ColliderLabel(pub String);
 
 #[derive(Debug, Clone, Reflect)]
@@ -62,6 +63,12 @@ pub struct ColliderConfig {
     pub offset_mode: ColliderOffsetMode,
     /// Label that will be attached to the created collider in a [`ColliderLabel`] component.
     pub label: String,
+    /// Whether to apply suffixes to this collider and its mirror
+    pub use_suffixes: bool,
+    /// Whether this collider resulting from mirroring another collider.
+    ///
+    /// Should always be false on manually created colliders
+    pub is_mirrored: bool,
 }
 
 impl ColliderConfig {
@@ -90,6 +97,8 @@ impl Default for ColliderConfig {
             offset: Isometry3d::default(),
             offset_mode: ColliderOffsetMode::default(),
             label: "".to_string(),
+            use_suffixes: false,
+            is_mirrored: false,
         }
     }
 }
@@ -107,6 +116,11 @@ pub struct SkeletonColliders {
     pub default_layer_membership: u32,
     /// Default physics layer filters if not overriden
     pub default_layer_filter: u32,
+
+    /// Suffix optionally applied to collider labels
+    pub suffix: String,
+    /// Suffix optionally applied to collider labels corresponding to mirrored colliders
+    pub mirror_suffix: String,
 }
 
 impl SkeletonColliders {
