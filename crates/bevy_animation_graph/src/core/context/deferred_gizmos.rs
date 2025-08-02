@@ -7,7 +7,7 @@ use crate::core::{
     space_conversion::SpaceConversionContext,
 };
 use bevy::{
-    color::LinearRgba,
+    color::{Alpha, LinearRgba},
     gizmos::gizmos::Gizmos,
     math::{Isometry3d, Quat, Vec3},
     platform::collections::HashMap,
@@ -120,15 +120,15 @@ fn bone_gizmo(gizmos: &mut Gizmos, start: Vec3, end: Vec3, color: LinearRgba) {
     }
 
     const BONE_CENTER_RATIO: f32 = 0.3;
-    const BONE_RADIUS: f32 = 0.05;
+    let bone_radius = 0.2 * end.distance(start);
 
     let start_to_end = end - start;
     let third_way = start + start_to_end * BONE_CENTER_RATIO;
     let (oba, obb) = start_to_end.normalize().any_orthonormal_pair();
-    let a = third_way + oba * BONE_RADIUS;
-    let b = third_way + obb * BONE_RADIUS;
-    let c = third_way - oba * BONE_RADIUS;
-    let d = third_way - obb * BONE_RADIUS;
+    let a = third_way + oba * bone_radius;
+    let b = third_way + obb * bone_radius;
+    let c = third_way - oba * bone_radius;
+    let d = third_way - obb * bone_radius;
     gizmos.line(start, a, color);
     gizmos.line(start, b, color);
     gizmos.line(start, c, color);
@@ -167,6 +167,9 @@ impl DeferredGizmosContext<'_> {
         let Some(parent_id) = skeleton.parent(&bone_id) else {
             return;
         };
+
+        let children = skeleton.children(bone_id);
+
         let global_bone_transform = self
             .space_conversion
             .global_transform_of_bone(pose, skeleton, bone_id);
@@ -178,6 +181,17 @@ impl DeferredGizmosContext<'_> {
             global_bone_transform.translation,
             color,
         ));
+
+        for child_bone_id in children {
+            let child_bone_transform =
+                self.space_conversion
+                    .global_transform_of_bone(pose, skeleton, child_bone_id);
+            self.gizmos.queue(DeferredGizmoCommand::Bone(
+                global_bone_transform.translation,
+                child_bone_transform.translation,
+                color.with_alpha(0.5 * color.alpha),
+            ));
+        }
     }
 
     pub fn relative_custom_gizmo(
