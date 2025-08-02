@@ -9,4 +9,3 @@ bevy_animation_graph = { path = "../../crates/bevy_animation_graph", features = 
     "physics_avian",
 ] }
 avian3d = { workspace = true }
-bevy-inspector-egui = { version = "0.31" }

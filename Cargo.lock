@@ -3957,7 +3957,6 @@ version = "0.0.0"
 dependencies = [
  "avian3d",
  "bevy",
- "bevy-inspector-egui 0.31.0",
  "bevy_animation_graph",
 ]
 
