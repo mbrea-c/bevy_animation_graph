@@ -57,9 +57,13 @@ impl Plugin for AnimationGraphEditorPlugin {
             .add_plugins(AnimationGraphPlugin)
             .add_plugins(DefaultInspectorConfigPlugin)
             .add_plugins(BetterInspectorPlugin)
-            .add_plugins(ScannerPlugin)
             // .add_plugins(WorldInspectorPlugin::new())
-            .insert_resource(UiState::new())
+            .add_plugins(ScannerPlugin);
+
+        #[cfg(feature = "physics_avian")]
+        app.add_plugins(avian3d::prelude::PhysicsPlugins::default());
+
+        app.insert_resource(UiState::new())
             .insert_resource(PendingActions::default())
             .insert_resource(DirtyAssets::default())
             .insert_resource(GraphIndicesMap::default())
