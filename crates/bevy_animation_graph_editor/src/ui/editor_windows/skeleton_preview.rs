@@ -41,8 +41,8 @@ use crate::{
         PartOfSubScene, PreviewScene, SubSceneConfig, SubSceneSyncAction,
         actions::{
             colliders::{
-                CreateOrEditCollider, DeleteCollider, UpdateDefaultLayers, UpdateSymmetryConfig,
-                UpdateSymmetryEnabled,
+                CreateOrEditCollider, DeleteCollider, UpdateDefaultLayers, UpdateSuffixes,
+                UpdateSymmetryConfig, UpdateSymmetryEnabled,
             },
             window::DynWindowAction,
         },
@@ -248,6 +248,31 @@ impl SkeletonCollidersPreviewWindow {
                     colliders: target.clone(),
                     layer_membership,
                     layer_filter,
+                });
+            }
+
+            let mut suffix = skeleton_colliders.suffix.clone();
+            let mut mirror_suffix = skeleton_colliders.mirror_suffix.clone();
+            let mut changed = false;
+
+            ui.horizontal(|ui| {
+                ui.label("Suffix");
+                if ui.text_edit_singleline(&mut suffix).changed() {
+                    changed = true;
+                }
+            });
+            ui.horizontal(|ui| {
+                ui.label("Mirror suffix");
+                if ui.text_edit_singleline(&mut mirror_suffix).changed() {
+                    changed = true
+                }
+            });
+
+            if changed {
+                ctx.editor_actions.dynamic(UpdateSuffixes {
+                    colliders: target.clone(),
+                    suffix,
+                    mirror_suffix,
                 });
             }
         });
@@ -488,6 +513,11 @@ impl SkeletonCollidersPreviewWindow {
                 config.shape = new_shape;
             }
 
+            ui.horizontal(|ui| {
+                ui.label("Label");
+                ui.text_edit_singleline(&mut config.label);
+            });
+            ui.checkbox(&mut config.use_suffixes, "Use suffixes");
             ui.label("Physics layers");
             ui.checkbox(&mut config.override_layers, "Override global");
             ui.horizontal(|ui| {

@@ -23,6 +23,10 @@ pub struct ColliderConfigSerial {
     pub offset: Isometry3d,
     #[serde(default)]
     pub offset_mode: ColliderOffsetMode,
+    #[serde(default)]
+    pub label: String,
+    #[serde(default)]
+    pub use_suffixes: bool,
 }
 
 #[derive(Debug, Clone, Default, Reflect, Serialize, Deserialize)]
@@ -34,6 +38,14 @@ pub struct SkeletonCollidersSerial {
     pub symmetry: SymmetryConfigSerial,
     #[serde(default)]
     pub symmetry_enabled: bool,
+    #[serde(default)]
+    default_layer_membership: u32,
+    #[serde(default)]
+    default_layer_filter: u32,
+    #[serde(default)]
+    suffix: String,
+    #[serde(default)]
+    mirror_suffix: String,
 }
 
 impl SkeletonCollidersSerial {
@@ -50,6 +62,8 @@ impl SkeletonCollidersSerial {
                 offset: config.offset,
                 id: config.id,
                 offset_mode: config.offset_mode,
+                label: config.label.clone(),
+                use_suffixes: config.use_suffixes,
             };
 
             colliders.push(config_serial);
@@ -60,6 +74,10 @@ impl SkeletonCollidersSerial {
             skeleton: value.skeleton.path()?.to_owned(),
             symmetry: SymmetryConfigSerial::from_value(&value.symmetry),
             symmetry_enabled: value.symmetry_enabled,
+            default_layer_membership: value.default_layer_membership,
+            default_layer_filter: value.default_layer_filter,
+            suffix: value.suffix.clone(),
+            mirror_suffix: value.mirror_suffix.clone(),
         })
     }
 
@@ -78,6 +96,10 @@ impl SkeletonCollidersSerial {
         colliders.skeleton = skeleton_handle;
         colliders.symmetry = self.symmetry.to_value().ok()?;
         colliders.symmetry_enabled = self.symmetry_enabled;
+        colliders.default_layer_membership = self.default_layer_membership;
+        colliders.default_layer_filter = self.default_layer_filter;
+        colliders.suffix = self.suffix.clone();
+        colliders.mirror_suffix = self.mirror_suffix.clone();
 
         for config_serial in &self.colliders {
             let config = ColliderConfig {
@@ -89,6 +111,9 @@ impl SkeletonCollidersSerial {
                 offset: config_serial.offset,
                 id: config_serial.id,
                 offset_mode: config_serial.offset_mode,
+                label: config_serial.label.clone(),
+                use_suffixes: config_serial.use_suffixes,
+                is_mirrored: false,
             };
 
             colliders.add_collider(config);
