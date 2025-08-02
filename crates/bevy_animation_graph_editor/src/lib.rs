@@ -61,7 +61,7 @@ impl Plugin for AnimationGraphEditorPlugin {
             .add_plugins(ScannerPlugin);
 
         #[cfg(feature = "physics_avian")]
-        app.add_plugins(PhysicsPlugin::default());
+        app.add_plugins(avian3d::prelude::PhysicsPlugins::default());
 
         app.insert_resource(UiState::new())
             .insert_resource(PendingActions::default())
