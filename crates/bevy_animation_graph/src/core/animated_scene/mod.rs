@@ -91,32 +91,52 @@ pub(crate) fn spawn_animated_scenes(
         let processed_scene = if animscn.processed_scene.is_some() {
             animscn.processed_scene.as_ref().unwrap()
         } else {
-            let Some(scene) = scenes
-                .get(&animscn.source)
-                .and_then(|scn| scn.clone_with(&app_type_registry).ok())
-            else {
+            if is_scene_ready_to_process(animscn, &scenes, &skeletons, &skeleton_colliders) {
+                let Some(scene) = scenes
+                    .get(&animscn.source)
+                    .and_then(|scn| scn.clone_with(&app_type_registry).ok())
+                else {
+                    continue;
+                };
+
+                let scene = process_scene_into_animscn(
+                    scene,
+                    animscn.skeleton.clone(),
+                    animscn.colliders.clone(),
+                    animscn.animation_graph.clone(),
+                    &skeletons,
+                    &skeleton_colliders,
+                    animscn.retargeting.as_ref(),
+                )
+                .unwrap();
+
+                animscn.processed_scene = Some(scenes.add(scene));
+                animscn.processed_scene.as_ref().unwrap()
+            } else {
                 continue;
-            };
-
-            let scene = process_scene_into_animscn(
-                scene,
-                animscn.skeleton.clone(),
-                animscn.colliders.clone(),
-                animscn.animation_graph.clone(),
-                &skeletons,
-                &skeleton_colliders,
-                animscn.retargeting.as_ref(),
-            )
-            .unwrap();
-
-            animscn.processed_scene = Some(scenes.add(scene));
-            animscn.processed_scene.as_ref().unwrap()
+            }
         };
 
         commands
             .entity(entity)
             .insert(SceneRoot(processed_scene.clone()));
     }
+}
+
+/// Checks whether the scene can be processed
+fn is_scene_ready_to_process(
+    animscn: &AnimatedScene,
+    scenes: &Assets<Scene>,
+    skeletons: &Assets<Skeleton>,
+    skeleton_colliders: &Assets<SkeletonColliders>,
+) -> bool {
+    scenes.contains(&animscn.source)
+        && skeletons.contains(&animscn.skeleton)
+        && animscn.colliders.as_ref().is_none_or(|c| {
+            skeleton_colliders
+                .get(c)
+                .is_some_and(|c| skeletons.contains(&c.skeleton))
+        })
 }
 
 /// This function finds the [`bevy::animation::AnimationPlayer`] and replaces it with our own.
