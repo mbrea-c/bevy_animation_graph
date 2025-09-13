@@ -306,7 +306,7 @@ impl<'a> PassContext<'a> {
         self.node_context.as_ref().unwrap().node_id.clone()
     }
 
-    pub fn space_conversion(&self) -> SpaceConversionContext {
+    pub fn space_conversion(&'_ self) -> SpaceConversionContext<'_> {
         SpaceConversionContext {
             pose_fallback: PoseFallbackContext {
                 entity_map: self.entity_map,
@@ -328,7 +328,7 @@ impl<'a> PassContext<'a> {
         }
     }
 
-    pub fn gizmos(&self) -> DeferredGizmosContext {
+    pub fn gizmos(&'_ self) -> DeferredGizmosContext<'_> {
         DeferredGizmosContext {
             gizmos: self.deferred_gizmos.as_mut(),
             resources: self.resources,

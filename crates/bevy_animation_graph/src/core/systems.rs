@@ -2,10 +2,11 @@ use super::{
     animation_clip::EntityPath, animation_graph::TimeUpdate,
     animation_graph_player::AnimationGraphPlayer, pose::BoneId, prelude::PlaybackState,
 };
-use crate::prelude::SystemResources;
+use crate::{core::ragdoll::definition::Ragdoll, prelude::SystemResources};
 use bevy::{
-    ecs::prelude::*, gizmos::gizmos::Gizmos, log::info_span, platform::collections::HashMap,
-    render::mesh::morph::MorphWeights, time::prelude::*, transform::prelude::*,
+    asset::Assets, ecs::prelude::*, gizmos::gizmos::Gizmos, log::info_span,
+    platform::collections::HashMap, render::mesh::morph::MorphWeights, time::prelude::*,
+    transform::prelude::*,
 };
 use std::collections::VecDeque;
 
@@ -43,6 +44,26 @@ fn build_entity_map(root_entity: Entity, resources: &SystemResources) -> HashMap
     }
 
     entity_map
+}
+
+#[cfg(feature = "physics_avian")]
+pub fn spawn_missing_ragdolls_avian(
+    mut commands: Commands,
+    mut animation_players: Query<(&mut AnimationGraphPlayer, &GlobalTransform)>,
+    ragdoll_assets: Res<Assets<Ragdoll>>,
+) {
+    for (mut player, global_transform) in &mut animation_players {
+        if let Some(ragdoll_asset_id) = player.ragdoll.as_ref().map(|h| h.id())
+            && player.spawned_ragdoll.is_none()
+            && let Some(ragdoll) = ragdoll_assets.get(ragdoll_asset_id)
+        {
+            use crate::core::ragdoll::spawning::spawn_ragdoll_avian;
+
+            let spawned_ragdoll =
+                spawn_ragdoll_avian(ragdoll, global_transform.to_isometry(), &mut commands);
+            player.spawned_ragdoll = Some(spawned_ragdoll);
+        }
+    }
 }
 
 /// System that will play all animations, using any entity with a [`AnimationGraphPlayer`]

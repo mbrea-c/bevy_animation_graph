@@ -4,7 +4,10 @@ use super::{
     animation_clip::EntityPath, errors::AssetLoaderError, id::BoneId, prelude::AnimationSource,
     skeleton::Skeleton,
 };
-use crate::prelude::{AnimationGraph, AnimationGraphPlayer};
+use crate::{
+    core::ragdoll::{bone_mapping::RagdollBoneMap, definition::Ragdoll},
+    prelude::{AnimationGraph, AnimationGraphPlayer},
+};
 use bevy::{
     animation::AnimationTarget,
     asset::{Asset, Handle, ReflectAsset},
@@ -32,6 +35,8 @@ pub struct AnimatedScene {
     /// retargeting.
     pub skeleton: Handle<Skeleton>,
     pub colliders: Option<Handle<SkeletonColliders>>,
+    pub ragdoll: Option<Handle<Ragdoll>>,
+    pub ragdoll_bone_map: Option<Handle<RagdollBoneMap>>,
 }
 
 /// Configuration needed to apply animation retargeting
@@ -102,6 +107,8 @@ pub(crate) fn spawn_animated_scenes(
                 scene,
                 animscn.skeleton.clone(),
                 animscn.colliders.clone(),
+                animscn.ragdoll.clone(),
+                animscn.ragdoll_bone_map.clone(),
                 animscn.animation_graph.clone(),
                 &skeletons,
                 &skeleton_colliders,
@@ -145,6 +152,8 @@ fn process_scene_into_animscn(
     mut scene: Scene,
     skeleton_handle: Handle<Skeleton>,
     skeleton_colliders_handle: Option<Handle<SkeletonColliders>>,
+    ragdoll_handle: Option<Handle<Ragdoll>>,
+    ragdoll_bone_map_handle: Option<Handle<RagdollBoneMap>>,
     graph: Handle<AnimationGraph>,
     skeletons: &Assets<Skeleton>,
     skeleton_colliders: &Assets<SkeletonColliders>,
@@ -159,9 +168,11 @@ fn process_scene_into_animscn(
     };
 
     let mut entity_mut = scene.world.entity_mut(animation_player);
-
+    let mut player = AnimationGraphPlayer::new(skeleton_handle.clone()).with_graph(graph);
+    player.ragdoll = ragdoll_handle;
+    player.ragdoll_bone_map = ragdoll_bone_map_handle;
     entity_mut.remove::<bevy::animation::AnimationPlayer>();
-    entity_mut.insert(AnimationGraphPlayer::new(skeleton_handle.clone()).with_graph(graph));
+    entity_mut.insert(player);
 
     if let Some(retargeting) = retargeting {
         if let Some(skeleton) = skeletons.get(&retargeting.source_skeleton) {

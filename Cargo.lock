@@ -3978,6 +3978,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "human_ragdoll"
+version = "0.0.0"
+dependencies = [
+ "avian3d",
+ "bevy",
+ "bevy_animation_graph",
+]
+
+[[package]]
 name = "icu_collections"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

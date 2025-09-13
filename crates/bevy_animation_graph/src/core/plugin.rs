@@ -16,6 +16,12 @@ use super::{
     systems::{animation_player, animation_player_deferred_gizmos},
 };
 use crate::core::colliders::core::ColliderLabel;
+use crate::core::ragdoll::bone_mapping::RagdollBoneMap;
+use crate::core::ragdoll::bone_mapping_loader::RagdollBoneMapLoader;
+use crate::core::ragdoll::definition::Ragdoll;
+use crate::core::ragdoll::definition_loader::RagdollLoader;
+#[cfg(feature = "physics_avian")]
+use crate::core::systems::spawn_missing_ragdolls_avian;
 use crate::nodes::blend_space_node::BlendSpaceNode;
 use crate::nodes::{
     AbsF32, AddF32, BlendMode, BlendNode, BlendSyncMode, ChainNode, ClampF32, ClipNode, CompareF32,
@@ -44,6 +50,8 @@ impl Plugin for AnimationGraphPlugin {
             .add_systems(
                 PostUpdate,
                 (
+                    #[cfg(feature = "physics_avian")]
+                    spawn_missing_ragdolls_avian,
                     animation_player,
                     apply_animation_to_targets,
                     animation_player_deferred_gizmos,
@@ -76,6 +84,12 @@ impl AnimationGraphPlugin {
         app.init_asset::<SkeletonColliders>()
             .init_asset_loader::<SkeletonCollidersLoader>()
             .register_asset_reflect::<SkeletonColliders>();
+        app.init_asset::<Ragdoll>()
+            .init_asset_loader::<RagdollLoader>()
+            .register_asset_reflect::<Ragdoll>();
+        app.init_asset::<RagdollBoneMap>()
+            .init_asset_loader::<RagdollBoneMapLoader>()
+            .register_asset_reflect::<RagdollBoneMap>();
     }
 
     /// Registers built-in animation node implementations

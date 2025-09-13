@@ -7,7 +7,10 @@ use super::{
     prelude::GraphContextArena,
     skeleton::Skeleton,
 };
-use crate::prelude::{CustomRelativeDrawCommand, SystemResources};
+use crate::{
+    core::ragdoll::{bone_mapping::RagdollBoneMap, definition::Ragdoll, spawning::SpawnedRagdoll},
+    prelude::{CustomRelativeDrawCommand, SystemResources},
+};
 use bevy::{
     asset::prelude::*,
     color::{Color, palettes::css::WHITE},
@@ -59,6 +62,9 @@ pub struct AnimationGraphPlayer {
     pub(crate) playback_state: PlaybackState,
     pub(crate) animation: AnimationSource,
     pub(crate) skeleton: Handle<Skeleton>,
+    pub(crate) ragdoll: Option<Handle<Ragdoll>>,
+    pub(crate) ragdoll_bone_map: Option<Handle<RagdollBoneMap>>,
+    pub(crate) spawned_ragdoll: Option<SpawnedRagdoll>,
     pub(crate) context_arena: Option<GraphContextArena>,
     pub(crate) elapsed: f32,
     pub(crate) pending_update: TimeUpdate,

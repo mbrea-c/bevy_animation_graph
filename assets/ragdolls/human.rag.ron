@@ -1,0 +1,76 @@
+(
+    bodies: [
+        (
+            id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295"),
+            isometry: (
+                translation: (0., 3., 0.),
+                rotation: (0.0, -0.0, 0.0, 1.0),
+            ),
+            colliders: [
+                (
+                    id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295"),
+                    shape: Capsule((
+                        radius: 0.1,
+                        half_length: 0.15,
+                    )),
+                    local_offset: (
+                        translation: (0., 0., 0.),
+                        rotation: (0.0, -0.0, 0.0, 1.0),
+                    ),
+                    layer_membership: 1,
+                    layer_filter: 1,
+                    override_layers: true,
+                    label: "testbox2",
+                ),
+            ],
+        ),
+        (
+            id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294"),
+            isometry: (
+                translation: (0., 2., 0.),
+                rotation: (0.0, -0.0, 0.0, 1.0),
+            ),
+            colliders: [
+                (
+                    id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294"),
+                    shape: Capsule((
+                        radius: 0.1,
+                        half_length: 0.15,
+                    )),
+                    local_offset: (
+                        translation: (0., 0., 0.),
+                        rotation: (0.0, -0.0, 0.0, 1.0),
+                    ),
+                    layer_membership: 1,
+                    layer_filter: 1,
+                    override_layers: true,
+                    label: "testbox",
+                ),
+            ],
+        ),
+    ],
+    joints: [
+        (
+            id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b296"),
+            variant: Spherical((
+                body1: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295"),
+                body2: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294"),
+                local_anchor1: (0., -0.5, 0.),
+                local_anchor2: (0., 0.5, 0.),
+                swing_axis: (1., 0., 0.),
+                twist_axis: (0., 1., 0.),
+                swing_limit: None,
+                twist_limit: None,
+                damping_linear: 0.,
+                damping_angular: 0.,
+                position_lagrange: 0.,
+                swing_lagrange: 0.,
+                twist_lagrange: 0.,
+                compliance: 0.,
+                force: (0.,0.,0.),
+                swing_torque: (0.,0.,0.),
+                twist_torque: (0.,0.,0.),
+            )),
+        )
+    ],
+)

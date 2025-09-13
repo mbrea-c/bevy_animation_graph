@@ -1,0 +1,8 @@
+(
+    source: "models/character_rigged.glb#Scene0",
+    path_to_player: ["metarig"],
+    animation_graph: "animation_graphs/human_new.animgraph.ron",
+    skeleton: "skeletons/human.skn.ron",
+    ragdoll: Some("ragdolls/human.rag.ron"),
+    ragdoll_bone_map: Some("ragdoll_bone_maps/human.bm.ron"),
+)

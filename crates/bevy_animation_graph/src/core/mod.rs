@@ -13,6 +13,7 @@ pub mod id;
 pub mod pin_map;
 pub mod plugin;
 pub mod pose;
+pub mod ragdoll;
 pub mod skeleton;
 pub mod space_conversion;
 pub mod state_machine;

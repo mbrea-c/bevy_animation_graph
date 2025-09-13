@@ -40,6 +40,24 @@ pub enum ColliderShape {
     Cuboid(Cuboid),
 }
 
+impl ColliderShape {
+    #[cfg(feature = "physics_avian")]
+    pub fn avian_collider(&self) -> avian3d::prelude::Collider {
+        use avian3d::prelude::Collider;
+        match self {
+            ColliderShape::Sphere(sphere) => Collider::sphere(sphere.radius),
+            ColliderShape::Capsule(capsule3d) => {
+                Collider::capsule(capsule3d.radius, 2. * capsule3d.half_length)
+            }
+            ColliderShape::Cuboid(cuboid) => Collider::cuboid(
+                2. * cuboid.half_size.x,
+                2. * cuboid.half_size.y,
+                2. * cuboid.half_size.z,
+            ),
+        }
+    }
+}
+
 #[derive(Debug, Default, Clone, Copy, Reflect, PartialEq, Serialize, Deserialize, Hash)]
 pub enum ColliderOffsetMode {
     #[default]
