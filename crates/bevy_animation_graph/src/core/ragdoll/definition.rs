@@ -19,6 +19,13 @@ pub struct Body {
     pub id: BodyId,
     pub isometry: Isometry3d,
     pub colliders: Vec<Collider>,
+    pub default_mode: BodyMode,
+}
+
+#[derive(Reflect, Debug, Clone, Serialize, Deserialize)]
+pub enum BodyMode {
+    Kinematic,
+    Dynamic,
 }
 
 #[derive(Reflect, Debug, Clone, Serialize, Deserialize)]

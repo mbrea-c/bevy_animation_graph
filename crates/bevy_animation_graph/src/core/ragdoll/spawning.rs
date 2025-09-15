@@ -35,32 +35,60 @@ impl SpawnedRagdoll {
 pub fn spawn_ragdoll_avian(
     ragdoll: &Ragdoll,
     root_pos: Isometry3d,
+    simulated_parent: Option<Entity>,
     commands: &mut Commands,
 ) -> SpawnedRagdoll {
     use avian3d::prelude::{AngleLimit, CollisionLayers, RigidBody, SphericalJoint};
+    use bevy::ecs::name::Name;
 
     let root = commands
-        .spawn(Transform {
-            translation: root_pos.translation.into(),
-            rotation: root_pos.rotation,
-            ..default()
-        })
+        .spawn((
+            Transform {
+                translation: root_pos.translation.into(),
+                rotation: root_pos.rotation,
+                ..default()
+            },
+            Name::new("Ragdoll"),
+        ))
         .id();
 
     let mut spawned = SpawnedRagdoll::new(root);
 
     for body in &ragdoll.bodies {
-        let body_entity = commands
-            .spawn((
-                Transform {
-                    translation: body.isometry.translation.into(),
-                    rotation: body.isometry.rotation,
-                    ..default()
-                },
-                // TODO: Default should be kinematic :)
-                RigidBody::Dynamic,
-            ))
-            .id();
+        use crate::core::ragdoll::{
+            definition::BodyMode, relative_kinematic_body::RelativeKinematicBody,
+        };
+        use bevy::math::Vec3;
+
+        let mut body_cmds = commands.spawn((
+            Transform {
+                translation: body.isometry.translation.into(),
+                rotation: body.isometry.rotation,
+                ..default()
+            },
+            match body.default_mode {
+                BodyMode::Kinematic => RigidBody::Kinematic,
+                BodyMode::Dynamic => RigidBody::Dynamic,
+            },
+        ));
+
+        match body.default_mode {
+            BodyMode::Kinematic => {
+                body_cmds.insert((
+                    RigidBody::Kinematic,
+                    RelativeKinematicBody {
+                        relative_to: simulated_parent,
+                        kinematic_linear_velocity: Vec3::ZERO,
+                        kinematic_angular_velocity: Vec3::ZERO,
+                    },
+                ));
+            }
+            BodyMode::Dynamic => {
+                body_cmds.insert(RigidBody::Dynamic);
+            }
+        };
+
+        let body_entity = body_cmds.id();
         commands.entity(root).add_child(body_entity);
         spawned.bodies.insert(body.id, body_entity);
 

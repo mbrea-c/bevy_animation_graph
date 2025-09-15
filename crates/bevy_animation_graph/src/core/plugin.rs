@@ -16,12 +16,12 @@ use super::{
     systems::{animation_player, animation_player_deferred_gizmos},
 };
 use crate::core::colliders::core::ColliderLabel;
+#[cfg(feature = "physics_avian")]
+use crate::core::physics_systems::spawn_missing_ragdolls_avian;
 use crate::core::ragdoll::bone_mapping::RagdollBoneMap;
 use crate::core::ragdoll::bone_mapping_loader::RagdollBoneMapLoader;
 use crate::core::ragdoll::definition::Ragdoll;
 use crate::core::ragdoll::definition_loader::RagdollLoader;
-#[cfg(feature = "physics_avian")]
-use crate::core::systems::spawn_missing_ragdolls_avian;
 use crate::nodes::blend_space_node::BlendSpaceNode;
 use crate::nodes::{
     AbsF32, AddF32, BlendMode, BlendNode, BlendSyncMode, ChainNode, ClampF32, ClipNode, CompareF32,
@@ -60,6 +60,24 @@ impl Plugin for AnimationGraphPlugin {
                     .before(TransformSystem::TransformPropagate),
             )
             .add_observer(locate_animated_scene_player);
+
+        #[cfg(feature = "physics_avian")]
+        {
+            use crate::core::physics_systems::update_relative_kinematic_body_velocities;
+            use avian3d::{
+                dynamics::{integrator::IntegrationSet, solver::schedule::SubstepSolverSet},
+                prelude::SubstepSchedule,
+            };
+
+            app.add_systems(
+                SubstepSchedule,
+                update_relative_kinematic_body_velocities
+                    .after(SubstepSolverSet::SolveConstraints)
+                    .before(IntegrationSet::Position),
+            );
+
+            self.register_physics_types(app);
+        }
     }
 }
 
@@ -147,5 +165,12 @@ impl AnimationGraphPlugin {
             .register_type::<ColliderLabel>()
             .register_type::<()>()
             .register_type_data::<(), ReflectDefault>();
+    }
+
+    #[cfg(feature = "physics_avian")]
+    fn register_physics_types(&self, app: &mut App) {
+        use crate::core::ragdoll::relative_kinematic_body::RelativeKinematicBody;
+
+        app.register_type::<RelativeKinematicBody>();
     }
 }

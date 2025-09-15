@@ -2,8 +2,9 @@
     bodies: [
         (
             id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295"),
+            default_mode: Kinematic,
             isometry: (
-                translation: (0., 3., 0.),
+                translation: (0., 2., 0.),
                 rotation: (0.0, -0.0, 0.0, 1.0),
             ),
             colliders: [
@@ -26,8 +27,9 @@
         ),
         (
             id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294"),
+            default_mode: Dynamic,
             isometry: (
-                translation: (0., 2., 0.),
+                translation: (0., 1., 0.),
                 rotation: (0.0, -0.0, 0.0, 1.0),
             ),
             colliders: [
