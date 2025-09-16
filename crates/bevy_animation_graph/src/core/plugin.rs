@@ -17,7 +17,7 @@ use super::{
 };
 use crate::core::colliders::core::ColliderLabel;
 #[cfg(feature = "physics_avian")]
-use crate::core::physics_systems::spawn_missing_ragdolls_avian;
+use crate::core::physics_systems::{spawn_missing_ragdolls_avian, update_ragdolls_avian};
 use crate::core::ragdoll::bone_mapping::RagdollBoneMap;
 use crate::core::ragdoll::bone_mapping_loader::RagdollBoneMapLoader;
 use crate::core::ragdoll::definition::Ragdoll;
@@ -53,6 +53,8 @@ impl Plugin for AnimationGraphPlugin {
                     #[cfg(feature = "physics_avian")]
                     spawn_missing_ragdolls_avian,
                     animation_player,
+                    #[cfg(feature = "physics_avian")]
+                    update_ragdolls_avian,
                     apply_animation_to_targets,
                     animation_player_deferred_gizmos,
                 )
@@ -63,11 +65,21 @@ impl Plugin for AnimationGraphPlugin {
 
         #[cfg(feature = "physics_avian")]
         {
-            use crate::core::physics_systems::update_relative_kinematic_body_velocities;
+            use crate::core::physics_systems::{
+                update_relative_kinematic_body_velocities,
+                update_relative_kinematic_position_based_body_velocities,
+            };
             use avian3d::{
                 dynamics::{integrator::IntegrationSet, solver::schedule::SubstepSolverSet},
-                prelude::SubstepSchedule,
+                prelude::{PhysicsSchedule, SolverSet, SubstepSchedule},
             };
+
+            app.add_systems(
+                PhysicsSchedule,
+                update_relative_kinematic_position_based_body_velocities
+                    .after(SolverSet::PreSubstep)
+                    .before(SolverSet::Substep),
+            );
 
             app.add_systems(
                 SubstepSchedule,
@@ -169,8 +181,11 @@ impl AnimationGraphPlugin {
 
     #[cfg(feature = "physics_avian")]
     fn register_physics_types(&self, app: &mut App) {
-        use crate::core::ragdoll::relative_kinematic_body::RelativeKinematicBody;
+        use crate::core::ragdoll::relative_kinematic_body::{
+            RelativeKinematicBody, RelativeKinematicBodyPositionBased,
+        };
 
         app.register_type::<RelativeKinematicBody>();
+        app.register_type::<RelativeKinematicBodyPositionBased>();
     }
 }

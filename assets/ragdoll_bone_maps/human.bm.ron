@@ -1,12 +1,12 @@
 (
     bones_from_bodies: {},
     bodies_from_bones: {
-        (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295"): [
+        (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295"): 
             (
                 bone: ["metarig", "spine", "spine.001", "spine.002", "spine.003", "shoulder.R", "upper_arm.R"],
                 weight: 1.,
                 offset: (translation: (0.,0.,0.), rotation: (0.,0.,0.,1.)),
             ),
-        ],
+        
     },
 )

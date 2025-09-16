@@ -1,17 +1,22 @@
-use avian3d::prelude::{AngularVelocity, LinearVelocity};
+use avian3d::prelude::{AngularVelocity, LinearVelocity, Position, Rotation};
 use bevy::asset::Assets;
 use bevy::ecs::entity::Entity;
 use bevy::ecs::hierarchy::ChildOf;
 use bevy::ecs::query::With;
 use bevy::ecs::system::{Commands, Res};
 use bevy::ecs::{query::Without, system::Query};
-use bevy::math::Vec3;
+use bevy::math::{Isometry3d, Vec3};
+use bevy::time::Time;
 use bevy::transform::components::GlobalTransform;
 
+use crate::core::ragdoll::bone_mapping::RagdollBoneMap;
 use crate::core::ragdoll::definition::Ragdoll;
-use crate::core::ragdoll::relative_kinematic_body::RelativeKinematicBody;
+use crate::core::ragdoll::relative_kinematic_body::{
+    RelativeKinematicBody, RelativeKinematicBodyPositionBased,
+};
 use crate::core::ragdoll::spawning::spawn_ragdoll_avian;
-use crate::prelude::AnimationGraphPlayer;
+use crate::core::ragdoll::write_pose::write_pose_to_ragdoll;
+use crate::prelude::{AnimationGraphPlayer, PoseFallbackContext, SystemResources};
 
 pub fn update_relative_kinematic_body_velocities(
     mut relative_kinematic_query: Query<(
@@ -33,6 +38,46 @@ pub fn update_relative_kinematic_body_velocities(
 
         linvel.0 = composed_linvel;
         angvel.0 = composed_angvel;
+    }
+}
+
+pub fn update_relative_kinematic_position_based_body_velocities(
+    mut relative_kinematic_query: Query<(
+        &RelativeKinematicBodyPositionBased,
+        &Position,
+        &Rotation,
+        &mut RelativeKinematicBody,
+    )>,
+    relative_to_query: Query<(&Position, &Rotation), Without<RelativeKinematicBodyPositionBased>>,
+    time: Res<Time>,
+) {
+    for (rel_kinbod_pos, pos, rot, mut rel_kinbod) in &mut relative_kinematic_query {
+        // First we need to compute the current relative position
+        let cur_isometry = if let Some((base_pos, base_rot)) = rel_kinbod_pos
+            .relative_to
+            .and_then(|e| relative_to_query.get(e).ok())
+        {
+            let cur_global_isometry = Isometry3d::new(pos.0, rot.0);
+            let cur_base_isometry = Isometry3d::new(base_pos.0, base_rot.0);
+
+            let local_isometry = cur_base_isometry.inverse() * cur_global_isometry;
+            local_isometry
+        } else {
+            Isometry3d::new(pos.0, rot.0)
+        };
+
+        let linvel = (rel_kinbod_pos.relative_target.translation - cur_isometry.translation)
+            / time.delta_secs();
+
+        let quat_diff = (rel_kinbod_pos.relative_target.rotation
+            * cur_isometry.rotation.conjugate())
+        .normalize();
+        let axis_angle_diff = quat_diff.to_scaled_axis();
+        let angvel = axis_angle_diff / time.delta_secs();
+
+        rel_kinbod.kinematic_linear_velocity = linvel.into();
+        rel_kinbod.kinematic_angular_velocity = angvel;
+        rel_kinbod.relative_to = rel_kinbod_pos.relative_to;
     }
 }
 
@@ -66,18 +111,41 @@ pub fn spawn_missing_ragdolls_avian(
 }
 
 pub fn update_ragdolls_avian(
-    mut animation_players: Query<(&mut AnimationGraphPlayer, &GlobalTransform)>,
+    animation_players: Query<&AnimationGraphPlayer>,
     ragdoll_assets: Res<Assets<Ragdoll>>,
+    bone_map_assets: Res<Assets<RagdollBoneMap>>,
+    mut relative_kinematic_body_query: Query<&mut RelativeKinematicBodyPositionBased>,
+    system_resources: SystemResources,
 ) {
-    for (mut player, global_transform) in &mut animation_players {
+    for player in &animation_players {
         if let Some(ragdoll_asset_id) = player.ragdoll.as_ref().map(|h| h.id())
             && let Some(ragdoll) = ragdoll_assets.get(ragdoll_asset_id)
             && let Some(spawned_ragdoll) = &player.spawned_ragdoll
+            && let Some(bone_map_handle) = &player.ragdoll_bone_map
+            && let Some(bone_map) = bone_map_assets.get(bone_map_handle)
             && let Some(pose) = player.get_default_output_pose()
+            && let Some(skeleton) = system_resources.skeleton_assets.get(&pose.skeleton)
         {
-            // let spawned_ragdoll =
-            //     spawn_ragdoll_avian(ragdoll, global_transform.to_isometry(), &mut commands);
-            // player.spawned_ragdoll = Some(spawned_ragdoll);
+            let pose_fallback = PoseFallbackContext {
+                entity_map: &player.entity_map,
+                resources: &system_resources,
+                fallback_to_identity: true,
+            };
+            let rb_targets =
+                write_pose_to_ragdoll(pose, skeleton, ragdoll, bone_map, pose_fallback);
+            for body_target in rb_targets.bodies {
+                let Some(body_entity) = spawned_ragdoll.bodies.get(&body_target.body_id) else {
+                    continue;
+                };
+
+                let Ok(mut relative_kinematic_body) =
+                    relative_kinematic_body_query.get_mut(*body_entity)
+                else {
+                    continue;
+                };
+
+                relative_kinematic_body.relative_target = body_target.character_space_isometry;
+            }
         }
     }
 }

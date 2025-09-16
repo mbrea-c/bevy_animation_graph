@@ -10,7 +10,7 @@ pub struct RagdollBoneMap {
     /// We assume the invariant that the sum of all body weights for a bone is always 1.
     bones_from_bodies: HashMap<EntityPath, Vec<BodyWeight>>,
     /// We assume the invariant that the sum of all body weights for a bone is always 1.
-    bodies_from_bones: HashMap<BodyId, Vec<BoneWeight>>,
+    pub bodies_from_bones: HashMap<BodyId, BoneWeight>,
 }
 
 #[derive(Debug, Clone, Reflect, Serialize, Deserialize)]
@@ -22,7 +22,6 @@ pub struct BodyWeight {
 
 #[derive(Debug, Clone, Reflect, Serialize, Deserialize)]
 pub struct BoneWeight {
-    bone: EntityPath,
-    weight: f32,
-    offset: Isometry3d,
+    pub bone: EntityPath,
+    pub offset: Isometry3d,
 }

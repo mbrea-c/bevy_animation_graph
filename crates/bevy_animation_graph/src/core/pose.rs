@@ -177,6 +177,12 @@ impl Pose {
 
         result
     }
+
+    pub fn get_bone(&self, bone_id: BoneId) -> Option<&BonePose> {
+        self.paths
+            .get(&bone_id)
+            .and_then(|idx| self.bones.get(*idx))
+    }
 }
 
 fn additive_blend_quat(left: Quat, right: Quat, alpha: f32) -> Quat {

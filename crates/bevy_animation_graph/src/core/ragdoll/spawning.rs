@@ -55,12 +55,10 @@ pub fn spawn_ragdoll_avian(
     let mut spawned = SpawnedRagdoll::new(root);
 
     for body in &ragdoll.bodies {
-        use crate::core::ragdoll::{
-            definition::BodyMode, relative_kinematic_body::RelativeKinematicBody,
-        };
-        use bevy::math::Vec3;
+        use crate::core::ragdoll::definition::BodyMode;
 
         let mut body_cmds = commands.spawn((
+            Name::new("Ragdoll body"),
             Transform {
                 translation: body.isometry.translation.into(),
                 rotation: body.isometry.rotation,
@@ -74,12 +72,13 @@ pub fn spawn_ragdoll_avian(
 
         match body.default_mode {
             BodyMode::Kinematic => {
+                use crate::core::ragdoll::relative_kinematic_body::RelativeKinematicBodyPositionBased;
+
                 body_cmds.insert((
                     RigidBody::Kinematic,
-                    RelativeKinematicBody {
+                    RelativeKinematicBodyPositionBased {
                         relative_to: simulated_parent,
-                        kinematic_linear_velocity: Vec3::ZERO,
-                        kinematic_angular_velocity: Vec3::ZERO,
+                        ..default()
                     },
                 ));
             }
@@ -95,6 +94,7 @@ pub fn spawn_ragdoll_avian(
         for collider in &body.colliders {
             let collider_entity = commands
                 .spawn((
+                    Name::new("Ragdoll collider"),
                     Transform::from_isometry(collider.local_offset),
                     collider.shape.avian_collider(),
                     CollisionLayers {
@@ -110,47 +110,49 @@ pub fn spawn_ragdoll_avian(
     }
 
     for joint in &ragdoll.joints {
-        let joint_entity = match &joint.variant {
-            JointVariant::Spherical(spherical_joint) => commands
-                .spawn(SphericalJoint {
-                    entity1: *spawned
-                        .bodies
-                        .get(&spherical_joint.body1)
-                        .expect("Validation should have caught this"),
-                    entity2: *spawned
-                        .bodies
-                        .get(&spherical_joint.body2)
-                        .expect("Validation should have caught this"),
-                    local_anchor1: spherical_joint.local_anchor1,
-                    local_anchor2: spherical_joint.local_anchor2,
-                    swing_axis: spherical_joint.swing_axis,
-                    twist_axis: spherical_joint.twist_axis,
-                    swing_limit: spherical_joint
-                        .swing_limit
-                        .as_ref()
-                        .map(|limit| AngleLimit {
-                            min: limit.min,
-                            max: limit.max,
-                        }),
-                    twist_limit: spherical_joint
-                        .twist_limit
-                        .as_ref()
-                        .map(|limit| AngleLimit {
-                            min: limit.min,
-                            max: limit.max,
-                        }),
-                    damping_linear: spherical_joint.damping_linear,
-                    damping_angular: spherical_joint.damping_angular,
-                    position_lagrange: spherical_joint.position_lagrange,
-                    swing_lagrange: spherical_joint.swing_lagrange,
-                    twist_lagrange: spherical_joint.twist_lagrange,
-                    compliance: spherical_joint.compliance,
-                    force: spherical_joint.force,
-                    swing_torque: spherical_joint.swing_torque,
-                    twist_torque: spherical_joint.twist_torque,
-                })
-                .id(),
-        };
+        let joint_entity =
+            match &joint.variant {
+                JointVariant::Spherical(spherical_joint) => commands
+                    .spawn((
+                        Name::new("Ragdoll joint"),
+                        SphericalJoint {
+                            entity1: *spawned
+                                .bodies
+                                .get(&spherical_joint.body1)
+                                .expect("Validation should have caught this"),
+                            entity2: *spawned
+                                .bodies
+                                .get(&spherical_joint.body2)
+                                .expect("Validation should have caught this"),
+                            local_anchor1: spherical_joint.local_anchor1,
+                            local_anchor2: spherical_joint.local_anchor2,
+                            swing_axis: spherical_joint.swing_axis,
+                            twist_axis: spherical_joint.twist_axis,
+                            swing_limit: spherical_joint.swing_limit.as_ref().map(|limit| {
+                                AngleLimit {
+                                    min: limit.min,
+                                    max: limit.max,
+                                }
+                            }),
+                            twist_limit: spherical_joint.twist_limit.as_ref().map(|limit| {
+                                AngleLimit {
+                                    min: limit.min,
+                                    max: limit.max,
+                                }
+                            }),
+                            damping_linear: spherical_joint.damping_linear,
+                            damping_angular: spherical_joint.damping_angular,
+                            position_lagrange: spherical_joint.position_lagrange,
+                            swing_lagrange: spherical_joint.swing_lagrange,
+                            twist_lagrange: spherical_joint.twist_lagrange,
+                            compliance: spherical_joint.compliance,
+                            force: spherical_joint.force,
+                            swing_torque: spherical_joint.swing_torque,
+                            twist_torque: spherical_joint.twist_torque,
+                        },
+                    ))
+                    .id(),
+            };
         commands.entity(root).add_child(joint_entity);
         spawned.joints.insert(joint.id, joint_entity);
     }
