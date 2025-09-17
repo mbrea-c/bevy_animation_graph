@@ -70,14 +70,6 @@ fn setup(
         RigidBody::Static,
     ));
 
-    commands.spawn((
-        Mesh3d(meshes.add(Sphere::new(0.25))),
-        MeshMaterial3d(materials.add(Color::from(LinearRgba::rgb(0.3, 0.5, 0.3)))),
-        Collider::sphere(0.25),
-        RigidBody::Static,
-        Transform::from_xyz(0.05, 0.25, 0.03),
-    ));
-
     // Light
     commands.spawn((
         Transform::from_rotation(Quat::from_euler(EulerRot::ZYX, 0.0, 1.0, -PI / 4.)),
@@ -136,10 +128,10 @@ fn keyboard_animation_control(
     }
 
     if keyboard_input.pressed(KeyCode::ArrowUp) {
-        params.speed += 0.5 * time.delta_secs();
+        params.speed += 1.5 * time.delta_secs();
     }
     if keyboard_input.pressed(KeyCode::ArrowDown) {
-        params.speed -= 0.5 * time.delta_secs();
+        params.speed -= 1.5 * time.delta_secs();
     }
 
     if params.direction == Vec3::ZERO {
@@ -148,11 +140,11 @@ fn keyboard_animation_control(
 
     if keyboard_input.pressed(KeyCode::ArrowRight) {
         params.direction =
-            (Quat::from_rotation_y(1. * time.delta_secs()) * params.direction).normalize();
+            (Quat::from_rotation_y(4. * time.delta_secs()) * params.direction).normalize();
     }
     if keyboard_input.pressed(KeyCode::ArrowLeft) {
         params.direction =
-            (Quat::from_rotation_y(-1. * time.delta_secs()) * params.direction).normalize();
+            (Quat::from_rotation_y(-4. * time.delta_secs()) * params.direction).normalize();
     }
 
     player.set_input_parameter("target_speed", params.speed.into());

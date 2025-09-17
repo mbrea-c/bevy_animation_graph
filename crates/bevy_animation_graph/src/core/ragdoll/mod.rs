@@ -3,6 +3,9 @@ pub mod bone_mapping_loader;
 pub mod definition;
 pub mod definition_loader;
 #[cfg(feature = "physics_avian")]
+pub mod read_pose_avian;
+#[cfg(feature = "physics_avian")]
 pub mod relative_kinematic_body;
 pub mod spawning;
+pub mod utils;
 pub mod write_pose;

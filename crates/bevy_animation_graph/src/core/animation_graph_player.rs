@@ -313,4 +313,8 @@ impl AnimationGraphPlayer {
             AnimationSource::None => None,
         }
     }
+
+    pub fn set_default_output_pose(&mut self, pose: Pose) {
+        self.outputs.insert(DEFAULT_OUTPUT_POSE.into(), pose.into());
+    }
 }

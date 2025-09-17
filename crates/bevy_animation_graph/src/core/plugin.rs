@@ -17,6 +17,8 @@ use super::{
 };
 use crate::core::colliders::core::ColliderLabel;
 #[cfg(feature = "physics_avian")]
+use crate::core::physics_systems::read_back_poses_avian;
+#[cfg(feature = "physics_avian")]
 use crate::core::physics_systems::{spawn_missing_ragdolls_avian, update_ragdolls_avian};
 use crate::core::ragdoll::bone_mapping::RagdollBoneMap;
 use crate::core::ragdoll::bone_mapping_loader::RagdollBoneMapLoader;
@@ -39,29 +41,27 @@ use super::colliders::{core::SkeletonColliders, loader::SkeletonCollidersLoader}
 #[derive(Default)]
 pub struct AnimationGraphPlugin;
 
+#[derive(Clone, Debug, Copy, PartialEq, Eq, Hash, SystemSet)]
+pub enum AnimationGraphSet {
+    PrePhysics,
+    PostPhysics,
+}
+
 impl Plugin for AnimationGraphPlugin {
     fn build(&self, app: &mut App) {
         self.register_assets(app);
         self.register_types(app);
         self.register_nodes(app);
 
-        app //
-            .add_systems(PreUpdate, spawn_animated_scenes)
-            .add_systems(
-                PostUpdate,
-                (
-                    #[cfg(feature = "physics_avian")]
-                    spawn_missing_ragdolls_avian,
-                    animation_player,
-                    #[cfg(feature = "physics_avian")]
-                    update_ragdolls_avian,
-                    apply_animation_to_targets,
-                    animation_player_deferred_gizmos,
-                )
-                    .chain()
-                    .before(TransformSystem::TransformPropagate),
+        app.configure_sets(
+            PostUpdate,
+            (
+                AnimationGraphSet::PrePhysics,
+                AnimationGraphSet::PostPhysics,
             )
-            .add_observer(locate_animated_scene_player);
+                .chain()
+                .before(TransformSystem::TransformPropagate),
+        );
 
         #[cfg(feature = "physics_avian")]
         {
@@ -71,8 +71,16 @@ impl Plugin for AnimationGraphPlugin {
             };
             use avian3d::{
                 dynamics::{integrator::IntegrationSet, solver::schedule::SubstepSolverSet},
-                prelude::{PhysicsSchedule, SolverSet, SubstepSchedule},
+                prelude::{PhysicsSchedule, PhysicsSet, SolverSet, SubstepSchedule},
             };
+
+            app.configure_sets(
+                PostUpdate,
+                (
+                    AnimationGraphSet::PrePhysics.before(PhysicsSet::Prepare),
+                    AnimationGraphSet::PostPhysics.after(PhysicsSet::Sync),
+                ),
+            );
 
             app.add_systems(
                 PhysicsSchedule,
@@ -90,6 +98,35 @@ impl Plugin for AnimationGraphPlugin {
 
             self.register_physics_types(app);
         }
+
+        app.add_systems(PreUpdate, spawn_animated_scenes);
+
+        app.add_systems(
+            PostUpdate,
+            (
+                #[cfg(feature = "physics_avian")]
+                spawn_missing_ragdolls_avian,
+                animation_player,
+                #[cfg(feature = "physics_avian")]
+                update_ragdolls_avian,
+            )
+                .chain()
+                .in_set(AnimationGraphSet::PrePhysics),
+        );
+
+        app.add_systems(
+            PostUpdate,
+            (
+                #[cfg(feature = "physics_avian")]
+                read_back_poses_avian,
+                apply_animation_to_targets,
+                animation_player_deferred_gizmos,
+            )
+                .chain()
+                .in_set(AnimationGraphSet::PostPhysics),
+        );
+
+        app.add_observer(locate_animated_scene_player);
     }
 }
 

@@ -8,16 +8,16 @@ use crate::core::{animation_clip::EntityPath, ragdoll::definition::BodyId};
 #[derive(Asset, Debug, Clone, Reflect, Serialize, Deserialize)]
 pub struct RagdollBoneMap {
     /// We assume the invariant that the sum of all body weights for a bone is always 1.
-    bones_from_bodies: HashMap<EntityPath, Vec<BodyWeight>>,
+    pub bones_from_bodies: HashMap<EntityPath, Vec<BodyWeight>>,
     /// We assume the invariant that the sum of all body weights for a bone is always 1.
     pub bodies_from_bones: HashMap<BodyId, BoneWeight>,
 }
 
 #[derive(Debug, Clone, Reflect, Serialize, Deserialize)]
 pub struct BodyWeight {
-    body: BodyId,
-    weight: f32,
-    offset: Isometry3d,
+    pub body: BodyId,
+    pub weight: f32,
+    pub offset: Isometry3d,
 }
 
 #[derive(Debug, Clone, Reflect, Serialize, Deserialize)]

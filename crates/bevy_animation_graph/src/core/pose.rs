@@ -12,8 +12,8 @@ use serde::{Deserialize, Serialize};
 /// [`Transform`]: bevy::transform::prelude::Transform
 #[derive(Asset, Reflect, Clone, Debug, Default, Serialize, Deserialize, PartialEq)]
 pub struct BonePose {
-    pub rotation: Option<Quat>,
     pub translation: Option<Vec3>,
+    pub rotation: Option<Quat>,
     pub scale: Option<Vec3>,
     pub weights: Option<Vec<f32>>,
 }
@@ -37,6 +37,15 @@ impl BonePose {
         }
 
         base
+    }
+
+    pub fn from_transform(transform: Transform) -> Self {
+        Self {
+            translation: Some(transform.translation),
+            rotation: Some(transform.rotation),
+            scale: Some(transform.scale),
+            weights: None,
+        }
     }
 
     pub fn additive_blend(&self, other: &BonePose, alpha: f32) -> Self {
@@ -96,6 +105,15 @@ impl BonePose {
             weights: self.weights.clone(),
         }
     }
+
+    pub fn overlay(&self, other: &BonePose) -> Self {
+        Self {
+            translation: either_or_mix(self.translation, other.translation, |_, b| b),
+            rotation: either_or_mix(self.rotation, other.rotation, |_, b| b),
+            scale: either_or_mix(self.scale, other.scale, |_, b| b),
+            weights: either_or_mix(self.weights.clone(), other.weights.clone(), |_, b| b),
+        }
+    }
 }
 
 /// Vertical slice of an [`GraphClip`]
@@ -136,6 +154,10 @@ impl Pose {
 
     pub fn normalize_quat(&self) -> Self {
         self.map_bones(|bone| bone.normalize_quat())
+    }
+
+    pub fn overlay(&self, other: &Pose) -> Self {
+        self.combine(other, |l, r| l.overlay(r))
     }
 
     pub fn combine(&self, other: &Self, func: impl Fn(&BonePose, &BonePose) -> BonePose) -> Self {

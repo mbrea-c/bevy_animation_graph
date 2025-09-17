@@ -11,6 +11,7 @@ use bevy::transform::components::GlobalTransform;
 
 use crate::core::ragdoll::bone_mapping::RagdollBoneMap;
 use crate::core::ragdoll::definition::Ragdoll;
+use crate::core::ragdoll::read_pose_avian::read_pose;
 use crate::core::ragdoll::relative_kinematic_body::{
     RelativeKinematicBody, RelativeKinematicBodyPositionBased,
 };
@@ -69,9 +70,12 @@ pub fn update_relative_kinematic_position_based_body_velocities(
         let linvel = (rel_kinbod_pos.relative_target.translation - cur_isometry.translation)
             / time.delta_secs();
 
-        let quat_diff = (rel_kinbod_pos.relative_target.rotation
-            * cur_isometry.rotation.conjugate())
-        .normalize();
+        let start = cur_isometry.rotation;
+        let mut end = rel_kinbod_pos.relative_target.rotation;
+        if start.dot(end) < 0.0 {
+            end = -end;
+        }
+        let quat_diff = (end * start.conjugate()).normalize();
         let axis_angle_diff = quat_diff.to_scaled_axis();
         let angvel = axis_angle_diff / time.delta_secs();
 
@@ -146,6 +150,39 @@ pub fn update_ragdolls_avian(
 
                 relative_kinematic_body.relative_target = body_target.character_space_isometry;
             }
+        }
+    }
+}
+
+pub fn read_back_poses_avian(
+    mut animation_players: Query<&mut AnimationGraphPlayer>,
+    bone_map_assets: Res<Assets<RagdollBoneMap>>,
+    pos_query: Query<(&Position, &Rotation)>,
+    system_resources: SystemResources,
+) {
+    for mut player in &mut animation_players {
+        if let Some(spawned_ragdoll) = &player.spawned_ragdoll
+            && let Some(bone_map_handle) = &player.ragdoll_bone_map
+            && let Some(bone_map) = bone_map_assets.get(bone_map_handle)
+            && let Some(pose) = player.get_default_output_pose()
+            && let Some(skeleton) = system_resources.skeleton_assets.get(&pose.skeleton)
+        {
+            let pose_fallback = PoseFallbackContext {
+                entity_map: &player.entity_map,
+                resources: &system_resources,
+                fallback_to_identity: true,
+            };
+
+            let updated_pose = read_pose(
+                spawned_ragdoll,
+                bone_map,
+                skeleton,
+                &pos_query,
+                pose_fallback,
+                pose,
+            );
+
+            player.set_default_output_pose(updated_pose);
         }
     }
 }

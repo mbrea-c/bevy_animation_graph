@@ -15,14 +15,14 @@ use crate::{
     prelude::PoseFallbackContext,
 };
 
-pub struct BodyDesire {
+pub struct BodyTarget {
     pub body_id: BodyId,
     /// Isometry relative to the character root transform
     pub character_space_isometry: Isometry3d,
 }
 
-pub struct RagdollDesires {
-    pub bodies: Vec<BodyDesire>,
+pub struct RagdollTargets {
+    pub bodies: Vec<BodyTarget>,
 }
 
 pub fn write_pose_to_ragdoll(
@@ -31,8 +31,8 @@ pub fn write_pose_to_ragdoll(
     ragdoll: &Ragdoll,
     mapping: &RagdollBoneMap,
     pose_fallback_ctx: PoseFallbackContext,
-) -> RagdollDesires {
-    let mut desires = RagdollDesires { bodies: Vec::new() };
+) -> RagdollTargets {
+    let mut targets = RagdollTargets { bodies: Vec::new() };
     let convert = SpaceConversionContext {
         pose_fallback: pose_fallback_ctx,
     };
@@ -46,11 +46,11 @@ pub fn write_pose_to_ragdoll(
         let character_transform =
             convert.character_transform_of_bone(pose, skeleton, bone_weight.bone.id());
 
-        desires.bodies.push(BodyDesire {
+        targets.bodies.push(BodyTarget {
             body_id: body.id,
-            character_space_isometry: character_transform.to_isometry(),
+            character_space_isometry: character_transform.to_isometry() * bone_weight.offset,
         })
     }
 
-    desires
+    targets
 }

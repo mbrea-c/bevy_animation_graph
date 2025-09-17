@@ -1,8 +1,32 @@
 (
     bodies: [
         (
-            id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295"),
+            id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b291"),
             default_mode: Kinematic,
+            isometry: (
+                translation: (0., 2., 0.),
+                rotation: (0.0, -0.0, 0.0, 1.0),
+            ),
+            colliders: [
+                (
+                    id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b291"),
+                    shape: Cuboid((
+                        half_size: (0.175, 0.12, 0.1)
+                    )),
+                    local_offset: (
+                        translation: (0., 0., 0.),
+                        rotation: (0.0, -0.0, 0.0, 1.0),
+                    ),
+                    layer_membership: 1,
+                    layer_filter: 1,
+                    override_layers: true,
+                    label: "chest",
+                ),
+            ],
+        ),
+        (
+            id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295"),
+            default_mode: Dynamic,
             isometry: (
                 translation: (0., 2., 0.),
                 rotation: (0.0, -0.0, 0.0, 1.0),
@@ -11,8 +35,8 @@
                 (
                     id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295"),
                     shape: Capsule((
-                        radius: 0.1,
-                        half_length: 0.15,
+                        radius: 0.06,
+                        half_length: 0.1,
                     )),
                     local_offset: (
                         translation: (0., 0., 0.),
@@ -21,7 +45,7 @@
                     layer_membership: 1,
                     layer_filter: 1,
                     override_layers: true,
-                    label: "testbox2",
+                    label: "upper_arm",
                 ),
             ],
         ),
@@ -29,15 +53,15 @@
             id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294"),
             default_mode: Dynamic,
             isometry: (
-                translation: (0., 1., 0.),
+                translation: (0., 1.5, 0.),
                 rotation: (0.0, -0.0, 0.0, 1.0),
             ),
             colliders: [
                 (
                     id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294"),
                     shape: Capsule((
-                        radius: 0.1,
-                        half_length: 0.15,
+                        radius: 0.06,
+                        half_length: 0.1,
                     )),
                     local_offset: (
                         translation: (0., 0., 0.),
@@ -46,7 +70,7 @@
                     layer_membership: 1,
                     layer_filter: 1,
                     override_layers: true,
-                    label: "testbox",
+                    label: "forearm",
                 ),
             ],
         ),
@@ -57,14 +81,36 @@
             variant: Spherical((
                 body1: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295"),
                 body2: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294"),
-                local_anchor1: (0., -0.5, 0.),
-                local_anchor2: (0., 0.5, 0.),
+                local_anchor1: (0., -0.18, 0.),
+                local_anchor2: (0., 0.18, 0.),
+                swing_axis: (1., 0., 0.),
+                twist_axis: (0., 1., 0.),
+                swing_limit: Some((min: -0.2, max: 0.2,)),
+                twist_limit: Some((min: -2.5, max:0.2,)),
+                damping_linear: 0.,
+                damping_angular: 50.,
+                position_lagrange: 0.,
+                swing_lagrange: 0.,
+                twist_lagrange: 0.,
+                compliance: 0.,
+                force: (0.,0.,0.),
+                swing_torque: (0.,0.,0.),
+                twist_torque: (0.,0.,0.),
+            )),
+        ),
+        (
+            id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b297"),
+            variant: Spherical((
+                body1: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b291"),
+                body2: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295"),
+                local_anchor1: (-0.18, 0., 0.),
+                local_anchor2: (0., 0.18, 0.),
                 swing_axis: (1., 0., 0.),
                 twist_axis: (0., 1., 0.),
                 swing_limit: None,
                 twist_limit: None,
                 damping_linear: 0.,
-                damping_angular: 0.,
+                damping_angular: 50.,
                 position_lagrange: 0.,
                 swing_lagrange: 0.,
                 twist_lagrange: 0.,
