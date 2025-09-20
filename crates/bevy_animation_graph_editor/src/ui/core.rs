@@ -1,5 +1,8 @@
+use std::any::Any;
+
 use crate::egui_fsm::lib::FsmUiContext;
 use crate::egui_nodes::lib::NodesContext;
+use crate::ui::editor_windows::ragdoll_editor::RagdollEditorWindow;
 use bevy::asset::UntypedAssetId;
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
@@ -38,6 +41,12 @@ use super::editor_windows::scene_selector::SceneSelectorWindow;
 use super::editor_windows::skeleton_preview::SkeletonCollidersPreviewWindow;
 pub use super::windows::EditorWindowExtension;
 use super::windows::{WindowId, Windows};
+
+pub fn setup(mut egui_context: Single<&mut EguiContext, With<PrimaryWindow>>) {
+    let ctx = egui_context.get_mut();
+
+    egui_extras::install_image_loaders(ctx);
+}
 
 pub fn show_ui_system(world: &mut World) {
     let Ok(egui_context) = world
@@ -173,6 +182,17 @@ impl ViewState {
         }
     }
 
+    pub fn ragdoll_view(windows: &mut Windows, name: impl Into<String>) -> Self {
+        let preview_window = windows.open(RagdollEditorWindow::default());
+
+        let state = DockState::new(vec![preview_window.into()]);
+
+        Self {
+            name: name.into(),
+            dock_state: state,
+        }
+    }
+
     pub fn main_view(windows: &mut Windows, name: impl Into<String>) -> Self {
         let graph_editor = windows.open(GraphEditorWindow);
         let fsm_editor = windows.open(FsmEditorWindow);
@@ -243,6 +263,7 @@ impl UiState {
                 ViewState::main_view(&mut windows, "Graph editing"),
                 ViewState::event_track_view(&mut windows, "Event tracks"),
                 ViewState::skeleton_colliders_view(&mut windows, "Skeleton colliders"),
+                ViewState::ragdoll_view(&mut windows, "Ragdoll"),
             ],
             active_view: Some(0),
             windows,
@@ -291,6 +312,12 @@ pub struct EditorWindowContext<'a> {
     #[allow(dead_code)] // Temporary while I migrate to extension pattern
     pub notifications: &'a mut Toasts,
     pub editor_actions: &'a mut PushQueue<EditorAction>,
+}
+
+impl EditorWindowContext<'_> {
+    pub fn window_action(&mut self, event: impl Any + Send + Sync) {
+        self.editor_actions.window(self.window_id, event)
+    }
 }
 
 #[derive(Debug)]

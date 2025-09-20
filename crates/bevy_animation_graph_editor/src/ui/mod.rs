@@ -7,5 +7,5 @@ pub mod scenes;
 pub mod utils;
 pub mod windows;
 
-pub use core::{UiState, show_ui_system};
+pub use core::{UiState, setup, show_ui_system};
 pub use scenes::*;

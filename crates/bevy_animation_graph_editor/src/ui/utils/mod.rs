@@ -19,6 +19,7 @@ use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
 use super::core::GlobalState;
 use super::{PartOfSubScene, PreviewScene, SubSceneConfig, provide_texture_for_scene};
 
+pub mod collapsing;
 pub mod popup;
 
 pub fn asset_sort_key<T: Asset>(asset_id: AssetId<T>, asset_server: &AssetServer) -> String {

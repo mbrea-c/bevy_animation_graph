@@ -14,6 +14,23 @@ pub struct Ragdoll {
     pub joints: Vec<Joint>,
 }
 
+impl Ragdoll {
+    pub fn get_body(&self, id: BodyId) -> Option<&Body> {
+        self.bodies.iter().find(|b| b.id == id)
+    }
+
+    pub fn get_collider(&self, id: ColliderId) -> Option<&Collider> {
+        self.bodies
+            .iter()
+            .flat_map(|b| b.colliders.iter())
+            .find(|c| c.id == id)
+    }
+
+    pub fn get_joint(&self, id: JointId) -> Option<&Joint> {
+        self.joints.iter().find(|j| j.id == id)
+    }
+}
+
 #[derive(Reflect, Debug, Clone, Serialize, Deserialize)]
 pub struct Body {
     pub id: BodyId,

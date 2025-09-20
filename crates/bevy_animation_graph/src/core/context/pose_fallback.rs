@@ -44,4 +44,46 @@ impl PoseFallbackContext<'_> {
             None
         }
     }
+
+    #[cfg(feature = "physics_avian")]
+    /// Finds the offset from the root bone of the skeleton to either the root of the hierarchy (a.k.a.
+    /// global position) or the closest rigidbody in the hierarchy
+    pub fn compute_root_global_transform_to_rigidbody(
+        &self,
+        skeleton: &Skeleton,
+    ) -> RootOffsetResult {
+        let Some(start) = self.entity_map.get(&skeleton.root()) else {
+            return RootOffsetResult::Failed;
+        };
+        let mut current = Some(*start);
+        let mut cumulative_transform = Transform::IDENTITY;
+
+        while let Some(entity) = current {
+            let Ok((transform, _)) = self.resources.transform_query.get(entity) else {
+                return RootOffsetResult::Failed;
+            };
+            cumulative_transform = *transform * cumulative_transform;
+            current = self
+                .resources
+                .parent_query
+                .get(entity)
+                .map(|child_of| child_of.0)
+                .ok();
+
+            if let Some(parent) = current
+                && self.resources.rigidbody_query.contains(parent)
+            {
+                return RootOffsetResult::FromRigidbody(parent, cumulative_transform);
+            }
+        }
+
+        RootOffsetResult::FromRoot(cumulative_transform)
+    }
+}
+
+#[cfg(feature = "physics_avian")]
+pub enum RootOffsetResult {
+    FromRigidbody(Entity, Transform),
+    FromRoot(Transform),
+    Failed,
 }

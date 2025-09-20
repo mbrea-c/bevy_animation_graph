@@ -1,0 +1,53 @@
+use bevy::{asset::Handle, ecs::world::World};
+use bevy_animation_graph::{core::ragdoll::definition::Ragdoll, prelude::AnimatedScene};
+
+use crate::ui::{
+    core::EditorWindowContext, editor_windows::ragdoll_editor::RagdollEditorAction,
+    reflect_widgets::wrap_ui::using_wrap_ui,
+};
+
+pub struct TopPanel<'a, 'b> {
+    pub ragdoll: Option<Handle<Ragdoll>>,
+    pub scene: Option<Handle<AnimatedScene>>,
+    pub world: &'a mut World,
+    pub ctx: &'a mut EditorWindowContext<'b>,
+}
+
+impl TopPanel<'_, '_> {
+    pub fn draw(self, ui: &mut egui::Ui) {
+        ui.horizontal(|ui| {
+            ui.label("Scene:");
+            using_wrap_ui(self.world, |mut env| {
+                if let Some(new_handle) = env.mutable_buffered(
+                    &self.scene.clone().unwrap_or_default(),
+                    ui,
+                    ui.id().with("ragdoll base scene selector"),
+                    &(),
+                ) {
+                    self.ctx
+                        .window_action(RagdollEditorAction::SelectBaseScene(new_handle));
+                }
+            });
+
+            ui.label("Ragdoll:");
+            using_wrap_ui(self.world, |mut env| {
+                if let Some(new_handle) = env.mutable_buffered(
+                    &self.ragdoll.clone().unwrap_or_default(),
+                    ui,
+                    ui.id().with("ragdoll selectors"),
+                    &(),
+                ) {
+                    self.ctx
+                        .window_action(RagdollEditorAction::SelectRagdoll(new_handle));
+                }
+            });
+
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if ui.button("⚙").clicked() {
+                    self.ctx
+                        .window_action(RagdollEditorAction::ToggleSettingsWindow);
+                }
+            });
+        });
+    }
+}

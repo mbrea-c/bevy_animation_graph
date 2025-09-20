@@ -21,4 +21,6 @@ pub struct SystemResources<'w, 's> {
     pub names_query: Query<'w, 's, &'static Name>,
     pub children_query: Query<'w, 's, &'static Children>,
     pub parent_query: Query<'w, 's, &'static ChildOf>,
+    #[cfg(feature = "physics_avian")]
+    pub rigidbody_query: Query<'w, 's, &'static avian3d::prelude::RigidBody>,
 }

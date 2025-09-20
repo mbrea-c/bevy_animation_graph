@@ -17,9 +17,10 @@ use super::{
 };
 use crate::core::colliders::core::ColliderLabel;
 #[cfg(feature = "physics_avian")]
-use crate::core::physics_systems::read_back_poses_avian;
-#[cfg(feature = "physics_avian")]
-use crate::core::physics_systems::{spawn_missing_ragdolls_avian, update_ragdolls_avian};
+use crate::core::physics_systems::{
+    read_back_poses_avian, spawn_missing_ragdolls_avian, update_ragdoll_rigidbodies,
+    update_ragdolls_avian,
+};
 use crate::core::ragdoll::bone_mapping::RagdollBoneMap;
 use crate::core::ragdoll::bone_mapping_loader::RagdollBoneMapLoader;
 use crate::core::ragdoll::definition::Ragdoll;
@@ -107,6 +108,8 @@ impl Plugin for AnimationGraphPlugin {
                 #[cfg(feature = "physics_avian")]
                 spawn_missing_ragdolls_avian,
                 animation_player,
+                #[cfg(feature = "physics_avian")]
+                update_ragdoll_rigidbodies,
                 #[cfg(feature = "physics_avian")]
                 update_ragdolls_avian,
             )

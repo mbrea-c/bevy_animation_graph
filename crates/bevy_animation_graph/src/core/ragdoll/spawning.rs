@@ -55,39 +55,29 @@ pub fn spawn_ragdoll_avian(
     let mut spawned = SpawnedRagdoll::new(root);
 
     for body in &ragdoll.bodies {
-        use crate::core::ragdoll::definition::BodyMode;
-
-        let mut body_cmds = commands.spawn((
-            Name::new("Ragdoll body"),
-            Transform {
-                translation: body.isometry.translation.into(),
-                rotation: body.isometry.rotation,
-                ..default()
-            },
-            match body.default_mode {
-                BodyMode::Kinematic => RigidBody::Kinematic,
-                BodyMode::Dynamic => RigidBody::Dynamic,
-            },
-        ));
-
-        match body.default_mode {
-            BodyMode::Kinematic => {
-                use crate::core::ragdoll::relative_kinematic_body::RelativeKinematicBodyPositionBased;
-
-                body_cmds.insert((
-                    RigidBody::Kinematic,
-                    RelativeKinematicBodyPositionBased {
-                        relative_to: simulated_parent,
-                        ..default()
-                    },
-                ));
-            }
-            BodyMode::Dynamic => {
-                body_cmds.insert(RigidBody::Dynamic);
-            }
+        use crate::core::ragdoll::{
+            definition::BodyMode, relative_kinematic_body::RelativeKinematicBodyPositionBased,
         };
 
-        let body_entity = body_cmds.id();
+        let body_entity = commands
+            .spawn((
+                Name::new("Ragdoll body"),
+                Transform {
+                    translation: body.isometry.translation.into(),
+                    rotation: body.isometry.rotation,
+                    ..default()
+                },
+                match body.default_mode {
+                    BodyMode::Kinematic => RigidBody::Kinematic,
+                    BodyMode::Dynamic => RigidBody::Dynamic,
+                },
+                RelativeKinematicBodyPositionBased {
+                    relative_to: simulated_parent,
+                    ..default()
+                },
+            ))
+            .id();
+
         commands.entity(root).add_child(body_entity);
         spawned.bodies.insert(body.id, body_entity);
 

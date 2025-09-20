@@ -11,7 +11,7 @@
                 (
                     id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b291"),
                     shape: Cuboid((
-                        half_size: (0.175, 0.12, 0.1)
+                        half_size: (0.165, 0.12, 0.1)
                     )),
                     local_offset: (
                         translation: (0., 0., 0.),
@@ -103,12 +103,12 @@
             variant: Spherical((
                 body1: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b291"),
                 body2: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295"),
-                local_anchor1: (-0.18, 0., 0.),
+                local_anchor1: (-0.18, 0., -0.06),
                 local_anchor2: (0., 0.18, 0.),
                 swing_axis: (1., 0., 0.),
                 twist_axis: (0., 1., 0.),
-                swing_limit: None,
-                twist_limit: None,
+                swing_limit: Some((min: 0., max: 3.14)),
+                twist_limit: Some((min: -1.7, max: 1.7)),
                 damping_linear: 0.,
                 damping_angular: 50.,
                 position_lagrange: 0.,

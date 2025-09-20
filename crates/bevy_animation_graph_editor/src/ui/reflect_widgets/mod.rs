@@ -17,6 +17,7 @@ use bevy_animation_graph::{
         animation_clip::EntityPath,
         colliders::core::{ColliderOffsetMode, ColliderShape, SkeletonColliders},
         event_track::TrackItemValue,
+        ragdoll::{bone_mapping::RagdollBoneMap, definition::Ragdoll},
         state_machine::high_level::StateMachine,
     },
     prelude::{AnimatedScene, AnimationGraph, GraphClip, config::PatternMapper},
@@ -302,6 +303,8 @@ impl_widget_hash_from_hash! {
     Handle<StateMachine>,
     Handle<AnimatedScene>,
     Handle<SkeletonColliders>,
+    Handle<Ragdoll>,
+    Handle<RagdollBoneMap>,
     String,
     ColliderOffsetMode,
     PathBuf

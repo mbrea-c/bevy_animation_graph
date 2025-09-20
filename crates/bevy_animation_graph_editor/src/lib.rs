@@ -69,18 +69,21 @@ impl Plugin for AnimationGraphEditorPlugin {
             .insert_resource(GraphIndicesMap::default())
             .insert_resource(FsmIndicesMap::default())
             .insert_resource(ClipPreviewScenes::default())
-            .insert_resource(cli)
-            .add_systems(
-                Update,
-                (
-                    ui::show_ui_system,
-                    ui::actions::process_actions_system,
-                    ui::override_scene_animations,
-                    ui::render_pose_gizmos,
-                    ui::propagate_layers,
-                    graph_debug_draw_bone_system,
-                )
-                    .chain(),
-            );
+            .insert_resource(cli);
+
+        app.add_systems(Startup, ui::setup);
+
+        app.add_systems(
+            Update,
+            (
+                ui::show_ui_system,
+                ui::actions::process_actions_system,
+                ui::override_scene_animations,
+                ui::render_pose_gizmos,
+                ui::propagate_layers,
+                graph_debug_draw_bone_system,
+            )
+                .chain(),
+        );
     }
 }

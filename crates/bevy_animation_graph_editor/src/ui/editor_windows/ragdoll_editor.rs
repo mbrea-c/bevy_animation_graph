@@ -25,37 +25,42 @@ use bevy_animation_graph::{
     core::{
         colliders::core::{ColliderConfig, ColliderShape, SkeletonColliderId, SkeletonColliders},
         id::BoneId,
+        ragdoll::definition::Ragdoll,
         skeleton::Skeleton,
     },
     prelude::{
         AnimatedScene, AnimatedSceneHandle, AnimationGraphPlayer, AnimationSource,
-        CustomRelativeDrawCommand,
-        config::{FlipNameMapper, SymmertryMode, SymmetryConfig},
+        CustomRelativeDrawCommand, config::SymmetryConfig,
     },
 };
 use egui_dock::egui;
 
 use crate::{
-    tree::{SkeletonTreeRenderer, Tree, TreeResult},
+    tree::{RagdollTreeRenderer, SkeletonTreeRenderer, Tree, TreeResult},
     ui::{
         PartOfSubScene, PreviewScene, SubSceneConfig, SubSceneSyncAction,
         actions::{
-            colliders::{
-                CreateOrEditCollider, DeleteCollider, UpdateDefaultLayers, UpdateSuffixes,
-                UpdateSymmetryConfig, UpdateSymmetryEnabled,
-            },
+            colliders::{CreateOrEditCollider, DeleteCollider},
             window::DynWindowAction,
         },
         core::{EditorWindowContext, EditorWindowExtension},
+        editor_windows::ragdoll_editor::{
+            settings_panel::{RagdollEditorSettings, SettingsPanel},
+            top_panel::TopPanel,
+        },
         reflect_widgets::wrap_ui::using_wrap_ui,
         utils::{OrbitView, orbit_camera_scene_show, orbit_camera_transform, orbit_camera_update},
     },
 };
 
+mod body_tree;
+mod settings_panel;
+mod top_panel;
+
 #[derive(Debug)]
 pub struct RagdollEditorWindow {
     pub orbit_view: OrbitView,
-    pub target: Option<Handle<SkeletonColliders>>,
+    pub target: Option<Handle<Ragdoll>>,
     pub reverse_index: Option<ReverseSkeletonIndex>,
     pub base_scene: Option<Handle<AnimatedScene>>,
     pub hovered: Option<BoneId>,
@@ -65,6 +70,7 @@ pub struct RagdollEditorWindow {
     pub draw_colliders: Vec<(ColliderConfig, Color)>,
     pub show_global_settings: bool,
     pub show_all_colliders: bool,
+    pub settings: RagdollEditorSettings,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash)]
@@ -89,14 +95,16 @@ impl Default for RagdollEditorWindow {
             draw_colliders: Vec::default(),
             show_global_settings: false,
             show_all_colliders: true,
+            settings: default(),
         }
     }
 }
 
 #[derive(Debug)]
-pub enum CollidersPreviewAction {
+pub enum RagdollEditorAction {
     SelectBaseScene(Handle<AnimatedScene>),
-    SelectTarget(Handle<SkeletonColliders>),
+    SelectRagdoll(Handle<Ragdoll>),
+    ToggleSettingsWindow,
 }
 
 impl EditorWindowExtension for RagdollEditorWindow {
@@ -108,7 +116,13 @@ impl EditorWindowExtension for RagdollEditorWindow {
             .exact_height(timeline_height)
             .frame(egui::Frame::NONE.inner_margin(5.))
             .show_inside(ui, |ui| {
-                self.draw_top_panel(ui, world, ctx);
+                TopPanel {
+                    ragdoll: self.target.clone(),
+                    scene: self.base_scene.clone(),
+                    world,
+                    ctx,
+                }
+                .draw(ui);
             });
 
         egui::SidePanel::left("Hierarchical tree view")
@@ -122,12 +136,19 @@ impl EditorWindowExtension for RagdollEditorWindow {
             .resizable(true)
             .default_width(200.)
             .show_inside(ui, |ui| {
-                self.draw_bone_inspector(ui, world, ctx);
+                // self.draw_bone_inspector(ui, world, ctx);
             });
 
         if self.show_global_settings {
             egui::Window::new("Skeleton collider settings").show(ui.ctx(), |ui| {
-                self.draw_settings_panel(ui, world, ctx);
+                if let Some(target) = &self.target {
+                    ui.add(SettingsPanel {
+                        target: target.clone(),
+                        world,
+                        ctx,
+                        settings: &mut self.settings,
+                    });
+                }
             });
         }
 
@@ -155,349 +176,198 @@ impl EditorWindowExtension for RagdollEditorWindow {
     }
 
     fn handle_action(&mut self, action: DynWindowAction) {
-        let Ok(action) = action.downcast::<CollidersPreviewAction>() else {
+        let Ok(action) = action.downcast::<RagdollEditorAction>() else {
             return;
         };
 
         match *action {
-            CollidersPreviewAction::SelectBaseScene(handle) => {
+            RagdollEditorAction::SelectBaseScene(handle) => {
                 self.base_scene = Some(handle);
             }
-            CollidersPreviewAction::SelectTarget(handle) => {
+            RagdollEditorAction::SelectRagdoll(handle) => {
                 self.target = Some(handle);
                 self.reverse_index = None;
+            }
+            RagdollEditorAction::ToggleSettingsWindow => {
+                self.show_global_settings = !self.show_global_settings;
             }
         }
     }
 }
 
 impl RagdollEditorWindow {
-    pub fn draw_settings_panel(
-        &mut self,
-        ui: &mut egui::Ui,
-        world: &mut World,
-        ctx: &mut EditorWindowContext,
-    ) {
-        let Some(target) = &self.target else {
-            ui.centered_and_justified(|ui| {
-                ui.label("No target selected");
-            });
-            return;
-        };
+    // pub fn draw_bone_inspector(
+    //     &mut self,
+    //     ui: &mut egui::Ui,
+    //     world: &mut World,
+    //     ctx: &mut EditorWindowContext,
+    // ) {
+    //     let Some(target) = &self.target else {
+    //         ui.centered_and_justified(|ui| {
+    //             ui.label("No target selected");
+    //         });
+    //         return;
+    //     };
 
-        world.resource_scope::<Assets<SkeletonColliders>, _>(|world, skeleton_colliders| {
-            let Some(skeleton_colliders) = skeleton_colliders.get(target) else {
-                return;
-            };
+    //     egui::ScrollArea::both().show(ui, |ui| {
+    //         world.resource_scope::<Assets<SkeletonColliders>, _>(|world, skeleton_colliders| {
+    //             world.resource_scope::<Assets<Skeleton>, _>(|world, skeletons| {
+    //                 let Some(skeleton_colliders) = skeleton_colliders.get(target) else {
+    //                     return;
+    //                 };
 
-            let mut symmetry_enabled = skeleton_colliders.symmetry_enabled;
-            if ui
-                .checkbox(&mut symmetry_enabled, "Enable symmetry (mirror along X)")
-                .changed()
-            {
-                ctx.editor_actions.dynamic(UpdateSymmetryEnabled {
-                    colliders: target.clone(),
-                    symmetry_enabled,
-                });
-            }
+    //                 let Some(skeleton) = skeletons.get(&skeleton_colliders.skeleton) else {
+    //                     return;
+    //                 };
 
-            using_wrap_ui(world, |mut env| {
-                let FlipNameMapper::Pattern(pattern_mapper) =
-                    &skeleton_colliders.symmetry.name_mapper;
-                if let Some(new_mapper) = env.mutable_buffered(
-                    pattern_mapper,
-                    ui,
-                    ui.id().with("skeleton colliders symmetry configuration"),
-                    &(),
-                ) {
-                    ctx.editor_actions.dynamic(UpdateSymmetryConfig {
-                        colliders: target.clone(),
-                        symmetry: SymmetryConfig {
-                            name_mapper: FlipNameMapper::Pattern(new_mapper),
-                            mode: SymmertryMode::MirrorX,
-                        },
-                    });
-                }
-            });
+    //                 let reverse_index = if let Some(reverse_index) = &self.reverse_index {
+    //                     reverse_index
+    //                 } else {
+    //                     self.reverse_index = Some(ReverseSkeletonIndex::new(
+    //                         skeleton,
+    //                         &skeleton_colliders.symmetry,
+    //                     ));
 
-            ui.separator();
+    //                     self.reverse_index.as_ref().unwrap()
+    //                 };
 
-            ui.heading("Default physics layers");
-            let mut layer_membership = skeleton_colliders.default_layer_membership;
-            let mut layer_filter = skeleton_colliders.default_layer_filter;
-            let mut changed = false;
+    //                 let Some(bone_id) = self.selected else {
+    //                     self.draw_colliders = Self::collect_drawable_colliders(
+    //                         None,
+    //                         skeleton_colliders,
+    //                         skeleton,
+    //                         reverse_index,
+    //                         None,
+    //                         self.show_all_colliders,
+    //                     );
+    //                     return;
+    //                 };
 
-            ui.horizontal(|ui| {
-                ui.label("Membership");
-                if ui
-                    .add(egui::DragValue::new(&mut layer_membership))
-                    .changed()
-                {
-                    changed = true;
-                }
-            });
-            ui.horizontal(|ui| {
-                ui.label("Filters");
-                if ui.add(egui::DragValue::new(&mut layer_filter)).changed() {
-                    changed = true
-                }
-            });
+    //                 let Some(bone_path) = skeleton.id_to_path(bone_id) else {
+    //                     return;
+    //                 };
 
-            if changed {
-                ctx.editor_actions.dynamic(UpdateDefaultLayers {
-                    colliders: target.clone(),
-                    layer_membership,
-                    layer_filter,
-                });
-            }
+    //                 ui.heading(
+    //                     bone_path
+    //                         .last()
+    //                         .map(|n| n.to_string())
+    //                         .unwrap_or("ROOT".to_string())
+    //                         .to_string(),
+    //                 );
 
-            let mut suffix = skeleton_colliders.suffix.clone();
-            let mut mirror_suffix = skeleton_colliders.mirror_suffix.clone();
-            let mut changed = false;
+    //                 let bone_colliders = skeleton_colliders
+    //                     .get_colliders(bone_id)
+    //                     .cloned()
+    //                     .unwrap_or_default();
 
-            ui.horizontal(|ui| {
-                ui.label("Suffix");
-                if ui.text_edit_singleline(&mut suffix).changed() {
-                    changed = true;
-                }
-            });
-            ui.horizontal(|ui| {
-                ui.label("Mirror suffix");
-                if ui.text_edit_singleline(&mut mirror_suffix).changed() {
-                    changed = true
-                }
-            });
+    //                 let selectables = bone_colliders
+    //                     .iter()
+    //                     .map(|cfg| SelectableCollider::Existing(cfg.id))
+    //                     .chain([SelectableCollider::New]);
 
-            if changed {
-                ctx.editor_actions.dynamic(UpdateSuffixes {
-                    colliders: target.clone(),
-                    suffix,
-                    mirror_suffix,
-                });
-            }
-        });
+    //                 for selectable in selectables {
+    //                     if ui
+    //                         .selectable_label(
+    //                             self.selectable_collider == selectable,
+    //                             match selectable {
+    //                                 SelectableCollider::None => "NONE".to_string(),
+    //                                 SelectableCollider::New => "New collider".to_string(),
+    //                                 SelectableCollider::Existing(skeleton_collider_id) => {
+    //                                     format!(
+    //                                         "Existing: {}...",
+    //                                         &format!("{skeleton_collider_id:?}")[0..10]
+    //                                     )
+    //                                 }
+    //                             },
+    //                         )
+    //                         .clicked()
+    //                     {
+    //                         self.selectable_collider = selectable;
+    //                     }
+    //                 }
 
-        ui.separator();
+    //                 ui.separator();
 
-        ui.heading("Preview settings");
-        ui.checkbox(&mut self.show_all_colliders, "Show all colliders");
-    }
+    //                 let cfg = if let Some(selectable) =
+    //                     self.edit_buffers.get_mut(&self.selectable_collider)
+    //                 {
+    //                     Some(selectable)
+    //                 } else {
+    //                     match self.selectable_collider {
+    //                         SelectableCollider::None => {}
+    //                         SelectableCollider::New => {
+    //                             self.edit_buffers.insert(
+    //                                 self.selectable_collider.clone(),
+    //                                 ColliderConfig {
+    //                                     id: SkeletonColliderId::generate(),
+    //                                     shape: ColliderShape::Cuboid(Cuboid::new(1., 1., 1.)),
+    //                                     override_layers: false,
+    //                                     layer_membership: skeleton_colliders
+    //                                         .default_layer_membership,
+    //                                     layer_filter: skeleton_colliders.default_layer_filter,
+    //                                     attached_to: bone_id,
+    //                                     ..default()
+    //                                 },
+    //                             );
+    //                         }
+    //                         SelectableCollider::Existing(skeleton_collider_id) => {
+    //                             bone_colliders
+    //                                 .iter()
+    //                                 .find(|cfg| cfg.id == skeleton_collider_id)
+    //                                 .map(|cfg| {
+    //                                     self.edit_buffers.insert(
+    //                                         SelectableCollider::Existing(cfg.id),
+    //                                         cfg.clone(),
+    //                                     )
+    //                                 });
+    //                         }
+    //                     }
 
-    pub fn draw_top_panel(
-        &mut self,
-        ui: &mut egui::Ui,
-        world: &mut World,
-        ctx: &mut EditorWindowContext,
-    ) {
-        ui.horizontal(|ui| {
-            using_wrap_ui(world, |mut env| {
-                if let Some(new_handle) = env.mutable_buffered(
-                    &self.base_scene.clone().unwrap_or_default(),
-                    ui,
-                    ui.id().with("skeleton colliders base scene selector"),
-                    &(),
-                ) {
-                    ctx.editor_actions.window(
-                        ctx.window_id,
-                        CollidersPreviewAction::SelectBaseScene(new_handle),
-                    );
-                }
-            });
+    //                     self.edit_buffers.get_mut(&self.selectable_collider)
+    //                 };
 
-            using_wrap_ui(world, |mut env| {
-                if let Some(new_handle) = env.mutable_buffered(
-                    &self.target.clone().unwrap_or_default(),
-                    ui,
-                    ui.id().with("skeleton colliders target selectors"),
-                    &(),
-                ) {
-                    ctx.editor_actions.window(
-                        ctx.window_id,
-                        CollidersPreviewAction::SelectTarget(new_handle),
-                    );
-                }
-            });
+    //                 let active_collider = cfg.as_ref().map(|c| (*c).clone());
 
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if ui.button("⚙").clicked() {
-                    self.show_global_settings = !self.show_global_settings;
-                }
-            });
-        });
-    }
+    //                 self.draw_colliders = Self::collect_drawable_colliders(
+    //                     Some(bone_id),
+    //                     skeleton_colliders,
+    //                     skeleton,
+    //                     reverse_index,
+    //                     active_collider,
+    //                     self.show_all_colliders,
+    //                 );
 
-    pub fn draw_bone_inspector(
-        &mut self,
-        ui: &mut egui::Ui,
-        world: &mut World,
-        ctx: &mut EditorWindowContext,
-    ) {
-        let Some(target) = &self.target else {
-            ui.centered_and_justified(|ui| {
-                ui.label("No target selected");
-            });
-            return;
-        };
+    //                 if let Some(cfg) = cfg {
+    //                     let mut should_clear = false;
+    //                     Self::draw_collider_inspector(ui, world, cfg);
 
-        egui::ScrollArea::both().show(ui, |ui| {
-            world.resource_scope::<Assets<SkeletonColliders>, _>(|world, skeleton_colliders| {
-                world.resource_scope::<Assets<Skeleton>, _>(|world, skeletons| {
-                    let Some(skeleton_colliders) = skeleton_colliders.get(target) else {
-                        return;
-                    };
+    //                     if ui.button("Apply").clicked() {
+    //                         ctx.editor_actions.dynamic(CreateOrEditCollider {
+    //                             colliders: target.clone(),
+    //                             config: cfg.clone(),
+    //                         });
 
-                    let Some(skeleton) = skeletons.get(&skeleton_colliders.skeleton) else {
-                        return;
-                    };
+    //                         should_clear = true;
+    //                     }
 
-                    let reverse_index = if let Some(reverse_index) = &self.reverse_index {
-                        reverse_index
-                    } else {
-                        self.reverse_index = Some(ReverseSkeletonIndex::new(
-                            skeleton,
-                            &skeleton_colliders.symmetry,
-                        ));
+    //                     if ui.button("Delete").clicked() {
+    //                         ctx.editor_actions.dynamic(DeleteCollider {
+    //                             colliders: target.clone(),
+    //                             bone_id,
+    //                             collider_id: cfg.id,
+    //                         });
 
-                        self.reverse_index.as_ref().unwrap()
-                    };
+    //                         should_clear = true;
+    //                     }
 
-                    let Some(bone_id) = self.selected else {
-                        self.draw_colliders = Self::collect_drawable_colliders(
-                            None,
-                            skeleton_colliders,
-                            skeleton,
-                            reverse_index,
-                            None,
-                            self.show_all_colliders,
-                        );
-                        return;
-                    };
-
-                    let Some(bone_path) = skeleton.id_to_path(bone_id) else {
-                        return;
-                    };
-
-                    ui.heading(
-                        bone_path
-                            .last()
-                            .map(|n| n.to_string())
-                            .unwrap_or("ROOT".to_string())
-                            .to_string(),
-                    );
-
-                    let bone_colliders = skeleton_colliders
-                        .get_colliders(bone_id)
-                        .cloned()
-                        .unwrap_or_default();
-
-                    let selectables = bone_colliders
-                        .iter()
-                        .map(|cfg| SelectableCollider::Existing(cfg.id))
-                        .chain([SelectableCollider::New]);
-
-                    for selectable in selectables {
-                        if ui
-                            .selectable_label(
-                                self.selectable_collider == selectable,
-                                match selectable {
-                                    SelectableCollider::None => "NONE".to_string(),
-                                    SelectableCollider::New => "New collider".to_string(),
-                                    SelectableCollider::Existing(skeleton_collider_id) => {
-                                        format!(
-                                            "Existing: {}...",
-                                            &format!("{skeleton_collider_id:?}")[0..10]
-                                        )
-                                    }
-                                },
-                            )
-                            .clicked()
-                        {
-                            self.selectable_collider = selectable;
-                        }
-                    }
-
-                    ui.separator();
-
-                    let cfg = if let Some(selectable) =
-                        self.edit_buffers.get_mut(&self.selectable_collider)
-                    {
-                        Some(selectable)
-                    } else {
-                        match self.selectable_collider {
-                            SelectableCollider::None => {}
-                            SelectableCollider::New => {
-                                self.edit_buffers.insert(
-                                    self.selectable_collider.clone(),
-                                    ColliderConfig {
-                                        id: SkeletonColliderId::generate(),
-                                        shape: ColliderShape::Cuboid(Cuboid::new(1., 1., 1.)),
-                                        override_layers: false,
-                                        layer_membership: skeleton_colliders
-                                            .default_layer_membership,
-                                        layer_filter: skeleton_colliders.default_layer_filter,
-                                        attached_to: bone_id,
-                                        ..default()
-                                    },
-                                );
-                            }
-                            SelectableCollider::Existing(skeleton_collider_id) => {
-                                bone_colliders
-                                    .iter()
-                                    .find(|cfg| cfg.id == skeleton_collider_id)
-                                    .map(|cfg| {
-                                        self.edit_buffers.insert(
-                                            SelectableCollider::Existing(cfg.id),
-                                            cfg.clone(),
-                                        )
-                                    });
-                            }
-                        }
-
-                        self.edit_buffers.get_mut(&self.selectable_collider)
-                    };
-
-                    let active_collider = cfg.as_ref().map(|c| (*c).clone());
-
-                    self.draw_colliders = Self::collect_drawable_colliders(
-                        Some(bone_id),
-                        skeleton_colliders,
-                        skeleton,
-                        reverse_index,
-                        active_collider,
-                        self.show_all_colliders,
-                    );
-
-                    if let Some(cfg) = cfg {
-                        let mut should_clear = false;
-                        Self::draw_collider_inspector(ui, world, cfg);
-
-                        if ui.button("Apply").clicked() {
-                            ctx.editor_actions.dynamic(CreateOrEditCollider {
-                                colliders: target.clone(),
-                                config: cfg.clone(),
-                            });
-
-                            should_clear = true;
-                        }
-
-                        if ui.button("Delete").clicked() {
-                            ctx.editor_actions.dynamic(DeleteCollider {
-                                colliders: target.clone(),
-                                bone_id,
-                                collider_id: cfg.id,
-                            });
-
-                            should_clear = true;
-                        }
-
-                        if should_clear {
-                            self.edit_buffers.clear();
-                        }
-                    }
-                });
-            });
-        });
-    }
+    //                     if should_clear {
+    //                         self.edit_buffers.clear();
+    //                     }
+    //                 }
+    //             });
+    //         });
+    //     });
+    // }
 
     pub fn draw_collider_inspector(
         ui: &mut egui::Ui,
@@ -683,31 +553,26 @@ impl RagdollEditorWindow {
         };
 
         egui::ScrollArea::both().show(ui, |ui| {
-            world.resource_scope::<Assets<SkeletonColliders>, _>(|world, skeleton_colliders| {
-                world.resource_scope::<Assets<Skeleton>, _>(|_, skeletons| {
-                    let Some(skeleton_colliders) = skeleton_colliders.get(target) else {
-                        return;
-                    };
-                    let Some(skeleton) = skeletons.get(&skeleton_colliders.skeleton) else {
-                        return;
-                    };
+            world.resource_scope::<Assets<Ragdoll>, _>(|world, ragdoll_assets| {
+                let Some(ragdoll) = ragdoll_assets.get(target) else {
+                    return;
+                };
 
-                    // Tree, assemble!
-                    let response =
-                        Tree::skeleton_tree(skeleton).picker_selector(ui, SkeletonTreeRenderer {});
+                // Tree, assemble!
+                let response =
+                    Tree::ragdoll_tree(ragdoll).picker_selector(ui, RagdollTreeRenderer {});
 
-                    match response {
-                        TreeResult::Leaf(_, response) | TreeResult::Node(_, response) => {
-                            self.hovered = response.hovered;
-                            if let Some(clicked) = response.clicked {
-                                self.selected = Some(clicked);
-                                self.edit_buffers.clear();
-                            }
-                        }
-                        _ => {}
-                    };
-                })
-            });
+                // match response {
+                //     TreeResult::Leaf(_, response) | TreeResult::Node(_, response) => {
+                //         self.hovered = response.hovered;
+                //         if let Some(clicked) = response.clicked {
+                //             self.selected = Some(clicked);
+                //             self.edit_buffers.clear();
+                //         }
+                //     }
+                //     _ => {}
+                // };
+            })
         });
     }
 }
