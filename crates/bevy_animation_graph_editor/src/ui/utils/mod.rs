@@ -384,3 +384,46 @@ pub fn orbit_camera_update(
         }
     }
 }
+
+pub fn with_assets<A: Asset, T, const N: usize>(
+    world: &mut World,
+    assets: [AssetId<A>; N],
+    f: impl FnOnce(&mut World, [Option<&A>; N]) -> T,
+) -> T {
+    world.resource_scope::<Assets<A>, T>(move |world, a_assets| {
+        let mut asset_array = [None; N];
+        for i in 0..N {
+            let a = a_assets.get(assets[i]);
+            asset_array[i] = a;
+        }
+        f(world, asset_array)
+    })
+}
+
+pub fn with_assets_all<A: Asset, T, const N: usize>(
+    world: &mut World,
+    assets: [AssetId<A>; N],
+    f: impl FnOnce(&mut World, [&A; N]) -> T,
+) -> Option<T> {
+    with_assets(world, assets, |world, maybe_assets| {
+        for i in 0..N {
+            if maybe_assets[i].is_none() {
+                return None;
+            }
+        }
+        let all_assets =
+            std::array::from_fn(|i| maybe_assets[i].expect("Already checked it's not None"));
+        Some(f(world, all_assets))
+    })
+}
+
+pub fn with_assets_vec<A: Asset, T>(
+    world: &mut World,
+    assets: impl IntoIterator<Item = AssetId<A>>,
+    f: impl FnOnce(&mut World, Vec<Option<&A>>) -> T,
+) -> T {
+    world.resource_scope::<Assets<A>, T>(move |world, a_assets| {
+        let asset_vec = assets.into_iter().map(|id| a_assets.get(id)).collect();
+        f(world, asset_vec)
+    })
+}

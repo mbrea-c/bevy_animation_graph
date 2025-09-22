@@ -2,6 +2,7 @@ use bevy::{
     asset::Asset,
     math::{Isometry3d, Vec3},
     reflect::Reflect,
+    utils::default,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -39,7 +40,20 @@ pub struct Body {
     pub default_mode: BodyMode,
 }
 
-#[derive(Reflect, Debug, Clone, Serialize, Deserialize)]
+impl Body {
+    pub fn new() -> Self {
+        Self {
+            id: BodyId {
+                uuid: Uuid::new_v4(),
+            },
+            isometry: default(),
+            colliders: default(),
+            default_mode: BodyMode::Kinematic,
+        }
+    }
+}
+
+#[derive(Reflect, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BodyMode {
     Kinematic,
     Dynamic,
@@ -96,17 +110,35 @@ pub struct AngleLimit {
     pub max: f32,
 }
 
-#[derive(Reflect, Debug, Clone, Copy, Serialize, Deserialize, Hash, PartialEq, Eq)]
+#[derive(Reflect, Clone, Copy, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub struct BodyId {
     uuid: Uuid,
 }
 
-#[derive(Reflect, Debug, Clone, Copy, Serialize, Deserialize, Hash, PartialEq, Eq)]
+impl std::fmt::Debug for BodyId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.uuid.fmt(f)
+    }
+}
+
+#[derive(Reflect, Clone, Copy, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub struct ColliderId {
     uuid: Uuid,
 }
 
-#[derive(Reflect, Debug, Clone, Copy, Serialize, Deserialize, Hash, PartialEq, Eq)]
+impl std::fmt::Debug for ColliderId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.uuid.fmt(f)
+    }
+}
+
+#[derive(Reflect, Clone, Copy, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub struct JointId {
     uuid: Uuid,
+}
+
+impl std::fmt::Debug for JointId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.uuid.fmt(f)
+    }
 }

@@ -2,6 +2,7 @@ pub mod actions;
 pub mod core;
 pub mod editor_windows;
 pub mod egui_inspector_impls;
+pub mod generic_widgets;
 pub mod reflect_widgets;
 pub mod scenes;
 pub mod utils;

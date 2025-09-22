@@ -25,7 +25,7 @@ use bevy_animation_graph::{
     core::{
         colliders::core::{ColliderConfig, ColliderShape, SkeletonColliderId, SkeletonColliders},
         id::BoneId,
-        ragdoll::definition::Ragdoll,
+        ragdoll::definition::{Body, BodyId, Ragdoll},
         skeleton::Skeleton,
     },
     prelude::{
@@ -36,23 +36,26 @@ use bevy_animation_graph::{
 use egui_dock::egui;
 
 use crate::{
-    tree::{RagdollTreeRenderer, SkeletonTreeRenderer, Tree, TreeResult},
+    tree::RagdollNode,
     ui::{
         PartOfSubScene, PreviewScene, SubSceneConfig, SubSceneSyncAction,
-        actions::{
-            colliders::{CreateOrEditCollider, DeleteCollider},
-            window::DynWindowAction,
-        },
+        actions::window::DynWindowAction,
         core::{EditorWindowContext, EditorWindowExtension},
         editor_windows::ragdoll_editor::{
+            body_inspector::BodyInspector,
+            body_tree::BodyTree,
             settings_panel::{RagdollEditorSettings, SettingsPanel},
             top_panel::TopPanel,
         },
         reflect_widgets::wrap_ui::using_wrap_ui,
-        utils::{OrbitView, orbit_camera_scene_show, orbit_camera_transform, orbit_camera_update},
+        utils::{
+            OrbitView, orbit_camera_scene_show, orbit_camera_transform, orbit_camera_update,
+            with_assets, with_assets_all,
+        },
     },
 };
 
+mod body_inspector;
 mod body_tree;
 mod settings_panel;
 mod top_panel;
@@ -65,7 +68,8 @@ pub struct RagdollEditorWindow {
     pub base_scene: Option<Handle<AnimatedScene>>,
     pub hovered: Option<BoneId>,
     pub selected: Option<BoneId>,
-    pub edit_buffers: HashMap<SelectableCollider, ColliderConfig>,
+    pub selected_node: Option<RagdollNode>,
+    pub body_edit_buffers: HashMap<BodyId, Body>,
     pub selectable_collider: SelectableCollider,
     pub draw_colliders: Vec<(ColliderConfig, Color)>,
     pub show_global_settings: bool,
@@ -90,8 +94,9 @@ impl Default for RagdollEditorWindow {
             base_scene: None,
             hovered: None,
             selected: None,
+            selected_node: None,
             selectable_collider: SelectableCollider::default(),
-            edit_buffers: HashMap::default(),
+            body_edit_buffers: HashMap::default(),
             draw_colliders: Vec::default(),
             show_global_settings: false,
             show_all_colliders: true,
@@ -104,6 +109,7 @@ impl Default for RagdollEditorWindow {
 pub enum RagdollEditorAction {
     SelectBaseScene(Handle<AnimatedScene>),
     SelectRagdoll(Handle<Ragdoll>),
+    SelectNode(RagdollNode),
     ToggleSettingsWindow,
 }
 
@@ -129,15 +135,17 @@ impl EditorWindowExtension for RagdollEditorWindow {
             .resizable(true)
             .default_width(200.)
             .show_inside(ui, |ui| {
-                self.draw_tree_view(ui, world, ctx);
+                if let Some(ragdoll) = self.target.clone() {
+                    BodyTree {
+                        ragdoll,
+                        world,
+                        ctx,
+                    }
+                    .draw(ui);
+                }
             });
 
-        egui::SidePanel::right("Inspector panel")
-            .resizable(true)
-            .default_width(200.)
-            .show_inside(ui, |ui| {
-                // self.draw_bone_inspector(ui, world, ctx);
-            });
+        self.right_panel(ui, world, ctx);
 
         if self.show_global_settings {
             egui::Window::new("Skeleton collider settings").show(ui.ctx(), |ui| {
@@ -188,6 +196,9 @@ impl EditorWindowExtension for RagdollEditorWindow {
                 self.target = Some(handle);
                 self.reverse_index = None;
             }
+            RagdollEditorAction::SelectNode(ragdoll_node) => {
+                self.selected_node = Some(ragdoll_node);
+            }
             RagdollEditorAction::ToggleSettingsWindow => {
                 self.show_global_settings = !self.show_global_settings;
             }
@@ -196,6 +207,49 @@ impl EditorWindowExtension for RagdollEditorWindow {
 }
 
 impl RagdollEditorWindow {
+    pub fn right_panel(
+        &mut self,
+        ui: &mut egui::Ui,
+        world: &mut World,
+        ctx: &mut EditorWindowContext,
+    ) {
+        egui::SidePanel::right("Inspector panel")
+            .resizable(true)
+            .default_width(200.)
+            .show_inside(ui, |ui| {
+                match self.selected_node {
+                    Some(RagdollNode::Body(body_id)) => {
+                        if let Some(ragdoll) = &self.target {
+                            with_assets_all(world, [ragdoll.id()], |world, [ragdoll]| {
+                                let buffer =
+                                    self.body_edit_buffers.entry(body_id).or_insert_with(|| {
+                                        ragdoll
+                                            .get_body(body_id)
+                                            .cloned()
+                                            .unwrap_or_else(|| Body::new())
+                                    });
+
+                                let response = egui::ScrollArea::both()
+                                    .show(ui, |ui| {
+                                        ui.add(BodyInspector {
+                                            world,
+                                            ctx,
+                                            body: buffer,
+                                        })
+                                    })
+                                    .inner;
+                            });
+                        }
+                    }
+                    Some(RagdollNode::Collider(collider_id)) => {}
+                    Some(RagdollNode::Joint(joint_id)) => {}
+                    None => {
+                        ui.label("Nothing is selected");
+                    }
+                }
+                // self.draw_bone_inspector(ui, world, ctx);
+            });
+    }
     // pub fn draw_bone_inspector(
     //     &mut self,
     //     ui: &mut egui::Ui,
@@ -537,43 +591,6 @@ impl RagdollEditorWindow {
         }
 
         draw_colliders
-    }
-
-    pub fn draw_tree_view(
-        &mut self,
-        ui: &mut egui::Ui,
-        world: &mut World,
-        _ctx: &mut EditorWindowContext,
-    ) {
-        let Some(target) = &self.target else {
-            ui.centered_and_justified(|ui| {
-                ui.label("No target selected");
-            });
-            return;
-        };
-
-        egui::ScrollArea::both().show(ui, |ui| {
-            world.resource_scope::<Assets<Ragdoll>, _>(|world, ragdoll_assets| {
-                let Some(ragdoll) = ragdoll_assets.get(target) else {
-                    return;
-                };
-
-                // Tree, assemble!
-                let response =
-                    Tree::ragdoll_tree(ragdoll).picker_selector(ui, RagdollTreeRenderer {});
-
-                // match response {
-                //     TreeResult::Leaf(_, response) | TreeResult::Node(_, response) => {
-                //         self.hovered = response.hovered;
-                //         if let Some(clicked) = response.clicked {
-                //             self.selected = Some(clicked);
-                //             self.edit_buffers.clear();
-                //         }
-                //     }
-                //     _ => {}
-                // };
-            })
-        });
     }
 }
 

@@ -6,7 +6,7 @@ use bevy_animation_graph::core::{
 };
 use egui::Sense;
 
-use crate::ui::utils::collapsing::Collapser;
+use crate::{icons, ui::utils::collapsing::Collapser};
 
 pub struct Tree<I, L>(pub Vec<TreeInternal<I, L>>);
 impl<I, T> Default for Tree<I, T> {
@@ -416,9 +416,9 @@ impl TreeRenderer<RagdollNode, RagdollNode, RagdollResponse> for RagdollTreeRend
         let response = ui
             .horizontal(|ui| {
                 let image = match data {
-                    RagdollNode::Body(_) => egui::include_image!("./bone.svg"),
-                    RagdollNode::Collider(_) => egui::include_image!("./box.svg"),
-                    RagdollNode::Joint(_) => egui::include_image!("./joint.svg"),
+                    RagdollNode::Body(_) => icons::BONE,
+                    RagdollNode::Collider(_) => icons::BOX,
+                    RagdollNode::Joint(_) => icons::JOINT,
                 };
                 let color = ui.visuals().text_color();
                 ui.add(egui::Image::new(image).tint(color).sense(Sense::click()))
