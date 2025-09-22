@@ -1,12 +1,12 @@
 use std::any::Any;
 
+use crate::UiCamera;
 use crate::egui_fsm::lib::FsmUiContext;
 use crate::egui_nodes::lib::NodesContext;
 use crate::ui::editor_windows::ragdoll_editor::RagdollEditorWindow;
 use bevy::asset::UntypedAssetId;
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
-use bevy::window::PrimaryWindow;
 use bevy_animation_graph::core::animated_scene::AnimatedScene;
 use bevy_animation_graph::core::animation_clip::EntityPath;
 use bevy_animation_graph::core::animation_graph::{AnimationGraph, NodeId, PinId};
@@ -16,7 +16,7 @@ use bevy_animation_graph::core::edge_data::AnimationEvent;
 use bevy_animation_graph::core::state_machine::high_level::{
     State, StateId, StateMachine, Transition, TransitionId,
 };
-use bevy_egui::EguiContext;
+use bevy_egui::{EguiContext, PrimaryEguiContext};
 use bevy_inspector_egui::{bevy_egui, egui};
 use egui_dock::egui::Color32;
 use egui_dock::{DockArea, DockState, NodeIndex, Style};
@@ -42,15 +42,21 @@ use super::editor_windows::skeleton_preview::SkeletonCollidersPreviewWindow;
 pub use super::windows::EditorWindowExtension;
 use super::windows::{WindowId, Windows};
 
-pub fn setup(mut egui_context: Single<&mut EguiContext, With<PrimaryWindow>>) {
-    let ctx = egui_context.get_mut();
-
-    egui_extras::install_image_loaders(ctx);
+#[derive(Component)]
+pub struct HasLoadedImgLoaders;
+pub fn setup_ui(
+    mut egui_context: Query<(Entity, &mut EguiContext), Without<HasLoadedImgLoaders>>,
+    mut commands: Commands,
+) {
+    for (entity, mut ctx) in &mut egui_context {
+        egui_extras::install_image_loaders(ctx.get_mut());
+        commands.entity(entity).insert(HasLoadedImgLoaders);
+    }
 }
 
 pub fn show_ui_system(world: &mut World) {
     let Ok(egui_context) = world
-        .query_filtered::<&mut EguiContext, With<PrimaryWindow>>()
+        .query_filtered::<&mut EguiContext, With<PrimaryEguiContext>>()
         .single(world)
     else {
         return;

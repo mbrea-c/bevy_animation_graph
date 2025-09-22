@@ -8,8 +8,9 @@ mod tree;
 mod ui;
 
 use bevy::prelude::*;
+use bevy::render::view::RenderLayers;
 use bevy_animation_graph::core::plugin::AnimationGraphPlugin;
-use bevy_egui::EguiPlugin;
+use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 use bevy_inspector_egui::{DefaultInspectorConfigPlugin, bevy_egui};
 use clap::Parser;
 use fsm_show::FsmIndicesMap;
@@ -52,9 +53,7 @@ impl Plugin for AnimationGraphEditorPlugin {
                     ..Default::default()
                 }),
             )
-            .add_plugins(EguiPlugin {
-                enable_multipass_for_primary_context: false,
-            })
+            .add_plugins(EguiPlugin::default())
             .add_plugins(AnimationGraphPlugin)
             .add_plugins(DefaultInspectorConfigPlugin)
             .add_plugins(BetterInspectorPlugin)
@@ -72,11 +71,12 @@ impl Plugin for AnimationGraphEditorPlugin {
             .insert_resource(ClipPreviewScenes::default())
             .insert_resource(cli);
 
-        app.add_systems(Startup, ui::setup);
+        app.add_systems(Startup, setup);
 
         app.add_systems(
-            Update,
+            EguiPrimaryContextPass,
             (
+                ui::setup_ui,
                 ui::show_ui_system,
                 ui::actions::process_actions_system,
                 ui::override_scene_animations,
@@ -87,4 +87,15 @@ impl Plugin for AnimationGraphEditorPlugin {
                 .chain(),
         );
     }
+}
+
+#[derive(Component)]
+struct UiCamera;
+pub fn setup(mut commands: Commands) {
+    commands.spawn((
+        Camera2d,
+        UiCamera,
+        bevy_egui::PrimaryEguiContext,
+        RenderLayers::none(),
+    ));
 }

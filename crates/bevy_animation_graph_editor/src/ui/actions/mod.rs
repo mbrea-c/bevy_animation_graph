@@ -111,7 +111,7 @@ fn handle_view_action(In(view_action): In<ViewAction>, mut ui_state: ResMut<UiSt
 }
 
 pub fn process_actions_system(world: &mut World) {
-    world.resource_scope::<PendingActions, ()>(|world, mut actions| {
+    world.try_resource_scope::<PendingActions, ()>(|world, mut actions| {
         handle_editor_action_queue(world, actions.actions.0.drain(..));
     });
 }
