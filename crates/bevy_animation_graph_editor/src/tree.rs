@@ -6,8 +6,6 @@ use bevy_animation_graph::core::{
 };
 use egui::Sense;
 
-use crate::{icons, ui::utils::collapsing::Collapser};
-
 pub struct Tree<I, L>(pub Vec<TreeInternal<I, L>>);
 impl<I, T> Default for Tree<I, T> {
     fn default() -> Self {
@@ -353,85 +351,5 @@ impl Tree<RagdollNode, RagdollNode> {
     ) -> TreeInternal<RagdollNode, RagdollNode> {
         let joint = ragdoll.get_joint(joint_id).unwrap();
         TreeInternal::Leaf(format!("{:?}", joint.id), RagdollNode::Joint(joint_id))
-    }
-}
-
-#[derive(Clone, Copy)]
-pub struct RagdollTreeRenderer {}
-
-impl RagdollTreeRenderer {}
-
-pub struct RagdollResponse {
-    pub hovered: Option<RagdollNode>,
-    pub clicked: Option<RagdollNode>,
-}
-
-impl TreeResponse for RagdollResponse {
-    fn combine(&self, other: &Self) -> Self {
-        RagdollResponse {
-            hovered: self.hovered.or(other.hovered),
-            clicked: self.clicked.or(other.clicked),
-        }
-    }
-}
-
-impl TreeRenderer<RagdollNode, RagdollNode, RagdollResponse> for RagdollTreeRenderer {
-    fn render_inner(
-        &self,
-        label: &str,
-        data: &RagdollNode,
-        children: &[TreeInternal<RagdollNode, RagdollNode>],
-        ui: &mut egui::Ui,
-        render_child: impl Fn(
-            &TreeInternal<RagdollNode, RagdollNode>,
-            &mut egui::Ui,
-        ) -> TreeResult<RagdollNode, RagdollNode, RagdollResponse>,
-    ) -> TreeResult<RagdollNode, RagdollNode, RagdollResponse> {
-        let collapsing_response = Collapser::new()
-            .with_default_open(true)
-            .with_id_salt(data)
-            .show(
-                ui,
-                |ui| self.render_leaf(label, data, ui),
-                |ui| {
-                    children
-                        .iter()
-                        .map(|c| render_child(c, ui))
-                        .reduce(|l, r| l.or(r))
-                        .unwrap_or_default()
-                },
-            );
-
-        collapsing_response
-            .head
-            .or(collapsing_response.body.unwrap_or_default())
-    }
-
-    fn render_leaf(
-        &self,
-        label: &str,
-        data: &RagdollNode,
-        ui: &mut egui::Ui,
-    ) -> TreeResult<RagdollNode, RagdollNode, RagdollResponse> {
-        let response = ui
-            .horizontal(|ui| {
-                let image = match data {
-                    RagdollNode::Body(_) => icons::BONE,
-                    RagdollNode::Collider(_) => icons::BOX,
-                    RagdollNode::Joint(_) => icons::JOINT,
-                };
-                let color = ui.visuals().text_color();
-                ui.add(egui::Image::new(image).tint(color).sense(Sense::click()))
-                    | ui.add(egui::Label::new(label).sense(Sense::click()))
-            })
-            .inner;
-
-        TreeResult::Leaf(
-            data.clone(),
-            RagdollResponse {
-                hovered: response.hovered().then_some(*data),
-                clicked: response.clicked().then_some(*data),
-            },
-        )
     }
 }

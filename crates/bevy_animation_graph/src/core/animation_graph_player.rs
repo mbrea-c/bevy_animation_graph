@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use super::{
     animation_graph::{AnimationGraph, DEFAULT_OUTPUT_POSE, InputOverlay, PinId, TimeUpdate},
     context::{DeferredGizmos, PassContext},
@@ -9,14 +11,16 @@ use super::{
 };
 use crate::{
     core::ragdoll::{bone_mapping::RagdollBoneMap, definition::Ragdoll, spawning::SpawnedRagdoll},
-    prelude::{CustomRelativeDrawCommand, SystemResources},
+    prelude::{CustomRelativeDrawCommand, CustomRelativeDrawCommandReference, SystemResources},
 };
 use bevy::{
     asset::prelude::*,
     color::{Color, palettes::css::WHITE},
     ecs::prelude::*,
+    gizmos::gizmos::Gizmos,
     platform::collections::HashMap,
     reflect::prelude::*,
+    transform::components::Transform,
 };
 
 #[derive(Default, Reflect, Clone, Copy)]
@@ -225,6 +229,16 @@ impl AnimationGraphPlayer {
 
     pub fn custom_relative_gizmo(&mut self, gizmo: CustomRelativeDrawCommand) {
         self.debug_draw_custom.push(gizmo);
+    }
+
+    pub fn gizmo_relative_to_root(
+        &mut self,
+        f: impl Fn(Transform, &mut Gizmos) + Send + Sync + 'static,
+    ) {
+        self.debug_draw_custom.push(CustomRelativeDrawCommand {
+            reference: CustomRelativeDrawCommandReference::Root,
+            f: Arc::new(f),
+        });
     }
 
     pub(crate) fn debug_draw_bones(

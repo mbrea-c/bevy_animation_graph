@@ -6,7 +6,10 @@ mod pose_fallback;
 mod spec_context;
 mod system_resources;
 
-pub use deferred_gizmos::{CustomRelativeDrawCommand, DeferredGizmos, DeferredGizmosContext};
+pub use deferred_gizmos::{
+    CustomRelativeDrawCommand, CustomRelativeDrawCommandReference, DeferredGizmos,
+    DeferredGizmosContext,
+};
 pub use graph_context::{CacheReadFilter, CacheWriteFilter, GraphContext};
 pub use graph_context_arena::{GraphContextArena, GraphContextId};
 pub use pass_context::{FsmContext, PassContext, StateRole, StateStack};

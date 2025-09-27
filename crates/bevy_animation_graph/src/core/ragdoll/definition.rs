@@ -20,6 +20,10 @@ impl Ragdoll {
         self.bodies.iter().find(|b| b.id == id)
     }
 
+    pub fn get_body_mut(&mut self, id: BodyId) -> Option<&mut Body> {
+        self.bodies.iter_mut().find(|b| b.id == id)
+    }
+
     pub fn get_collider(&self, id: ColliderId) -> Option<&Collider> {
         self.bodies
             .iter()

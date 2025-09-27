@@ -1,62 +1,44 @@
-use std::sync::Arc;
-
 use bevy::{
-    asset::{Assets, Handle},
+    asset::Handle,
     color::{
-        Alpha, Color, LinearRgba,
-        palettes::css::{self, DARK_RED, GRAY, ORANGE, YELLOW},
+        Alpha, Color,
+        palettes::css::{DARK_RED, ORANGE, YELLOW},
     },
-    core_pipeline::core_3d::Camera3d,
-    ecs::{
-        hierarchy::ChildSpawnerCommands,
-        system::{In, Query, Res},
-    },
-    gizmos::primitives::dim3::GizmoPrimitive3d,
-    image::Image,
-    math::{Vec3, primitives::Cuboid},
-    pbr::PointLight,
     platform::collections::HashMap,
     prelude::World,
-    render::camera::{Camera, ClearColorConfig, RenderTarget},
-    transform::components::Transform,
     utils::default,
 };
 use bevy_animation_graph::{
     core::{
-        colliders::core::{ColliderConfig, ColliderShape, SkeletonColliderId, SkeletonColliders},
+        colliders::core::{ColliderConfig, SkeletonColliderId, SkeletonColliders},
         id::BoneId,
         ragdoll::definition::{Body, BodyId, Ragdoll},
         skeleton::Skeleton,
     },
-    prelude::{
-        AnimatedScene, AnimatedSceneHandle, AnimationGraphPlayer, AnimationSource,
-        CustomRelativeDrawCommand, config::SymmetryConfig,
-    },
+    prelude::{AnimatedScene, config::SymmetryConfig},
 };
 use egui_dock::egui;
 
 use crate::{
     tree::RagdollNode,
     ui::{
-        PartOfSubScene, PreviewScene, SubSceneConfig, SubSceneSyncAction,
-        actions::window::DynWindowAction,
+        actions::{ragdoll::EditRagdollBody, window::DynWindowAction},
         core::{EditorWindowContext, EditorWindowExtension},
         editor_windows::ragdoll_editor::{
             body_inspector::BodyInspector,
             body_tree::BodyTree,
+            ragdoll_preview::RagdollPreview,
             settings_panel::{RagdollEditorSettings, SettingsPanel},
             top_panel::TopPanel,
         },
         reflect_widgets::wrap_ui::using_wrap_ui,
-        utils::{
-            OrbitView, orbit_camera_scene_show, orbit_camera_transform, orbit_camera_update,
-            with_assets, with_assets_all,
-        },
+        utils::{OrbitView, with_assets_all},
     },
 };
 
 mod body_inspector;
 mod body_tree;
+mod ragdoll_preview;
 mod settings_panel;
 mod top_panel;
 
@@ -110,73 +92,17 @@ pub enum RagdollEditorAction {
     SelectBaseScene(Handle<AnimatedScene>),
     SelectRagdoll(Handle<Ragdoll>),
     SelectNode(RagdollNode),
+    ResetBodyBuffers,
     ToggleSettingsWindow,
 }
 
 impl EditorWindowExtension for RagdollEditorWindow {
     fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
-        let timeline_height = 30.;
-
-        egui::TopBottomPanel::top("Top panel")
-            .resizable(false)
-            .exact_height(timeline_height)
-            .frame(egui::Frame::NONE.inner_margin(5.))
-            .show_inside(ui, |ui| {
-                TopPanel {
-                    ragdoll: self.target.clone(),
-                    scene: self.base_scene.clone(),
-                    world,
-                    ctx,
-                }
-                .draw(ui);
-            });
-
-        egui::SidePanel::left("Hierarchical tree view")
-            .resizable(true)
-            .default_width(200.)
-            .show_inside(ui, |ui| {
-                if let Some(ragdoll) = self.target.clone() {
-                    BodyTree {
-                        ragdoll,
-                        world,
-                        ctx,
-                    }
-                    .draw(ui);
-                }
-            });
-
+        self.top_panel(ui, world, ctx);
+        self.left_panel(ui, world, ctx);
         self.right_panel(ui, world, ctx);
-
-        if self.show_global_settings {
-            egui::Window::new("Skeleton collider settings").show(ui.ctx(), |ui| {
-                if let Some(target) = &self.target {
-                    ui.add(SettingsPanel {
-                        target: target.clone(),
-                        world,
-                        ctx,
-                        settings: &mut self.settings,
-                    });
-                }
-            });
-        }
-
-        let Some(base_scene) = &self.base_scene else {
-            ui.centered_and_justified(|ui| {
-                ui.label("No base scene selected");
-            });
-            return;
-        };
-
-        let config = SkeletonCollidersPreviewConfig {
-            animated_scene: base_scene.clone(),
-            view: self.orbit_view.clone(),
-            hovered: self.hovered,
-            selected: self.selected,
-            draw_colliders: std::mem::take(&mut self.draw_colliders),
-        };
-
-        let ui_texture_id = ui.id().with("clip preview texture");
-        orbit_camera_scene_show(&config, &mut self.orbit_view, ui, world, ui_texture_id);
+        self.settings_popup(ui, world, ctx);
+        self.center_panel(ui, world, ctx);
     }
 
     fn display_name(&self) -> String {
@@ -202,11 +128,58 @@ impl EditorWindowExtension for RagdollEditorWindow {
             RagdollEditorAction::ToggleSettingsWindow => {
                 self.show_global_settings = !self.show_global_settings;
             }
+            RagdollEditorAction::ResetBodyBuffers => self.body_edit_buffers.clear(),
         }
     }
 }
 
 impl RagdollEditorWindow {
+    pub fn top_panel(
+        &mut self,
+        ui: &mut egui::Ui,
+        world: &mut World,
+        ctx: &mut EditorWindowContext,
+    ) {
+        let timeline_height = 30.;
+
+        egui::TopBottomPanel::top("Top panel")
+            .resizable(false)
+            .exact_height(timeline_height)
+            .frame(egui::Frame::NONE.inner_margin(5.))
+            .show_inside(ui, |ui| {
+                TopPanel {
+                    ragdoll: self.target.clone(),
+                    scene: self.base_scene.clone(),
+                    world,
+                    ctx,
+                }
+                .draw(ui);
+            });
+    }
+
+    pub fn left_panel(
+        &mut self,
+        ui: &mut egui::Ui,
+        world: &mut World,
+        ctx: &mut EditorWindowContext,
+    ) {
+        egui::SidePanel::left("Hierarchical tree view")
+            .resizable(true)
+            .default_width(300.)
+            .show_inside(ui, |ui| {
+                egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
+                    if let Some(ragdoll) = self.target.clone() {
+                        BodyTree {
+                            ragdoll,
+                            world,
+                            ctx,
+                        }
+                        .draw(ui);
+                    }
+                });
+            });
+    }
+
     pub fn right_panel(
         &mut self,
         ui: &mut egui::Ui,
@@ -215,213 +188,99 @@ impl RagdollEditorWindow {
     ) {
         egui::SidePanel::right("Inspector panel")
             .resizable(true)
-            .default_width(200.)
+            .default_width(300.)
             .show_inside(ui, |ui| {
-                match self.selected_node {
-                    Some(RagdollNode::Body(body_id)) => {
-                        if let Some(ragdoll) = &self.target {
-                            with_assets_all(world, [ragdoll.id()], |world, [ragdoll]| {
-                                let buffer =
-                                    self.body_edit_buffers.entry(body_id).or_insert_with(|| {
-                                        ragdoll
-                                            .get_body(body_id)
-                                            .cloned()
-                                            .unwrap_or_else(|| Body::new())
-                                    });
+                egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
+                    match self.selected_node {
+                        Some(RagdollNode::Body(body_id)) => {
+                            if let Some(ragdoll_handle) = &self.target {
+                                with_assets_all(
+                                    world,
+                                    [ragdoll_handle.id()],
+                                    |world, [ragdoll]| {
+                                        let buffer = self
+                                            .body_edit_buffers
+                                            .entry(body_id)
+                                            .or_insert_with(|| {
+                                                ragdoll
+                                                    .get_body(body_id)
+                                                    .cloned()
+                                                    .unwrap_or_else(|| Body::new())
+                                            });
 
-                                let response = egui::ScrollArea::both()
-                                    .show(ui, |ui| {
-                                        ui.add(BodyInspector {
+                                        let _response = ui.add(BodyInspector {
                                             world,
                                             ctx,
                                             body: buffer,
-                                        })
-                                    })
-                                    .inner;
-                            });
+                                        });
+
+                                        if ui.button("Apply").clicked() {
+                                            ctx.editor_actions.dynamic(EditRagdollBody {
+                                                ragdoll: ragdoll_handle.clone(),
+                                                body: buffer.clone(),
+                                            });
+                                            ctx.window_action(
+                                                RagdollEditorAction::ResetBodyBuffers,
+                                            );
+                                        }
+                                    },
+                                );
+                            }
+                        }
+                        Some(RagdollNode::Collider(collider_id)) => {}
+                        Some(RagdollNode::Joint(joint_id)) => {}
+                        None => {
+                            ui.label("Nothing is selected");
                         }
                     }
-                    Some(RagdollNode::Collider(collider_id)) => {}
-                    Some(RagdollNode::Joint(joint_id)) => {}
-                    None => {
-                        ui.label("Nothing is selected");
-                    }
-                }
-                // self.draw_bone_inspector(ui, world, ctx);
+                });
             });
     }
-    // pub fn draw_bone_inspector(
-    //     &mut self,
-    //     ui: &mut egui::Ui,
-    //     world: &mut World,
-    //     ctx: &mut EditorWindowContext,
-    // ) {
-    //     let Some(target) = &self.target else {
-    //         ui.centered_and_justified(|ui| {
-    //             ui.label("No target selected");
-    //         });
-    //         return;
-    //     };
 
-    //     egui::ScrollArea::both().show(ui, |ui| {
-    //         world.resource_scope::<Assets<SkeletonColliders>, _>(|world, skeleton_colliders| {
-    //             world.resource_scope::<Assets<Skeleton>, _>(|world, skeletons| {
-    //                 let Some(skeleton_colliders) = skeleton_colliders.get(target) else {
-    //                     return;
-    //                 };
+    pub fn center_panel(
+        &mut self,
+        ui: &mut egui::Ui,
+        world: &mut World,
+        ctx: &mut EditorWindowContext,
+    ) {
+        if let Some(base_scene) = &self.base_scene
+            && let Some(ragdoll) = &self.target
+        {
+            RagdollPreview {
+                world,
+                ctx,
+                orbit_view: &mut self.orbit_view,
+                ragdoll: ragdoll.clone(),
+                base_scene: base_scene.clone(),
+                body_buffers: self.body_edit_buffers.clone(),
+            }
+            .draw(ui);
+        } else {
+            ui.centered_and_justified(|ui| {
+                ui.label("No base scene selected");
+            });
+        }
+    }
 
-    //                 let Some(skeleton) = skeletons.get(&skeleton_colliders.skeleton) else {
-    //                     return;
-    //                 };
-
-    //                 let reverse_index = if let Some(reverse_index) = &self.reverse_index {
-    //                     reverse_index
-    //                 } else {
-    //                     self.reverse_index = Some(ReverseSkeletonIndex::new(
-    //                         skeleton,
-    //                         &skeleton_colliders.symmetry,
-    //                     ));
-
-    //                     self.reverse_index.as_ref().unwrap()
-    //                 };
-
-    //                 let Some(bone_id) = self.selected else {
-    //                     self.draw_colliders = Self::collect_drawable_colliders(
-    //                         None,
-    //                         skeleton_colliders,
-    //                         skeleton,
-    //                         reverse_index,
-    //                         None,
-    //                         self.show_all_colliders,
-    //                     );
-    //                     return;
-    //                 };
-
-    //                 let Some(bone_path) = skeleton.id_to_path(bone_id) else {
-    //                     return;
-    //                 };
-
-    //                 ui.heading(
-    //                     bone_path
-    //                         .last()
-    //                         .map(|n| n.to_string())
-    //                         .unwrap_or("ROOT".to_string())
-    //                         .to_string(),
-    //                 );
-
-    //                 let bone_colliders = skeleton_colliders
-    //                     .get_colliders(bone_id)
-    //                     .cloned()
-    //                     .unwrap_or_default();
-
-    //                 let selectables = bone_colliders
-    //                     .iter()
-    //                     .map(|cfg| SelectableCollider::Existing(cfg.id))
-    //                     .chain([SelectableCollider::New]);
-
-    //                 for selectable in selectables {
-    //                     if ui
-    //                         .selectable_label(
-    //                             self.selectable_collider == selectable,
-    //                             match selectable {
-    //                                 SelectableCollider::None => "NONE".to_string(),
-    //                                 SelectableCollider::New => "New collider".to_string(),
-    //                                 SelectableCollider::Existing(skeleton_collider_id) => {
-    //                                     format!(
-    //                                         "Existing: {}...",
-    //                                         &format!("{skeleton_collider_id:?}")[0..10]
-    //                                     )
-    //                                 }
-    //                             },
-    //                         )
-    //                         .clicked()
-    //                     {
-    //                         self.selectable_collider = selectable;
-    //                     }
-    //                 }
-
-    //                 ui.separator();
-
-    //                 let cfg = if let Some(selectable) =
-    //                     self.edit_buffers.get_mut(&self.selectable_collider)
-    //                 {
-    //                     Some(selectable)
-    //                 } else {
-    //                     match self.selectable_collider {
-    //                         SelectableCollider::None => {}
-    //                         SelectableCollider::New => {
-    //                             self.edit_buffers.insert(
-    //                                 self.selectable_collider.clone(),
-    //                                 ColliderConfig {
-    //                                     id: SkeletonColliderId::generate(),
-    //                                     shape: ColliderShape::Cuboid(Cuboid::new(1., 1., 1.)),
-    //                                     override_layers: false,
-    //                                     layer_membership: skeleton_colliders
-    //                                         .default_layer_membership,
-    //                                     layer_filter: skeleton_colliders.default_layer_filter,
-    //                                     attached_to: bone_id,
-    //                                     ..default()
-    //                                 },
-    //                             );
-    //                         }
-    //                         SelectableCollider::Existing(skeleton_collider_id) => {
-    //                             bone_colliders
-    //                                 .iter()
-    //                                 .find(|cfg| cfg.id == skeleton_collider_id)
-    //                                 .map(|cfg| {
-    //                                     self.edit_buffers.insert(
-    //                                         SelectableCollider::Existing(cfg.id),
-    //                                         cfg.clone(),
-    //                                     )
-    //                                 });
-    //                         }
-    //                     }
-
-    //                     self.edit_buffers.get_mut(&self.selectable_collider)
-    //                 };
-
-    //                 let active_collider = cfg.as_ref().map(|c| (*c).clone());
-
-    //                 self.draw_colliders = Self::collect_drawable_colliders(
-    //                     Some(bone_id),
-    //                     skeleton_colliders,
-    //                     skeleton,
-    //                     reverse_index,
-    //                     active_collider,
-    //                     self.show_all_colliders,
-    //                 );
-
-    //                 if let Some(cfg) = cfg {
-    //                     let mut should_clear = false;
-    //                     Self::draw_collider_inspector(ui, world, cfg);
-
-    //                     if ui.button("Apply").clicked() {
-    //                         ctx.editor_actions.dynamic(CreateOrEditCollider {
-    //                             colliders: target.clone(),
-    //                             config: cfg.clone(),
-    //                         });
-
-    //                         should_clear = true;
-    //                     }
-
-    //                     if ui.button("Delete").clicked() {
-    //                         ctx.editor_actions.dynamic(DeleteCollider {
-    //                             colliders: target.clone(),
-    //                             bone_id,
-    //                             collider_id: cfg.id,
-    //                         });
-
-    //                         should_clear = true;
-    //                     }
-
-    //                     if should_clear {
-    //                         self.edit_buffers.clear();
-    //                     }
-    //                 }
-    //             });
-    //         });
-    //     });
-    // }
+    pub fn settings_popup(
+        &mut self,
+        ui: &mut egui::Ui,
+        world: &mut World,
+        ctx: &mut EditorWindowContext,
+    ) {
+        if self.show_global_settings {
+            egui::Window::new("Skeleton collider settings").show(ui.ctx(), |ui| {
+                if let Some(target) = &self.target {
+                    ui.add(SettingsPanel {
+                        target: target.clone(),
+                        world,
+                        ctx,
+                        settings: &mut self.settings,
+                    });
+                }
+            });
+        }
+    }
 
     pub fn draw_collider_inspector(
         ui: &mut egui::Ui,
@@ -591,132 +450,6 @@ impl RagdollEditorWindow {
         }
 
         draw_colliders
-    }
-}
-
-#[derive(Clone)]
-pub struct SkeletonCollidersPreviewConfig {
-    pub animated_scene: Handle<AnimatedScene>,
-    pub view: OrbitView,
-    pub hovered: Option<BoneId>,
-    pub selected: Option<BoneId>,
-    pub draw_colliders: Vec<(ColliderConfig, Color)>,
-}
-
-impl SubSceneConfig for SkeletonCollidersPreviewConfig {
-    fn spawn(&self, builder: &mut ChildSpawnerCommands, render_target: Handle<Image>) {
-        builder.spawn((
-            PointLight::default(),
-            Transform::from_translation(Vec3::new(0.0, 0.0, 10.0)),
-        ));
-
-        builder.spawn((
-            Camera3d::default(),
-            Camera {
-                // render before the "main pass" camera
-                order: -1,
-                clear_color: ClearColorConfig::Custom(Color::from(LinearRgba::new(0., 0., 0., 1.))),
-                target: RenderTarget::Image(render_target.into()),
-                ..default()
-            },
-            orbit_camera_transform(&self.view),
-        ));
-
-        builder.spawn((
-            AnimatedSceneHandle {
-                handle: self.animated_scene.clone(),
-                override_source: Some(AnimationSource::None),
-            },
-            PreviewScene,
-        ));
-    }
-
-    fn sync_action(&self, new_config: &Self) -> SubSceneSyncAction {
-        match self.animated_scene == new_config.animated_scene {
-            true => SubSceneSyncAction::Update,
-            false => SubSceneSyncAction::Respawn,
-        }
-    }
-
-    fn update(&self, id: egui::Id, world: &mut World) {
-        world
-            .run_system_cached_with(orbit_camera_update, (id, self.view.clone()))
-            .unwrap();
-        world
-            .run_system_cached_with(
-                highlight_bones,
-                (
-                    id,
-                    HighlightSettings {
-                        hovered: self.hovered,
-                        selected: self.selected,
-                        draw_colliders: self.draw_colliders.clone(),
-                    },
-                ),
-            )
-            .unwrap();
-    }
-}
-
-struct HighlightSettings {
-    hovered: Option<BoneId>,
-    selected: Option<BoneId>,
-    draw_colliders: Vec<(ColliderConfig, Color)>,
-}
-
-fn highlight_bones(
-    In((id, mut input)): In<(egui::Id, HighlightSettings)>,
-    mut q_animation_players: Query<(&mut AnimationGraphPlayer, &PartOfSubScene)>,
-    skeletons: Res<Assets<Skeleton>>,
-) {
-    for (mut player, PartOfSubScene(target_id)) in &mut q_animation_players {
-        if id != *target_id {
-            continue;
-        }
-
-        let Some(skeleton) = skeletons.get(player.skeleton()) else {
-            continue;
-        };
-
-        let mut drawable = vec![];
-        if let Some(clicked) = input.selected {
-            drawable.push((clicked, css::LIGHT_SKY_BLUE.into()));
-        }
-
-        if let Some(hovered) = input.hovered {
-            if input.selected.is_none_or(|b| b != hovered) {
-                drawable.push((hovered, GRAY.into()));
-            }
-        }
-
-        player.gizmo_for_bones_with_color(drawable);
-
-        for (cfg, color) in input.draw_colliders.drain(..) {
-            let Some(default_transforms) = skeleton.default_transforms(cfg.attached_to).cloned()
-            else {
-                continue;
-            };
-
-            player.custom_relative_gizmo(CustomRelativeDrawCommand {
-                bone_id: cfg.attached_to,
-                f: Arc::new(move |bone_transform, gizmos| {
-                    let offset_transform =
-                        bone_transform * cfg.local_transform(&default_transforms);
-
-                    match cfg.shape {
-                        ColliderShape::Sphere(sphere) => {
-                            gizmos.primitive_3d(&sphere, offset_transform.to_isometry(), color);
-                        }
-                        ColliderShape::Capsule(capsule3d) => {
-                            gizmos.primitive_3d(&capsule3d, offset_transform.to_isometry(), color);
-                        }
-                        ColliderShape::Cuboid(cuboid) => {
-                            gizmos.primitive_3d(&cuboid, offset_transform.to_isometry(), color);
-                        }
-                    }
-                }),
-            });
-        }
     }
 }
 

@@ -29,7 +29,7 @@ use bevy_animation_graph::{
     },
     prelude::{
         AnimatedScene, AnimatedSceneHandle, AnimationGraphPlayer, AnimationSource,
-        CustomRelativeDrawCommand,
+        CustomRelativeDrawCommand, CustomRelativeDrawCommandReference,
         config::{FlipNameMapper, SymmertryMode, SymmetryConfig},
     },
 };
@@ -816,7 +816,7 @@ fn highlight_bones(
             };
 
             player.custom_relative_gizmo(CustomRelativeDrawCommand {
-                bone_id: cfg.attached_to,
+                reference: CustomRelativeDrawCommandReference::Bone(cfg.attached_to),
                 f: Arc::new(move |bone_transform, gizmos| {
                     let offset_transform =
                         bone_transform * cfg.local_transform(&default_transforms);

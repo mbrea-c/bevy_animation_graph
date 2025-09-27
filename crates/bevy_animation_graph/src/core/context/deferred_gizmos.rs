@@ -74,8 +74,13 @@ impl DeferredGizmos {
     }
 }
 
+pub enum CustomRelativeDrawCommandReference {
+    Root,
+    Bone(BoneId),
+}
+
 pub struct CustomRelativeDrawCommand {
-    pub bone_id: BoneId,
+    pub reference: CustomRelativeDrawCommandReference,
     #[allow(clippy::type_complexity)]
     pub f: Arc<dyn Fn(Transform, &mut Gizmos) + Send + Sync + 'static>,
 }
@@ -203,9 +208,17 @@ impl DeferredGizmosContext<'_> {
         let default_pose = Pose::default();
         let pose = pose.unwrap_or(&default_pose);
 
-        let global_bone_transform =
-            self.space_conversion
-                .global_transform_of_bone(pose, skeleton, command.bone_id);
+        let global_bone_transform = match command.reference {
+            CustomRelativeDrawCommandReference::Root => self
+                .space_conversion
+                .pose_fallback
+                .root_global_transform(skeleton)
+                .unwrap()
+                .compute_transform(),
+            CustomRelativeDrawCommandReference::Bone(bone_id) => self
+                .space_conversion
+                .global_transform_of_bone(pose, skeleton, bone_id),
+        };
 
         self.gizmos
             .queue(DeferredGizmoCommand::Custom(Arc::new(move |gizmos| {

@@ -35,20 +35,20 @@ impl<'a> egui::Widget for Isometry3dWidget<'a> {
         let mut draw = |ui: &mut egui::Ui| {
             let translation_label_response = ui.label("translation:");
             let mut translation: Vec3 = self.isometry.translation.into();
-            let translation_response = ui.add(Vec3Widget {
-                vec3: &mut translation,
-                slider_step_size: self.slider_step_size,
-                id_hash: self.id_hash.with("translation"),
-            });
+            let translation_response = ui.add(
+                Vec3Widget::new_salted(&mut translation, self.id_hash.with("translation"))
+                    .with_step_size(self.slider_step_size)
+                    .with_width(200.),
+            );
             self.isometry.translation = translation.into();
             ui.end_row();
 
             let rotation_label_response = ui.label("rotation:");
-            let rotation_response = ui.add(QuatWidget {
-                quat: &mut self.isometry.rotation,
-                slider_step_size: self.slider_step_size,
-                id_hash: self.id_hash.with("rotation"),
-            });
+            let rotation_response = ui.add(
+                QuatWidget::new_salted(&mut self.isometry.rotation, self.id_hash.with("rotation"))
+                    .with_step_size(self.slider_step_size)
+                    .with_width(200.),
+            );
             ui.end_row();
 
             translation_label_response
