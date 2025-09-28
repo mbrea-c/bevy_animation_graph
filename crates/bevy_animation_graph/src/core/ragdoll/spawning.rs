@@ -54,7 +54,7 @@ pub fn spawn_ragdoll_avian(
 
     let mut spawned = SpawnedRagdoll::new(root);
 
-    for body in &ragdoll.bodies {
+    for body in ragdoll.bodies.values() {
         use crate::core::ragdoll::{
             definition::BodyMode, relative_kinematic_body::RelativeKinematicBodyPositionBased,
         };
@@ -81,7 +81,10 @@ pub fn spawn_ragdoll_avian(
         commands.entity(root).add_child(body_entity);
         spawned.bodies.insert(body.id, body_entity);
 
-        for collider in &body.colliders {
+        for collider_id in &body.colliders {
+            let Some(collider) = ragdoll.get_collider(*collider_id) else {
+                continue;
+            };
             let collider_entity = commands
                 .spawn((
                     Name::new("Ragdoll collider"),
@@ -99,7 +102,7 @@ pub fn spawn_ragdoll_avian(
         }
     }
 
-    for joint in &ragdoll.joints {
+    for joint in ragdoll.joints.values() {
         let joint_entity =
             match &joint.variant {
                 JointVariant::Spherical(spherical_joint) => commands

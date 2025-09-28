@@ -37,7 +37,7 @@ pub fn write_pose_to_ragdoll(
         pose_fallback: pose_fallback_ctx,
     };
 
-    for body in &ragdoll.bodies {
+    for body in ragdoll.bodies.values() {
         let Some(bone_weight) = mapping.bodies_from_bones.get(&body.id) else {
             continue;
         };

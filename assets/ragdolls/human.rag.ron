@@ -1,6 +1,6 @@
 (
-    bodies: [
-        (
+    bodies: {
+        (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b291"): (
             id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b291"),
             default_mode: Kinematic,
             isometry: (
@@ -8,23 +8,10 @@
                 rotation: (0.0, -0.0, 0.0, 1.0),
             ),
             colliders: [
-                (
-                    id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b291"),
-                    shape: Cuboid((
-                        half_size: (0.165, 0.12, 0.1)
-                    )),
-                    local_offset: (
-                        translation: (0., 0., 0.),
-                        rotation: (0.0, -0.0, 0.0, 1.0),
-                    ),
-                    layer_membership: 1,
-                    layer_filter: 1,
-                    override_layers: true,
-                    label: "chest",
-                ),
+                (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b291"),
             ],
         ),
-        (
+        (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295"): (
             id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295"),
             default_mode: Dynamic,
             isometry: (
@@ -32,24 +19,10 @@
                 rotation: (0.0, -0.0, 0.0, 1.0),
             ),
             colliders: [
-                (
-                    id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295"),
-                    shape: Capsule((
-                        radius: 0.06,
-                        half_length: 0.1,
-                    )),
-                    local_offset: (
-                        translation: (0., 0., 0.),
-                        rotation: (0.0, -0.0, 0.0, 1.0),
-                    ),
-                    layer_membership: 1,
-                    layer_filter: 1,
-                    override_layers: true,
-                    label: "upper_arm",
-                ),
+                (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295"),
             ],
         ),
-        (
+        (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294"): (
             id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294"),
             default_mode: Dynamic,
             isometry: (
@@ -57,26 +30,58 @@
                 rotation: (0.0, -0.0, 0.0, 1.0),
             ),
             colliders: [
-                (
-                    id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294"),
-                    shape: Capsule((
-                        radius: 0.06,
-                        half_length: 0.1,
-                    )),
-                    local_offset: (
-                        translation: (0., 0., 0.),
-                        rotation: (0.0, -0.0, 0.0, 1.0),
-                    ),
-                    layer_membership: 1,
-                    layer_filter: 1,
-                    override_layers: true,
-                    label: "forearm",
-                ),
+                (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294"),
             ],
         ),
-    ],
-    joints: [
-        (
+    },
+    colliders: {
+        (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b291"): (
+            id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b291"),
+            shape: Cuboid((
+                half_size: (0.165, 0.12, 0.1)
+            )),
+            local_offset: (
+                translation: (0., 0., 0.),
+                rotation: (0.0, -0.0, 0.0, 1.0),
+            ),
+            layer_membership: 1,
+            layer_filter: 1,
+            override_layers: true,
+            label: "chest",
+        ),
+        (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295"): (
+            id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295"),
+            shape: Capsule((
+                radius: 0.06,
+                half_length: 0.1,
+            )),
+            local_offset: (
+                translation: (0., 0., 0.),
+                rotation: (0.0, -0.0, 0.0, 1.0),
+            ),
+            layer_membership: 1,
+            layer_filter: 1,
+            override_layers: true,
+            label: "upper_arm",
+        ),
+        (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294"): (
+            id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294"),
+            shape: Capsule((
+                radius: 0.06,
+                half_length: 0.1,
+            )),
+            local_offset: (
+                translation: (0., 0., 0.),
+                rotation: (0.0, -0.0, 0.0, 1.0),
+            ),
+            layer_membership: 1,
+            layer_filter: 1,
+            override_layers: true,
+            label: "forearm",
+        ),
+    },
+    joints: {
+        (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b296"): (
             id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b296"),
             variant: Spherical((
                 body1: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295"),
@@ -98,7 +103,7 @@
                 twist_torque: (0.,0.,0.),
             )),
         ),
-        (
+        (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b297"): (
             id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b297"),
             variant: Spherical((
                 body1: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b291"),
@@ -120,5 +125,5 @@
                 twist_torque: (0.,0.,0.),
             )),
         )
-    ],
+    },
 )

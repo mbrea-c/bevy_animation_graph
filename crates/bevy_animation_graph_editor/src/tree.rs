@@ -299,12 +299,12 @@ impl Tree<RagdollNode, RagdollNode> {
         Tree(
             ragdoll
                 .bodies
-                .iter()
+                .values()
                 .map(|b| Self::ragdoll_body_subtree(ragdoll, b.id))
                 .chain(
                     ragdoll
                         .joints
-                        .iter()
+                        .values()
                         .map(|j| Self::ragdoll_joint_subtree(ragdoll, j.id)),
                 )
                 .collect(),
@@ -316,7 +316,7 @@ impl Tree<RagdollNode, RagdollNode> {
         body_id: BodyId,
     ) -> TreeInternal<RagdollNode, RagdollNode> {
         let body = ragdoll.get_body(body_id).unwrap();
-        let children = body.colliders.iter().map(|c| c.id).collect::<Vec<_>>();
+        let children = body.colliders.iter().copied().collect::<Vec<_>>();
 
         let label = format!("{:?}", body.id);
 

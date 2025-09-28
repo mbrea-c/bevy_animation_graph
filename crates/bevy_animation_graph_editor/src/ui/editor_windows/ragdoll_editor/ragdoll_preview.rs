@@ -133,7 +133,7 @@ pub struct RagdollBodies {
 impl GizmoOverlay for RagdollBodies {
     fn draw(&self, world: &mut World, player: &mut AnimationGraphPlayer) {
         with_assets_all(world, [self.ragdoll.id()], |_, [ragdoll]| {
-            for ragdoll_body in &ragdoll.bodies {
+            for ragdoll_body in ragdoll.bodies.values() {
                 let body = self
                     .body_buffers
                     .get(&ragdoll_body.id)

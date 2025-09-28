@@ -132,7 +132,7 @@ pub fn update_ragdoll_rigidbodies(
             && let Some(ragdoll) = ragdoll_assets.get(ragdoll_asset_id)
             && let Some(spawned_ragdoll) = &player.spawned_ragdoll
         {
-            for body in &ragdoll.bodies {
+            for body in ragdoll.bodies.values() {
                 let Some(body_entity) = spawned_ragdoll.bodies.get(&body.id) else {
                     continue;
                 };

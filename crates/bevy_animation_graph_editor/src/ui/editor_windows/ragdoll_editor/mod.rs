@@ -12,7 +12,7 @@ use bevy_animation_graph::{
     core::{
         colliders::core::{ColliderConfig, SkeletonColliderId, SkeletonColliders},
         id::BoneId,
-        ragdoll::definition::{Body, BodyId, Ragdoll},
+        ragdoll::definition::{Body, BodyId, Collider, ColliderId, Joint, JointId, Ragdoll},
         skeleton::Skeleton,
     },
     prelude::{AnimatedScene, config::SymmetryConfig},
@@ -22,11 +22,17 @@ use egui_dock::egui;
 use crate::{
     tree::RagdollNode,
     ui::{
-        actions::{ragdoll::EditRagdollBody, window::DynWindowAction},
+        actions::{
+            DynamicAction,
+            ragdoll::{EditRagdollBody, EditRagdollCollider, EditRagdollJoint},
+            window::DynWindowAction,
+        },
         core::{EditorWindowContext, EditorWindowExtension},
         editor_windows::ragdoll_editor::{
             body_inspector::BodyInspector,
             body_tree::BodyTree,
+            collider_inspector::ColliderInspector,
+            joint_inspector::JointInspector,
             ragdoll_preview::RagdollPreview,
             settings_panel::{RagdollEditorSettings, SettingsPanel},
             top_panel::TopPanel,
@@ -38,6 +44,8 @@ use crate::{
 
 mod body_inspector;
 mod body_tree;
+mod collider_inspector;
+mod joint_inspector;
 mod ragdoll_preview;
 mod settings_panel;
 mod top_panel;
@@ -52,6 +60,8 @@ pub struct RagdollEditorWindow {
     pub selected: Option<BoneId>,
     pub selected_node: Option<RagdollNode>,
     pub body_edit_buffers: HashMap<BodyId, Body>,
+    pub collider_edit_buffers: HashMap<ColliderId, Collider>,
+    pub joint_edit_buffers: HashMap<JointId, Joint>,
     pub selectable_collider: SelectableCollider,
     pub draw_colliders: Vec<(ColliderConfig, Color)>,
     pub show_global_settings: bool,
@@ -79,6 +89,8 @@ impl Default for RagdollEditorWindow {
             selected_node: None,
             selectable_collider: SelectableCollider::default(),
             body_edit_buffers: HashMap::default(),
+            collider_edit_buffers: HashMap::default(),
+            joint_edit_buffers: HashMap::default(),
             draw_colliders: Vec::default(),
             show_global_settings: false,
             show_all_colliders: true,
@@ -92,7 +104,7 @@ pub enum RagdollEditorAction {
     SelectBaseScene(Handle<AnimatedScene>),
     SelectRagdoll(Handle<Ragdoll>),
     SelectNode(RagdollNode),
-    ResetBodyBuffers,
+    ResetBuffers,
     ToggleSettingsWindow,
 }
 
@@ -128,7 +140,11 @@ impl EditorWindowExtension for RagdollEditorWindow {
             RagdollEditorAction::ToggleSettingsWindow => {
                 self.show_global_settings = !self.show_global_settings;
             }
-            RagdollEditorAction::ResetBodyBuffers => self.body_edit_buffers.clear(),
+            RagdollEditorAction::ResetBuffers => {
+                self.body_edit_buffers.clear();
+                self.collider_edit_buffers.clear();
+                self.joint_edit_buffers.clear();
+            }
         }
     }
 }
@@ -180,6 +196,24 @@ impl RagdollEditorWindow {
             });
     }
 
+    fn submit_row<T>(
+        ui: &mut egui::Ui,
+        ctx: &mut EditorWindowContext,
+        create_save_event: impl FnOnce() -> T,
+    ) where
+        T: DynamicAction,
+    {
+        ui.horizontal(|ui| {
+            if ui.button("Apply").clicked() {
+                ctx.editor_actions.dynamic(create_save_event());
+                ctx.window_action(RagdollEditorAction::ResetBuffers);
+            }
+            if ui.button("Reset").clicked() {
+                ctx.window_action(RagdollEditorAction::ResetBuffers);
+            }
+        });
+    }
+
     pub fn right_panel(
         &mut self,
         ui: &mut egui::Ui,
@@ -188,7 +222,7 @@ impl RagdollEditorWindow {
     ) {
         egui::SidePanel::right("Inspector panel")
             .resizable(true)
-            .default_width(300.)
+            .default_width(350.)
             .show_inside(ui, |ui| {
                 egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
                     match self.selected_node {
@@ -214,21 +248,74 @@ impl RagdollEditorWindow {
                                             body: buffer,
                                         });
 
-                                        if ui.button("Apply").clicked() {
-                                            ctx.editor_actions.dynamic(EditRagdollBody {
-                                                ragdoll: ragdoll_handle.clone(),
-                                                body: buffer.clone(),
-                                            });
-                                            ctx.window_action(
-                                                RagdollEditorAction::ResetBodyBuffers,
-                                            );
-                                        }
+                                        Self::submit_row(ui, ctx, || EditRagdollBody {
+                                            ragdoll: ragdoll_handle.clone(),
+                                            body: buffer.clone(),
+                                        });
                                     },
                                 );
                             }
                         }
-                        Some(RagdollNode::Collider(collider_id)) => {}
-                        Some(RagdollNode::Joint(joint_id)) => {}
+                        Some(RagdollNode::Collider(collider_id)) => {
+                            if let Some(ragdoll_handle) = &self.target {
+                                with_assets_all(
+                                    world,
+                                    [ragdoll_handle.id()],
+                                    |world, [ragdoll]| {
+                                        let buffer = self
+                                            .collider_edit_buffers
+                                            .entry(collider_id)
+                                            .or_insert_with(|| {
+                                                ragdoll
+                                                    .get_collider(collider_id)
+                                                    .cloned()
+                                                    .unwrap_or_else(|| Collider::new())
+                                            });
+
+                                        let _response = ui.add(ColliderInspector {
+                                            world,
+                                            ctx,
+                                            collider: buffer,
+                                        });
+
+                                        Self::submit_row(ui, ctx, || EditRagdollCollider {
+                                            ragdoll: ragdoll_handle.clone(),
+                                            collider: buffer.clone(),
+                                        });
+                                    },
+                                );
+                            }
+                        }
+                        Some(RagdollNode::Joint(joint_id)) => {
+                            if let Some(ragdoll_handle) = &self.target {
+                                with_assets_all(
+                                    world,
+                                    [ragdoll_handle.id()],
+                                    |world, [ragdoll]| {
+                                        let buffer = self
+                                            .joint_edit_buffers
+                                            .entry(joint_id)
+                                            .or_insert_with(|| {
+                                                ragdoll
+                                                    .get_joint(joint_id)
+                                                    .cloned()
+                                                    .unwrap_or_else(|| Joint::new())
+                                            });
+
+                                        let _response = ui.add(JointInspector {
+                                            world,
+                                            ctx,
+                                            joint: buffer,
+                                        });
+
+                                        Self::submit_row(ui, ctx, || EditRagdollJoint {
+                                            ragdoll: ragdoll_handle.clone(),
+                                            joint: buffer.clone(),
+                                        });
+                                    },
+                                );
+                            }
+                        }
                         None => {
                             ui.label("Nothing is selected");
                         }

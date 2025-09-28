@@ -1,6 +1,7 @@
 use bevy::{
     asset::Asset,
-    math::{Isometry3d, Vec3},
+    math::{Isometry3d, Vec3, primitives::Cuboid},
+    platform::collections::HashMap,
     reflect::Reflect,
     utils::default,
 };
@@ -11,36 +12,52 @@ use crate::core::colliders::core::ColliderShape;
 
 #[derive(Asset, Debug, Clone, Reflect, Serialize, Deserialize)]
 pub struct Ragdoll {
-    pub bodies: Vec<Body>,
-    pub joints: Vec<Joint>,
+    pub bodies: HashMap<BodyId, Body>,
+    pub colliders: HashMap<ColliderId, Collider>,
+    pub joints: HashMap<JointId, Joint>,
 }
 
 impl Ragdoll {
     pub fn get_body(&self, id: BodyId) -> Option<&Body> {
-        self.bodies.iter().find(|b| b.id == id)
+        self.bodies.get(&id)
     }
 
     pub fn get_body_mut(&mut self, id: BodyId) -> Option<&mut Body> {
-        self.bodies.iter_mut().find(|b| b.id == id)
+        self.bodies.get_mut(&id)
+    }
+
+    ///  Adds new body to the ragdoll. This operation is idempotent; if you try to add a body with
+    ///  an ID that already exists, it's ignored.
+    pub fn add_body(&mut self, body: Body) {
+        if !self.bodies.contains_key(&body.id) {
+            self.bodies.insert(body.id, body);
+        }
     }
 
     pub fn get_collider(&self, id: ColliderId) -> Option<&Collider> {
-        self.bodies
-            .iter()
-            .flat_map(|b| b.colliders.iter())
-            .find(|c| c.id == id)
+        self.colliders.get(&id)
+    }
+
+    pub fn get_collider_mut(&mut self, id: ColliderId) -> Option<&mut Collider> {
+        self.colliders.get_mut(&id)
     }
 
     pub fn get_joint(&self, id: JointId) -> Option<&Joint> {
-        self.joints.iter().find(|j| j.id == id)
+        self.joints.get(&id)
+    }
+
+    pub fn get_joint_mut(&mut self, id: JointId) -> Option<&mut Joint> {
+        self.joints.get_mut(&id)
     }
 }
 
 #[derive(Reflect, Debug, Clone, Serialize, Deserialize)]
 pub struct Body {
     pub id: BodyId,
+    #[serde(default)]
+    pub label: String,
     pub isometry: Isometry3d,
-    pub colliders: Vec<Collider>,
+    pub colliders: Vec<ColliderId>,
     pub default_mode: BodyMode,
 }
 
@@ -50,6 +67,7 @@ impl Body {
             id: BodyId {
                 uuid: Uuid::new_v4(),
             },
+            label: "New body".into(),
             isometry: default(),
             colliders: default(),
             default_mode: BodyMode::Kinematic,
@@ -76,18 +94,48 @@ pub struct Collider {
     pub label: String,
 }
 
-#[derive(Reflect, Debug, Clone, Serialize, Deserialize)]
-pub struct Joint {
-    pub id: JointId,
-    pub variant: JointVariant,
+impl Collider {
+    pub fn new() -> Self {
+        Self {
+            id: ColliderId {
+                uuid: Uuid::new_v4(),
+            },
+            local_offset: default(),
+            shape: ColliderShape::Cuboid(Cuboid::new(0.2, 0.2, 0.2)),
+            layer_membership: 1,
+            layer_filter: 1,
+            override_layers: false,
+            label: "New collider".into(),
+        }
+    }
 }
 
 #[derive(Reflect, Debug, Clone, Serialize, Deserialize)]
+pub struct Joint {
+    pub id: JointId,
+    #[serde(default)]
+    pub label: String,
+    pub variant: JointVariant,
+}
+
+impl Joint {
+    pub fn new() -> Self {
+        Self {
+            id: JointId {
+                uuid: Uuid::new_v4(),
+            },
+            label: "New joint".into(),
+            variant: JointVariant::Spherical(SphericalJoint::default()),
+        }
+    }
+}
+
+#[derive(Reflect, Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum JointVariant {
     Spherical(SphericalJoint),
 }
 
-#[derive(Reflect, Debug, Clone, Serialize, Deserialize)]
+#[derive(Reflect, Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct SphericalJoint {
     pub body1: BodyId,
     pub body2: BodyId,
@@ -108,13 +156,13 @@ pub struct SphericalJoint {
     pub twist_torque: Vec3,
 }
 
-#[derive(Reflect, Debug, Clone, Serialize, Deserialize)]
+#[derive(Reflect, Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
 pub struct AngleLimit {
     pub min: f32,
     pub max: f32,
 }
 
-#[derive(Reflect, Clone, Copy, Serialize, Deserialize, Hash, PartialEq, Eq)]
+#[derive(Default, Reflect, Clone, Copy, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub struct BodyId {
     uuid: Uuid,
 }

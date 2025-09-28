@@ -13,18 +13,22 @@ pub struct BodyInspector<'a, 'b> {
 impl Widget for BodyInspector<'_, '_> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         let response = egui::Grid::new("ragdoll body inspector").show(ui, |ui| {
-            ui.label("ID");
-            ui.label(format!("{:?}", self.body.id));
+            let mut response = ui.label("ID");
+            response |= ui.label(format!("{:?}", self.body.id));
             ui.end_row();
 
-            let isometry_response = ui.add(
+            response |= ui.label("label:");
+            response |= ui.text_edit_singleline(&mut self.body.label);
+            ui.end_row();
+
+            response |= ui.add(
                 Isometry3dWidget::new_salted(&mut self.body.isometry, "isometry")
                     .with_step_size(0.01)
                     .with_flatten_grid(true),
             );
 
-            ui.label("Body mode:");
-            let body_mode_response = egui::ComboBox::from_id_salt("body mode")
+            response |= ui.label("Body mode:");
+            response |= egui::ComboBox::from_id_salt("body mode")
                 .selected_text(match self.body.default_mode {
                     BodyMode::Kinematic => "Kinematic",
                     BodyMode::Dynamic => "Dynamic",
@@ -39,7 +43,7 @@ impl Widget for BodyInspector<'_, '_> {
                 })
                 .response;
 
-            isometry_response | body_mode_response
+            response
         });
 
         response.inner
