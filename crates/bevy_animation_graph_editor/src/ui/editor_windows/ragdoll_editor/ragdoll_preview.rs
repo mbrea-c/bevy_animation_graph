@@ -2,9 +2,10 @@ use std::sync::Arc;
 
 use bevy::{
     asset::Handle,
-    color::{Color, LinearRgba},
+    color::{Color, LinearRgba, palettes::css},
     core_pipeline::core_3d::Camera3d,
     ecs::{hierarchy::ChildSpawnerCommands, world::World},
+    gizmos::primitives::dim3::GizmoPrimitive3d,
     image::Image,
     math::Vec3,
     pbr::PointLight,
@@ -14,7 +15,10 @@ use bevy::{
     utils::default,
 };
 use bevy_animation_graph::{
-    core::ragdoll::definition::{Body, BodyId, Ragdoll},
+    core::{
+        colliders::core::ColliderShape,
+        ragdoll::definition::{Body, BodyId, Collider, ColliderId, Ragdoll},
+    },
     prelude::{AnimatedScene, AnimatedSceneHandle, AnimationGraphPlayer, AnimationSource},
 };
 
@@ -34,6 +38,7 @@ pub struct RagdollPreview<'a, 'b> {
     pub ragdoll: Handle<Ragdoll>,
     pub base_scene: Handle<AnimatedScene>,
     pub body_buffers: HashMap<BodyId, Body>,
+    pub collider_buffers: HashMap<ColliderId, Collider>,
 }
 
 impl RagdollPreview<'_, '_> {
@@ -41,10 +46,17 @@ impl RagdollPreview<'_, '_> {
         let config = RagdollPreviewConfig {
             animated_scene: self.base_scene.clone(),
             view: self.orbit_view.clone(),
-            gizmo_overlays: vec![Arc::new(RagdollBodies {
-                ragdoll: self.ragdoll.clone(),
-                body_buffers: self.body_buffers,
-            })],
+            gizmo_overlays: vec![
+                Arc::new(RagdollBodies {
+                    ragdoll: self.ragdoll.clone(),
+                    body_buffers: self.body_buffers.clone(),
+                }),
+                Arc::new(RagdollColliders {
+                    ragdoll: self.ragdoll.clone(),
+                    body_buffers: self.body_buffers,
+                    collider_buffers: self.collider_buffers,
+                }),
+            ],
         };
 
         let ui_texture_id = ui.id().with("clip preview texture");
@@ -142,6 +154,61 @@ impl GizmoOverlay for RagdollBodies {
                 player.gizmo_relative_to_root(move |root_transform, gizmos| {
                     gizmos.axes(root_transform * Transform::from_isometry(isometry), 0.1);
                 });
+            }
+        });
+    }
+}
+
+pub struct RagdollColliders {
+    pub ragdoll: Handle<Ragdoll>,
+    pub body_buffers: HashMap<BodyId, Body>,
+    pub collider_buffers: HashMap<ColliderId, Collider>,
+}
+
+impl GizmoOverlay for RagdollColliders {
+    fn draw(&self, world: &mut World, player: &mut AnimationGraphPlayer) {
+        with_assets_all(world, [self.ragdoll.id()], |_, [ragdoll]| {
+            for ragdoll_body in ragdoll.bodies.values() {
+                let body = self
+                    .body_buffers
+                    .get(&ragdoll_body.id)
+                    .unwrap_or(ragdoll_body);
+                for collider_id in ragdoll_body.colliders.iter() {
+                    let Some(collider) = self
+                        .collider_buffers
+                        .get(collider_id)
+                        .or(ragdoll.get_collider(*collider_id))
+                    else {
+                        continue;
+                    };
+
+                    let isometry = body.isometry * collider.local_offset;
+                    let shape = collider.shape.clone();
+
+                    player.gizmo_relative_to_root(move |root_transform, gizmos| match shape {
+                        ColliderShape::Sphere(sphere) => {
+                            gizmos.primitive_3d(
+                                &sphere,
+                                root_transform.to_isometry() * isometry,
+                                css::ORANGE,
+                            );
+                        }
+                        ColliderShape::Capsule(capsule3d) => {
+                            gizmos.primitive_3d(
+                                &capsule3d,
+                                root_transform.to_isometry() * isometry,
+                                css::ORANGE,
+                            );
+                        }
+                        ColliderShape::Cuboid(cuboid) => {
+                            gizmos.primitive_3d(
+                                &cuboid,
+                                root_transform.to_isometry() * isometry,
+                                css::ORANGE,
+                            );
+                        }
+                    });
+                }
             }
         });
     }

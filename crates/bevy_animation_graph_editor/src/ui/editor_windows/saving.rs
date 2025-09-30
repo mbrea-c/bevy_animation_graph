@@ -5,7 +5,10 @@ use bevy::{
     prelude::World,
 };
 use bevy_animation_graph::{
-    core::{colliders::core::SkeletonColliders, state_machine::high_level::StateMachine},
+    core::{
+        colliders::core::SkeletonColliders, ragdoll::definition::Ragdoll,
+        state_machine::high_level::StateMachine,
+    },
     prelude::{AnimationGraph, GraphClip},
 };
 use egui_dock::egui;
@@ -118,6 +121,8 @@ impl SaveWindow {
             "Animation Clip".into()
         } else if type_id == TypeId::of::<SkeletonColliders>() {
             "Skeleton Colliders".into()
+        } else if type_id == TypeId::of::<Ragdoll>() {
+            "Ragdoll".into()
         } else {
             "Unknown type (?)".into()
         }

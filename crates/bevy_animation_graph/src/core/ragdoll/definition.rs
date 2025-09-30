@@ -49,6 +49,10 @@ impl Ragdoll {
     pub fn get_joint_mut(&mut self, id: JointId) -> Option<&mut Joint> {
         self.joints.get_mut(&id)
     }
+
+    pub fn iter_bodies(&self) -> impl Iterator<Item = &Body> {
+        self.bodies.values()
+    }
 }
 
 #[derive(Reflect, Debug, Clone, Serialize, Deserialize)]
@@ -165,6 +169,16 @@ pub struct AngleLimit {
 #[derive(Default, Reflect, Clone, Copy, Serialize, Deserialize, Hash, PartialEq, Eq)]
 pub struct BodyId {
     uuid: Uuid,
+}
+
+impl BodyId {
+    pub fn uuid(&self) -> Uuid {
+        self.uuid
+    }
+
+    pub fn from_uuid(uuid: Uuid) -> Self {
+        Self { uuid }
+    }
 }
 
 impl std::fmt::Debug for BodyId {

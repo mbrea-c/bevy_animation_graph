@@ -1,129 +1,192 @@
 (
     bodies: {
-        (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b291"): (
-            id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b291"),
+        (
+            uuid: "505e7d48-bbdb-440b-ad3f-5886d332b291",
+        ): (
+            id: (
+                uuid: "505e7d48-bbdb-440b-ad3f-5886d332b291",
+            ),
+            label: "chest",
+            isometry: (
+                rotation: (0.0, -0.0, 0.0, 1.0),
+                translation: (0.0, 1.56, 0.0),
+            ),
+            colliders: [
+                (
+                    uuid: "505e7d48-bbdb-440b-ad3f-5886d332b291",
+                ),
+            ],
             default_mode: Kinematic,
-            isometry: (
-                translation: (0., 2., 0.),
-                rotation: (0.0, -0.0, 0.0, 1.0),
-            ),
-            colliders: [
-                (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b291"),
-            ],
         ),
-        (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295"): (
-            id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295"),
-            default_mode: Dynamic,
+        (
+            uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294",
+        ): (
+            id: (
+                uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294",
+            ),
+            label: "forearm",
             isometry: (
-                translation: (0., 2., 0.),
                 rotation: (0.0, -0.0, 0.0, 1.0),
+                translation: (-0.7, 1.6, -0.03),
             ),
             colliders: [
-                (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295"),
+                (
+                    uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294",
+                ),
             ],
+            default_mode: Dynamic,
         ),
-        (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294"): (
-            id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294"),
-            default_mode: Dynamic,
+        (
+            uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295",
+        ): (
+            id: (
+                uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295",
+            ),
+            label: "upper_arm",
             isometry: (
-                translation: (0., 1.5, 0.),
                 rotation: (0.0, -0.0, 0.0, 1.0),
+                translation: (-0.35, 1.6, -0.02),
             ),
             colliders: [
-                (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294"),
+                (
+                    uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295",
+                ),
             ],
+            default_mode: Dynamic,
         ),
     },
     colliders: {
-        (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b291"): (
-            id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b291"),
-            shape: Cuboid((
-                half_size: (0.165, 0.12, 0.1)
-            )),
-            local_offset: (
-                translation: (0., 0., 0.),
-                rotation: (0.0, -0.0, 0.0, 1.0),
+        (
+            uuid: "505e7d48-bbdb-440b-ad3f-5886d332b291",
+        ): (
+            id: (
+                uuid: "505e7d48-bbdb-440b-ad3f-5886d332b291",
             ),
+            local_offset: (
+                rotation: (0.0, -0.0, 0.0, 1.0),
+                translation: (0.0, 0.0, 0.0),
+            ),
+            shape: Cuboid((
+                half_size: (0.165, 0.12, 0.1),
+            )),
             layer_membership: 1,
             layer_filter: 1,
             override_layers: true,
             label: "chest",
         ),
-        (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295"): (
-            id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295"),
+        (
+            uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294",
+        ): (
+            id: (
+                uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294",
+            ),
+            local_offset: (
+                rotation: (0.0, -0.0, 0.7068252, 0.7073882),
+                translation: (0.0, 0.0, 0.0),
+            ),
             shape: Capsule((
                 radius: 0.06,
                 half_length: 0.1,
             )),
-            local_offset: (
-                translation: (0., 0., 0.),
-                rotation: (0.0, -0.0, 0.0, 1.0),
-            ),
-            layer_membership: 1,
-            layer_filter: 1,
-            override_layers: true,
-            label: "upper_arm",
-        ),
-        (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294"): (
-            id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294"),
-            shape: Capsule((
-                radius: 0.06,
-                half_length: 0.1,
-            )),
-            local_offset: (
-                translation: (0., 0., 0.),
-                rotation: (0.0, -0.0, 0.0, 1.0),
-            ),
             layer_membership: 1,
             layer_filter: 1,
             override_layers: true,
             label: "forearm",
         ),
+        (
+            uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295",
+        ): (
+            id: (
+                uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295",
+            ),
+            local_offset: (
+                rotation: (-0.0, -0.0, -0.7068252, 0.7073882),
+                translation: (0.0, 0.0, 0.0),
+            ),
+            shape: Capsule((
+                radius: 0.06,
+                half_length: 0.1,
+            )),
+            layer_membership: 1,
+            layer_filter: 1,
+            override_layers: true,
+            label: "upper_arm",
+        ),
     },
     joints: {
-        (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b296"): (
-            id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b296"),
+        (
+            uuid: "505e7d48-bbdb-440b-ad3f-5886d332b296",
+        ): (
+            id: (
+                uuid: "505e7d48-bbdb-440b-ad3f-5886d332b296",
+            ),
+            label: "",
             variant: Spherical((
-                body1: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295"),
-                body2: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294"),
-                local_anchor1: (0., -0.18, 0.),
-                local_anchor2: (0., 0.18, 0.),
-                swing_axis: (1., 0., 0.),
-                twist_axis: (0., 1., 0.),
-                swing_limit: Some((min: -0.2, max: 0.2,)),
-                twist_limit: Some((min: -2.5, max:0.2,)),
-                damping_linear: 0.,
-                damping_angular: 50.,
-                position_lagrange: 0.,
-                swing_lagrange: 0.,
-                twist_lagrange: 0.,
-                compliance: 0.,
-                force: (0.,0.,0.),
-                swing_torque: (0.,0.,0.),
-                twist_torque: (0.,0.,0.),
+                body1: (
+                    uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295",
+                ),
+                body2: (
+                    uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294",
+                ),
+                local_anchor1: (0.0, -0.18, 0.0),
+                local_anchor2: (0.0, 0.18, 0.0),
+                swing_axis: (1.0, 0.0, 0.0),
+                twist_axis: (0.0, 1.0, 0.0),
+                swing_limit: Some((
+                    min: -0.2,
+                    max: 0.2,
+                )),
+                twist_limit: Some((
+                    min: -2.5,
+                    max: 0.2,
+                )),
+                damping_linear: 0.0,
+                damping_angular: 50.0,
+                position_lagrange: 0.0,
+                swing_lagrange: 0.0,
+                twist_lagrange: 0.0,
+                compliance: 0.0,
+                force: (0.0, 0.0, 0.0),
+                swing_torque: (0.0, 0.0, 0.0),
+                twist_torque: (0.0, 0.0, 0.0),
             )),
         ),
-        (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b297"): (
-            id: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b297"),
+        (
+            uuid: "505e7d48-bbdb-440b-ad3f-5886d332b297",
+        ): (
+            id: (
+                uuid: "505e7d48-bbdb-440b-ad3f-5886d332b297",
+            ),
+            label: "",
             variant: Spherical((
-                body1: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b291"),
-                body2: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295"),
-                local_anchor1: (-0.18, 0., -0.06),
-                local_anchor2: (0., 0.18, 0.),
-                swing_axis: (1., 0., 0.),
-                twist_axis: (0., 1., 0.),
-                swing_limit: Some((min: 0., max: 3.14)),
-                twist_limit: Some((min: -1.7, max: 1.7)),
-                damping_linear: 0.,
-                damping_angular: 50.,
-                position_lagrange: 0.,
-                swing_lagrange: 0.,
-                twist_lagrange: 0.,
-                compliance: 0.,
-                force: (0.,0.,0.),
-                swing_torque: (0.,0.,0.),
-                twist_torque: (0.,0.,0.),
+                body1: (
+                    uuid: "505e7d48-bbdb-440b-ad3f-5886d332b291",
+                ),
+                body2: (
+                    uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295",
+                ),
+                local_anchor1: (-0.18, 0.0, -0.06),
+                local_anchor2: (0.0, 0.18, 0.0),
+                swing_axis: (1.0, 0.0, 0.0),
+                twist_axis: (0.0, 1.0, 0.0),
+                swing_limit: Some((
+                    min: 0.0,
+                    max: 3.14,
+                )),
+                twist_limit: Some((
+                    min: -1.7,
+                    max: 1.7,
+                )),
+                damping_linear: 0.0,
+                damping_angular: 50.0,
+                position_lagrange: 0.0,
+                swing_lagrange: 0.0,
+                twist_lagrange: 0.0,
+                compliance: 0.0,
+                force: (0.0, 0.0, 0.0),
+                swing_torque: (0.0, 0.0, 0.0),
+                twist_torque: (0.0, 0.0, 0.0),
             )),
-        )
+        ),
     },
 )

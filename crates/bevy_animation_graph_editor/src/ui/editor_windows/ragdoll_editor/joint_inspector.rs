@@ -1,17 +1,19 @@
-use bevy::ecs::world::World;
-use bevy_animation_graph::core::ragdoll::definition::{Joint, JointVariant, SphericalJoint};
+use bevy::{ecs::world::World, log::warn_once};
+use bevy_animation_graph::core::ragdoll::definition::{
+    Joint, JointVariant, Ragdoll, SphericalJoint,
+};
 use egui::{ComboBox, Widget};
 
 use crate::ui::{
     core::EditorWindowContext,
-    generic_widgets::{isometry3d::Isometry3dWidget, u32_flags::U32Flags},
-    utils::using_inspector_env,
+    generic_widgets::{body_id::BodyIdWidget, vec3::Vec3Widget},
 };
 
 pub struct JointInspector<'a, 'b> {
     pub world: &'a mut World,
     pub ctx: &'a mut EditorWindowContext<'b>,
     pub joint: &'a mut Joint,
+    pub ragdoll: &'a Ragdoll,
 }
 
 impl Widget for JointInspector<'_, '_> {
@@ -41,7 +43,99 @@ impl Widget for JointInspector<'_, '_> {
             ui.end_row();
 
             match &mut self.joint.variant {
-                JointVariant::Spherical(spherical_joint) => {}
+                JointVariant::Spherical(spherical_joint) => {
+                    response |= ui.label("body 1:");
+                    response |= ui.add(
+                        BodyIdWidget::new_salted(&mut spherical_joint.body1, "joint body 1")
+                            .with_ragdoll(self.ragdoll),
+                    );
+                    ui.end_row();
+
+                    response |= ui.label("body 2:");
+                    response |= ui.add(
+                        BodyIdWidget::new_salted(&mut spherical_joint.body2, "joint body 2")
+                            .with_ragdoll(self.ragdoll),
+                    );
+                    ui.end_row();
+
+                    response |= ui.label("local anchor 1:");
+                    response |= ui.add(Vec3Widget::new_salted(
+                        &mut spherical_joint.local_anchor1,
+                        "joint local anchor 1",
+                    ));
+                    ui.end_row();
+
+                    response |= ui.label("local anchor 2:");
+                    response |= ui.add(Vec3Widget::new_salted(
+                        &mut spherical_joint.local_anchor2,
+                        "joint local anchor 2",
+                    ));
+                    ui.end_row();
+
+                    response |= ui.label("swing axis:");
+                    response |= ui.add(Vec3Widget::new_salted(
+                        &mut spherical_joint.swing_axis,
+                        "joint swing axis",
+                    ));
+                    ui.end_row();
+
+                    response |= ui.label("twist axis:");
+                    response |= ui.add(Vec3Widget::new_salted(
+                        &mut spherical_joint.twist_axis,
+                        "joint twist axis",
+                    ));
+                    ui.end_row();
+
+                    //pub swing_limit: Option<AngleLimit>,
+                    //pub twist_limit: Option<AngleLimit>,
+                    warn_once!("Reminder to add ui for angle limits!");
+
+                    response |= ui.label("linear damping:");
+                    response |= ui.add(egui::DragValue::new(&mut spherical_joint.damping_linear));
+                    ui.end_row();
+
+                    response |= ui.label("angular damping:");
+                    response |= ui.add(egui::DragValue::new(&mut spherical_joint.damping_angular));
+                    ui.end_row();
+
+                    response |= ui.label("position lagrange:");
+                    response |=
+                        ui.add(egui::DragValue::new(&mut spherical_joint.position_lagrange));
+                    ui.end_row();
+
+                    response |= ui.label("swing lagrange:");
+                    response |= ui.add(egui::DragValue::new(&mut spherical_joint.swing_lagrange));
+                    ui.end_row();
+
+                    response |= ui.label("twist lagrange:");
+                    response |= ui.add(egui::DragValue::new(&mut spherical_joint.twist_lagrange));
+                    ui.end_row();
+
+                    response |= ui.label("compliance:");
+                    response |= ui.add(egui::DragValue::new(&mut spherical_joint.compliance));
+                    ui.end_row();
+
+                    response |= ui.label("force:");
+                    response |= ui.add(Vec3Widget::new_salted(
+                        &mut spherical_joint.force,
+                        "joint force",
+                    ));
+                    ui.end_row();
+
+                    response |= ui.label("swing torque:");
+                    response |= ui.add(Vec3Widget::new_salted(
+                        &mut spherical_joint.swing_torque,
+                        "joint swing torque",
+                    ));
+                    ui.end_row();
+
+                    response |= ui.label("twist torque:");
+                    response |= ui.add(Vec3Widget::new_salted(
+                        &mut spherical_joint.twist_torque,
+                        "joint twist torque",
+                    ));
+                    ui.end_row();
+                }
             }
 
             response

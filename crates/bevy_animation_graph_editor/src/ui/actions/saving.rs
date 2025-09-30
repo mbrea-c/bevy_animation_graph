@@ -12,6 +12,7 @@ use bevy_animation_graph::{
         animation_clip::loader::GraphClipSerial,
         animation_graph::{AnimationGraph, serial::AnimationGraphSerializer},
         colliders::{core::SkeletonColliders, serial::SkeletonCollidersSerial},
+        ragdoll::definition::Ragdoll,
         skeleton::Skeleton,
         state_machine::high_level::{StateMachine, serial::StateMachineSerial},
     },
@@ -55,6 +56,11 @@ pub struct SaveColliders {
 
 pub struct SaveClip {
     pub asset_id: AssetId<GraphClip>,
+    pub virtual_path: PathBuf,
+}
+
+pub struct SaveRagdoll {
+    pub asset_id: AssetId<Ragdoll>,
     pub virtual_path: PathBuf,
 }
 
@@ -206,6 +212,27 @@ pub fn handle_save_colliders(
         .unwrap();
 }
 
+pub fn handle_save_ragdoll(
+    In(input): In<SaveRagdoll>,
+    ragdoll_assets: Res<Assets<Ragdoll>>,
+    cli: Res<Cli>,
+) {
+    let ragdoll = ragdoll_assets.get(input.asset_id).unwrap();
+    let mut final_path = cli.asset_source.clone();
+    final_path.push(&input.virtual_path);
+    info!(
+        "Saving Ragdoll with id {:?} to {:?}",
+        input.asset_id, final_path
+    );
+    ron::Options::default()
+        .to_io_writer_pretty(
+            std::fs::File::create(final_path).unwrap(),
+            &ragdoll,
+            ron::ser::PrettyConfig::default(),
+        )
+        .unwrap();
+}
+
 pub fn handle_save_multiple(
     In(action): In<SaveMultiple>,
     mut commands: Commands,
@@ -243,6 +270,14 @@ pub fn handle_save_multiple(
             commands.run_system_cached_with(
                 handle_save_colliders,
                 SaveColliders {
+                    asset_id,
+                    virtual_path,
+                },
+            );
+        } else if let Ok(asset_id) = asset_id.try_typed::<Ragdoll>() {
+            commands.run_system_cached_with(
+                handle_save_ragdoll,
+                SaveRagdoll {
                     asset_id,
                     virtual_path,
                 },

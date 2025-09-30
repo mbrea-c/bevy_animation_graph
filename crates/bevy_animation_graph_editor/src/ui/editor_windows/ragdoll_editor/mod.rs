@@ -306,6 +306,7 @@ impl RagdollEditorWindow {
                                             world,
                                             ctx,
                                             joint: buffer,
+                                            ragdoll,
                                         });
 
                                         Self::submit_row(ui, ctx, || EditRagdollJoint {
@@ -340,6 +341,7 @@ impl RagdollEditorWindow {
                 ragdoll: ragdoll.clone(),
                 base_scene: base_scene.clone(),
                 body_buffers: self.body_edit_buffers.clone(),
+                collider_buffers: self.collider_edit_buffers.clone(),
             }
             .draw(ui);
         } else {

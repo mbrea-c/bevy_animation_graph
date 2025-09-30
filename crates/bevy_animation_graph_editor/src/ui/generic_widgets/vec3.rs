@@ -30,38 +30,41 @@ impl<'a> Vec3Widget<'a> {
 
 impl<'a> egui::Widget for Vec3Widget<'a> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
-        let mut total_size = ui.available_size();
-        total_size.x = self.width;
-        ui.horizontal(|ui| {
-            let x_id = ui.id().with(self.id_hash).with("vec3 x");
-            let y_id = ui.id().with(self.id_hash).with("vec3 y");
-            let z_id = ui.id().with(self.id_hash).with("vec3 z");
+        ui.push_id(self.id_hash, |ui| {
+            let mut total_size = ui.available_size();
+            total_size.x = self.width;
+            ui.horizontal(|ui| {
+                let x_id = ui.id().with(self.id_hash).with("vec3 x");
+                let y_id = ui.id().with(self.id_hash).with("vec3 y");
+                let z_id = ui.id().with(self.id_hash).with("vec3 z");
 
-            let x_response = ui
-                .push_id(x_id, |ui| {
-                    ui.add_sized(
-                        egui::Vec2::new(total_size.x / 3.1, total_size.y),
-                        egui::DragValue::new(&mut self.vec3.x).speed(self.slider_step_size),
-                    )
-                })
-                .inner;
-            let y_response = ui
-                .push_id(y_id, |ui| {
-                    ui.add_sized(
-                        egui::Vec2::new(total_size.x / 3.1, total_size.y),
-                        egui::DragValue::new(&mut self.vec3.y).speed(self.slider_step_size),
-                    )
-                })
-                .inner;
-            let z_response = ui
-                .push_id(z_id, |ui| {
-                    ui.add_sized(
-                        egui::Vec2::new(total_size.x / 3.1, total_size.y),
-                        egui::DragValue::new(&mut self.vec3.z).speed(self.slider_step_size),
-                    )
-                })
-                .inner;
-            x_response | y_response | z_response
+                let x_response = ui
+                    .push_id(x_id, |ui| {
+                        ui.add_sized(
+                            egui::Vec2::new(total_size.x / 3.1, total_size.y),
+                            egui::DragValue::new(&mut self.vec3.x).speed(self.slider_step_size),
+                        )
+                    })
+                    .inner;
+                let y_response = ui
+                    .push_id(y_id, |ui| {
+                        ui.add_sized(
+                            egui::Vec2::new(total_size.x / 3.1, total_size.y),
+                            egui::DragValue::new(&mut self.vec3.y).speed(self.slider_step_size),
+                        )
+                    })
+                    .inner;
+                let z_response = ui
+                    .push_id(z_id, |ui| {
+                        ui.add_sized(
+                            egui::Vec2::new(total_size.x / 3.1, total_size.y),
+                            egui::DragValue::new(&mut self.vec3.z).speed(self.slider_step_size),
+                        )
+                    })
+                    .inner;
+                x_response | y_response | z_response
+            })
+            .inner
         })
         .inner
     }

@@ -318,7 +318,11 @@ impl Tree<RagdollNode, RagdollNode> {
         let body = ragdoll.get_body(body_id).unwrap();
         let children = body.colliders.iter().copied().collect::<Vec<_>>();
 
-        let label = format!("{:?}", body.id);
+        let label = if body.label.is_empty() {
+            format!("{:?}", body.id)
+        } else {
+            body.label.clone()
+        };
 
         if children.is_empty() {
             TreeInternal::Leaf(label, RagdollNode::Body(body_id))
@@ -340,7 +344,11 @@ impl Tree<RagdollNode, RagdollNode> {
     ) -> TreeInternal<RagdollNode, RagdollNode> {
         let collider = ragdoll.get_collider(collider_id).unwrap();
         TreeInternal::Leaf(
-            format!("{}", collider.label),
+            if collider.label.is_empty() {
+                format!("{:?}", collider.id)
+            } else {
+                collider.label.clone()
+            },
             RagdollNode::Collider(collider_id),
         )
     }
@@ -350,6 +358,11 @@ impl Tree<RagdollNode, RagdollNode> {
         joint_id: JointId,
     ) -> TreeInternal<RagdollNode, RagdollNode> {
         let joint = ragdoll.get_joint(joint_id).unwrap();
-        TreeInternal::Leaf(format!("{:?}", joint.id), RagdollNode::Joint(joint_id))
+        let label = if joint.label.is_empty() {
+            format!("{:?}", joint.id)
+        } else {
+            joint.label.clone()
+        };
+        TreeInternal::Leaf(label, RagdollNode::Joint(joint_id))
     }
 }
