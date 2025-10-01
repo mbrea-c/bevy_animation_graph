@@ -9,8 +9,10 @@ use crate::{
     icons,
     tree::{RagdollNode, Tree, TreeInternal, TreeRenderer, TreeResponse, TreeResult},
     ui::{
-        actions::ragdoll::CreateRagdollBody, core::EditorWindowContext,
-        editor_windows::ragdoll_editor::RagdollEditorAction, utils::collapsing::Collapser,
+        actions::ragdoll::CreateRagdollBody,
+        core::EditorWindowContext,
+        editor_windows::ragdoll_editor::{RagdollEditorAction, SelectedItem},
+        utils::collapsing::Collapser,
     },
 };
 
@@ -33,14 +35,16 @@ impl BodyTree<'_, '_> {
                     Tree::ragdoll_tree(ragdoll).picker_selector(ui, RagdollTreeRenderer {});
                 match response {
                     TreeResult::Leaf(_, response) | TreeResult::Node(_, response) => {
-                        // self.hovered = response.hovered;
-                        // if let Some(clicked) = response.clicked {
-                        //     self.selected = Some(clicked);
-                        //     self.edit_buffers.clear();
-                        // }
                         if let Some(clicked_node) = response.clicked {
-                            self.ctx
-                                .window_action(RagdollEditorAction::SelectNode(clicked_node));
+                            self.ctx.window_action(RagdollEditorAction::SelectNode(
+                                match clicked_node {
+                                    RagdollNode::Body(body_id) => SelectedItem::Body(body_id),
+                                    RagdollNode::Collider(collider_id) => {
+                                        SelectedItem::Collider(collider_id)
+                                    }
+                                    RagdollNode::Joint(joint_id) => SelectedItem::Joint(joint_id),
+                                },
+                            ));
                         }
 
                         for action in response.actions {

@@ -1,5 +1,8 @@
 use bevy::{asset::Handle, ecs::world::World};
-use bevy_animation_graph::{core::ragdoll::definition::Ragdoll, prelude::AnimatedScene};
+use bevy_animation_graph::{
+    core::ragdoll::{bone_mapping::RagdollBoneMap, definition::Ragdoll},
+    prelude::AnimatedScene,
+};
 
 use crate::ui::{
     core::EditorWindowContext, editor_windows::ragdoll_editor::RagdollEditorAction,
@@ -8,6 +11,7 @@ use crate::ui::{
 
 pub struct TopPanel<'a, 'b> {
     pub ragdoll: Option<Handle<Ragdoll>>,
+    pub ragdoll_bone_map: Option<Handle<RagdollBoneMap>>,
     pub scene: Option<Handle<AnimatedScene>>,
     pub world: &'a mut World,
     pub ctx: &'a mut EditorWindowContext<'b>,
@@ -39,6 +43,19 @@ impl TopPanel<'_, '_> {
                 ) {
                     self.ctx
                         .window_action(RagdollEditorAction::SelectRagdoll(new_handle));
+                }
+            });
+
+            ui.label("Ragdoll bone map:");
+            using_wrap_ui(self.world, |mut env| {
+                if let Some(new_handle) = env.mutable_buffered(
+                    &self.ragdoll_bone_map.clone().unwrap_or_default(),
+                    ui,
+                    ui.id().with("ragdoll bone map selectors"),
+                    &(),
+                ) {
+                    self.ctx
+                        .window_action(RagdollEditorAction::SelectRagdollBoneMap(new_handle));
                 }
             });
 

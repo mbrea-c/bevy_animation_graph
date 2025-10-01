@@ -53,6 +53,10 @@ impl Ragdoll {
     pub fn iter_bodies(&self) -> impl Iterator<Item = &Body> {
         self.bodies.values()
     }
+
+    pub fn iter_joints(&self) -> impl Iterator<Item = &Joint> {
+        self.joints.values()
+    }
 }
 
 #[derive(Reflect, Debug, Clone, Serialize, Deserialize)]

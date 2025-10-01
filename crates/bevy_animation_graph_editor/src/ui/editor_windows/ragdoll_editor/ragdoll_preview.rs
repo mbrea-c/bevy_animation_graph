@@ -17,7 +17,9 @@ use bevy::{
 use bevy_animation_graph::{
     core::{
         colliders::core::ColliderShape,
-        ragdoll::definition::{Body, BodyId, Collider, ColliderId, Ragdoll},
+        ragdoll::definition::{
+            Body, BodyId, Collider, ColliderId, Joint, JointId, JointVariant, Ragdoll,
+        },
     },
     prelude::{AnimatedScene, AnimatedSceneHandle, AnimationGraphPlayer, AnimationSource},
 };
@@ -39,6 +41,7 @@ pub struct RagdollPreview<'a, 'b> {
     pub base_scene: Handle<AnimatedScene>,
     pub body_buffers: HashMap<BodyId, Body>,
     pub collider_buffers: HashMap<ColliderId, Collider>,
+    pub joint_buffers: HashMap<JointId, Joint>,
 }
 
 impl RagdollPreview<'_, '_> {
@@ -53,8 +56,13 @@ impl RagdollPreview<'_, '_> {
                 }),
                 Arc::new(RagdollColliders {
                     ragdoll: self.ragdoll.clone(),
-                    body_buffers: self.body_buffers,
+                    body_buffers: self.body_buffers.clone(),
                     collider_buffers: self.collider_buffers,
+                }),
+                Arc::new(RagdollJoints {
+                    ragdoll: self.ragdoll.clone(),
+                    body_buffers: self.body_buffers,
+                    joint_buffers: self.joint_buffers,
                 }),
             ],
         };
@@ -168,7 +176,7 @@ pub struct RagdollColliders {
 impl GizmoOverlay for RagdollColliders {
     fn draw(&self, world: &mut World, player: &mut AnimationGraphPlayer) {
         with_assets_all(world, [self.ragdoll.id()], |_, [ragdoll]| {
-            for ragdoll_body in ragdoll.bodies.values() {
+            for ragdoll_body in ragdoll.iter_bodies() {
                 let body = self
                     .body_buffers
                     .get(&ragdoll_body.id)
@@ -208,6 +216,49 @@ impl GizmoOverlay for RagdollColliders {
                             );
                         }
                     });
+                }
+            }
+        });
+    }
+}
+
+pub struct RagdollJoints {
+    pub ragdoll: Handle<Ragdoll>,
+    pub body_buffers: HashMap<BodyId, Body>,
+    pub joint_buffers: HashMap<JointId, Joint>,
+}
+
+impl GizmoOverlay for RagdollJoints {
+    fn draw(&self, world: &mut World, player: &mut AnimationGraphPlayer) {
+        with_assets_all(world, [self.ragdoll.id()], |_, [ragdoll]| {
+            for ragdoll_joint in ragdoll.iter_joints() {
+                let joint = self
+                    .joint_buffers
+                    .get(&ragdoll_joint.id)
+                    .unwrap_or(ragdoll_joint);
+                match &joint.variant {
+                    JointVariant::Spherical(spherical_joint) => {
+                        if let Some(body1) = self
+                            .body_buffers
+                            .get(&spherical_joint.body1)
+                            .or(ragdoll.get_body(spherical_joint.body1))
+                            && let Some(body2) = self
+                                .body_buffers
+                                .get(&spherical_joint.body2)
+                                .or(ragdoll.get_body(spherical_joint.body2))
+                        {
+                            let char_anchor_1 = body1.isometry * spherical_joint.local_anchor1;
+                            let char_anchor_2 = body2.isometry * spherical_joint.local_anchor2;
+
+                            player.gizmo_relative_to_root(move |root_transform, gizmos| {
+                                gizmos.line(
+                                    root_transform * char_anchor_1,
+                                    root_transform * char_anchor_2,
+                                    css::PURPLE,
+                                );
+                            });
+                        }
+                    }
                 }
             }
         });

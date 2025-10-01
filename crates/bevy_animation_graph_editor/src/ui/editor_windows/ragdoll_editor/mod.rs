@@ -12,38 +12,40 @@ use bevy_animation_graph::{
     core::{
         colliders::core::{ColliderConfig, SkeletonColliderId, SkeletonColliders},
         id::BoneId,
-        ragdoll::definition::{Body, BodyId, Collider, ColliderId, Joint, JointId, Ragdoll},
+        ragdoll::{
+            bone_mapping::RagdollBoneMap,
+            definition::{Body, BodyId, Collider, ColliderId, Joint, JointId, Ragdoll},
+        },
         skeleton::Skeleton,
     },
     prelude::{AnimatedScene, config::SymmetryConfig},
 };
 use egui_dock::egui;
 
-use crate::{
-    tree::RagdollNode,
-    ui::{
-        actions::{
-            DynamicAction,
-            ragdoll::{EditRagdollBody, EditRagdollCollider, EditRagdollJoint},
-            window::DynWindowAction,
-        },
-        core::{EditorWindowContext, EditorWindowExtension},
-        editor_windows::ragdoll_editor::{
-            body_inspector::BodyInspector,
-            body_tree::BodyTree,
-            collider_inspector::ColliderInspector,
-            joint_inspector::JointInspector,
-            ragdoll_preview::RagdollPreview,
-            settings_panel::{RagdollEditorSettings, SettingsPanel},
-            top_panel::TopPanel,
-        },
-        reflect_widgets::wrap_ui::using_wrap_ui,
-        utils::{OrbitView, with_assets_all},
+use crate::ui::{
+    actions::{
+        DynamicAction,
+        ragdoll::{EditRagdollBody, EditRagdollCollider, EditRagdollJoint},
+        window::DynWindowAction,
     },
+    core::{EditorWindowContext, EditorWindowExtension},
+    editor_windows::ragdoll_editor::{
+        body_inspector::BodyInspector,
+        body_tree::BodyTree,
+        bone_tree::BoneTree,
+        collider_inspector::ColliderInspector,
+        joint_inspector::JointInspector,
+        ragdoll_preview::RagdollPreview,
+        settings_panel::{RagdollEditorSettings, SettingsPanel},
+        top_panel::TopPanel,
+    },
+    reflect_widgets::wrap_ui::using_wrap_ui,
+    utils::{OrbitView, with_assets_all},
 };
 
 mod body_inspector;
 mod body_tree;
+mod bone_tree;
 mod collider_inspector;
 mod joint_inspector;
 mod ragdoll_preview;
@@ -54,11 +56,14 @@ mod top_panel;
 pub struct RagdollEditorWindow {
     pub orbit_view: OrbitView,
     pub target: Option<Handle<Ragdoll>>,
+    pub ragdoll_bone_map: Option<Handle<RagdollBoneMap>>,
     pub reverse_index: Option<ReverseSkeletonIndex>,
     pub base_scene: Option<Handle<AnimatedScene>>,
+    /// If true, render the skeleton tree. If false, render the ragdoll tree
+    pub show_bone_tree: bool,
     pub hovered: Option<BoneId>,
     pub selected: Option<BoneId>,
-    pub selected_node: Option<RagdollNode>,
+    pub selected_item: Option<SelectedItem>,
     pub body_edit_buffers: HashMap<BodyId, Body>,
     pub collider_edit_buffers: HashMap<ColliderId, Collider>,
     pub joint_edit_buffers: HashMap<JointId, Joint>,
@@ -82,11 +87,12 @@ impl Default for RagdollEditorWindow {
         Self {
             orbit_view: OrbitView::default(),
             target: None,
+            ragdoll_bone_map: None,
             reverse_index: None,
             base_scene: None,
             hovered: None,
             selected: None,
-            selected_node: None,
+            selected_item: None,
             selectable_collider: SelectableCollider::default(),
             body_edit_buffers: HashMap::default(),
             collider_edit_buffers: HashMap::default(),
@@ -95,15 +101,25 @@ impl Default for RagdollEditorWindow {
             show_global_settings: false,
             show_all_colliders: true,
             settings: default(),
+            show_bone_tree: false,
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum SelectedItem {
+    Body(BodyId),
+    Collider(ColliderId),
+    Joint(JointId),
+    Bone(BoneId),
 }
 
 #[derive(Debug)]
 pub enum RagdollEditorAction {
     SelectBaseScene(Handle<AnimatedScene>),
     SelectRagdoll(Handle<Ragdoll>),
-    SelectNode(RagdollNode),
+    SelectRagdollBoneMap(Handle<RagdollBoneMap>),
+    SelectNode(SelectedItem),
     ResetBuffers,
     ToggleSettingsWindow,
 }
@@ -135,7 +151,7 @@ impl EditorWindowExtension for RagdollEditorWindow {
                 self.reverse_index = None;
             }
             RagdollEditorAction::SelectNode(ragdoll_node) => {
-                self.selected_node = Some(ragdoll_node);
+                self.selected_item = Some(ragdoll_node);
             }
             RagdollEditorAction::ToggleSettingsWindow => {
                 self.show_global_settings = !self.show_global_settings;
@@ -144,6 +160,9 @@ impl EditorWindowExtension for RagdollEditorWindow {
                 self.body_edit_buffers.clear();
                 self.collider_edit_buffers.clear();
                 self.joint_edit_buffers.clear();
+            }
+            RagdollEditorAction::SelectRagdollBoneMap(handle) => {
+                self.ragdoll_bone_map = Some(handle);
             }
         }
     }
@@ -166,6 +185,7 @@ impl RagdollEditorWindow {
                 TopPanel {
                     ragdoll: self.target.clone(),
                     scene: self.base_scene.clone(),
+                    ragdoll_bone_map: self.ragdoll_bone_map.clone(),
                     world,
                     ctx,
                 }
@@ -183,14 +203,28 @@ impl RagdollEditorWindow {
             .resizable(true)
             .default_width(300.)
             .show_inside(ui, |ui| {
+                ui.checkbox(&mut self.show_bone_tree, "Show skeleton tree");
                 egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
-                    if let Some(ragdoll) = self.target.clone() {
-                        BodyTree {
-                            ragdoll,
-                            world,
-                            ctx,
+                    if self.show_bone_tree {
+                        if let Some(animscn) = self.base_scene.clone() {
+                            with_assets_all(world, [animscn.id()], |world, [animscn]| {
+                                BoneTree {
+                                    skeleton: animscn.skeleton.clone(),
+                                    world,
+                                    ctx,
+                                }
+                                .draw(ui);
+                            });
                         }
-                        .draw(ui);
+                    } else {
+                        if let Some(ragdoll) = self.target.clone() {
+                            BodyTree {
+                                ragdoll,
+                                world,
+                                ctx,
+                            }
+                            .draw(ui);
+                        }
                     }
                 });
             });
@@ -225,8 +259,8 @@ impl RagdollEditorWindow {
             .default_width(350.)
             .show_inside(ui, |ui| {
                 egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
-                    match self.selected_node {
-                        Some(RagdollNode::Body(body_id)) => {
+                    match self.selected_item {
+                        Some(SelectedItem::Body(body_id)) => {
                             if let Some(ragdoll_handle) = &self.target {
                                 with_assets_all(
                                     world,
@@ -256,7 +290,7 @@ impl RagdollEditorWindow {
                                 );
                             }
                         }
-                        Some(RagdollNode::Collider(collider_id)) => {
+                        Some(SelectedItem::Collider(collider_id)) => {
                             if let Some(ragdoll_handle) = &self.target {
                                 with_assets_all(
                                     world,
@@ -286,7 +320,7 @@ impl RagdollEditorWindow {
                                 );
                             }
                         }
-                        Some(RagdollNode::Joint(joint_id)) => {
+                        Some(SelectedItem::Joint(joint_id)) => {
                             if let Some(ragdoll_handle) = &self.target {
                                 with_assets_all(
                                     world,
@@ -317,7 +351,7 @@ impl RagdollEditorWindow {
                                 );
                             }
                         }
-                        None => {
+                        _ => {
                             ui.label("Nothing is selected");
                         }
                     }
@@ -342,6 +376,7 @@ impl RagdollEditorWindow {
                 base_scene: base_scene.clone(),
                 body_buffers: self.body_edit_buffers.clone(),
                 collider_buffers: self.collider_edit_buffers.clone(),
+                joint_buffers: self.joint_edit_buffers.clone(),
             }
             .draw(ui);
         } else {

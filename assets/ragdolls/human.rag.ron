@@ -120,7 +120,7 @@
             id: (
                 uuid: "505e7d48-bbdb-440b-ad3f-5886d332b296",
             ),
-            label: "",
+            label: "upper_arm->forearm",
             variant: Spherical((
                 body1: (
                     uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295",
@@ -128,8 +128,8 @@
                 body2: (
                     uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294",
                 ),
-                local_anchor1: (0.0, -0.18, 0.0),
-                local_anchor2: (0.0, 0.18, 0.0),
+                local_anchor1: (-0.17, -0.0, 0.0),
+                local_anchor2: (0.17, 0.0, 0.0),
                 swing_axis: (1.0, 0.0, 0.0),
                 twist_axis: (0.0, 1.0, 0.0),
                 swing_limit: Some((
@@ -157,7 +157,7 @@
             id: (
                 uuid: "505e7d48-bbdb-440b-ad3f-5886d332b297",
             ),
-            label: "",
+            label: "chest->upper_arm",
             variant: Spherical((
                 body1: (
                     uuid: "505e7d48-bbdb-440b-ad3f-5886d332b291",
@@ -165,8 +165,8 @@
                 body2: (
                     uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295",
                 ),
-                local_anchor1: (-0.18, 0.0, -0.06),
-                local_anchor2: (0.0, 0.18, 0.0),
+                local_anchor1: (-0.18, 0.03, -0.02),
+                local_anchor2: (0.16, 0.0, 0.0),
                 swing_axis: (1.0, 0.0, 0.0),
                 twist_axis: (0.0, 1.0, 0.0),
                 swing_limit: Some((

@@ -6,6 +6,8 @@ use bevy_animation_graph::core::{
 };
 use egui::Sense;
 
+use crate::{icons, ui::utils::collapsing::Collapser};
+
 pub struct Tree<I, L>(pub Vec<TreeInternal<I, L>>);
 impl<I, T> Default for Tree<I, T> {
     fn default() -> Self {
@@ -173,7 +175,7 @@ impl Tree<(Entity, Vec<Name>), (Entity, Vec<Name>)> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Hash, PartialEq)]
 pub struct SkeletonNode {
     pub bone_id: BoneId,
 }
@@ -241,32 +243,24 @@ impl TreeRenderer<SkeletonNode, SkeletonNode, SkeletonResponse> for SkeletonTree
             &mut egui::Ui,
         ) -> TreeResult<SkeletonNode, SkeletonNode, SkeletonResponse>,
     ) -> TreeResult<SkeletonNode, SkeletonNode, SkeletonResponse> {
-        let collapsing_response =
-            egui::CollapsingHeader::new(label)
-                .default_open(true)
-                .show(ui, |ui| {
+        let collapsing_response = Collapser::new()
+            .with_default_open(true)
+            .with_id_salt(data)
+            .show(
+                ui,
+                |ui| self.render_leaf(label, data, ui),
+                |ui| {
                     children
                         .iter()
                         .map(|c| render_child(c, ui))
                         .reduce(|l, r| l.or(r))
                         .unwrap_or_default()
-                });
+                },
+            );
 
-        let response = TreeResult::Node(
-            data.clone(),
-            SkeletonResponse {
-                hovered: collapsing_response
-                    .header_response
-                    .hovered()
-                    .then_some(data.bone_id),
-                clicked: collapsing_response
-                    .header_response
-                    .clicked()
-                    .then_some(data.bone_id),
-            },
-        );
-
-        response.or(collapsing_response.body_returned.unwrap_or_default())
+        collapsing_response
+            .head
+            .or(collapsing_response.body.unwrap_or_default())
     }
 
     fn render_leaf(
@@ -275,7 +269,15 @@ impl TreeRenderer<SkeletonNode, SkeletonNode, SkeletonResponse> for SkeletonTree
         data: &SkeletonNode,
         ui: &mut egui::Ui,
     ) -> TreeResult<SkeletonNode, SkeletonNode, SkeletonResponse> {
-        let response = ui.add(egui::Label::new(label).sense(Sense::click()));
+        let response = ui
+            .horizontal(|ui| {
+                let image = icons::BONE;
+                let color = ui.visuals().text_color();
+
+                ui.add(egui::Image::new(image).tint(color).sense(Sense::click()))
+                    | ui.add(egui::Label::new(label).sense(Sense::click()))
+            })
+            .inner;
 
         TreeResult::Leaf(
             data.clone(),

@@ -25,35 +25,61 @@ impl<'a> BodyIdWidget<'a> {
 impl<'a> egui::Widget for BodyIdWidget<'a> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         ui.push_id(self.id_hash, |ui| {
-            let mut response = ui.allocate_response(egui::Vec2::ZERO, egui::Sense::hover());
-            if let Some(ragdoll) = self.ragdoll {
-                let popup_response = ui
-                    .menu_button("🔍", |ui| {
-                        for body in ragdoll.iter_bodies() {
-                            let label = if body.label.is_empty() {
-                                format!("{}", body.id.uuid().hyphenated())
-                            } else {
-                                body.label.clone()
-                            };
-                            if ui.button(label).clicked() {
-                                *self.body_id = body.id;
-                                response.mark_changed();
-                            }
+            ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
+                let mut response = ui
+                    .horizontal(|ui| {
+                        let picker_response = self.ragdoll.map(|r| picker(ui, self.body_id, r));
+
+                        let mut uuid_str = format!("{}", self.body_id.uuid().hyphenated());
+                        let mut response = ui.text_edit_singleline(&mut uuid_str);
+                        if let Some(picker_response) = picker_response {
+                            response |= picker_response;
                         }
+                        if let Ok(uuid) = Uuid::parse_str(&uuid_str) {
+                            *self.body_id = BodyId::from_uuid(uuid);
+                        }
+
+                        response
                     })
-                    .response;
+                    .inner;
 
-                response |= popup_response;
-            }
+                if let Some(ragdoll) = self.ragdoll
+                    && let Some(body) = ragdoll.get_body(*self.body_id)
+                {
+                    response |= ui.label(&body.label);
+                } else {
+                    response |= ui.label("No label available");
+                }
 
-            let mut uuid_str = format!("{}", self.body_id.uuid().hyphenated());
-            response |= ui.text_edit_singleline(&mut uuid_str);
-            if let Ok(uuid) = Uuid::parse_str(&uuid_str) {
-                *self.body_id = BodyId::from_uuid(uuid);
-            }
-
-            response
+                response
+            })
+            .inner
         })
         .inner
     }
+}
+
+fn picker(ui: &mut egui::Ui, body_id: &mut BodyId, ragdoll: &Ragdoll) -> egui::Response {
+    let mut changed = false;
+    let mut popup_response = ui
+        .menu_button("🔍", |ui| {
+            for body in ragdoll.iter_bodies() {
+                let label = if body.label.is_empty() {
+                    format!("{}", body.id.uuid().hyphenated())
+                } else {
+                    body.label.clone()
+                };
+                if ui.button(label).clicked() {
+                    *body_id = body.id;
+                    changed = true;
+                }
+            }
+        })
+        .response;
+
+    if changed {
+        popup_response.mark_changed();
+    }
+
+    popup_response
 }

@@ -11,7 +11,7 @@ impl<'a> Vec3Widget<'a> {
     pub fn new_salted(vec3: &'a mut Vec3, salt: impl std::hash::Hash) -> Self {
         Self {
             vec3,
-            slider_step_size: 0.1,
+            slider_step_size: 0.01,
             id_hash: egui::Id::new(salt),
             width: 300.,
         }
