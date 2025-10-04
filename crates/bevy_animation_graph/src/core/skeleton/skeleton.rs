@@ -7,8 +7,10 @@ use std::fmt::Debug;
 
 #[derive(Debug, Clone, Reflect, Default)]
 pub struct DefaultBoneTransform {
+    /// Default transform of this bone in local (parent) space
     pub local: Transform,
-    pub global: Transform,
+    /// Default transform of this bone in character space
+    pub character: Transform,
 }
 
 #[derive(Asset, Reflect, Default)]
@@ -41,7 +43,7 @@ impl Skeleton {
             id,
             DefaultBoneTransform {
                 local: local_transform,
-                global: global_transform,
+                character: global_transform,
             },
         );
 

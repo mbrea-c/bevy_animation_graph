@@ -94,9 +94,9 @@ impl ColliderConfig {
         match self.offset_mode {
             ColliderOffsetMode::Local => Transform::from_isometry(self.offset),
             ColliderOffsetMode::Global => Transform {
-                translation: default_transforms.global.rotation.inverse()
+                translation: default_transforms.character.rotation.inverse()
                     * Vec3::from(self.offset.translation),
-                rotation: default_transforms.global.rotation.inverse() * self.offset.rotation,
+                rotation: default_transforms.character.rotation.inverse() * self.offset.rotation,
                 scale: Vec3::ONE,
             },
         }

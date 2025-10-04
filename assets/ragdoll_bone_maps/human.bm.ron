@@ -1,39 +1,142 @@
 (
     bones_from_bodies: {
-        ["metarig", "spine", "spine.001", "spine.002", "spine.003", "shoulder.R", "upper_arm.R"]: [
-            (
-                body: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295"),
-                weight: 1.,
-                offset: (translation: (0.,0.2,0.), rotation: (0.,0.,1.,0.)),
-            ),
-        ],
-        ["metarig", "spine", "spine.001", "spine.002", "spine.003", "shoulder.R", "upper_arm.R", "forearm.R"]: [
-            (
-                body: (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294"),
-                weight: 1.,
-                offset: (translation: (0.,0.2,0.), rotation: (0.,0.,1.,0.)),
-            ),
-        ],
+        [
+            "metarig",
+            "spine",
+            "spine.001",
+            "spine.002",
+            "spine.003",
+            "shoulder.R",
+            "upper_arm.R",
+        ]: (
+            bone_id: [
+                "metarig",
+                "spine",
+                "spine.001",
+                "spine.002",
+                "spine.003",
+                "shoulder.R",
+                "upper_arm.R",
+            ],
+            bodies: [
+                (
+                    body: (
+                        uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295",
+                    ),
+                    weight: 1.0,
+                    offset: (
+                        rotation: (-0.018490374, -0.009419799, 0.683723, 0.7294465),
+                        translation: (0.15469998, -0.01540041, -0.0067000575),
+                    ),
+                    override_offset: false,
+                ),
+            ],
+        ),
+        [
+            "metarig",
+            "spine",
+            "spine.001",
+            "spine.002",
+            "spine.003",
+            "shoulder.R",
+            "upper_arm.R",
+            "forearm.R",
+        ]: (
+            bone_id: [
+                "metarig",
+                "spine",
+                "spine.001",
+                "spine.002",
+                "spine.003",
+                "shoulder.R",
+                "upper_arm.R",
+                "forearm.R",
+            ],
+            bodies: [
+                (
+                    body: (
+                        uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294",
+                    ),
+                    weight: 1.0,
+                    offset: (
+                        rotation: (0.019352648, 0.020627335, 0.7121179, 0.70148987),
+                        translation: (0.17322606, 0.0059952736, -0.009949485),
+                    ),
+                    override_offset: false,
+                ),
+            ],
+        ),
     },
     bodies_from_bones: {
-        (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295"): 
-            (
-                bone: ["metarig", "spine", "spine.001", "spine.002", "spine.003", "shoulder.R", "upper_arm.R"],
-                weight: 1.,
-                offset: (translation: (0.,0.2,0.), rotation: (0.,0.,1.,0.)),
+        (
+            uuid: "505e7d48-bbdb-440b-ad3f-5886d332b291",
+        ): (
+            body_id: (
+                uuid: "505e7d48-bbdb-440b-ad3f-5886d332b291",
             ),
-        (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294"): 
-            (
-                bone: ["metarig", "spine", "spine.001", "spine.002", "spine.003", "shoulder.R", "upper_arm.R", "forearm.R"],
-                weight: 1.,
-                offset: (translation: (0.,0.2,0.), rotation: (0.,0.,1.,0.)),
+            bone: (
+                bone: [
+                    "metarig",
+                    "spine",
+                    "spine.001",
+                    "spine.002",
+                    "spine.003",
+                ],
+                offset: (
+                    rotation: (0.014281374, 0.0, 0.0, 0.9998981),
+                    translation: (0.0, 0.09409344, 0.008590829),
+                ),
+                override_offset: false,
             ),
-        (uuid: "505e7d48-bbdb-440b-ad3f-5886d332b291"): 
-            (
-                bone: ["metarig", "spine", "spine.001", "spine.002", "spine.003"],
-                weight: 1.,
-                offset: (translation: (0.,0.1,0.), rotation: (0.,0.,0.,1.)),
+        ),
+        (
+            uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294",
+        ): (
+            body_id: (
+                uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294",
             ),
-        
+            bone: (
+                bone: [
+                    "metarig",
+                    "spine",
+                    "spine.001",
+                    "spine.002",
+                    "spine.003",
+                    "shoulder.R",
+                    "upper_arm.R",
+                    "forearm.R",
+                ],
+                offset: (
+                    rotation: (0.01935265, 0.020627337, 0.7121179, -0.7014899),
+                    translation: (-0.003396988, 0.17358181, 0.00013250858),
+                ),
+                override_offset: false,
+            ),
+        ),
+        (
+            uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295",
+        ): (
+            body_id: (
+                uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295",
+            ),
+            bone: (
+                bone: [
+                    "metarig",
+                    "spine",
+                    "spine.001",
+                    "spine.002",
+                    "spine.003",
+                    "shoulder.R",
+                    "upper_arm.R",
+                ],
+                offset: (
+                    rotation: (0.018490378, 0.009419801, -0.683723, 0.7294466),
+                    translation: (0.0052546263, 0.1549803, 0.012948836),
+                ),
+                override_offset: false,
+            ),
+        ),
     },
+    skeleton: "skeletons/human.skn.ron",
+    ragdoll: "ragdolls/human.rag.ron",
 )

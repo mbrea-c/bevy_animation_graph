@@ -1,5 +1,5 @@
 use bevy::{
-    asset::Handle,
+    asset::{AssetId, Handle},
     color::{
         Alpha, Color,
         palettes::css::{DARK_RED, ORANGE, YELLOW},
@@ -13,7 +13,7 @@ use bevy_animation_graph::{
         colliders::core::{ColliderConfig, SkeletonColliderId, SkeletonColliders},
         id::BoneId,
         ragdoll::{
-            bone_mapping::RagdollBoneMap,
+            bone_mapping::{BodyMapping, BoneMapping, BoneWeight, RagdollBoneMap},
             definition::{Body, BodyId, Collider, ColliderId, Joint, JointId, Ragdoll},
         },
         skeleton::Skeleton,
@@ -24,14 +24,18 @@ use egui_dock::egui;
 
 use crate::ui::{
     actions::{
-        DynamicAction,
-        ragdoll::{EditRagdollBody, EditRagdollCollider, EditRagdollJoint},
+        ragdoll::{
+            CreateOrEditBodyMapping, CreateOrEditBoneMapping, EditRagdollBody, EditRagdollCollider,
+            EditRagdollJoint, RecomputeMappingOffsets,
+        },
         window::DynWindowAction,
     },
     core::{EditorWindowContext, EditorWindowExtension},
     editor_windows::ragdoll_editor::{
         body_inspector::BodyInspector,
+        body_mapping_inspector::BodyMappingInspector,
         body_tree::BodyTree,
+        bone_mapping_inspector::BoneMappingInspector,
         bone_tree::BoneTree,
         collider_inspector::ColliderInspector,
         joint_inspector::JointInspector,
@@ -44,7 +48,9 @@ use crate::ui::{
 };
 
 mod body_inspector;
+mod body_mapping_inspector;
 mod body_tree;
+mod bone_mapping_inspector;
 mod bone_tree;
 mod collider_inspector;
 mod joint_inspector;
@@ -55,18 +61,22 @@ mod top_panel;
 #[derive(Debug)]
 pub struct RagdollEditorWindow {
     pub orbit_view: OrbitView,
-    pub target: Option<Handle<Ragdoll>>,
+    pub ragdoll: Option<Handle<Ragdoll>>,
     pub ragdoll_bone_map: Option<Handle<RagdollBoneMap>>,
     pub reverse_index: Option<ReverseSkeletonIndex>,
-    pub base_scene: Option<Handle<AnimatedScene>>,
+    pub scene: Option<Handle<AnimatedScene>>,
     /// If true, render the skeleton tree. If false, render the ragdoll tree
     pub show_bone_tree: bool,
     pub hovered: Option<BoneId>,
     pub selected: Option<BoneId>,
     pub selected_item: Option<SelectedItem>,
+
     pub body_edit_buffers: HashMap<BodyId, Body>,
     pub collider_edit_buffers: HashMap<ColliderId, Collider>,
     pub joint_edit_buffers: HashMap<JointId, Joint>,
+    pub bone_mapping_buffers: HashMap<BoneId, BoneMapping>,
+    pub body_mapping_buffers: HashMap<BodyId, BodyMapping>,
+
     pub selectable_collider: SelectableCollider,
     pub draw_colliders: Vec<(ColliderConfig, Color)>,
     pub show_global_settings: bool,
@@ -86,17 +96,21 @@ impl Default for RagdollEditorWindow {
     fn default() -> Self {
         Self {
             orbit_view: OrbitView::default(),
-            target: None,
+            ragdoll: None,
             ragdoll_bone_map: None,
             reverse_index: None,
-            base_scene: None,
+            scene: None,
             hovered: None,
             selected: None,
             selected_item: None,
             selectable_collider: SelectableCollider::default(),
+
             body_edit_buffers: HashMap::default(),
             collider_edit_buffers: HashMap::default(),
             joint_edit_buffers: HashMap::default(),
+            bone_mapping_buffers: HashMap::default(),
+            body_mapping_buffers: HashMap::default(),
+
             draw_colliders: Vec::default(),
             show_global_settings: false,
             show_all_colliders: true,
@@ -144,10 +158,10 @@ impl EditorWindowExtension for RagdollEditorWindow {
 
         match *action {
             RagdollEditorAction::SelectBaseScene(handle) => {
-                self.base_scene = Some(handle);
+                self.scene = Some(handle);
             }
             RagdollEditorAction::SelectRagdoll(handle) => {
-                self.target = Some(handle);
+                self.ragdoll = Some(handle);
                 self.reverse_index = None;
             }
             RagdollEditorAction::SelectNode(ragdoll_node) => {
@@ -183,8 +197,8 @@ impl RagdollEditorWindow {
             .frame(egui::Frame::NONE.inner_margin(5.))
             .show_inside(ui, |ui| {
                 TopPanel {
-                    ragdoll: self.target.clone(),
-                    scene: self.base_scene.clone(),
+                    ragdoll: self.ragdoll.clone(),
+                    scene: self.scene.clone(),
                     ragdoll_bone_map: self.ragdoll_bone_map.clone(),
                     world,
                     ctx,
@@ -206,7 +220,7 @@ impl RagdollEditorWindow {
                 ui.checkbox(&mut self.show_bone_tree, "Show skeleton tree");
                 egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
                     if self.show_bone_tree {
-                        if let Some(animscn) = self.base_scene.clone() {
+                        if let Some(animscn) = self.scene.clone() {
                             with_assets_all(world, [animscn.id()], |world, [animscn]| {
                                 BoneTree {
                                     skeleton: animscn.skeleton.clone(),
@@ -217,7 +231,7 @@ impl RagdollEditorWindow {
                             });
                         }
                     } else {
-                        if let Some(ragdoll) = self.target.clone() {
+                        if let Some(ragdoll) = self.ragdoll.clone() {
                             BodyTree {
                                 ragdoll,
                                 world,
@@ -230,16 +244,14 @@ impl RagdollEditorWindow {
             });
     }
 
-    fn submit_row<T>(
+    fn submit_row(
         ui: &mut egui::Ui,
         ctx: &mut EditorWindowContext,
-        create_save_event: impl FnOnce() -> T,
-    ) where
-        T: DynamicAction,
-    {
+        on_submit: impl FnOnce(&mut EditorWindowContext),
+    ) {
         ui.horizontal(|ui| {
             if ui.button("Apply").clicked() {
-                ctx.editor_actions.dynamic(create_save_event());
+                on_submit(ctx);
                 ctx.window_action(RagdollEditorAction::ResetBuffers);
             }
             if ui.button("Reset").clicked() {
@@ -261,7 +273,9 @@ impl RagdollEditorWindow {
                 egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
                     match self.selected_item {
                         Some(SelectedItem::Body(body_id)) => {
-                            if let Some(ragdoll_handle) = &self.target {
+                            if let Some(ragdoll_handle) = &self.ragdoll
+                                && let Some(ragdoll_bone_map_handle) = &self.ragdoll_bone_map
+                            {
                                 with_assets_all(
                                     world,
                                     [ragdoll_handle.id()],
@@ -282,16 +296,64 @@ impl RagdollEditorWindow {
                                             body: buffer,
                                         });
 
-                                        Self::submit_row(ui, ctx, || EditRagdollBody {
-                                            ragdoll: ragdoll_handle.clone(),
-                                            body: buffer.clone(),
+                                        Self::submit_row(ui, ctx, |ctx| {
+                                            ctx.editor_actions.dynamic(EditRagdollBody {
+                                                ragdoll: ragdoll_handle.clone(),
+                                                body: buffer.clone(),
+                                            });
+                                            ctx.editor_actions.dynamic(RecomputeMappingOffsets {
+                                                ragdoll_bone_map: ragdoll_bone_map_handle.clone(),
+                                            });
+                                        });
+                                    },
+                                );
+                            }
+
+                            if let Some(animscn_handle) = &self.scene
+                                && let Some(bone_map_handle) = &self.ragdoll_bone_map
+                            {
+                                with_body_mapping_assets(
+                                    world,
+                                    animscn_handle.id(),
+                                    bone_map_handle.id(),
+                                    |world, _, skeleton, bone_map| {
+                                        ui.separator();
+
+                                        let body_mapping = self
+                                            .body_mapping_buffers
+                                            .entry(body_id)
+                                            .or_insert_with(|| {
+                                                bone_map
+                                                    .bodies_from_bones
+                                                    .get(&body_id)
+                                                    .cloned()
+                                                    .unwrap_or(BodyMapping {
+                                                        body_id,
+                                                        bone: BoneWeight::default(),
+                                                    })
+                                            });
+                                        ui.add(BodyMappingInspector {
+                                            world,
+                                            ctx,
+                                            body_mapping,
+                                            skeleton,
+                                        });
+
+                                        Self::submit_row(ui, ctx, |ctx| {
+                                            ctx.editor_actions.dynamic(CreateOrEditBodyMapping {
+                                                ragdoll_bone_map: bone_map_handle.clone(),
+                                                body_mapping: body_mapping.clone(),
+                                            });
+                                            ctx.editor_actions.dynamic(RecomputeMappingOffsets {
+                                                ragdoll_bone_map: bone_map_handle.clone(),
+                                            });
                                         });
                                     },
                                 );
                             }
                         }
                         Some(SelectedItem::Collider(collider_id)) => {
-                            if let Some(ragdoll_handle) = &self.target {
+                            if let Some(ragdoll_handle) = &self.ragdoll {
                                 with_assets_all(
                                     world,
                                     [ragdoll_handle.id()],
@@ -312,16 +374,18 @@ impl RagdollEditorWindow {
                                             collider: buffer,
                                         });
 
-                                        Self::submit_row(ui, ctx, || EditRagdollCollider {
-                                            ragdoll: ragdoll_handle.clone(),
-                                            collider: buffer.clone(),
+                                        Self::submit_row(ui, ctx, |ctx| {
+                                            ctx.editor_actions.dynamic(EditRagdollCollider {
+                                                ragdoll: ragdoll_handle.clone(),
+                                                collider: buffer.clone(),
+                                            });
                                         });
                                     },
                                 );
                             }
                         }
                         Some(SelectedItem::Joint(joint_id)) => {
-                            if let Some(ragdoll_handle) = &self.target {
+                            if let Some(ragdoll_handle) = &self.ragdoll {
                                 with_assets_all(
                                     world,
                                     [ragdoll_handle.id()],
@@ -343,10 +407,63 @@ impl RagdollEditorWindow {
                                             ragdoll,
                                         });
 
-                                        Self::submit_row(ui, ctx, || EditRagdollJoint {
-                                            ragdoll: ragdoll_handle.clone(),
-                                            joint: buffer.clone(),
+                                        Self::submit_row(ui, ctx, |ctx| {
+                                            ctx.editor_actions.dynamic(EditRagdollJoint {
+                                                ragdoll: ragdoll_handle.clone(),
+                                                joint: buffer.clone(),
+                                            });
                                         });
+                                    },
+                                );
+                            }
+                        }
+                        Some(SelectedItem::Bone(bone_id)) => {
+                            if let Some(animscn_handle) = &self.scene
+                                && let Some(bone_map_handle) = &self.ragdoll_bone_map
+                                && let Some(ragdoll_handle) = &self.ragdoll
+                            {
+                                with_bone_mapping_assets(
+                                    world,
+                                    animscn_handle.id(),
+                                    bone_map_handle.id(),
+                                    ragdoll_handle.id(),
+                                    |world, _, skeleton, bone_map, ragdoll| {
+                                        if let Some(entity_path) = skeleton.id_to_path(bone_id) {
+                                            let bone = self
+                                                .bone_mapping_buffers
+                                                .entry(bone_id)
+                                                .or_insert_with(|| {
+                                                    bone_map
+                                                        .bones_from_bodies
+                                                        .get(&entity_path)
+                                                        .cloned()
+                                                        .unwrap_or(BoneMapping {
+                                                            bone_id: entity_path.clone(),
+                                                            bodies: Vec::new(),
+                                                        })
+                                                });
+
+                                            ui.add(BoneMappingInspector {
+                                                world,
+                                                ctx,
+                                                bone,
+                                                ragdoll,
+                                            });
+
+                                            Self::submit_row(ui, ctx, |ctx| {
+                                                ctx.editor_actions.dynamic(
+                                                    CreateOrEditBoneMapping {
+                                                        ragdoll_bone_map: bone_map_handle.clone(),
+                                                        bone_mapping: bone.clone(),
+                                                    },
+                                                );
+                                                ctx.editor_actions.dynamic(
+                                                    RecomputeMappingOffsets {
+                                                        ragdoll_bone_map: bone_map_handle.clone(),
+                                                    },
+                                                );
+                                            });
+                                        }
                                     },
                                 );
                             }
@@ -365,8 +482,8 @@ impl RagdollEditorWindow {
         world: &mut World,
         ctx: &mut EditorWindowContext,
     ) {
-        if let Some(base_scene) = &self.base_scene
-            && let Some(ragdoll) = &self.target
+        if let Some(base_scene) = &self.scene
+            && let Some(ragdoll) = &self.ragdoll
         {
             RagdollPreview {
                 world,
@@ -394,7 +511,7 @@ impl RagdollEditorWindow {
     ) {
         if self.show_global_settings {
             egui::Window::new("Skeleton collider settings").show(ui.ctx(), |ui| {
-                if let Some(target) = &self.target {
+                if let Some(target) = &self.ragdoll {
                     ui.add(SettingsPanel {
                         target: target.clone(),
                         world,
@@ -607,4 +724,37 @@ impl ReverseSkeletonIndex {
     pub fn mapping_to_bone(&self, bone_id: BoneId) -> Vec<BoneId> {
         self.mapping.get(&bone_id).cloned().unwrap_or_default()
     }
+}
+
+fn with_body_mapping_assets(
+    world: &mut World,
+    animscn_id: AssetId<AnimatedScene>,
+    bone_map_id: AssetId<RagdollBoneMap>,
+    f: impl FnOnce(&mut World, &AnimatedScene, &Skeleton, &RagdollBoneMap),
+) {
+    with_assets_all(world, [animscn_id], |world, [animscn]| {
+        with_assets_all(world, [animscn.skeleton.id()], |world, [skeleton]| {
+            with_assets_all(world, [bone_map_id], |world, [bone_map]| {
+                f(world, animscn, skeleton, bone_map);
+            });
+        });
+    });
+}
+
+fn with_bone_mapping_assets(
+    world: &mut World,
+    animscn_id: AssetId<AnimatedScene>,
+    bone_map_id: AssetId<RagdollBoneMap>,
+    ragdoll_id: AssetId<Ragdoll>,
+    f: impl FnOnce(&mut World, &AnimatedScene, &Skeleton, &RagdollBoneMap, &Ragdoll),
+) {
+    with_assets_all(world, [animscn_id], |world, [animscn]| {
+        with_assets_all(world, [animscn.skeleton.id()], |world, [skeleton]| {
+            with_assets_all(world, [bone_map_id], |world, [bone_map]| {
+                with_assets_all(world, [ragdoll_id], |world, [ragdoll]| {
+                    f(world, animscn, skeleton, bone_map, ragdoll);
+                });
+            });
+        });
+    });
 }

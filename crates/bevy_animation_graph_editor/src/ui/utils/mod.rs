@@ -416,14 +416,3 @@ pub fn with_assets_all<A: Asset, T, const N: usize>(
         Some(f(world, all_assets))
     })
 }
-
-pub fn with_assets_vec<A: Asset, T>(
-    world: &mut World,
-    assets: impl IntoIterator<Item = AssetId<A>>,
-    f: impl FnOnce(&mut World, Vec<Option<&A>>) -> T,
-) -> T {
-    world.resource_scope::<Assets<A>, T>(move |world, a_assets| {
-        let asset_vec = assets.into_iter().map(|id| a_assets.get(id)).collect();
-        f(world, asset_vec)
-    })
-}

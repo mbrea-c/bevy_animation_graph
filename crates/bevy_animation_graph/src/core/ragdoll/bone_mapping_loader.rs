@@ -1,6 +1,18 @@
-use bevy::asset::{AssetLoader, LoadContext, io::Reader};
+use bevy::{
+    asset::{AssetLoader, AssetPath, LoadContext, io::Reader},
+    platform::collections::HashMap,
+    reflect::Reflect,
+};
+use serde::{Deserialize, Serialize};
 
-use crate::core::{errors::AssetLoaderError, ragdoll::bone_mapping::RagdollBoneMap};
+use crate::core::{
+    animation_clip::EntityPath,
+    errors::AssetLoaderError,
+    ragdoll::{
+        bone_mapping::{BodyMapping, BoneMapping, RagdollBoneMap},
+        definition::BodyId,
+    },
+};
 
 #[derive(Default)]
 pub struct RagdollBoneMapLoader;
@@ -14,16 +26,52 @@ impl AssetLoader for RagdollBoneMapLoader {
         &self,
         reader: &mut dyn Reader,
         _settings: &Self::Settings,
-        _load_context: &mut LoadContext<'_>,
+        load_context: &mut LoadContext<'_>,
     ) -> Result<Self::Asset, Self::Error> {
         let mut bytes = vec![];
         reader.read_to_end(&mut bytes).await?;
-        let map: RagdollBoneMap = ron::de::from_bytes(&bytes)?;
+        let RagdollBoneMapSerial {
+            bones_from_bodies,
+            bodies_from_bones,
+            skeleton,
+            ragdoll,
+        } = ron::de::from_bytes(&bytes)?;
 
-        Ok(map)
+        Ok(RagdollBoneMap {
+            bones_from_bodies,
+            bodies_from_bones,
+            skeleton: load_context.load(skeleton),
+            ragdoll: load_context.load(ragdoll),
+        })
     }
 
     fn extensions(&self) -> &[&str] {
         &["bm.ron"]
+    }
+}
+
+#[derive(Debug, Clone, Reflect, Serialize, Deserialize)]
+pub struct RagdollBoneMapSerial {
+    pub bones_from_bodies: HashMap<EntityPath, BoneMapping>,
+    pub bodies_from_bones: HashMap<BodyId, BodyMapping>,
+    pub skeleton: AssetPath<'static>,
+    pub ragdoll: AssetPath<'static>,
+}
+
+impl RagdollBoneMapSerial {
+    pub fn from_value(ragdoll_bone_map: &RagdollBoneMap) -> Option<Self> {
+        let RagdollBoneMap {
+            bones_from_bodies,
+            bodies_from_bones,
+            skeleton,
+            ragdoll,
+        } = ragdoll_bone_map;
+
+        Some(Self {
+            bones_from_bodies: bones_from_bodies.clone(),
+            bodies_from_bones: bodies_from_bones.clone(),
+            skeleton: skeleton.path()?.to_owned(),
+            ragdoll: ragdoll.path()?.to_owned(),
+        })
     }
 }

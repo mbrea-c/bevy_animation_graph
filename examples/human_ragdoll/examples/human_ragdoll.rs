@@ -3,7 +3,7 @@ extern crate bevy_animation_graph;
 
 use avian3d::PhysicsPlugins;
 use avian3d::prelude::{Collider, RigidBody};
-use bevy::color::palettes::css::{GREEN, RED};
+use bevy::color::palettes::css::GREEN;
 use bevy::{pbr::CascadeShadowConfigBuilder, prelude::*};
 use bevy_animation_graph::core::animated_scene::AnimatedSceneInstance;
 use bevy_animation_graph::prelude::*;
@@ -16,7 +16,7 @@ fn main() {
             ..default()
         }))
         .add_plugins(PhysicsPlugins::default())
-        // .add_plugins(PhysicsDebugPlugin::default())
+        .add_plugins(avian3d::prelude::PhysicsDebugPlugin::default())
         .add_plugins(AnimationGraphPlugin)
         // .add_plugins((
         //     bevy_inspector_egui::bevy_egui::EguiPlugin::default(),
@@ -50,7 +50,7 @@ struct Params {
 impl Default for Params {
     fn default() -> Self {
         Self {
-            speed: 1.0,
+            speed: 3.0,
             angle: 0.,
             target_angle: 0.,
             target_position: Vec3::ZERO,
@@ -211,7 +211,9 @@ fn find_target(
 fn update_params(mut params: ResMut<Params>, time: Res<Time>) {
     let delta = params.target_position - params.position;
     let direction = delta.normalize_or_zero();
-    let target_velocity = direction * params.speed;
+
+    let target_velocity = (direction * params.speed) * delta.length().clamp(0., 2.) / 2.;
+
     let velocity_delta = target_velocity - params.velocity;
     let velocity_delta_length = velocity_delta.length();
     let velocity_delta_dir = velocity_delta.normalize_or_zero();

@@ -6,7 +6,8 @@ use bevy::{
 };
 use bevy_animation_graph::{
     core::{
-        colliders::core::SkeletonColliders, ragdoll::definition::Ragdoll,
+        colliders::core::SkeletonColliders,
+        ragdoll::{bone_mapping::RagdollBoneMap, definition::Ragdoll},
         state_machine::high_level::StateMachine,
     },
     prelude::{AnimationGraph, GraphClip},
@@ -123,6 +124,8 @@ impl SaveWindow {
             "Skeleton Colliders".into()
         } else if type_id == TypeId::of::<Ragdoll>() {
             "Ragdoll".into()
+        } else if type_id == TypeId::of::<RagdollBoneMap>() {
+            "Ragdoll Bone Map".into()
         } else {
             "Unknown type (?)".into()
         }

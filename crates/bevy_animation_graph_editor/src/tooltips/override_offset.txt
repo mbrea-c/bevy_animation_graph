@@ -1,0 +1,2 @@
+If not overriden, the mapping offset will be computed based on default body and bone positions.
+I recommended leaving this unchecked unless you have an issue with the default offset.

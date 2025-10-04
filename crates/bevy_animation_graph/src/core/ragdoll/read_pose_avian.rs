@@ -28,7 +28,7 @@ pub fn read_pose(
     let mut bones_from_bodies = bone_map.bones_from_bodies.iter().collect::<Vec<_>>();
     bones_from_bodies.sort_by_key(|(path, _)| path.parts.len());
 
-    for (bone_path, bodies) in bones_from_bodies {
+    for (bone_path, bone_mapping) in bones_from_bodies {
         let parent_bone_transform = bone_path
             .parent()
             .map(|parent_bone_path| {
@@ -39,7 +39,8 @@ pub fn read_pose(
         let inverse_parent_transform =
             Transform::from_matrix(parent_bone_transform.compute_affine().inverse().into());
 
-        let Some(mut weighted_transforms) = bodies
+        let Some(mut weighted_transforms) = bone_mapping
+            .bodies
             .iter()
             .filter_map(|body_weight| {
                 let Some(body_entity) = spawned_ragdoll.bodies.get(&body_weight.body) else {

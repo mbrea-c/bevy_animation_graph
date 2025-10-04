@@ -38,17 +38,17 @@ pub fn write_pose_to_ragdoll(
     };
 
     for body in ragdoll.bodies.values() {
-        let Some(bone_weight) = mapping.bodies_from_bones.get(&body.id) else {
+        let Some(body_mapping) = mapping.bodies_from_bones.get(&body.id) else {
             continue;
         };
 
         // TODO: Quaternion interpolation for more than 1 bone weights
         let character_transform =
-            convert.character_transform_of_bone(pose, skeleton, bone_weight.bone.id());
+            convert.character_transform_of_bone(pose, skeleton, body_mapping.bone.bone.id());
 
         targets.bodies.push(BodyTarget {
             body_id: body.id,
-            character_space_isometry: character_transform.to_isometry() * bone_weight.offset,
+            character_space_isometry: character_transform.to_isometry() * body_mapping.bone.offset,
         })
     }
 

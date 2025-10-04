@@ -39,20 +39,25 @@ impl Collapser {
             .vertical(|ui| {
                 let header_response = ui
                     .horizontal(|ui| {
-                        ui.toggle_value(&mut is_open, "v");
+                        let label = if is_open { "⏷" } else { "⏵" };
+                        if ui.add(egui::Button::new(label).frame(false)).clicked() {
+                            is_open = !is_open;
+                        }
                         show_header(ui)
                     })
                     .inner;
                 let body_response = if is_open {
-                    let response = ui
-                        .horizontal(|ui| {
-                            ui.add_space(4.);
-                            ui.separator();
-                            ui.add_space(4.);
-                            ui.vertical(|ui| show_body(ui)).inner
-                        })
-                        .inner;
-                    Some(response)
+                    let response = ui.horizontal(|ui| {
+                        ui.add_space(12.);
+                        ui.vertical(|ui| show_body(ui)).inner
+                    });
+                    let rect = response.response.rect;
+                    let offset = egui::Vec2::new(5., 0.);
+                    ui.painter().line_segment(
+                        [rect.left_top() + offset, rect.left_bottom() + offset],
+                        ui.visuals().widgets.noninteractive.bg_stroke,
+                    );
+                    Some(response.inner)
                 } else {
                     None
                 };

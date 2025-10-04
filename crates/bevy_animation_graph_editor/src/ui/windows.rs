@@ -31,6 +31,7 @@ pub trait EditorWindowExtension: AsAny + std::fmt::Debug + Send + Sync + 'static
     fn window_type_id(&self) -> TypeId {
         self.type_id()
     }
+
     fn window_type_name(&self) -> &'static str {
         type_name::<Self>()
     }
