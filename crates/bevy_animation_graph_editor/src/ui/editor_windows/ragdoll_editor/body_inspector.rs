@@ -42,6 +42,10 @@ impl Widget for BodyInspector<'_, '_> {
                     ui.selectable_value(&mut self.body.default_mode, BodyMode::Dynamic, "Dynamic");
                 })
                 .response;
+            ui.end_row();
+
+            response |= ui.label("use symmetry:");
+            response |= ui.add(egui::Checkbox::without_text(&mut self.body.use_symmetry));
 
             response
         });

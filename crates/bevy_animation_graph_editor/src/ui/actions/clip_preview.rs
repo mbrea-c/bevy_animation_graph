@@ -13,6 +13,8 @@ use bevy_animation_graph::{
     prelude::{AnimatedScene, AnimationGraph, AnimationNode, DataSpec, GraphClip},
 };
 
+use crate::ui::actions::ActionContext;
+
 use super::{DynamicAction, run_handler};
 
 #[derive(Resource, Default)]
@@ -42,7 +44,7 @@ pub struct CreateClipPreview {
 }
 
 impl DynamicAction for CreateClipPreview {
-    fn handle(self: Box<Self>, world: &mut World) {
+    fn handle(self: Box<Self>, world: &mut World, _: &mut ActionContext) {
         run_handler(world, "Could not create clip preview")(Self::system, *self)
     }
 }
@@ -97,7 +99,7 @@ pub struct CreateTrackNodePreview {
 }
 
 impl DynamicAction for CreateTrackNodePreview {
-    fn handle(self: Box<Self>, world: &mut World) {
+    fn handle(self: Box<Self>, world: &mut World, _: &mut ActionContext) {
         run_handler(world, "Could not create clip preview")(Self::system, *self)
     }
 }

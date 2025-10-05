@@ -8,13 +8,16 @@ use bevy::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::core::colliders::core::ColliderShape;
+use crate::{core::colliders::core::ColliderShape, prelude::config::SymmertryMode};
 
 #[derive(Asset, Debug, Clone, Reflect, Serialize, Deserialize)]
 pub struct Ragdoll {
     pub bodies: HashMap<BodyId, Body>,
     pub colliders: HashMap<ColliderId, Collider>,
     pub joints: HashMap<JointId, Joint>,
+
+    #[serde(default)]
+    pub suffixes: SymmetrySuffixes,
 }
 
 impl Ragdoll {
@@ -54,8 +57,36 @@ impl Ragdoll {
         self.bodies.values()
     }
 
+    pub fn iter_bodies_mut(&mut self) -> impl Iterator<Item = &mut Body> {
+        self.bodies.values_mut()
+    }
+
+    pub fn iter_body_ids(&self) -> impl Iterator<Item = BodyId> {
+        self.bodies.keys().copied()
+    }
+
+    pub fn iter_colliders(&self) -> impl Iterator<Item = &Collider> {
+        self.colliders.values()
+    }
+
     pub fn iter_joints(&self) -> impl Iterator<Item = &Joint> {
         self.joints.values()
+    }
+}
+
+/// Determines which suffixes to apply to labels of elements that make use of symmetry
+#[derive(Debug, Clone, Reflect, Serialize, Deserialize)]
+pub struct SymmetrySuffixes {
+    pub original: String,
+    pub mirror: String,
+}
+
+impl Default for SymmetrySuffixes {
+    fn default() -> Self {
+        Self {
+            original: ".R".into(),
+            mirror: ".L".into(),
+        }
     }
 }
 
@@ -67,6 +98,13 @@ pub struct Body {
     pub isometry: Isometry3d,
     pub colliders: Vec<ColliderId>,
     pub default_mode: BodyMode,
+
+    #[serde(default)]
+    pub use_symmetry: bool,
+    /// If symmetry is enabled and this body was created as the image under the symmetry of another
+    /// body, which body is it?
+    #[serde(default)]
+    pub created_from: Option<BodyId>,
 }
 
 impl Body {
@@ -79,7 +117,38 @@ impl Body {
             isometry: default(),
             colliders: default(),
             default_mode: BodyMode::Kinematic,
+
+            use_symmetry: false,
+            created_from: None,
         }
+    }
+
+    pub fn mirror_onto(
+        &self,
+        target: &mut Self,
+        suffixes: &SymmetrySuffixes,
+        mode: &SymmertryMode,
+    ) {
+        let original_label = self
+            .label
+            .strip_suffix(&suffixes.original)
+            .unwrap_or(&self.label)
+            .to_owned();
+
+        let mirrored_label = format!("{}{}", original_label, suffixes.mirror);
+        target.label = mirrored_label;
+
+        let mirrored_isometry = Isometry3d {
+            rotation: mode.apply_quat(self.isometry.rotation),
+            translation: mode.apply_position(self.isometry.translation.into()).into(),
+        };
+        target.isometry = mirrored_isometry;
+
+        todo!("What do we do about colliders?");
+
+        target.default_mode = self.default_mode;
+        target.use_symmetry = false;
+        target.created_from = Some(self.id);
     }
 }
 
@@ -100,6 +169,10 @@ pub struct Collider {
     pub override_layers: bool,
     /// Label that will be attached to the created collider in a [`ColliderLabel`] component.
     pub label: String,
+    /// If symmetry is enabled and this body was created as the image under the symmetry of another
+    /// body, which body is it?
+    #[serde(default)]
+    pub created_from: Option<ColliderId>,
 }
 
 impl Collider {
@@ -114,6 +187,7 @@ impl Collider {
             layer_filter: 1,
             override_layers: false,
             label: "New collider".into(),
+            created_from: None,
         }
     }
 }

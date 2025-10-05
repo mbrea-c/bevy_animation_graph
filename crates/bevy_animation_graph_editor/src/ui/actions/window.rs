@@ -9,7 +9,7 @@ use bevy::{
 };
 
 use super::{DynamicAction, run_handler};
-use crate::ui::{UiState, windows::WindowId};
+use crate::ui::{UiState, actions::ActionContext, windows::WindowId};
 
 pub type DynWindowAction = Box<dyn Any + Send + Sync>;
 
@@ -21,7 +21,7 @@ pub struct WindowAction {
 }
 
 impl DynamicAction for WindowAction {
-    fn handle(self: Box<Self>, world: &mut World) {
+    fn handle(self: Box<Self>, world: &mut World, _: &mut ActionContext) {
         run_handler(world, "Failed to handle window action")(Self::system, *self);
     }
 }
@@ -40,7 +40,7 @@ pub struct TypeTargetedWindowAction {
 }
 
 impl DynamicAction for TypeTargetedWindowAction {
-    fn handle(self: Box<Self>, world: &mut World) {
+    fn handle(self: Box<Self>, world: &mut World, _: &mut ActionContext) {
         run_handler(world, "Failed to handle window action")(Self::system, *self);
     }
 }
@@ -66,7 +66,7 @@ pub struct CloseWindowAction {
 }
 
 impl DynamicAction for CloseWindowAction {
-    fn handle(self: Box<Self>, world: &mut World) {
+    fn handle(self: Box<Self>, world: &mut World, _: &mut ActionContext) {
         run_handler(world, "Failed to close window")(Self::system, *self)
     }
 }

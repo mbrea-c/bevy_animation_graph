@@ -26,7 +26,7 @@ use crate::ui::{
     actions::{
         ragdoll::{
             CreateOrEditBodyMapping, CreateOrEditBoneMapping, EditRagdollBody, EditRagdollCollider,
-            EditRagdollJoint, RecomputeMappingOffsets,
+            EditRagdollJoint, RecomputeMappingOffsets, RecomputeRagdollSymmetry,
         },
         window::DynWindowAction,
     },
@@ -302,6 +302,9 @@ impl RagdollEditorWindow {
                                                 body: buffer.clone(),
                                             });
                                             ctx.editor_actions.dynamic(RecomputeMappingOffsets {
+                                                ragdoll_bone_map: ragdoll_bone_map_handle.clone(),
+                                            });
+                                            ctx.editor_actions.dynamic(RecomputeRagdollSymmetry {
                                                 ragdoll_bone_map: ragdoll_bone_map_handle.clone(),
                                             });
                                         });
