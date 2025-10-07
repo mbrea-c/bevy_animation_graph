@@ -8,7 +8,7 @@ use bevy::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::{core::colliders::core::ColliderShape, prelude::config::SymmertryMode};
+use crate::core::colliders::core::ColliderShape;
 
 #[derive(Asset, Debug, Clone, Reflect, Serialize, Deserialize)]
 pub struct Ragdoll {
@@ -72,6 +72,10 @@ impl Ragdoll {
     pub fn iter_joints(&self) -> impl Iterator<Item = &Joint> {
         self.joints.values()
     }
+
+    pub fn iter_joint_ids(&self) -> impl Iterator<Item = JointId> {
+        self.joints.keys().copied()
+    }
 }
 
 /// Determines which suffixes to apply to labels of elements that make use of symmetry
@@ -95,7 +99,10 @@ pub struct Body {
     pub id: BodyId,
     #[serde(default)]
     pub label: String,
-    pub isometry: Isometry3d,
+    /// Position of this rigidbody relative to the character root transform.
+    ///
+    /// You cannot rotate the rigidbody. Instead, you can rotate colliders attached to it.
+    pub offset: Vec3,
     pub colliders: Vec<ColliderId>,
     pub default_mode: BodyMode,
 
@@ -114,41 +121,13 @@ impl Body {
                 uuid: Uuid::new_v4(),
             },
             label: "New body".into(),
-            isometry: default(),
+            offset: default(),
             colliders: default(),
             default_mode: BodyMode::Kinematic,
 
             use_symmetry: false,
             created_from: None,
         }
-    }
-
-    pub fn mirror_onto(
-        &self,
-        target: &mut Self,
-        suffixes: &SymmetrySuffixes,
-        mode: &SymmertryMode,
-    ) {
-        let original_label = self
-            .label
-            .strip_suffix(&suffixes.original)
-            .unwrap_or(&self.label)
-            .to_owned();
-
-        let mirrored_label = format!("{}{}", original_label, suffixes.mirror);
-        target.label = mirrored_label;
-
-        let mirrored_isometry = Isometry3d {
-            rotation: mode.apply_quat(self.isometry.rotation),
-            translation: mode.apply_position(self.isometry.translation.into()).into(),
-        };
-        target.isometry = mirrored_isometry;
-
-        todo!("What do we do about colliders?");
-
-        target.default_mode = self.default_mode;
-        target.use_symmetry = false;
-        target.created_from = Some(self.id);
     }
 }
 
@@ -197,6 +176,14 @@ pub struct Joint {
     pub id: JointId,
     #[serde(default)]
     pub label: String,
+
+    #[serde(default)]
+    pub use_symmetry: bool,
+    /// If symmetry is enabled and this body was created as the image under the symmetry of another
+    /// body, which body is it?
+    #[serde(default)]
+    pub created_from: Option<JointId>,
+
     pub variant: JointVariant,
 }
 
@@ -208,6 +195,8 @@ impl Joint {
             },
             label: "New joint".into(),
             variant: JointVariant::Spherical(SphericalJoint::default()),
+            use_symmetry: false,
+            created_from: None,
         }
     }
 }

@@ -5,13 +5,16 @@ use bevy::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::core::{
-    animation_clip::EntityPath,
-    errors::AssetLoaderError,
-    ragdoll::{
-        bone_mapping::{BodyMapping, BoneMapping, RagdollBoneMap},
-        definition::BodyId,
+use crate::{
+    core::{
+        animation_clip::EntityPath,
+        errors::AssetLoaderError,
+        ragdoll::{
+            bone_mapping::{BodyMapping, BoneMapping, RagdollBoneMap},
+            definition::BodyId,
+        },
     },
+    prelude::serial::SymmetryConfigSerial,
 };
 
 #[derive(Default)]
@@ -35,6 +38,7 @@ impl AssetLoader for RagdollBoneMapLoader {
             bodies_from_bones,
             skeleton,
             ragdoll,
+            skeleton_symmetry,
         } = ron::de::from_bytes(&bytes)?;
 
         Ok(RagdollBoneMap {
@@ -42,6 +46,7 @@ impl AssetLoader for RagdollBoneMapLoader {
             bodies_from_bones,
             skeleton: load_context.load(skeleton),
             ragdoll: load_context.load(ragdoll),
+            skeleton_symmetry: skeleton_symmetry.to_value()?,
         })
     }
 
@@ -56,6 +61,8 @@ pub struct RagdollBoneMapSerial {
     pub bodies_from_bones: HashMap<BodyId, BodyMapping>,
     pub skeleton: AssetPath<'static>,
     pub ragdoll: AssetPath<'static>,
+    #[serde(default)]
+    pub skeleton_symmetry: SymmetryConfigSerial,
 }
 
 impl RagdollBoneMapSerial {
@@ -65,6 +72,7 @@ impl RagdollBoneMapSerial {
             bodies_from_bones,
             skeleton,
             ragdoll,
+            skeleton_symmetry,
         } = ragdoll_bone_map;
 
         Some(Self {
@@ -72,6 +80,7 @@ impl RagdollBoneMapSerial {
             bodies_from_bones: bodies_from_bones.clone(),
             skeleton: skeleton.path()?.to_owned(),
             ragdoll: ragdoll.path()?.to_owned(),
+            skeleton_symmetry: SymmetryConfigSerial::from_value(skeleton_symmetry),
         })
     }
 }

@@ -7,7 +7,7 @@ use bevy::{
     ecs::{hierarchy::ChildSpawnerCommands, world::World},
     gizmos::primitives::dim3::GizmoPrimitive3d,
     image::Image,
-    math::Vec3,
+    math::{Isometry3d, Vec3},
     pbr::PointLight,
     platform::collections::HashMap,
     render::camera::{Camera, ClearColorConfig, RenderTarget},
@@ -158,9 +158,9 @@ impl GizmoOverlay for RagdollBodies {
                     .body_buffers
                     .get(&ragdoll_body.id)
                     .unwrap_or(ragdoll_body);
-                let isometry = body.isometry;
+                let offset = body.offset;
                 player.gizmo_relative_to_root(move |root_transform, gizmos| {
-                    gizmos.axes(root_transform * Transform::from_isometry(isometry), 0.1);
+                    gizmos.axes(root_transform * Transform::from_translation(offset), 0.1);
                 });
             }
         });
@@ -190,7 +190,8 @@ impl GizmoOverlay for RagdollColliders {
                         continue;
                     };
 
-                    let isometry = body.isometry * collider.local_offset;
+                    let isometry =
+                        Isometry3d::from_translation(body.offset) * collider.local_offset;
                     let shape = collider.shape.clone();
 
                     player.gizmo_relative_to_root(move |root_transform, gizmos| match shape {
@@ -247,8 +248,8 @@ impl GizmoOverlay for RagdollJoints {
                                 .get(&spherical_joint.body2)
                                 .or(ragdoll.get_body(spherical_joint.body2))
                         {
-                            let char_anchor_1 = body1.isometry * spherical_joint.local_anchor1;
-                            let char_anchor_2 = body2.isometry * spherical_joint.local_anchor2;
+                            let char_anchor_1 = body1.offset + spherical_joint.local_anchor1;
+                            let char_anchor_2 = body2.offset + spherical_joint.local_anchor2;
 
                             player.gizmo_relative_to_root(move |root_transform, gizmos| {
                                 gizmos.line(

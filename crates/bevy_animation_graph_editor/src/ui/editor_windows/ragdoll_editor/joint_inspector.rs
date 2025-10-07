@@ -27,6 +27,10 @@ impl Widget for JointInspector<'_, '_> {
             response |= ui.text_edit_singleline(&mut self.joint.label);
             ui.end_row();
 
+            response |= ui.label("use symmetry:");
+            response |= ui.add(egui::Checkbox::without_text(&mut self.joint.use_symmetry));
+            ui.end_row();
+
             ui.label("variant:");
             response |= ComboBox::from_id_salt("joint variant")
                 .selected_text(match &self.joint.variant {

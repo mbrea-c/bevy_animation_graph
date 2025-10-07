@@ -6,10 +6,13 @@ use bevy::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::core::{
-    animation_clip::EntityPath,
-    ragdoll::definition::{BodyId, Ragdoll},
-    skeleton::Skeleton,
+use crate::{
+    core::{
+        animation_clip::EntityPath,
+        ragdoll::definition::{BodyId, Ragdoll},
+        skeleton::Skeleton,
+    },
+    prelude::config::SymmetryConfig,
 };
 
 // TODO: Replace EntityPath with bone ids, and add a serial proxy that allows the loader to map
@@ -22,20 +25,24 @@ pub struct RagdollBoneMap {
     pub bodies_from_bones: HashMap<BodyId, BodyMapping>,
     pub skeleton: Handle<Skeleton>,
     pub ragdoll: Handle<Ragdoll>,
+
+    pub skeleton_symmetry: SymmetryConfig,
 }
 
 /// How to get a bone's position from rigidbodies
-#[derive(Debug, Clone, Reflect, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Reflect, Serialize, Deserialize)]
 pub struct BoneMapping {
     pub bone_id: EntityPath,
     pub bodies: Vec<BodyWeight>,
+    pub created_from: Option<EntityPath>,
 }
 
 /// How to get a rigibody's position from bones
-#[derive(Debug, Clone, Reflect, Serialize, Deserialize)]
+#[derive(Debug, Default, Clone, Reflect, Serialize, Deserialize)]
 pub struct BodyMapping {
     pub body_id: BodyId,
     pub bone: BoneWeight,
+    pub created_from: Option<BodyId>,
 }
 
 #[derive(Debug, Clone, Default, Reflect, Serialize, Deserialize)]

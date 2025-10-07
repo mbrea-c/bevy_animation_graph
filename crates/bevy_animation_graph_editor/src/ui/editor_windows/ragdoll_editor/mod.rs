@@ -333,6 +333,7 @@ impl RagdollEditorWindow {
                                                     .unwrap_or(BodyMapping {
                                                         body_id,
                                                         bone: BoneWeight::default(),
+                                                        created_from: None,
                                                     })
                                             });
                                         ui.add(BodyMappingInspector {
@@ -443,6 +444,7 @@ impl RagdollEditorWindow {
                                                         .unwrap_or(BoneMapping {
                                                             bone_id: entity_path.clone(),
                                                             bodies: Vec::new(),
+                                                            created_from: None,
                                                         })
                                                 });
 

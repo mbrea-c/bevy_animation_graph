@@ -298,19 +298,25 @@ pub enum RagdollNode {
 
 impl Tree<RagdollNode, RagdollNode> {
     pub fn ragdoll_tree(ragdoll: &Ragdoll) -> Self {
-        Tree(
-            ragdoll
-                .bodies
-                .values()
-                .map(|b| Self::ragdoll_body_subtree(ragdoll, b.id))
-                .chain(
-                    ragdoll
-                        .joints
-                        .values()
-                        .map(|j| Self::ragdoll_joint_subtree(ragdoll, j.id)),
-                )
-                .collect(),
-        )
+        let mut body_nodes = ragdoll
+            .bodies
+            .values()
+            .map(|b| Self::ragdoll_body_subtree(ragdoll, b.id))
+            .collect::<Vec<_>>();
+        body_nodes.sort_by_key(|node| match node {
+            TreeInternal::Leaf(l, _) | TreeInternal::Node(l, _, _) => l.clone(),
+        });
+        let mut joint_nodes = ragdoll
+            .joints
+            .values()
+            .map(|j| Self::ragdoll_joint_subtree(ragdoll, j.id))
+            .collect::<Vec<_>>();
+        joint_nodes.sort_by_key(|node| match node {
+            TreeInternal::Leaf(l, _) | TreeInternal::Node(l, _, _) => l.clone(),
+        });
+
+        body_nodes.extend(joint_nodes);
+        Tree(body_nodes)
     }
 
     fn ragdoll_body_subtree(

@@ -63,8 +63,7 @@ pub fn spawn_ragdoll_avian(
             .spawn((
                 Name::new("Ragdoll body"),
                 Transform {
-                    translation: body.isometry.translation.into(),
-                    rotation: body.isometry.rotation,
+                    translation: body.offset,
                     ..default()
                 },
                 match body.default_mode {

@@ -16,7 +16,7 @@ pub struct BodyMappingInspector<'a, 'b> {
 
 impl Widget for BodyMappingInspector<'_, '_> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
-        let BodyMapping { body_id, bone } = self.body_mapping;
+        let BodyMapping { body_id, bone, .. } = self.body_mapping;
 
         egui::Grid::new("body weight grid")
             .show(ui, |ui| {

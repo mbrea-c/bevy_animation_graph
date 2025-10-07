@@ -31,6 +31,7 @@
                     override_offset: false,
                 ),
             ],
+            created_from: None,
         ),
         [
             "metarig",
@@ -65,9 +66,122 @@
                     override_offset: false,
                 ),
             ],
+            created_from: None,
+        ),
+        [
+            "metarig",
+            "spine",
+            "spine.001",
+            "spine.002",
+            "spine.003",
+            "shoulder.L",
+            "upper_arm.L",
+            "forearm.L",
+        ]: (
+            bone_id: [
+                "metarig",
+                "spine",
+                "spine.001",
+                "spine.002",
+                "spine.003",
+                "shoulder.L",
+                "upper_arm.L",
+                "forearm.L",
+            ],
+            bodies: [
+                (
+                    body: (
+                        uuid: "0b6356d0-075f-4100-b1bf-5bf4b23bb570",
+                    ),
+                    weight: 1.0,
+                    offset: (
+                        rotation: (0.019352617, -0.020627303, -0.7121179, 0.70148987),
+                        translation: (-0.17322606, 0.0059952736, -0.009949485),
+                    ),
+                    override_offset: false,
+                ),
+            ],
+            created_from: Some([
+                "metarig",
+                "spine",
+                "spine.001",
+                "spine.002",
+                "spine.003",
+                "shoulder.R",
+                "upper_arm.R",
+                "forearm.R",
+            ]),
+        ),
+        [
+            "metarig",
+            "spine",
+            "spine.001",
+            "spine.002",
+            "spine.003",
+            "shoulder.L",
+            "upper_arm.L",
+        ]: (
+            bone_id: [
+                "metarig",
+                "spine",
+                "spine.001",
+                "spine.002",
+                "spine.003",
+                "shoulder.L",
+                "upper_arm.L",
+            ],
+            bodies: [
+                (
+                    body: (
+                        uuid: "18327988-9c2e-47d1-8998-e16353d9dc35",
+                    ),
+                    weight: 1.0,
+                    offset: (
+                        rotation: (-0.018490374, 0.009419799, -0.683723, 0.7294465),
+                        translation: (-0.15469998, -0.01540041, -0.0067000575),
+                    ),
+                    override_offset: false,
+                ),
+            ],
+            created_from: Some([
+                "metarig",
+                "spine",
+                "spine.001",
+                "spine.002",
+                "spine.003",
+                "shoulder.R",
+                "upper_arm.R",
+            ]),
         ),
     },
     bodies_from_bones: {
+        (
+            uuid: "0b6356d0-075f-4100-b1bf-5bf4b23bb570",
+        ): (
+            body_id: (
+                uuid: "0b6356d0-075f-4100-b1bf-5bf4b23bb570",
+            ),
+            bone: (
+                bone: [
+                    "metarig",
+                    "spine",
+                    "spine.001",
+                    "spine.002",
+                    "spine.003",
+                    "shoulder.L",
+                    "upper_arm.L",
+                    "forearm.L",
+                ],
+                offset: (
+                    rotation: (-0.019352617, 0.020627303, 0.7121179, 0.7014899),
+                    translation: (0.003396988, 0.17358181, 0.00013253093),
+                ),
+                override_offset: false,
+            ),
+            created_from: Some((
+                uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294",
+            )),
+        ),
         (
             uuid: "505e7d48-bbdb-440b-ad3f-5886d332b291",
         ): (
@@ -88,6 +202,33 @@
                 ),
                 override_offset: false,
             ),
+            created_from: None,
+        ),
+        (
+            uuid: "18327988-9c2e-47d1-8998-e16353d9dc35",
+        ): (
+            body_id: (
+                uuid: "18327988-9c2e-47d1-8998-e16353d9dc35",
+            ),
+            bone: (
+                bone: [
+                    "metarig",
+                    "spine",
+                    "spine.001",
+                    "spine.002",
+                    "spine.003",
+                    "shoulder.L",
+                    "upper_arm.L",
+                ],
+                offset: (
+                    rotation: (0.018490378, -0.009419801, 0.683723, 0.7294466),
+                    translation: (-0.0052546263, 0.1549803, 0.012948836),
+                ),
+                override_offset: false,
+            ),
+            created_from: Some((
+                uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295",
+            )),
         ),
         (
             uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294",
@@ -112,6 +253,7 @@
                 ),
                 override_offset: false,
             ),
+            created_from: None,
         ),
         (
             uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295",
@@ -135,8 +277,18 @@
                 ),
                 override_offset: false,
             ),
+            created_from: None,
         ),
     },
     skeleton: "skeletons/human.skn.ron",
     ragdoll: "ragdolls/human.rag.ron",
+    skeleton_symmetry: (
+        name_mapper: Pattern((
+            key_1: "L",
+            key_2: "R",
+            pattern_before: "^.*",
+            pattern_after: "$",
+        )),
+        mode: MirrorX,
+    ),
 )

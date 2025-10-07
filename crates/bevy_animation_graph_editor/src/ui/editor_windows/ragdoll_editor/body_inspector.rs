@@ -2,7 +2,7 @@ use bevy::ecs::world::World;
 use bevy_animation_graph::core::ragdoll::definition::{Body, BodyMode};
 use egui::Widget;
 
-use crate::ui::{core::EditorWindowContext, generic_widgets::isometry3d::Isometry3dWidget};
+use crate::ui::{core::EditorWindowContext, generic_widgets::vec3::Vec3Widget};
 
 pub struct BodyInspector<'a, 'b> {
     pub world: &'a mut World,
@@ -21,11 +21,10 @@ impl Widget for BodyInspector<'_, '_> {
             response |= ui.text_edit_singleline(&mut self.body.label);
             ui.end_row();
 
-            response |= ui.add(
-                Isometry3dWidget::new_salted(&mut self.body.isometry, "isometry")
-                    .with_step_size(0.01)
-                    .with_flatten_grid(true),
-            );
+            response |= ui.label("offset:");
+            response |= ui
+                .add(Vec3Widget::new_salted(&mut self.body.offset, "offset").with_step_size(0.005));
+            ui.end_row();
 
             response |= ui.label("Body mode:");
             response |= egui::ComboBox::from_id_salt("body mode")

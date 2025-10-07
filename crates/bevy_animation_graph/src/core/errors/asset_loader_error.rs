@@ -34,4 +34,6 @@ pub enum AssetLoaderError {
     InconsistentGraphError(#[from] GraphValidationError),
     #[error("Failed to load skeleton colliders object")]
     SkeletonColliderLoadError,
+    #[error("Failed to parse a provided regular expression: {0}")]
+    RegexParsingError(#[from] regex::Error),
 }

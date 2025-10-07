@@ -1,7 +1,7 @@
 use bevy::{
     asset::{Assets, Handle},
     ecs::{
-        system::{In, ResMut},
+        system::{In, InMut, ResMut},
         world::World,
     },
     math::Isometry3d,
@@ -10,9 +10,13 @@ use bevy::{
 };
 use bevy_animation_graph::{
     core::{
+        animation_clip::EntityPath,
         ragdoll::{
-            bone_mapping::{BodyMapping, BoneMapping, RagdollBoneMap},
-            definition::{Body, Collider, ColliderId, Joint, Ragdoll, SymmetrySuffixes},
+            bone_mapping::{BodyMapping, BodyWeight, BoneMapping, RagdollBoneMap},
+            definition::{
+                Body, BodyId, Collider, ColliderId, Joint, JointId, JointVariant, Ragdoll,
+                SymmetrySuffixes,
+            },
         },
         skeleton::Skeleton,
     },
@@ -246,7 +250,7 @@ impl RecomputeMappingOffsets {
             // x = bone.inverse() * body
             let offset =
                 Transform::from_matrix(bone_default_transform.character.compute_matrix().inverse())
-                    * Transform::from_isometry(body.isometry);
+                    * Transform::from_translation(body.offset);
 
             body_mapping.bone.offset = offset.to_isometry();
         }
@@ -270,8 +274,8 @@ impl RecomputeMappingOffsets {
                 // body * x = bone
                 // body.inverse() * body * x = body.inverse() * bone
                 // x = body.inverse() * bone
-                let offset =
-                    body.isometry.inverse() * bone_default_transform.character.to_isometry();
+                let offset = Isometry3d::from_translation(body.offset).inverse()
+                    * bone_default_transform.character.to_isometry();
 
                 body_weight.offset = offset;
             }
@@ -284,14 +288,14 @@ pub struct RecomputeRagdollSymmetry {
 }
 
 impl DynamicAction for RecomputeRagdollSymmetry {
-    fn handle(self: Box<Self>, world: &mut World, _: &mut ActionContext) {
-        run_handler(world, "Could not edit joint")(Self::system, *self)
+    fn handle(self: Box<Self>, world: &mut World, ctx: &mut ActionContext) {
+        run_handler(world, "Could not edit joint")(Self::system, (*self, ctx))
     }
 }
 
 impl RecomputeRagdollSymmetry {
     pub fn system(
-        In(input): In<Self>,
+        (In(input), InMut(ctx)): (In<Self>, InMut<ActionContext>),
         mut ragdoll_assets: ResMut<Assets<Ragdoll>>,
         mut skeleton_assets: ResMut<Assets<Skeleton>>,
         mut ragdoll_bone_map_assets: ResMut<Assets<RagdollBoneMap>>,
@@ -310,7 +314,8 @@ impl RecomputeRagdollSymmetry {
 
         let suffixes = ragdoll.suffixes.clone();
 
-        dirty_assets.add(input.ragdoll_bone_map);
+        dirty_assets.add(ragdoll_bone_map.ragdoll.clone());
+        dirty_assets.add(input.ragdoll_bone_map.clone());
 
         // Things to symmetrize:
         // - [ ] Bodies
@@ -334,6 +339,15 @@ impl RecomputeRagdollSymmetry {
         for collider in ragdoll.iter_colliders() {
             if let Some(source_collider_id) = collider.created_from {
                 reverse_collider_index.insert(source_collider_id, collider.id);
+            }
+        }
+
+        // Maps joints to their image under symmetry, if requested and already created
+        let mut reverse_joint_index = HashMap::new();
+
+        for joint in ragdoll.iter_joints() {
+            if let Some(source_joint_id) = joint.created_from {
+                reverse_joint_index.insert(source_joint_id, joint.id);
             }
         }
 
@@ -391,6 +405,125 @@ impl RecomputeRagdollSymmetry {
                 mirrored_body.colliders = mirrored_collider_ids;
             }
         }
+
+        let current_joint_ids = ragdoll.iter_joint_ids().collect::<Vec<_>>();
+
+        for joint_id in current_joint_ids {
+            let Some(joint) = ragdoll.get_joint(joint_id) else {
+                continue;
+            };
+
+            if !joint.use_symmetry || !joint.created_from.is_none() {
+                continue;
+            }
+
+            mirror_joint(
+                joint_id,
+                &mut reverse_body_index,
+                &mut reverse_joint_index,
+                ragdoll,
+            )
+            .expect("Failed to mirror joint");
+        }
+
+        let mapping_body_ids: Vec<BodyId> =
+            ragdoll_bone_map.bodies_from_bones.keys().copied().collect();
+        for body_id in mapping_body_ids {
+            let Some(body) = ragdoll.get_body(body_id) else {
+                continue;
+            };
+            if !body.use_symmetry || !body.created_from.is_none() {
+                continue;
+            }
+
+            mirror_body_mapping(body_id, &mut reverse_body_index, ragdoll_bone_map)
+                .expect("Failed to mirror body mapping");
+        }
+
+        let mapping_bone_paths: Vec<EntityPath> =
+            ragdoll_bone_map.bones_from_bodies.keys().cloned().collect();
+
+        for bone_path in mapping_bone_paths {
+            let Some(mapping) = ragdoll_bone_map.bones_from_bodies.get(&bone_path) else {
+                continue;
+            };
+            if mapping.created_from.is_some() {
+                continue;
+            };
+            mirror_bone_mapping(bone_path, &mut reverse_body_index, ragdoll_bone_map);
+        }
+
+        // Cleanup section
+        let current_body_ids = ragdoll.iter_body_ids().collect::<Vec<_>>();
+        for body_id in current_body_ids {
+            let Some(body) = ragdoll.get_body(body_id) else {
+                continue;
+            };
+
+            let Some(source_body_id) = body.created_from else {
+                continue;
+            };
+
+            let Some(source_body) = ragdoll.get_body(source_body_id) else {
+                for collider_id in body.colliders.clone() {
+                    ragdoll.colliders.remove(&collider_id);
+                }
+                ragdoll.bodies.remove(&body_id);
+                continue;
+            };
+
+            if !source_body.use_symmetry {
+                for collider_id in body.colliders.clone() {
+                    ragdoll.colliders.remove(&collider_id);
+                }
+                ragdoll.bodies.remove(&body_id);
+            }
+        }
+
+        let current_joint_ids = ragdoll.iter_joint_ids().collect::<Vec<_>>();
+        for joint_id in current_joint_ids {
+            let Some(joint) = ragdoll.get_joint(joint_id) else {
+                continue;
+            };
+
+            let Some(source_joint_id) = joint.created_from else {
+                continue;
+            };
+
+            let Some(source_joint) = ragdoll.get_joint(source_joint_id) else {
+                ragdoll.joints.remove(&joint_id);
+                continue;
+            };
+
+            if !source_joint.use_symmetry {
+                ragdoll.joints.remove(&joint_id);
+            }
+        }
+
+        let mapping_body_ids: Vec<BodyId> =
+            ragdoll_bone_map.bodies_from_bones.keys().copied().collect();
+        for body_id in mapping_body_ids {
+            let Some(mapping) = ragdoll_bone_map.bodies_from_bones.get(&body_id) else {
+                continue;
+            };
+
+            let Some(source_body_id) = mapping.created_from else {
+                continue;
+            };
+
+            let Some(source_body) = ragdoll.get_body(source_body_id) else {
+                ragdoll_bone_map.bodies_from_bones.remove(&body_id);
+                continue;
+            };
+
+            if !source_body.use_symmetry {
+                ragdoll_bone_map.bodies_from_bones.remove(&body_id);
+            }
+        }
+
+        ctx.actions.dynamic(RecomputeMappingOffsets {
+            ragdoll_bone_map: input.ragdoll_bone_map.clone(),
+        });
     }
 }
 
@@ -406,14 +539,11 @@ fn mirror_body_properties(
         .unwrap_or(&this.label)
         .to_owned();
 
-    let mirrored_label = format!("{}{}", original_label, suffixes.mirror);
-    target.label = mirrored_label;
+    let mirror_label = format!("{}{}", original_label, suffixes.mirror);
+    target.label = mirror_label;
 
-    let mirrored_isometry = Isometry3d {
-        rotation: mode.apply_quat(this.isometry.rotation),
-        translation: mode.apply_position(this.isometry.translation.into()).into(),
-    };
-    target.isometry = mirrored_isometry;
+    let mirror_offset = mode.apply_position(this.offset);
+    target.offset = mirror_offset;
 
     target.default_mode = this.default_mode.clone();
     target.use_symmetry = false;
@@ -452,4 +582,168 @@ fn mirror_collider(
     mirrored_collider.created_from = Some(original_collider_id);
 
     Some(*mirrored_collider_id)
+}
+
+fn mirror_joint(
+    original_joint_id: JointId,
+    reverse_body_index: &mut HashMap<BodyId, BodyId>,
+    reverse_joint_index: &mut HashMap<JointId, JointId>,
+    ragdoll: &mut Ragdoll,
+) -> Option<JointId> {
+    if !reverse_joint_index.contains_key(&original_joint_id) {
+        // Create new
+        let mirrored_joint = Joint::new();
+        reverse_joint_index.insert(original_joint_id, mirrored_joint.id);
+        ragdoll.joints.insert(mirrored_joint.id, mirrored_joint);
+    }
+
+    let mirrored_joint_id = reverse_joint_index.get(&original_joint_id)?;
+
+    let suffixes = ragdoll.suffixes.clone();
+
+    let [Some(original_joint), Some(mirrored_joint)] = ragdoll
+        .joints
+        .get_many_mut([&original_joint_id, mirrored_joint_id])
+    else {
+        return None;
+    };
+
+    let original_label = original_joint
+        .label
+        .strip_suffix(&suffixes.original)
+        .unwrap_or(&original_joint.label)
+        .to_owned();
+
+    let label = format!("{}{}", original_label, suffixes.original);
+    let mirrored_label = format!("{}{}", original_label, suffixes.mirror);
+
+    original_joint.label = label;
+    mirrored_joint.label = mirrored_label;
+
+    match &original_joint.variant {
+        JointVariant::Spherical(spherical_joint) => {
+            let mut mirrored_spherical_joint = spherical_joint.clone();
+
+            let mirrored_body1 = reverse_body_index
+                .get(&spherical_joint.body1)
+                .copied()
+                .unwrap_or(spherical_joint.body1);
+            let mirrored_body2 = reverse_body_index
+                .get(&spherical_joint.body2)
+                .copied()
+                .unwrap_or(spherical_joint.body2);
+
+            mirrored_spherical_joint.body1 = mirrored_body1;
+            mirrored_spherical_joint.body2 = mirrored_body2;
+
+            // TODO: fix symmetry; since it's a local offset we might need to change the symmetry
+            // plane
+            mirrored_spherical_joint.local_anchor1 =
+                SymmertryMode::MirrorX.apply_position(spherical_joint.local_anchor1);
+
+            mirrored_spherical_joint.local_anchor2 =
+                SymmertryMode::MirrorX.apply_position(spherical_joint.local_anchor2);
+
+            mirrored_joint.variant = JointVariant::Spherical(mirrored_spherical_joint);
+        }
+    }
+
+    mirrored_joint.use_symmetry = false;
+    mirrored_joint.created_from = Some(original_joint_id);
+
+    Some(*mirrored_joint_id)
+}
+
+fn mirror_body_mapping(
+    original_target: BodyId,
+    reverse_body_index: &mut HashMap<BodyId, BodyId>,
+    ragdoll_bone_map: &mut RagdollBoneMap,
+) -> Option<()> {
+    let mirror_target = reverse_body_index.get(&original_target)?;
+
+    if !ragdoll_bone_map
+        .bodies_from_bones
+        .contains_key(mirror_target)
+    {
+        // Create new
+        let mirror_mapping = BodyMapping::default();
+
+        ragdoll_bone_map
+            .bodies_from_bones
+            .insert(*mirror_target, mirror_mapping);
+    }
+
+    let [Some(original_mapping), Some(mirror_mapping)] = ragdoll_bone_map
+        .bodies_from_bones
+        .get_many_mut([&original_target, mirror_target])
+    else {
+        return None;
+    };
+
+    let mirror_bone_path = ragdoll_bone_map
+        .skeleton_symmetry
+        .name_mapper
+        .flip(&original_mapping.bone.bone);
+
+    mirror_mapping.body_id = *mirror_target;
+    mirror_mapping.bone = original_mapping.bone.clone();
+    mirror_mapping.bone.bone = mirror_bone_path;
+    mirror_mapping.created_from = Some(original_target);
+
+    Some(())
+}
+
+fn mirror_bone_mapping(
+    original_target: EntityPath,
+    reverse_body_index: &mut HashMap<BodyId, BodyId>,
+    ragdoll_bone_map: &mut RagdollBoneMap,
+) -> Option<()> {
+    let mirror_target = ragdoll_bone_map
+        .skeleton_symmetry
+        .name_mapper
+        .flip(&original_target);
+    if mirror_target == original_target {
+        // Nothing to do
+        return None;
+    }
+
+    if !ragdoll_bone_map
+        .bones_from_bodies
+        .contains_key(&mirror_target)
+    {
+        // Create new
+        let mirror_mapping = BoneMapping::default();
+        ragdoll_bone_map
+            .bones_from_bodies
+            .insert(mirror_target.clone(), mirror_mapping);
+    }
+
+    let [Some(original_mapping), Some(mirror_mapping)] = ragdoll_bone_map
+        .bones_from_bodies
+        .get_many_mut([&original_target, &mirror_target])
+    else {
+        return None;
+    };
+
+    mirror_mapping.bone_id = mirror_target;
+    let mut bodies = Vec::new();
+
+    for body_weight in &original_mapping.bodies {
+        let mirror_body_weight = BodyWeight {
+            body: reverse_body_index
+                .get(&body_weight.body)
+                .copied()
+                .unwrap_or(body_weight.body),
+            weight: body_weight.weight,
+            offset: SymmertryMode::MirrorX.apply_isometry_3d(body_weight.offset),
+            override_offset: body_weight.override_offset,
+        };
+
+        bodies.push(mirror_body_weight);
+    }
+
+    mirror_mapping.bodies = bodies;
+    mirror_mapping.created_from = Some(original_target);
+
+    Some(())
 }
