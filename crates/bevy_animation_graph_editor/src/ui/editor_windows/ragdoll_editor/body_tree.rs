@@ -2,14 +2,16 @@ use bevy::{
     asset::{Assets, Handle},
     ecs::world::World,
 };
-use bevy_animation_graph::core::ragdoll::definition::{Body, BodyId, ColliderId, JointId, Ragdoll};
+use bevy_animation_graph::core::ragdoll::definition::{
+    Body, BodyId, Collider, ColliderId, JointId, Ragdoll,
+};
 use egui::Sense;
 
 use crate::{
     icons,
     tree::{RagdollNode, Tree, TreeInternal, TreeRenderer, TreeResponse, TreeResult},
     ui::{
-        actions::ragdoll::CreateRagdollBody,
+        actions::ragdoll::{CreateRagdollBody, CreateRagdollCollider},
         core::EditorWindowContext,
         editor_windows::ragdoll_editor::{RagdollEditorAction, SelectedItem},
         utils::collapsing::Collapser,
@@ -49,7 +51,13 @@ impl BodyTree<'_, '_> {
 
                         for action in response.actions {
                             match action {
-                                RagdollTreeAction::CreateCollider(body_id) => todo!(),
+                                RagdollTreeAction::CreateCollider(body_id) => {
+                                    self.ctx.editor_actions.dynamic(CreateRagdollCollider {
+                                        ragdoll: self.ragdoll.clone(),
+                                        collider: Collider::new(),
+                                        attach_to: body_id,
+                                    })
+                                }
                                 RagdollTreeAction::CreateBody => {
                                     self.ctx.editor_actions.dynamic(CreateRagdollBody {
                                         ragdoll: self.ragdoll.clone(),

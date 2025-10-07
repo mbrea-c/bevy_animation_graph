@@ -214,10 +214,9 @@
                 body2: (
                     uuid: "0b6356d0-075f-4100-b1bf-5bf4b23bb570",
                 ),
-                local_anchor1: (0.17, -0.0, 0.0),
-                local_anchor2: (-0.17, 0.0, 0.0),
+                position: (0.525, 1.6, -0.03),
                 swing_axis: (1.0, 0.0, 0.0),
-                twist_axis: (0.0, 1.0, 0.0),
+                twist_axis: (-0.0, 1.0, 0.0),
                 swing_limit: Some((
                     min: -0.2,
                     max: 0.2,
@@ -253,9 +252,8 @@
                 body2: (
                     uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294",
                 ),
-                local_anchor1: (-0.17, -0.0, 0.0),
-                local_anchor2: (0.17, 0.0, 0.0),
-                swing_axis: (1.0, 0.0, 0.0),
+                position: (-0.525, 1.6, -0.03),
+                swing_axis: (-1.0, 0.0, 0.0),
                 twist_axis: (0.0, 1.0, 0.0),
                 swing_limit: Some((
                     min: -0.2,
@@ -292,9 +290,8 @@
                 body2: (
                     uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295",
                 ),
-                local_anchor1: (-0.18, 0.03, -0.02),
-                local_anchor2: (0.16, 0.0, 0.0),
-                swing_axis: (1.0, 0.0, 0.0),
+                position: (-0.18, 1.6, -0.02),
+                swing_axis: (-1.0, 0.0, 0.0),
                 twist_axis: (0.0, 1.0, 0.0),
                 swing_limit: Some((
                     min: 0.0,
@@ -333,10 +330,9 @@
                 body2: (
                     uuid: "18327988-9c2e-47d1-8998-e16353d9dc35",
                 ),
-                local_anchor1: (0.18, 0.03, -0.02),
-                local_anchor2: (-0.16, 0.0, 0.0),
+                position: (0.18, 1.6, -0.02),
                 swing_axis: (1.0, 0.0, 0.0),
-                twist_axis: (0.0, 1.0, 0.0),
+                twist_axis: (-0.0, 1.0, 0.0),
                 swing_limit: Some((
                     min: 0.0,
                     max: 3.14,

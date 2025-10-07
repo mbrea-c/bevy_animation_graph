@@ -7,7 +7,7 @@ use bevy::{
     ecs::{hierarchy::ChildSpawnerCommands, world::World},
     gizmos::primitives::dim3::GizmoPrimitive3d,
     image::Image,
-    math::{Isometry3d, Vec3},
+    math::{Isometry3d, Quat, Vec3, primitives::Cone},
     pbr::PointLight,
     platform::collections::HashMap,
     render::camera::{Camera, ClearColorConfig, RenderTarget},
@@ -248,13 +248,29 @@ impl GizmoOverlay for RagdollJoints {
                                 .get(&spherical_joint.body2)
                                 .or(ragdoll.get_body(spherical_joint.body2))
                         {
-                            let char_anchor_1 = body1.offset + spherical_joint.local_anchor1;
-                            let char_anchor_2 = body2.offset + spherical_joint.local_anchor2;
+                            let swing_axis = spherical_joint.swing_axis;
+                            let twist_axis = spherical_joint.twist_axis;
+                            let jointpos = spherical_joint.position;
 
                             player.gizmo_relative_to_root(move |root_transform, gizmos| {
-                                gizmos.line(
-                                    root_transform * char_anchor_1,
-                                    root_transform * char_anchor_2,
+                                gizmos.arrow(
+                                    root_transform * jointpos,
+                                    root_transform * jointpos
+                                        + twist_axis.normalize_or_zero() * 0.1,
+                                    css::PURPLE,
+                                );
+                                gizmos.arrow(
+                                    root_transform * jointpos,
+                                    root_transform * jointpos
+                                        + swing_axis.normalize_or_zero() * 0.1,
+                                    css::PURPLE,
+                                );
+                                gizmos.circle(
+                                    Isometry3d {
+                                        rotation: Quat::from_rotation_arc(Vec3::Z, twist_axis),
+                                        translation: (root_transform * jointpos).into(),
+                                    },
+                                    0.05,
                                     css::PURPLE,
                                 );
                             });

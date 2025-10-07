@@ -37,6 +37,14 @@ impl Ragdoll {
         }
     }
 
+    ///  Adds new collider to the ragdoll. This operation is idempotent; if you try to add a
+    ///  collider with an ID that already exists, it's ignored.
+    pub fn add_collider(&mut self, collider: Collider) {
+        if !self.colliders.contains_key(&collider.id) {
+            self.colliders.insert(collider.id, collider);
+        }
+    }
+
     pub fn get_collider(&self, id: ColliderId) -> Option<&Collider> {
         self.colliders.get(&id)
     }
@@ -210,8 +218,7 @@ pub enum JointVariant {
 pub struct SphericalJoint {
     pub body1: BodyId,
     pub body2: BodyId,
-    pub local_anchor1: Vec3,
-    pub local_anchor2: Vec3,
+    pub position: Vec3,
     pub swing_axis: Vec3,
     pub twist_axis: Vec3,
     pub swing_limit: Option<AngleLimit>,

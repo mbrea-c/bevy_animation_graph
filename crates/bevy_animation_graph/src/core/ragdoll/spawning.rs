@@ -102,9 +102,20 @@ pub fn spawn_ragdoll_avian(
     }
 
     for joint in ragdoll.joints.values() {
-        let joint_entity =
-            match &joint.variant {
-                JointVariant::Spherical(spherical_joint) => commands
+        let joint_entity = match &joint.variant {
+            JointVariant::Spherical(spherical_joint) => {
+                let Some(body1) = ragdoll.get_body(spherical_joint.body1) else {
+                    continue;
+                };
+
+                let Some(body2) = ragdoll.get_body(spherical_joint.body2) else {
+                    continue;
+                };
+
+                let local_anchor1 = spherical_joint.position - body1.offset;
+                let local_anchor2 = spherical_joint.position - body2.offset;
+
+                commands
                     .spawn((
                         Name::new("Ragdoll joint"),
                         SphericalJoint {
@@ -116,8 +127,8 @@ pub fn spawn_ragdoll_avian(
                                 .bodies
                                 .get(&spherical_joint.body2)
                                 .expect("Validation should have caught this"),
-                            local_anchor1: spherical_joint.local_anchor1,
-                            local_anchor2: spherical_joint.local_anchor2,
+                            local_anchor1,
+                            local_anchor2,
                             swing_axis: spherical_joint.swing_axis,
                             twist_axis: spherical_joint.twist_axis,
                             swing_limit: spherical_joint.swing_limit.as_ref().map(|limit| {
@@ -143,8 +154,9 @@ pub fn spawn_ragdoll_avian(
                             twist_torque: spherical_joint.twist_torque,
                         },
                     ))
-                    .id(),
-            };
+                    .id()
+            }
+        };
         commands.entity(root).add_child(joint_entity);
         spawned.joints.insert(joint.id, joint_entity);
     }

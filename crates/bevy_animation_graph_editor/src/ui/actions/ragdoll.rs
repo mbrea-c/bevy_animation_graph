@@ -81,6 +81,40 @@ impl CreateRagdollBody {
     }
 }
 
+pub struct CreateRagdollCollider {
+    pub ragdoll: Handle<Ragdoll>,
+    pub collider: Collider,
+    pub attach_to: BodyId,
+}
+
+impl DynamicAction for CreateRagdollCollider {
+    fn handle(self: Box<Self>, world: &mut World, _: &mut ActionContext) {
+        run_handler(world, "Could not create body")(Self::system, *self)
+    }
+}
+
+impl CreateRagdollCollider {
+    pub fn system(
+        In(input): In<Self>,
+        mut ragdoll_assets: ResMut<Assets<Ragdoll>>,
+        mut dirty_assets: ResMut<DirtyAssets>,
+    ) {
+        let Some(ragdoll) = ragdoll_assets.get_mut(&input.ragdoll) else {
+            return;
+        };
+
+        dirty_assets.add(input.ragdoll);
+
+        let Some(body) = ragdoll.get_body_mut(input.attach_to) else {
+            return;
+        };
+
+        body.colliders.push(input.collider.id);
+
+        ragdoll.add_collider(input.collider);
+    }
+}
+
 pub struct EditRagdollCollider {
     pub ragdoll: Handle<Ragdoll>,
     pub collider: Collider,
@@ -622,7 +656,7 @@ fn mirror_joint(
 
     match &original_joint.variant {
         JointVariant::Spherical(spherical_joint) => {
-            let mut mirrored_spherical_joint = spherical_joint.clone();
+            let mut mirror_spherical_joint = spherical_joint.clone();
 
             let mirrored_body1 = reverse_body_index
                 .get(&spherical_joint.body1)
@@ -633,18 +667,18 @@ fn mirror_joint(
                 .copied()
                 .unwrap_or(spherical_joint.body2);
 
-            mirrored_spherical_joint.body1 = mirrored_body1;
-            mirrored_spherical_joint.body2 = mirrored_body2;
+            mirror_spherical_joint.body1 = mirrored_body1;
+            mirror_spherical_joint.body2 = mirrored_body2;
 
-            // TODO: fix symmetry; since it's a local offset we might need to change the symmetry
-            // plane
-            mirrored_spherical_joint.local_anchor1 =
-                SymmertryMode::MirrorX.apply_position(spherical_joint.local_anchor1);
+            mirror_spherical_joint.position =
+                SymmertryMode::MirrorX.apply_position(spherical_joint.position);
 
-            mirrored_spherical_joint.local_anchor2 =
-                SymmertryMode::MirrorX.apply_position(spherical_joint.local_anchor2);
+            mirror_spherical_joint.swing_axis =
+                SymmertryMode::MirrorX.apply_position(spherical_joint.swing_axis);
+            mirror_spherical_joint.twist_axis =
+                SymmertryMode::MirrorX.apply_position(spherical_joint.twist_axis);
 
-            mirrored_joint.variant = JointVariant::Spherical(mirrored_spherical_joint);
+            mirrored_joint.variant = JointVariant::Spherical(mirror_spherical_joint);
         }
     }
 

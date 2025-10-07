@@ -62,17 +62,10 @@ impl Widget for JointInspector<'_, '_> {
                     );
                     ui.end_row();
 
-                    response |= ui.label("local anchor 1:");
+                    response |= ui.label("position:");
                     response |= ui.add(Vec3Widget::new_salted(
-                        &mut spherical_joint.local_anchor1,
-                        "joint local anchor 1",
-                    ));
-                    ui.end_row();
-
-                    response |= ui.label("local anchor 2:");
-                    response |= ui.add(Vec3Widget::new_salted(
-                        &mut spherical_joint.local_anchor2,
-                        "joint local anchor 2",
+                        &mut spherical_joint.position,
+                        "position",
                     ));
                     ui.end_row();
 
