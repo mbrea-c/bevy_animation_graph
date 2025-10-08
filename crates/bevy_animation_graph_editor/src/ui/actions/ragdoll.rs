@@ -115,6 +115,114 @@ impl CreateRagdollCollider {
     }
 }
 
+pub struct CreateRagdollJoint {
+    pub ragdoll: Handle<Ragdoll>,
+    pub joint: Joint,
+}
+
+impl DynamicAction for CreateRagdollJoint {
+    fn handle(self: Box<Self>, world: &mut World, _: &mut ActionContext) {
+        run_handler(world, "Could not create body")(Self::system, *self)
+    }
+}
+
+impl CreateRagdollJoint {
+    pub fn system(
+        In(input): In<Self>,
+        mut ragdoll_assets: ResMut<Assets<Ragdoll>>,
+        mut dirty_assets: ResMut<DirtyAssets>,
+    ) {
+        let Some(ragdoll) = ragdoll_assets.get_mut(&input.ragdoll) else {
+            return;
+        };
+
+        dirty_assets.add(input.ragdoll);
+
+        ragdoll.add_joint(input.joint);
+    }
+}
+
+pub struct DeleteRagdollBody {
+    pub ragdoll: Handle<Ragdoll>,
+    pub body_id: BodyId,
+}
+
+impl DynamicAction for DeleteRagdollBody {
+    fn handle(self: Box<Self>, world: &mut World, _: &mut ActionContext) {
+        run_handler(world, "Could not create body")(Self::system, *self)
+    }
+}
+
+impl DeleteRagdollBody {
+    pub fn system(
+        In(input): In<Self>,
+        mut ragdoll_assets: ResMut<Assets<Ragdoll>>,
+        mut dirty_assets: ResMut<DirtyAssets>,
+    ) {
+        let Some(ragdoll) = ragdoll_assets.get_mut(&input.ragdoll) else {
+            return;
+        };
+
+        dirty_assets.add(input.ragdoll);
+
+        ragdoll.delete_body(input.body_id);
+    }
+}
+
+pub struct DeleteRagdollCollider {
+    pub ragdoll: Handle<Ragdoll>,
+    pub collider_id: ColliderId,
+}
+
+impl DynamicAction for DeleteRagdollCollider {
+    fn handle(self: Box<Self>, world: &mut World, _: &mut ActionContext) {
+        run_handler(world, "Could not create body")(Self::system, *self)
+    }
+}
+
+impl DeleteRagdollCollider {
+    pub fn system(
+        In(input): In<Self>,
+        mut ragdoll_assets: ResMut<Assets<Ragdoll>>,
+        mut dirty_assets: ResMut<DirtyAssets>,
+    ) {
+        let Some(ragdoll) = ragdoll_assets.get_mut(&input.ragdoll) else {
+            return;
+        };
+
+        dirty_assets.add(input.ragdoll);
+
+        ragdoll.delete_collider(input.collider_id);
+    }
+}
+
+pub struct DeleteRagdollJoint {
+    pub ragdoll: Handle<Ragdoll>,
+    pub joint_id: JointId,
+}
+
+impl DynamicAction for DeleteRagdollJoint {
+    fn handle(self: Box<Self>, world: &mut World, _: &mut ActionContext) {
+        run_handler(world, "Could not create body")(Self::system, *self)
+    }
+}
+
+impl DeleteRagdollJoint {
+    pub fn system(
+        In(input): In<Self>,
+        mut ragdoll_assets: ResMut<Assets<Ragdoll>>,
+        mut dirty_assets: ResMut<DirtyAssets>,
+    ) {
+        let Some(ragdoll) = ragdoll_assets.get_mut(&input.ragdoll) else {
+            return;
+        };
+
+        dirty_assets.add(input.ragdoll);
+
+        ragdoll.delete_joint(input.joint_id);
+    }
+}
+
 pub struct EditRagdollCollider {
     pub ragdoll: Handle<Ragdoll>,
     pub collider: Collider,

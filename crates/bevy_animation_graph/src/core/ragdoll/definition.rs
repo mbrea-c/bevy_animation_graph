@@ -45,6 +45,30 @@ impl Ragdoll {
         }
     }
 
+    ///  Adds new joint to the ragdoll. This operation is idempotent; if you try to add a
+    ///  joint with an ID that already exists, it's ignored.
+    pub fn add_joint(&mut self, joint: Joint) {
+        if !self.joints.contains_key(&joint.id) {
+            self.joints.insert(joint.id, joint);
+        }
+    }
+
+    pub fn delete_body(&mut self, id: BodyId) {
+        self.bodies.remove(&id);
+    }
+
+    pub fn delete_collider(&mut self, id: ColliderId) {
+        self.colliders.remove(&id);
+
+        for body in self.bodies.values_mut() {
+            body.colliders.retain(|c_id| *c_id != id);
+        }
+    }
+
+    pub fn delete_joint(&mut self, id: JointId) {
+        self.joints.remove(&id);
+    }
+
     pub fn get_collider(&self, id: ColliderId) -> Option<&Collider> {
         self.colliders.get(&id)
     }

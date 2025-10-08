@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use bevy::{
     asset::Handle,
-    color::{Color, LinearRgba, palettes::css},
+    color::{Alpha, Color, LinearRgba, palettes::css},
     core_pipeline::core_3d::Camera3d,
     ecs::{hierarchy::ChildSpawnerCommands, world::World},
     gizmos::primitives::dim3::GizmoPrimitive3d,
@@ -37,11 +37,15 @@ pub struct RagdollPreview<'a, 'b> {
     pub world: &'a mut World,
     pub ctx: &'a mut EditorWindowContext<'b>,
     pub orbit_view: &'a mut OrbitView,
+
     pub ragdoll: Handle<Ragdoll>,
     pub base_scene: Handle<AnimatedScene>,
+
     pub body_buffers: HashMap<BodyId, Body>,
     pub collider_buffers: HashMap<ColliderId, Collider>,
     pub joint_buffers: HashMap<JointId, Joint>,
+
+    pub hover_body: Option<BodyId>,
 }
 
 impl RagdollPreview<'_, '_> {
@@ -53,6 +57,7 @@ impl RagdollPreview<'_, '_> {
                 Arc::new(RagdollBodies {
                     ragdoll: self.ragdoll.clone(),
                     body_buffers: self.body_buffers.clone(),
+                    hover: self.hover_body.clone(),
                 }),
                 Arc::new(RagdollColliders {
                     ragdoll: self.ragdoll.clone(),
@@ -145,9 +150,12 @@ pub trait GizmoOverlay: Send + Sync + 'static {
     fn draw(&self, world: &mut World, player: &mut AnimationGraphPlayer);
 }
 
+const SYMMETRY_ALPHA: f32 = 0.2;
+
 pub struct RagdollBodies {
     pub ragdoll: Handle<Ragdoll>,
     pub body_buffers: HashMap<BodyId, Body>,
+    pub hover: Option<BodyId>,
 }
 
 impl GizmoOverlay for RagdollBodies {
@@ -159,8 +167,27 @@ impl GizmoOverlay for RagdollBodies {
                     .get(&ragdoll_body.id)
                     .unwrap_or(ragdoll_body);
                 let offset = body.offset;
+
+                let alpha = if body.created_from.is_none() {
+                    1.
+                } else {
+                    SYMMETRY_ALPHA
+                };
+
+                let length = if self.hover.is_some_and(|id| id == body.id) {
+                    0.1
+                } else {
+                    0.05
+                };
+
                 player.gizmo_relative_to_root(move |root_transform, gizmos| {
-                    gizmos.axes(root_transform * Transform::from_translation(offset), 0.1);
+                    let t = root_transform * Transform::from_translation(offset);
+                    let x = t * (Vec3::X * length);
+                    let y = t * (Vec3::Y * length);
+                    let z = t * (Vec3::Z * length);
+                    gizmos.line(t.translation, x, css::RED.with_alpha(alpha));
+                    gizmos.line(t.translation, y, css::GREEN.with_alpha(alpha));
+                    gizmos.line(t.translation, z, css::BLUE.with_alpha(alpha));
                 });
             }
         });
@@ -194,26 +221,32 @@ impl GizmoOverlay for RagdollColliders {
                         Isometry3d::from_translation(body.offset) * collider.local_offset;
                     let shape = collider.shape.clone();
 
+                    let color = if collider.created_from.is_none() {
+                        css::ORANGE
+                    } else {
+                        css::ORANGE.with_alpha(SYMMETRY_ALPHA)
+                    };
+
                     player.gizmo_relative_to_root(move |root_transform, gizmos| match shape {
                         ColliderShape::Sphere(sphere) => {
                             gizmos.primitive_3d(
                                 &sphere,
                                 root_transform.to_isometry() * isometry,
-                                css::ORANGE,
+                                color,
                             );
                         }
                         ColliderShape::Capsule(capsule3d) => {
                             gizmos.primitive_3d(
                                 &capsule3d,
                                 root_transform.to_isometry() * isometry,
-                                css::ORANGE,
+                                color,
                             );
                         }
                         ColliderShape::Cuboid(cuboid) => {
                             gizmos.primitive_3d(
                                 &cuboid,
                                 root_transform.to_isometry() * isometry,
-                                css::ORANGE,
+                                color,
                             );
                         }
                     });
@@ -252,18 +285,24 @@ impl GizmoOverlay for RagdollJoints {
                             let twist_axis = spherical_joint.twist_axis;
                             let jointpos = spherical_joint.position;
 
+                            let color = if joint.created_from.is_none() {
+                                css::PURPLE
+                            } else {
+                                css::PURPLE.with_alpha(SYMMETRY_ALPHA)
+                            };
+
                             player.gizmo_relative_to_root(move |root_transform, gizmos| {
                                 gizmos.arrow(
                                     root_transform * jointpos,
                                     root_transform * jointpos
                                         + twist_axis.normalize_or_zero() * 0.1,
-                                    css::PURPLE,
+                                    color,
                                 );
                                 gizmos.arrow(
                                     root_transform * jointpos,
                                     root_transform * jointpos
                                         + swing_axis.normalize_or_zero() * 0.1,
-                                    css::PURPLE,
+                                    color,
                                 );
                                 gizmos.circle(
                                     Isometry3d {
@@ -271,7 +310,7 @@ impl GizmoOverlay for RagdollJoints {
                                         translation: (root_transform * jointpos).into(),
                                     },
                                     0.05,
-                                    css::PURPLE,
+                                    color,
                                 );
                             });
                         }

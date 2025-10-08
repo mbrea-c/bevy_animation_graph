@@ -290,7 +290,13 @@ impl TreeRenderer<SkeletonNode, SkeletonNode, SkeletonResponse> for SkeletonTree
 }
 
 #[derive(Clone, Copy, Debug, Hash)]
-pub enum RagdollNode {
+pub struct RagdollNode {
+    pub variant: RagdollNodeVariant,
+    pub enabled: bool,
+}
+
+#[derive(Clone, Copy, Debug, Hash)]
+pub enum RagdollNodeVariant {
     Body(BodyId),
     Collider(ColliderId),
     Joint(JointId),
@@ -333,11 +339,20 @@ impl Tree<RagdollNode, RagdollNode> {
         };
 
         if children.is_empty() {
-            TreeInternal::Leaf(label, RagdollNode::Body(body_id))
+            TreeInternal::Leaf(
+                label,
+                RagdollNode {
+                    variant: RagdollNodeVariant::Body(body_id),
+                    enabled: body.created_from.is_none(),
+                },
+            )
         } else {
             TreeInternal::Node(
                 label,
-                RagdollNode::Body(body_id),
+                RagdollNode {
+                    variant: RagdollNodeVariant::Body(body_id),
+                    enabled: body.created_from.is_none(),
+                },
                 children
                     .into_iter()
                     .map(|c| Self::ragdoll_collider_subtree(ragdoll, c))
@@ -357,7 +372,10 @@ impl Tree<RagdollNode, RagdollNode> {
             } else {
                 collider.label.clone()
             },
-            RagdollNode::Collider(collider_id),
+            RagdollNode {
+                variant: RagdollNodeVariant::Collider(collider_id),
+                enabled: collider.created_from.is_none(),
+            },
         )
     }
 
@@ -371,6 +389,12 @@ impl Tree<RagdollNode, RagdollNode> {
         } else {
             joint.label.clone()
         };
-        TreeInternal::Leaf(label, RagdollNode::Joint(joint_id))
+        TreeInternal::Leaf(
+            label,
+            RagdollNode {
+                variant: RagdollNodeVariant::Joint(joint_id),
+                enabled: joint.created_from.is_none(),
+            },
+        )
     }
 }

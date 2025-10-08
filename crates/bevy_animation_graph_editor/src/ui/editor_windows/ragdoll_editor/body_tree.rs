@@ -2,16 +2,22 @@ use bevy::{
     asset::{Assets, Handle},
     ecs::world::World,
 };
-use bevy_animation_graph::core::ragdoll::definition::{
-    Body, BodyId, Collider, ColliderId, JointId, Ragdoll,
+use bevy_animation_graph::core::ragdoll::{
+    bone_mapping::RagdollBoneMap,
+    definition::{Body, BodyId, Collider, ColliderId, Joint, JointId, Ragdoll},
 };
 use egui::Sense;
 
 use crate::{
     icons,
-    tree::{RagdollNode, Tree, TreeInternal, TreeRenderer, TreeResponse, TreeResult},
+    tree::{
+        RagdollNode, RagdollNodeVariant, Tree, TreeInternal, TreeRenderer, TreeResponse, TreeResult,
+    },
     ui::{
-        actions::ragdoll::{CreateRagdollBody, CreateRagdollCollider},
+        actions::ragdoll::{
+            CreateRagdollBody, CreateRagdollCollider, CreateRagdollJoint, DeleteRagdollBody,
+            DeleteRagdollCollider, DeleteRagdollJoint, RecomputeRagdollSymmetry,
+        },
         core::EditorWindowContext,
         editor_windows::ragdoll_editor::{RagdollEditorAction, SelectedItem},
         utils::collapsing::Collapser,
@@ -20,6 +26,7 @@ use crate::{
 
 pub struct BodyTree<'a, 'b> {
     pub ragdoll: Handle<Ragdoll>,
+    pub ragdoll_bone_map: Handle<RagdollBoneMap>,
     pub world: &'a mut World,
     pub ctx: &'a mut EditorWindowContext<'b>,
 }
@@ -39,12 +46,16 @@ impl BodyTree<'_, '_> {
                     TreeResult::Leaf(_, response) | TreeResult::Node(_, response) => {
                         if let Some(clicked_node) = response.clicked {
                             self.ctx.window_action(RagdollEditorAction::SelectNode(
-                                match clicked_node {
-                                    RagdollNode::Body(body_id) => SelectedItem::Body(body_id),
-                                    RagdollNode::Collider(collider_id) => {
+                                match clicked_node.variant {
+                                    RagdollNodeVariant::Body(body_id) => {
+                                        SelectedItem::Body(body_id)
+                                    }
+                                    RagdollNodeVariant::Collider(collider_id) => {
                                         SelectedItem::Collider(collider_id)
                                     }
-                                    RagdollNode::Joint(joint_id) => SelectedItem::Joint(joint_id),
+                                    RagdollNodeVariant::Joint(joint_id) => {
+                                        SelectedItem::Joint(joint_id)
+                                    }
                                 },
                             ));
                         }
@@ -64,11 +75,34 @@ impl BodyTree<'_, '_> {
                                         body: Body::new(),
                                     })
                                 }
-                                RagdollTreeAction::CreateJoint => todo!(),
-                                RagdollTreeAction::DeleteBody(body_id) => todo!(),
-                                RagdollTreeAction::DeleteJoint(joint_id) => todo!(),
-                                RagdollTreeAction::DeleteCollider(collider_id) => todo!(),
+                                RagdollTreeAction::CreateJoint => {
+                                    self.ctx.editor_actions.dynamic(CreateRagdollJoint {
+                                        ragdoll: self.ragdoll.clone(),
+                                        joint: Joint::new(),
+                                    })
+                                }
+                                RagdollTreeAction::DeleteBody(body_id) => {
+                                    self.ctx.editor_actions.dynamic(DeleteRagdollBody {
+                                        ragdoll: self.ragdoll.clone(),
+                                        body_id,
+                                    })
+                                }
+                                RagdollTreeAction::DeleteJoint(joint_id) => {
+                                    self.ctx.editor_actions.dynamic(DeleteRagdollJoint {
+                                        ragdoll: self.ragdoll.clone(),
+                                        joint_id,
+                                    })
+                                }
+                                RagdollTreeAction::DeleteCollider(collider_id) => {
+                                    self.ctx.editor_actions.dynamic(DeleteRagdollCollider {
+                                        ragdoll: self.ragdoll.clone(),
+                                        collider_id,
+                                    })
+                                }
                             }
+                            self.ctx.editor_actions.dynamic(RecomputeRagdollSymmetry {
+                                ragdoll_bone_map: self.ragdoll_bone_map.clone(),
+                            });
                         }
                     }
                     TreeResult::None => {}
@@ -151,59 +185,64 @@ impl TreeRenderer<RagdollNode, RagdollNode, RagdollResponse> for RagdollTreeRend
         data: &RagdollNode,
         ui: &mut egui::Ui,
     ) -> TreeResult<RagdollNode, RagdollNode, RagdollResponse> {
-        let response = ui
-            .horizontal(|ui| {
-                let image = match data {
-                    RagdollNode::Body(_) => icons::BONE,
-                    RagdollNode::Collider(_) => icons::BOX,
-                    RagdollNode::Joint(_) => icons::JOINT,
-                };
-                let color = ui.visuals().text_color();
+        ui.add_enabled_ui(data.enabled, |ui| {
+            let response = ui
+                .horizontal(|ui| {
+                    let image = match &data.variant {
+                        RagdollNodeVariant::Body(_) => icons::BONE,
+                        RagdollNodeVariant::Collider(_) => icons::BOX,
+                        RagdollNodeVariant::Joint(_) => icons::JOINT,
+                    };
+                    let color = ui.visuals().text_color();
 
-                ui.add(egui::Image::new(image).tint(color).sense(Sense::click()))
-                    | ui.add(egui::Label::new(label).sense(Sense::click()))
-            })
-            .inner;
+                    ui.add(egui::Image::new(image).tint(color).sense(Sense::click()))
+                        | ui.add(egui::Label::new(label).sense(Sense::click()))
+                })
+                .inner;
 
-        let mut actions = Vec::new();
-        egui::Popup::context_menu(&response).show(|ui| {
-            if ui.button("Add body").clicked() {
-                actions.push(RagdollTreeAction::CreateBody);
+            let mut actions = Vec::new();
+            if data.enabled {
+                egui::Popup::context_menu(&response).show(|ui| {
+                    if ui.button("Add body").clicked() {
+                        actions.push(RagdollTreeAction::CreateBody);
+                    }
+                    if ui.button("Add joint").clicked() {
+                        actions.push(RagdollTreeAction::CreateJoint);
+                    }
+                    match &data.variant {
+                        RagdollNodeVariant::Body(body_id) => {
+                            if ui.button("Add collider").clicked() {
+                                actions.push(RagdollTreeAction::CreateCollider(*body_id));
+                            }
+                            if ui.button("Delete").clicked() {
+                                actions.push(RagdollTreeAction::DeleteBody(*body_id));
+                            }
+                        }
+                        RagdollNodeVariant::Collider(collider_id) => {
+                            if ui.button("Delete").clicked() {
+                                actions.push(RagdollTreeAction::DeleteCollider(*collider_id));
+                            }
+                        }
+                        RagdollNodeVariant::Joint(joint_id) => {
+                            if ui.button("Delete").clicked() {
+                                actions.push(RagdollTreeAction::DeleteJoint(*joint_id));
+                            }
+                        }
+                    }
+                });
             }
-            if ui.button("Add joint").clicked() {
-                actions.push(RagdollTreeAction::CreateJoint);
-            }
-            match data {
-                RagdollNode::Body(body_id) => {
-                    if ui.button("Add collider").clicked() {
-                        actions.push(RagdollTreeAction::CreateCollider(*body_id));
-                    }
-                    if ui.button("Delete").clicked() {
-                        actions.push(RagdollTreeAction::DeleteBody(*body_id));
-                    }
-                }
-                RagdollNode::Collider(collider_id) => {
-                    if ui.button("Delete").clicked() {
-                        actions.push(RagdollTreeAction::DeleteCollider(*collider_id));
-                    }
-                }
-                RagdollNode::Joint(joint_id) => {
-                    if ui.button("Delete").clicked() {
-                        actions.push(RagdollTreeAction::DeleteJoint(*joint_id));
-                    }
-                }
-            }
-        });
 
-        TreeResult::Leaf(
-            data.clone(),
-            RagdollResponse {
-                hovered: response.hovered().then_some(*data),
-                clicked: response
-                    .clicked_by(egui::PointerButton::Primary)
-                    .then_some(*data),
-                actions,
-            },
-        )
+            TreeResult::Leaf(
+                data.clone(),
+                RagdollResponse {
+                    hovered: response.hovered().then_some(*data),
+                    clicked: response
+                        .clicked_by(egui::PointerButton::Primary)
+                        .then_some(*data),
+                    actions,
+                },
+            )
+        })
+        .inner
     }
 }
