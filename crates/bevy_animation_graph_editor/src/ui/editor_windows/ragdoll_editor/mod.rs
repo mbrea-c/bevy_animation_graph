@@ -61,6 +61,7 @@ pub struct RagdollEditorWindow {
     /// If true, render the skeleton tree. If false, render the ragdoll tree
     pub show_bone_tree: bool,
     pub selected_item: Option<SelectedItem>,
+    pub hovered_item: Option<SelectedItem>,
 
     pub body_edit_buffers: HashMap<BodyId, Body>,
     pub collider_edit_buffers: HashMap<ColliderId, Collider>,
@@ -81,6 +82,7 @@ impl Default for RagdollEditorWindow {
             scene: None,
             show_bone_tree: false,
             selected_item: None,
+            hovered_item: None,
 
             body_edit_buffers: HashMap::default(),
             collider_edit_buffers: HashMap::default(),
@@ -102,12 +104,40 @@ pub enum SelectedItem {
     Bone(BoneId),
 }
 
+impl SelectedItem {
+    pub fn body(&self) -> Option<BodyId> {
+        match self {
+            SelectedItem::Body(id) => Some(*id),
+            _ => None,
+        }
+    }
+    pub fn collider(&self) -> Option<ColliderId> {
+        match self {
+            SelectedItem::Collider(id) => Some(*id),
+            _ => None,
+        }
+    }
+    pub fn joint(&self) -> Option<JointId> {
+        match self {
+            SelectedItem::Joint(id) => Some(*id),
+            _ => None,
+        }
+    }
+    pub fn bone(&self) -> Option<BoneId> {
+        match self {
+            SelectedItem::Bone(id) => Some(*id),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub enum RagdollEditorAction {
     SelectBaseScene(Handle<AnimatedScene>),
     SelectRagdoll(Handle<Ragdoll>),
     SelectRagdollBoneMap(Handle<RagdollBoneMap>),
     SelectNode(SelectedItem),
+    HoverNode(SelectedItem),
     ResetBuffers,
     ToggleSettingsWindow,
 }
@@ -119,6 +149,8 @@ impl EditorWindowExtension for RagdollEditorWindow {
         self.right_panel(ui, world, ctx);
         self.settings_popup(ui, world, ctx);
         self.center_panel(ui, world, ctx);
+
+        self.hovered_item = None;
     }
 
     fn display_name(&self) -> String {
@@ -139,6 +171,9 @@ impl EditorWindowExtension for RagdollEditorWindow {
             }
             RagdollEditorAction::SelectNode(ragdoll_node) => {
                 self.selected_item = Some(ragdoll_node);
+            }
+            RagdollEditorAction::HoverNode(hovered_item) => {
+                self.hovered_item = Some(hovered_item);
             }
             RagdollEditorAction::ToggleSettingsWindow => {
                 self.show_global_settings = !self.show_global_settings;
@@ -493,8 +528,8 @@ impl RagdollEditorWindow {
                 body_buffers: self.body_edit_buffers.clone(),
                 collider_buffers: self.collider_edit_buffers.clone(),
                 joint_buffers: self.joint_edit_buffers.clone(),
-                // TODO: Hover body
-                hover_body: None,
+                hovered_item: self.hovered_item.clone(),
+                selected_item: self.selected_item.clone(),
             }
             .draw(ui);
         } else {

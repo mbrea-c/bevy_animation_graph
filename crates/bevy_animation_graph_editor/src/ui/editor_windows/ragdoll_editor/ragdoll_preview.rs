@@ -2,12 +2,12 @@ use std::sync::Arc;
 
 use bevy::{
     asset::Handle,
-    color::{Alpha, Color, LinearRgba, palettes::css},
+    color::{Alpha, Color, Hsla, LinearRgba, palettes::css},
     core_pipeline::core_3d::Camera3d,
     ecs::{hierarchy::ChildSpawnerCommands, world::World},
     gizmos::primitives::dim3::GizmoPrimitive3d,
     image::Image,
-    math::{Isometry3d, Quat, Vec3, primitives::Cone},
+    math::{Isometry3d, Quat, Vec3},
     pbr::PointLight,
     platform::collections::HashMap,
     render::camera::{Camera, ClearColorConfig, RenderTarget},
@@ -17,9 +17,11 @@ use bevy::{
 use bevy_animation_graph::{
     core::{
         colliders::core::ColliderShape,
+        id::BoneId,
         ragdoll::definition::{
             Body, BodyId, Collider, ColliderId, Joint, JointId, JointVariant, Ragdoll,
         },
+        skeleton::Skeleton,
     },
     prelude::{AnimatedScene, AnimatedSceneHandle, AnimationGraphPlayer, AnimationSource},
 };
@@ -27,6 +29,7 @@ use bevy_animation_graph::{
 use crate::ui::{
     PartOfSubScene, PreviewScene, SubSceneConfig, SubSceneSyncAction,
     core::EditorWindowContext,
+    editor_windows::ragdoll_editor::SelectedItem,
     utils::{
         OrbitView, orbit_camera_scene_show, orbit_camera_transform, orbit_camera_update,
         with_assets_all,
@@ -45,7 +48,8 @@ pub struct RagdollPreview<'a, 'b> {
     pub collider_buffers: HashMap<ColliderId, Collider>,
     pub joint_buffers: HashMap<JointId, Joint>,
 
-    pub hover_body: Option<BodyId>,
+    pub hovered_item: Option<SelectedItem>,
+    pub selected_item: Option<SelectedItem>,
 }
 
 impl RagdollPreview<'_, '_> {
@@ -57,17 +61,32 @@ impl RagdollPreview<'_, '_> {
                 Arc::new(RagdollBodies {
                     ragdoll: self.ragdoll.clone(),
                     body_buffers: self.body_buffers.clone(),
-                    hover: self.hover_body.clone(),
+                    hover: self.hovered_item.clone().and_then(|i| i.body()),
+                    selected: self.selected_item.clone().and_then(|i| i.body()),
                 }),
                 Arc::new(RagdollColliders {
                     ragdoll: self.ragdoll.clone(),
                     body_buffers: self.body_buffers.clone(),
                     collider_buffers: self.collider_buffers,
+                    hovered: self.hovered_item.clone().and_then(|i| i.collider()),
+                    selected: self.selected_item.clone().and_then(|i| i.collider()),
                 }),
                 Arc::new(RagdollJoints {
                     ragdoll: self.ragdoll.clone(),
                     body_buffers: self.body_buffers,
                     joint_buffers: self.joint_buffers,
+                    hovered: self.hovered_item.clone().and_then(|i| i.joint()),
+                    selected: self.selected_item.clone().and_then(|i| i.joint()),
+                }),
+                Arc::new(SkeletonBones {
+                    skeleton: with_assets_all(
+                        self.world,
+                        [self.base_scene.id()],
+                        |_, [base_scene]| base_scene.skeleton.clone(),
+                    )
+                    .unwrap(),
+                    hovered: self.hovered_item.clone().and_then(|i| i.bone()),
+                    selected: self.selected_item.clone().and_then(|i| i.bone()),
                 }),
             ],
         };
@@ -156,6 +175,7 @@ pub struct RagdollBodies {
     pub ragdoll: Handle<Ragdoll>,
     pub body_buffers: HashMap<BodyId, Body>,
     pub hover: Option<BodyId>,
+    pub selected: Option<BodyId>,
 }
 
 impl GizmoOverlay for RagdollBodies {
@@ -198,6 +218,8 @@ pub struct RagdollColliders {
     pub ragdoll: Handle<Ragdoll>,
     pub body_buffers: HashMap<BodyId, Body>,
     pub collider_buffers: HashMap<ColliderId, Collider>,
+    pub hovered: Option<ColliderId>,
+    pub selected: Option<ColliderId>,
 }
 
 impl GizmoOverlay for RagdollColliders {
@@ -221,10 +243,27 @@ impl GizmoOverlay for RagdollColliders {
                         Isometry3d::from_translation(body.offset) * collider.local_offset;
                     let shape = collider.shape.clone();
 
-                    let color = if collider.created_from.is_none() {
+                    let is_hovered = self.hovered.is_some_and(|h| h == *collider_id);
+                    let is_selected = self.selected.is_some_and(|h| h == *collider_id);
+
+                    let hsla_orange = Hsla::from(css::ORANGE);
+
+                    let base_color = if is_hovered {
+                        hsla_orange
+                            .with_lightness((hsla_orange.lightness + 0.2).min(1.))
+                            .into()
+                    } else if is_selected {
                         css::ORANGE
                     } else {
-                        css::ORANGE.with_alpha(SYMMETRY_ALPHA)
+                        hsla_orange
+                            .with_lightness((hsla_orange.lightness - 0.1).max(0.))
+                            .into()
+                    };
+
+                    let color = if collider.created_from.is_none() {
+                        base_color
+                    } else {
+                        base_color.with_alpha(SYMMETRY_ALPHA)
                     };
 
                     player.gizmo_relative_to_root(move |root_transform, gizmos| match shape {
@@ -260,6 +299,8 @@ pub struct RagdollJoints {
     pub ragdoll: Handle<Ragdoll>,
     pub body_buffers: HashMap<BodyId, Body>,
     pub joint_buffers: HashMap<JointId, Joint>,
+    pub hovered: Option<JointId>,
+    pub selected: Option<JointId>,
 }
 
 impl GizmoOverlay for RagdollJoints {
@@ -285,10 +326,27 @@ impl GizmoOverlay for RagdollJoints {
                             let twist_axis = spherical_joint.twist_axis;
                             let jointpos = spherical_joint.position;
 
-                            let color = if joint.created_from.is_none() {
+                            let is_hovered = self.hovered.is_some_and(|h| h == joint.id);
+                            let is_selected = self.selected.is_some_and(|h| h == joint.id);
+
+                            let hsla_purple = Hsla::from(css::PURPLE);
+
+                            let base_color = if is_hovered {
+                                hsla_purple
+                                    .with_lightness((hsla_purple.lightness + 0.2).min(1.))
+                                    .into()
+                            } else if is_selected {
                                 css::PURPLE
                             } else {
-                                css::PURPLE.with_alpha(SYMMETRY_ALPHA)
+                                hsla_purple
+                                    .with_lightness((hsla_purple.lightness - 0.1).max(0.))
+                                    .into()
+                            };
+
+                            let color = if joint.created_from.is_none() {
+                                base_color
+                            } else {
+                                base_color.with_alpha(SYMMETRY_ALPHA)
                             };
 
                             player.gizmo_relative_to_root(move |root_transform, gizmos| {
@@ -316,6 +374,33 @@ impl GizmoOverlay for RagdollJoints {
                         }
                     }
                 }
+            }
+        });
+    }
+}
+
+pub struct SkeletonBones {
+    pub skeleton: Handle<Skeleton>,
+    pub hovered: Option<BoneId>,
+    pub selected: Option<BoneId>,
+}
+
+impl GizmoOverlay for SkeletonBones {
+    fn draw(&self, world: &mut World, player: &mut AnimationGraphPlayer) {
+        with_assets_all(world, [self.skeleton.id()], |_, [skeleton]| {
+            for bone_id in skeleton.iter_bones() {
+                let is_hovered = self.hovered.is_some_and(|h| h == bone_id);
+                let is_selected = self.selected.is_some_and(|h| h == bone_id);
+
+                let color = if is_hovered {
+                    css::LIGHT_SKY_BLUE
+                } else if is_selected {
+                    css::DODGER_BLUE
+                } else {
+                    css::GRAY
+                };
+
+                player.gizmo_for_bones_with_color([(bone_id, color.into())]);
             }
         });
     }

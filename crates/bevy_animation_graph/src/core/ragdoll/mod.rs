@@ -1,5 +1,6 @@
 pub mod bone_mapping;
 pub mod bone_mapping_loader;
+pub mod configuration;
 pub mod definition;
 pub mod definition_loader;
 #[cfg(feature = "physics_avian")]

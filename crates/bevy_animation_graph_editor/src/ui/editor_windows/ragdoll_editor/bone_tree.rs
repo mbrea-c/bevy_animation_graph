@@ -9,6 +9,8 @@ use crate::{
     },
 };
 
+use super::SelectedItem;
+
 pub struct BoneTree<'a, 'b> {
     pub skeleton: Handle<Skeleton>,
     pub world: &'a mut World,
@@ -30,8 +32,15 @@ impl BoneTree<'_, '_> {
                     // }
                     if let Some(clicked_bone) = response.clicked {
                         self.ctx.window_action(RagdollEditorAction::SelectNode(
-                            super::SelectedItem::Bone(clicked_bone),
+                            SelectedItem::Bone(clicked_bone),
                         ));
+                    }
+
+                    if let Some(hovered_bone) = response.hovered {
+                        self.ctx
+                            .window_action(RagdollEditorAction::HoverNode(SelectedItem::Bone(
+                                hovered_bone,
+                            )));
                     }
 
                     // for action in response.actions {

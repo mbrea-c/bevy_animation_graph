@@ -60,6 +60,22 @@ impl BodyTree<'_, '_> {
                             ));
                         }
 
+                        if let Some(hovered_node) = response.hovered {
+                            self.ctx.window_action(RagdollEditorAction::HoverNode(
+                                match hovered_node.variant {
+                                    RagdollNodeVariant::Body(body_id) => {
+                                        SelectedItem::Body(body_id)
+                                    }
+                                    RagdollNodeVariant::Collider(collider_id) => {
+                                        SelectedItem::Collider(collider_id)
+                                    }
+                                    RagdollNodeVariant::Joint(joint_id) => {
+                                        SelectedItem::Joint(joint_id)
+                                    }
+                                },
+                            ));
+                        }
+
                         for action in response.actions {
                             match action {
                                 RagdollTreeAction::CreateCollider(body_id) => {

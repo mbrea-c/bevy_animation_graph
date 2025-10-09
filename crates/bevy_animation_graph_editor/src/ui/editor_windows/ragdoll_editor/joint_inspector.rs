@@ -1,12 +1,12 @@
-use bevy::{ecs::world::World, log::warn_once};
+use bevy::ecs::world::World;
 use bevy_animation_graph::core::ragdoll::definition::{
-    Joint, JointVariant, Ragdoll, SphericalJoint,
+    AngleLimit, Joint, JointVariant, Ragdoll, SphericalJoint,
 };
 use egui::{ComboBox, Widget};
 
 use crate::ui::{
     core::EditorWindowContext,
-    generic_widgets::{body_id::BodyIdWidget, vec3::Vec3Widget},
+    generic_widgets::{angle_limit::AngleLimitWidget, body_id::BodyIdWidget, vec3::Vec3Widget},
 };
 
 pub struct JointInspector<'a, 'b> {
@@ -83,9 +83,41 @@ impl Widget for JointInspector<'_, '_> {
                     ));
                     ui.end_row();
 
-                    //pub swing_limit: Option<AngleLimit>,
-                    //pub twist_limit: Option<AngleLimit>,
-                    warn_once!("Reminder to add ui for angle limits!");
+                    let mut swing_enabled = spherical_joint.swing_limit.is_some();
+                    response |= ui.label("swing limits enabled:");
+                    response |= ui.add(egui::Checkbox::without_text(&mut swing_enabled));
+                    ui.end_row();
+                    if !swing_enabled {
+                        spherical_joint.swing_limit = None;
+                    }
+                    if swing_enabled && spherical_joint.swing_limit.is_none() {
+                        spherical_joint.swing_limit = Some(AngleLimit::default());
+                    }
+
+                    if let Some(limit) = &mut spherical_joint.swing_limit {
+                        response |= ui.label("swing limits:");
+                        response |=
+                            ui.add(AngleLimitWidget::new_salted(limit, "swing angle limit"));
+                        ui.end_row();
+                    }
+
+                    let mut twist_enabled = spherical_joint.twist_limit.is_some();
+                    response |= ui.label("twist limits enabled:");
+                    response |= ui.add(egui::Checkbox::without_text(&mut twist_enabled));
+                    ui.end_row();
+                    if !twist_enabled {
+                        spherical_joint.twist_limit = None;
+                    }
+                    if twist_enabled && spherical_joint.twist_limit.is_none() {
+                        spherical_joint.twist_limit = Some(AngleLimit::default());
+                    }
+
+                    if let Some(limit) = &mut spherical_joint.twist_limit {
+                        response |= ui.label("twist limits:");
+                        response |=
+                            ui.add(AngleLimitWidget::new_salted(limit, "twist angle limit"));
+                        ui.end_row();
+                    }
 
                     response |= ui.label("linear damping:");
                     response |= ui.add(egui::DragValue::new(&mut spherical_joint.damping_linear));

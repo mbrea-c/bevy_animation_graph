@@ -1,0 +1,15 @@
+use bevy::{platform::collections::HashMap, reflect::Reflect};
+use serde::{Deserialize, Serialize};
+
+use crate::core::{
+    id::BoneId,
+    ragdoll::definition::{BodyId, BodyMode},
+};
+
+#[derive(Reflect, Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RagdollConfig {
+    pub default_mode: Option<BodyMode>,
+    pub mode_overrides: HashMap<BodyId, BodyMode>,
+    pub default_readback: Option<bool>,
+    pub readback_overrides: HashMap<BoneId, bool>,
+}
