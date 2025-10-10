@@ -10,30 +10,39 @@ use bevy_animation_graph::prelude::*;
 use std::f32::consts::PI;
 
 fn main() {
-    App::new()
-        .add_plugins(DefaultPlugins.set(AssetPlugin {
-            file_path: "../../assets".to_string(),
-            ..default()
-        }))
-        .add_plugins(PhysicsPlugins::default())
-        .add_plugins(avian3d::prelude::PhysicsDebugPlugin::default())
-        .add_plugins(AnimationGraphPlugin)
-        // .add_plugins((
-        //     bevy_inspector_egui::bevy_egui::EguiPlugin::default(),
-        //     bevy_inspector_egui::quick::WorldInspectorPlugin::default(),
-        // ))
-        .insert_resource(AmbientLight {
-            color: Color::WHITE,
-            brightness: 0.1,
-            ..default()
-        })
-        .insert_resource(Params::default())
-        .add_systems(Startup, setup)
-        .add_systems(
-            Update,
-            (find_target, update_params, update_animation_player).chain(),
-        )
-        .run();
+    let mut app = App::new();
+    app.add_plugins(DefaultPlugins.set(AssetPlugin {
+        file_path: "../../assets".to_string(),
+        ..default()
+    }))
+    .add_plugins(PhysicsPlugins::new(PostUpdate))
+    .add_plugins(avian3d::prelude::PhysicsDebugPlugin::default())
+    .add_plugins(AnimationGraphPlugin)
+    // .add_plugins((
+    //     bevy_inspector_egui::bevy_egui::EguiPlugin::default(),
+    //     bevy_inspector_egui::quick::WorldInspectorPlugin::default(),
+    // ))
+    .insert_resource(AmbientLight {
+        color: Color::WHITE,
+        brightness: 0.1,
+        ..default()
+    })
+    .insert_resource(Params::default())
+    .add_systems(Startup, setup)
+    .add_systems(
+        Update,
+        (find_target, update_params, update_animation_player).chain(),
+    );
+
+    let graph = bevy_mod_debugdump::schedule_graph_dot(
+        &mut app,
+        PostUpdate,
+        &bevy_mod_debugdump::schedule_graph::Settings::default(),
+    );
+
+    std::fs::write("post-update.dot", graph);
+
+    app.run();
 }
 
 #[derive(Resource)]
