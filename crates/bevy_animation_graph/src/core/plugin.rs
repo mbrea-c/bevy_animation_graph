@@ -16,8 +16,9 @@ use super::{
     systems::{animation_player, animation_player_deferred_gizmos},
 };
 use crate::core::colliders::core::ColliderLabel;
+
 #[cfg(feature = "physics_avian")]
-use crate::core::physics_systems::{
+use crate::core::physics_systems_avian::{
     read_back_poses_avian, spawn_missing_ragdolls_avian, update_ragdoll_rigidbodies,
     update_ragdolls_avian,
 };
@@ -26,6 +27,7 @@ use crate::core::ragdoll::bone_mapping_loader::RagdollBoneMapLoader;
 use crate::core::ragdoll::definition::Ragdoll;
 use crate::core::ragdoll::definition_loader::RagdollLoader;
 use crate::nodes::blend_space_node::BlendSpaceNode;
+use crate::nodes::const_ragdoll_config::ConstRagdollConfig;
 use crate::nodes::{
     AbsF32, AddF32, BlendMode, BlendNode, BlendSyncMode, ChainNode, ClampF32, ClipNode, CompareF32,
     DivF32, DummyNode, FSMNode, FireEventNode, FlipLRNode, GraphNode, LoopNode, MulF32,
@@ -34,18 +36,45 @@ use crate::nodes::{
 use crate::prelude::serial::SymmetryConfigSerial;
 use crate::prelude::{AnimationGraph, AnimationGraphPlayer, config::SymmetryConfig};
 use crate::{core::animation_clip::EntityPath, prelude::AnimationNode};
+use bevy::ecs::intern::Interned;
+use bevy::ecs::schedule::ScheduleLabel;
 use bevy::{prelude::*, transform::TransformSystem};
 
 use super::colliders::{core::SkeletonColliders, loader::SkeletonCollidersLoader};
 
 /// Adds animation support to an app
-#[derive(Default)]
-pub struct AnimationGraphPlugin;
+pub struct AnimationGraphPlugin {
+    physics_schedule: Interned<dyn ScheduleLabel>,
+    final_schedule: Interned<dyn ScheduleLabel>,
+}
+
+impl Default for AnimationGraphPlugin {
+    fn default() -> Self {
+        Self {
+            physics_schedule: FixedPostUpdate.intern(),
+            final_schedule: PostUpdate.intern(),
+        }
+    }
+}
+
+impl AnimationGraphPlugin {
+    pub fn from_physics_schedule(schedule: impl ScheduleLabel) -> Self {
+        Self {
+            physics_schedule: schedule.intern(),
+            ..Default::default()
+        }
+    }
+}
 
 #[derive(Clone, Debug, Copy, PartialEq, Eq, Hash, SystemSet)]
 pub enum AnimationGraphSet {
+    /// This set runs in the same schedule as the physics update, before the physics update
     PrePhysics,
+    /// This set runs in the same schedule as the physics update, after the physics update
     PostPhysics,
+    /// This set runs at the end of the GPU frame (i.e. generally PostUpdate), it does not depend
+    /// on physics update schedule.
+    Final,
 }
 
 impl Plugin for AnimationGraphPlugin {
@@ -55,18 +84,22 @@ impl Plugin for AnimationGraphPlugin {
         self.register_nodes(app);
 
         app.configure_sets(
-            PostUpdate,
+            self.physics_schedule,
             (
                 AnimationGraphSet::PrePhysics,
                 AnimationGraphSet::PostPhysics,
             )
-                .chain()
-                .before(TransformSystem::TransformPropagate),
+                .chain(),
+        );
+
+        app.configure_sets(
+            self.physics_schedule,
+            AnimationGraphSet::Final.before(TransformSystem::TransformPropagate),
         );
 
         #[cfg(feature = "physics_avian")]
         {
-            use crate::core::physics_systems::{
+            use crate::core::physics_systems_avian::{
                 update_relative_kinematic_body_velocities,
                 update_relative_kinematic_position_based_body_velocities,
             };
@@ -76,7 +109,7 @@ impl Plugin for AnimationGraphPlugin {
             };
 
             app.configure_sets(
-                PostUpdate,
+                self.physics_schedule,
                 (
                     AnimationGraphSet::PrePhysics.before(PhysicsSet::Prepare),
                     AnimationGraphSet::PostPhysics.after(PhysicsSet::Sync),
@@ -103,7 +136,7 @@ impl Plugin for AnimationGraphPlugin {
         app.add_systems(PreUpdate, spawn_animated_scenes);
 
         app.add_systems(
-            PostUpdate,
+            self.physics_schedule,
             (
                 #[cfg(feature = "physics_avian")]
                 spawn_missing_ragdolls_avian,
@@ -118,15 +151,20 @@ impl Plugin for AnimationGraphPlugin {
         );
 
         app.add_systems(
-            PostUpdate,
+            self.physics_schedule,
             (
                 #[cfg(feature = "physics_avian")]
                 read_back_poses_avian,
-                apply_animation_to_targets,
-                animation_player_deferred_gizmos,
             )
                 .chain()
                 .in_set(AnimationGraphSet::PostPhysics),
+        );
+
+        app.add_systems(
+            self.final_schedule,
+            (apply_animation_to_targets, animation_player_deferred_gizmos)
+                .chain()
+                .in_set(AnimationGraphSet::Final),
         );
 
         app.add_observer(locate_animated_scene_player);
@@ -186,11 +224,8 @@ impl AnimationGraphPlugin {
             .register_type::<CompareF32>()
             .register_type::<FireEventNode>()
             .register_type::<RotationArcNode>()
+            .register_type::<ConstRagdollConfig>()
             .register_type::<FSMNode>();
-        // .register_type::<ExtendSkeleton>()
-        // .register_type::<IntoBoneSpaceNode>()
-        // .register_type::<IntoGlobalSpaceNode>()
-        // .register_type::<IntoCharacterSpaceNode>()
     }
 
     /// "Other" reflect registrations

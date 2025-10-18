@@ -202,6 +202,7 @@ impl Default for AnimationGraph {
 }
 
 pub const DEFAULT_OUTPUT_POSE: &str = "pose";
+pub const DEFAULT_OUTPUT_RAGDOLL_CONFIG: &str = "ragdoll_config";
 
 impl AnimationGraph {
     pub fn new() -> Self {

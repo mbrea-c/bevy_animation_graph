@@ -6,6 +6,10 @@ use crate::core::{
     ragdoll::definition::{BodyId, BodyMode},
 };
 
+/// Determines:
+/// * Default rigidbody modes for ragdoll bodies, and per-body overrides.
+/// * Default readback configuration for skeleton bones (whether bone position is read back from
+///   the ragdoll), and per-bone overrides.
 #[derive(Reflect, Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct RagdollConfig {
     pub default_mode: Option<BodyMode>,

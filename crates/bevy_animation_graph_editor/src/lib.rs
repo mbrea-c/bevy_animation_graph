@@ -54,14 +54,14 @@ impl Plugin for AnimationGraphEditorPlugin {
                 }),
             )
             .add_plugins(EguiPlugin::default())
-            .add_plugins(AnimationGraphPlugin)
+            .add_plugins(AnimationGraphPlugin::from_physics_schedule(FixedPostUpdate))
             .add_plugins(DefaultInspectorConfigPlugin)
             .add_plugins(BetterInspectorPlugin)
             // .add_plugins(WorldInspectorPlugin::new())
             .add_plugins(ScannerPlugin);
 
         #[cfg(feature = "physics_avian")]
-        app.add_plugins(avian3d::prelude::PhysicsPlugins::default());
+        app.add_plugins(avian3d::prelude::PhysicsPlugins::new(FixedPostUpdate));
 
         app.insert_resource(UiState::new())
             .insert_resource(PendingActions::default())

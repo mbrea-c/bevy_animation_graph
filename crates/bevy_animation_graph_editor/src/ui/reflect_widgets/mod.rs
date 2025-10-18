@@ -17,7 +17,9 @@ use bevy_animation_graph::{
         animation_clip::EntityPath,
         colliders::core::{ColliderOffsetMode, ColliderShape, SkeletonColliders},
         event_track::TrackItemValue,
-        ragdoll::{bone_mapping::RagdollBoneMap, definition::Ragdoll},
+        ragdoll::{
+            bone_mapping::RagdollBoneMap, configuration::RagdollConfig, definition::Ragdoll,
+        },
         state_machine::high_level::StateMachine,
     },
     prelude::{AnimatedScene, AnimationGraph, GraphClip, config::PatternMapper},
@@ -34,6 +36,7 @@ pub mod checkbox;
 pub mod entity_path;
 pub mod pattern_mapper;
 pub mod plugin;
+pub mod ragdoll_config;
 pub mod submittable;
 pub mod target_tracks;
 pub mod vec2_plane;
@@ -338,6 +341,26 @@ impl WidgetHash for Isometry3d {
         unsafe {
             std::mem::transmute::<Vec3A, u128>(self.translation).hash(&mut hasher);
             std::mem::transmute::<Quat, u128>(self.rotation).hash(&mut hasher);
+        }
+
+        hasher.finish()
+    }
+}
+
+impl WidgetHash for RagdollConfig {
+    fn widget_hash(&self) -> u64 {
+        let mut hasher = DefaultHasher::new();
+
+        self.default_mode.hash(&mut hasher);
+        for (id, mode) in &self.mode_overrides {
+            id.hash(&mut hasher);
+            mode.hash(&mut hasher);
+        }
+
+        self.default_readback.hash(&mut hasher);
+        for (id, readback) in &self.readback_overrides {
+            id.hash(&mut hasher);
+            readback.hash(&mut hasher);
         }
 
         hasher.finish()

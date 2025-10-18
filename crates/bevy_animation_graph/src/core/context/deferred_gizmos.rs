@@ -155,7 +155,7 @@ impl DeferredGizmosContext<'_> {
         };
 
         for bone_id in pose.paths.keys() {
-            self.bone_gizmo(*bone_id, color, skeleton, Some(pose));
+            self.bone_gizmo(*bone_id, color, false, skeleton, Some(pose));
         }
     }
 
@@ -163,6 +163,7 @@ impl DeferredGizmosContext<'_> {
         &mut self,
         bone_id: BoneId,
         color: LinearRgba,
+        draw_children: bool,
         skeleton: &Skeleton,
         pose: Option<&Pose>,
     ) {
@@ -187,15 +188,17 @@ impl DeferredGizmosContext<'_> {
             color,
         ));
 
-        for child_bone_id in children {
-            let child_bone_transform =
-                self.space_conversion
-                    .global_transform_of_bone(pose, skeleton, child_bone_id);
-            self.gizmos.queue(DeferredGizmoCommand::Bone(
-                global_bone_transform.translation,
-                child_bone_transform.translation,
-                color.with_alpha(0.5 * color.alpha),
-            ));
+        if draw_children {
+            for child_bone_id in children {
+                let child_bone_transform =
+                    self.space_conversion
+                        .global_transform_of_bone(pose, skeleton, child_bone_id);
+                self.gizmos.queue(DeferredGizmoCommand::Bone(
+                    global_bone_transform.translation,
+                    child_bone_transform.translation,
+                    color.with_alpha(0.5 * color.alpha),
+                ));
+            }
         }
     }
 

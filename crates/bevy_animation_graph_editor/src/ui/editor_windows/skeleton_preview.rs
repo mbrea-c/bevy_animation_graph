@@ -798,12 +798,12 @@ fn highlight_bones(
 
         let mut drawable = vec![];
         if let Some(clicked) = input.selected {
-            drawable.push((clicked, css::LIGHT_SKY_BLUE.into()));
+            drawable.push((clicked, css::LIGHT_SKY_BLUE.into(), false));
         }
 
         if let Some(hovered) = input.hovered {
             if input.selected.is_none_or(|b| b != hovered) {
-                drawable.push((hovered, GRAY.into()));
+                drawable.push((hovered, GRAY.into(), false));
             }
         }
 

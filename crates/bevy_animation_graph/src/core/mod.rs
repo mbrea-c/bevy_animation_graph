@@ -11,7 +11,7 @@ pub mod errors;
 pub mod event_track;
 pub mod id;
 #[cfg(feature = "physics_avian")]
-pub mod physics_systems;
+pub mod physics_systems_avian;
 pub mod pin_map;
 pub mod plugin;
 pub mod pose;

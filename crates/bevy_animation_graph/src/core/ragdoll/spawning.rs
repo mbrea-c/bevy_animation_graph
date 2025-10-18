@@ -7,10 +7,7 @@ use bevy::{
     transform::components::Transform,
 };
 
-use crate::core::{
-    colliders::core::ColliderLabel,
-    ragdoll::definition::{BodyId, ColliderId, JointId, JointVariant, Ragdoll},
-};
+use crate::core::ragdoll::definition::{BodyId, ColliderId, JointId, JointVariant, Ragdoll};
 
 #[derive(Reflect)]
 pub struct SpawnedRagdoll {
@@ -38,7 +35,7 @@ pub fn spawn_ragdoll_avian(
     simulated_parent: Option<Entity>,
     commands: &mut Commands,
 ) -> SpawnedRagdoll {
-    use avian3d::prelude::{AngleLimit, CollisionLayers, RigidBody, SphericalJoint};
+    use avian3d::prelude::{AngleLimit, CollisionLayers, RevoluteJoint, RigidBody, SphericalJoint};
     use bevy::ecs::name::Name;
 
     let root = commands
@@ -56,7 +53,8 @@ pub fn spawn_ragdoll_avian(
 
     for body in ragdoll.bodies.values() {
         use crate::core::ragdoll::{
-            definition::BodyMode, relative_kinematic_body::RelativeKinematicBodyPositionBased,
+            definition::{BodyLabel, BodyMode},
+            relative_kinematic_body::RelativeKinematicBodyPositionBased,
         };
 
         let body_entity = commands
@@ -74,6 +72,7 @@ pub fn spawn_ragdoll_avian(
                     relative_to: simulated_parent,
                     ..default()
                 },
+                BodyLabel(body.label.clone()),
             ))
             .id();
 
@@ -81,6 +80,8 @@ pub fn spawn_ragdoll_avian(
         spawned.bodies.insert(body.id, body_entity);
 
         for collider_id in &body.colliders {
+            use crate::core::ragdoll::definition::ColliderLabel;
+
             let Some(collider) = ragdoll.get_collider(*collider_id) else {
                 continue;
             };
@@ -102,6 +103,8 @@ pub fn spawn_ragdoll_avian(
     }
 
     for joint in ragdoll.joints.values() {
+        use crate::core::ragdoll::definition::JointLabel;
+
         let joint_entity = match &joint.variant {
             JointVariant::Spherical(spherical_joint) => {
                 let Some(body1) = ragdoll.get_body(spherical_joint.body1) else {
@@ -117,7 +120,7 @@ pub fn spawn_ragdoll_avian(
 
                 commands
                     .spawn((
-                        Name::new("Ragdoll joint"),
+                        Name::new("Ragdoll joint - spherical"),
                         SphericalJoint {
                             entity1: *spawned
                                 .bodies
@@ -156,7 +159,56 @@ pub fn spawn_ragdoll_avian(
                     ))
                     .id()
             }
+            JointVariant::Revolute(revolute_joint) => {
+                let Some(body1) = ragdoll.get_body(revolute_joint.body1) else {
+                    continue;
+                };
+
+                let Some(body2) = ragdoll.get_body(revolute_joint.body2) else {
+                    continue;
+                };
+
+                let local_anchor1 = revolute_joint.position - body1.offset;
+                let local_anchor2 = revolute_joint.position - body2.offset;
+
+                commands
+                    .spawn((
+                        Name::new("Ragdoll joint - revolute"),
+                        RevoluteJoint {
+                            entity1: *spawned
+                                .bodies
+                                .get(&revolute_joint.body1)
+                                .expect("Validation should have caught this"),
+                            entity2: *spawned
+                                .bodies
+                                .get(&revolute_joint.body2)
+                                .expect("Validation should have caught this"),
+                            local_anchor1,
+                            local_anchor2,
+                            aligned_axis: revolute_joint.aligned_axis,
+                            angle_limit: revolute_joint.angle_limit.as_ref().map(|limit| {
+                                AngleLimit {
+                                    min: limit.min,
+                                    max: limit.max,
+                                }
+                            }),
+                            align_lagrange: revolute_joint.align_lagrange,
+                            angle_limit_lagrange: revolute_joint.angle_limit_lagrange,
+                            align_torque: revolute_joint.align_torque,
+                            angle_limit_torque: revolute_joint.angle_limit_torque,
+                            damping_linear: revolute_joint.damping_linear,
+                            damping_angular: revolute_joint.damping_angular,
+                            position_lagrange: revolute_joint.position_lagrange,
+                            compliance: revolute_joint.compliance,
+                            force: revolute_joint.force,
+                        },
+                    ))
+                    .id()
+            }
         };
+        commands
+            .entity(joint_entity)
+            .insert(JointLabel(joint.label.clone()));
         commands.entity(root).add_child(joint_entity);
         spawned.joints.insert(joint.id, joint_entity);
     }

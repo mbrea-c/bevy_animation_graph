@@ -4,6 +4,7 @@ pub mod blend_space_node;
 pub mod chain_node;
 pub mod clip_node;
 pub mod const_entity_path;
+pub mod const_ragdoll_config;
 pub mod dummy_node;
 pub mod event_markup_node;
 pub mod flip_lr_node;

@@ -11,7 +11,7 @@ fn main() {
             file_path: "../../assets".to_string(),
             ..default()
         }))
-        .add_plugins(AnimationGraphPlugin)
+        .add_plugins(AnimationGraphPlugin::default())
         .insert_resource(AmbientLight {
             color: Color::WHITE,
             brightness: 0.1,

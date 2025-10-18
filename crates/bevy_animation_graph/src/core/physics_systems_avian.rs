@@ -122,6 +122,7 @@ pub fn spawn_missing_ragdolls_avian(
     }
 }
 
+/// Updates the rigidbody modes of bodies in a ragdoll based on configuration
 pub fn update_ragdoll_rigidbodies(
     animation_players: Query<&AnimationGraphPlayer>,
     ragdoll_assets: Res<Assets<Ragdoll>>,
@@ -157,6 +158,7 @@ pub fn update_ragdoll_rigidbodies(
     }
 }
 
+/// Updates the target positions of bodies in a ragdoll based on the animated pose
 pub fn update_ragdolls_avian(
     animation_players: Query<&AnimationGraphPlayer>,
     ragdoll_assets: Res<Assets<Ragdoll>>,
@@ -180,8 +182,6 @@ pub fn update_ragdolls_avian(
             };
             let rb_targets =
                 write_pose_to_ragdoll(pose, skeleton, ragdoll, bone_map, pose_fallback);
-            // There's still a frame delay on this root transform
-            // TODO: We might need to traverse the hierarchy ourselves, or something akin
             let root_transform = pose_fallback.compute_root_global_transform_to_rigidbody(skeleton);
 
             for body_target in rb_targets.bodies {

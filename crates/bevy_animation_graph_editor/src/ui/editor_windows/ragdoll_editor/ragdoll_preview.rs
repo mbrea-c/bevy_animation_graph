@@ -373,6 +373,60 @@ impl GizmoOverlay for RagdollJoints {
                             });
                         }
                     }
+                    JointVariant::Revolute(revolute_joint) => {
+                        if let Some(body1) = self
+                            .body_buffers
+                            .get(&revolute_joint.body1)
+                            .or(ragdoll.get_body(revolute_joint.body1))
+                            && let Some(body2) = self
+                                .body_buffers
+                                .get(&revolute_joint.body2)
+                                .or(ragdoll.get_body(revolute_joint.body2))
+                        {
+                            let align_axis = revolute_joint.aligned_axis;
+                            let jointpos = revolute_joint.position;
+
+                            let is_hovered = self.hovered.is_some_and(|h| h == joint.id);
+                            let is_selected = self.selected.is_some_and(|h| h == joint.id);
+
+                            let hsla_purple = Hsla::from(css::PURPLE);
+
+                            let base_color = if is_hovered {
+                                hsla_purple
+                                    .with_lightness((hsla_purple.lightness + 0.2).min(1.))
+                                    .into()
+                            } else if is_selected {
+                                css::PURPLE
+                            } else {
+                                hsla_purple
+                                    .with_lightness((hsla_purple.lightness - 0.1).max(0.))
+                                    .into()
+                            };
+
+                            let color = if joint.created_from.is_none() {
+                                base_color
+                            } else {
+                                base_color.with_alpha(SYMMETRY_ALPHA)
+                            };
+
+                            player.gizmo_relative_to_root(move |root_transform, gizmos| {
+                                gizmos.arrow(
+                                    root_transform * jointpos,
+                                    root_transform * jointpos
+                                        + align_axis.normalize_or_zero() * 0.1,
+                                    color,
+                                );
+                                gizmos.circle(
+                                    Isometry3d {
+                                        rotation: Quat::from_rotation_arc(Vec3::Z, align_axis),
+                                        translation: (root_transform * jointpos).into(),
+                                    },
+                                    0.05,
+                                    color,
+                                );
+                            });
+                        }
+                    }
                 }
             }
         });
@@ -400,7 +454,7 @@ impl GizmoOverlay for SkeletonBones {
                     css::GRAY
                 };
 
-                player.gizmo_for_bones_with_color([(bone_id, color.into())]);
+                player.gizmo_for_bones_with_color([(bone_id, color.into(), false)]);
             }
         });
     }

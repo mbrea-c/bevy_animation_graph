@@ -366,7 +366,7 @@ const _: () = {
         fn field_len(&self) -> usize {
             2usize
         }
-        fn iter_fields(&self) -> bevy::reflect::FieldIter {
+        fn iter_fields(&'_ self) -> bevy::reflect::FieldIter<'_> {
             bevy::reflect::FieldIter::new(self)
         }
         fn clone_dynamic(&self) -> bevy::reflect::DynamicStruct {
@@ -441,11 +441,11 @@ const _: () = {
             bevy::reflect::ReflectKind::Struct
         }
         #[inline]
-        fn reflect_ref(&self) -> bevy::reflect::ReflectRef {
+        fn reflect_ref(&'_ self) -> bevy::reflect::ReflectRef<'_> {
             bevy::reflect::ReflectRef::Struct(self)
         }
         #[inline]
-        fn reflect_mut(&mut self) -> bevy::reflect::ReflectMut {
+        fn reflect_mut(&'_ mut self) -> bevy::reflect::ReflectMut<'_> {
             bevy::reflect::ReflectMut::Struct(self)
         }
         #[inline]

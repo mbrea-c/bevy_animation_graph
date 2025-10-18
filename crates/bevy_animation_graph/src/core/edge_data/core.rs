@@ -1,5 +1,5 @@
 use super::{EventQueue, bone_mask::BoneMask};
-use crate::core::{animation_clip::EntityPath, pose::Pose};
+use crate::core::{animation_clip::EntityPath, pose::Pose, ragdoll::configuration::RagdollConfig};
 use bevy::{
     math::{Quat, Vec2, Vec3},
     reflect::{Reflect, std_traits::ReflectDefault},
@@ -43,6 +43,7 @@ pub enum DataSpec {
     BoneMask,
     Pose,
     EventQueue,
+    RagdollConfig,
 }
 
 #[derive(Serialize, Deserialize, Reflect, Clone, Debug, ValueWrapper)]
@@ -63,6 +64,7 @@ pub enum DataValue {
     BoneMask(BoneMask),
     Pose(Pose),
     EventQueue(EventQueue),
+    RagdollConfig(RagdollConfig),
 }
 
 impl Default for DataValue {
@@ -83,6 +85,7 @@ impl From<&DataValue> for DataSpec {
             DataValue::Pose(_) => DataSpec::Pose,
             DataValue::EventQueue(_) => DataSpec::EventQueue,
             DataValue::Bool(_) => DataSpec::Bool,
+            DataValue::RagdollConfig(_) => DataSpec::RagdollConfig,
         }
     }
 }

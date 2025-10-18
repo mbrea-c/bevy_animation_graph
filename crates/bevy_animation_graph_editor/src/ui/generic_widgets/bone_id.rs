@@ -32,7 +32,10 @@ impl<'a> egui::Widget for BoneIdWidget<'a> {
                             self.skeleton.map(|skn| picker(ui, self.bone_id, skn));
 
                         let mut uuid_str = format!("{}", self.bone_id.id().hyphenated());
-                        let mut response = ui.text_edit_singleline(&mut uuid_str);
+                        let mut response = ui.add(
+                            egui::TextEdit::singleline(&mut uuid_str)
+                                .min_size(egui::Vec2::new(200., 0.)),
+                        );
                         if let Some(picker_response) = picker_response {
                             response |= picker_response;
                         }

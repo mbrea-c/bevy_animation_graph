@@ -2,10 +2,11 @@ extern crate bevy;
 extern crate bevy_animation_graph;
 
 use avian3d::PhysicsPlugins;
-use avian3d::prelude::{Collider, RigidBody};
+use avian3d::prelude::{Collider, Position, RigidBody};
 use bevy::color::palettes::css::GREEN;
 use bevy::{pbr::CascadeShadowConfigBuilder, prelude::*};
 use bevy_animation_graph::core::animated_scene::AnimatedSceneInstance;
+use bevy_animation_graph::core::ragdoll::definition::BodyLabel;
 use bevy_animation_graph::prelude::*;
 use std::f32::consts::PI;
 
@@ -15,9 +16,9 @@ fn main() {
         file_path: "../../assets".to_string(),
         ..default()
     }))
-    .add_plugins(PhysicsPlugins::new(PostUpdate))
-    .add_plugins(avian3d::prelude::PhysicsDebugPlugin::default())
-    .add_plugins(AnimationGraphPlugin)
+    .add_plugins(PhysicsPlugins::new(FixedPostUpdate))
+    // .add_plugins(avian3d::prelude::PhysicsDebugPlugin::default())
+    .add_plugins(AnimationGraphPlugin::from_physics_schedule(FixedPostUpdate))
     // .add_plugins((
     //     bevy_inspector_egui::bevy_egui::EguiPlugin::default(),
     //     bevy_inspector_egui::quick::WorldInspectorPlugin::default(),
@@ -31,7 +32,13 @@ fn main() {
     .add_systems(Startup, setup)
     .add_systems(
         Update,
-        (find_target, update_params, update_animation_player).chain(),
+        (
+            find_target,
+            update_params,
+            update_animation_player,
+            camera_follow_ragdoll,
+        )
+            .chain(),
     );
 
     let graph = bevy_mod_debugdump::schedule_graph_dot(
@@ -41,6 +48,13 @@ fn main() {
     );
 
     std::fs::write("post-update.dot", graph);
+
+    let graph = bevy_mod_debugdump::schedule_graph_dot(
+        &mut app,
+        FixedPostUpdate,
+        &bevy_mod_debugdump::schedule_graph::Settings::default(),
+    );
+    std::fs::write("fixed-post-update.dot", graph);
 
     app.run();
 }
@@ -54,6 +68,8 @@ struct Params {
     pub target_position: Vec3,
     pub position: Vec3,
     pub velocity: Vec3,
+
+    pub ragdoll_mode: bool,
 }
 
 impl Default for Params {
@@ -66,6 +82,7 @@ impl Default for Params {
             position: Vec3::ZERO,
             real_speed: 0.,
             velocity: Vec3::ZERO,
+            ragdoll_mode: false,
         }
     }
 }
@@ -90,11 +107,51 @@ fn setup(
 
     // Plane
     commands.spawn((
-        Mesh3d(meshes.add(Plane3d::new(Vec3::Y, Vec2::new(20., 20.)))),
+        Mesh3d(meshes.add(Cuboid::new(20., 0.1, 20.))),
         MeshMaterial3d(materials.add(Color::from(LinearRgba::rgb(0.3, 0.5, 0.3)))),
-        Collider::cuboid(40., 0.1, 40.),
+        Collider::cuboid(20., 0.1, 20.),
         RigidBody::Static,
+        Transform::from_xyz(0., -0.05, 0.),
     ));
+
+    // Staircase
+    for i in 0..50 {
+        let step_height = 0.35;
+        let step_depth = 0.3;
+        commands.spawn((
+            Mesh3d(meshes.add(Cuboid::new(2. * step_depth, step_height, 20.))),
+            MeshMaterial3d(materials.add(Color::from(LinearRgba::rgb(0.7, 0.45, 0.32)))),
+            Collider::cuboid(2. * step_depth, step_height, 20.),
+            RigidBody::Static,
+            Transform::from_xyz(
+                10. + i as f32 * step_depth,
+                -step_height * 1.5 - i as f32 * step_height,
+                0.,
+            ),
+        ));
+
+        let num_obstacles = rand::random_range(0..10);
+
+        for _ in 0..num_obstacles {
+            let z = (rand::random::<f32>() - 0.5) * 20.;
+            let radius = rand::random::<f32>();
+            commands.spawn((
+                Mesh3d(meshes.add(Sphere::new(radius))),
+                MeshMaterial3d(materials.add(Color::from(LinearRgba::rgb(
+                    rand::random(),
+                    rand::random(),
+                    rand::random(),
+                )))),
+                Collider::sphere(radius),
+                RigidBody::Static,
+                Transform::from_xyz(
+                    10. + i as f32 * step_depth,
+                    -step_height * 1.5 - i as f32 * step_height,
+                    z,
+                ),
+            ));
+        }
+    }
 
     // Light
     commands.spawn((
@@ -166,14 +223,16 @@ fn update_animation_player(
     }
 
     if keyboard_input.just_pressed(KeyCode::KeyT) {
-        player.ragdoll_enabled = !player.ragdoll_enabled;
+        params.ragdoll_mode = !params.ragdoll_mode;
     }
 
-    if player.ragdoll_enabled {
-        text.0 = "Right arm: Dynamic (physics on)".into();
+    if params.ragdoll_mode {
+        text.0 = "Ragdoll enabled".into();
     } else {
-        text.0 = "Right arm: Kinematic (follows pose)".into();
+        text.0 = "Ragdoll disabled".into();
     }
+
+    player.ragdoll_enabled = params.ragdoll_mode;
 
     if keyboard_input.pressed(KeyCode::ArrowUp) {
         params.speed += 1.5 * time.delta_secs();
@@ -187,6 +246,27 @@ fn update_animation_player(
         "target_direction",
         (Quat::from_rotation_y(-params.angle) * Vec3::X).into(),
     );
+}
+
+fn camera_follow_ragdoll(
+    camera: Single<&mut Transform, With<Camera>>,
+    human: Single<&mut Transform, (With<Human>, Without<Camera>)>,
+    mut params: ResMut<Params>,
+    physics_body_query: Query<(&Position, &BodyLabel), With<RigidBody>>,
+) {
+    let mut cam_transform = camera.into_inner();
+    let mut human_transform = human.into_inner();
+
+    for (body_pos, body_label) in &physics_body_query {
+        if body_label.0.as_str() == "stomach" {
+            cam_transform.translation = body_pos.0 + Vec3::new(3., 9., 3.);
+
+            if params.ragdoll_mode {
+                human_transform.translation = body_pos.0;
+                params.position = body_pos.0;
+            }
+        }
+    }
 }
 
 fn find_target(

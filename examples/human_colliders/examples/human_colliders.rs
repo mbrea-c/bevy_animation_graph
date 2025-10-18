@@ -18,7 +18,7 @@ fn main() {
         }))
         .add_plugins(PhysicsPlugins::default())
         .add_plugins(PhysicsDebugPlugin::default())
-        .add_plugins(AnimationGraphPlugin)
+        .add_plugins(AnimationGraphPlugin::default())
         .insert_resource(AmbientLight {
             color: Color::WHITE,
             brightness: 0.1,

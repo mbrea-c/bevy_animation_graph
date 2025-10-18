@@ -14,8 +14,8 @@ use bevy_animation_graph::{
         ragdoll::{
             bone_mapping::{BodyMapping, BodyWeight, BoneMapping, RagdollBoneMap},
             definition::{
-                Body, BodyId, Collider, ColliderId, Joint, JointId, JointVariant, Ragdoll,
-                SymmetrySuffixes,
+                AngleLimit, Body, BodyId, Collider, ColliderId, Joint, JointId, JointVariant,
+                Ragdoll, SymmetrySuffixes,
             },
         },
         skeleton::Skeleton,
@@ -31,7 +31,7 @@ pub struct EditRagdollBody {
 }
 
 impl DynamicAction for EditRagdollBody {
-    fn handle(self: Box<Self>, world: &mut World, ctx: &mut ActionContext) {
+    fn handle(self: Box<Self>, world: &mut World, _ctx: &mut ActionContext) {
         run_handler(world, "Could not edit body")(Self::system, *self)
     }
 }
@@ -439,7 +439,6 @@ impl RecomputeRagdollSymmetry {
     pub fn system(
         (In(input), InMut(ctx)): (In<Self>, InMut<ActionContext>),
         mut ragdoll_assets: ResMut<Assets<Ragdoll>>,
-        mut skeleton_assets: ResMut<Assets<Skeleton>>,
         mut ragdoll_bone_map_assets: ResMut<Assets<RagdollBoneMap>>,
         mut dirty_assets: ResMut<DirtyAssets>,
     ) {
@@ -448,9 +447,6 @@ impl RecomputeRagdollSymmetry {
             return;
         };
         let Some(ragdoll) = ragdoll_assets.get_mut(&ragdoll_bone_map.ragdoll) else {
-            return;
-        };
-        let Some(skeleton) = skeleton_assets.get_mut(&ragdoll_bone_map.skeleton) else {
             return;
         };
 
@@ -763,30 +759,64 @@ fn mirror_joint(
     mirrored_joint.label = mirrored_label;
 
     match &original_joint.variant {
-        JointVariant::Spherical(spherical_joint) => {
-            let mut mirror_spherical_joint = spherical_joint.clone();
+        JointVariant::Spherical(inner_joint) => {
+            let mut mirror_spherical_joint = inner_joint.clone();
 
             let mirrored_body1 = reverse_body_index
-                .get(&spherical_joint.body1)
+                .get(&inner_joint.body1)
                 .copied()
-                .unwrap_or(spherical_joint.body1);
+                .unwrap_or(inner_joint.body1);
             let mirrored_body2 = reverse_body_index
-                .get(&spherical_joint.body2)
+                .get(&inner_joint.body2)
                 .copied()
-                .unwrap_or(spherical_joint.body2);
+                .unwrap_or(inner_joint.body2);
 
             mirror_spherical_joint.body1 = mirrored_body1;
             mirror_spherical_joint.body2 = mirrored_body2;
 
+            mirror_spherical_joint.twist_limit =
+                inner_joint.twist_limit.as_ref().map(|l| AngleLimit {
+                    min: -l.max,
+                    max: -l.min,
+                });
+
             mirror_spherical_joint.position =
-                SymmertryMode::MirrorX.apply_position(spherical_joint.position);
+                SymmertryMode::MirrorX.apply_position(inner_joint.position);
 
             mirror_spherical_joint.swing_axis =
-                SymmertryMode::MirrorX.apply_position(spherical_joint.swing_axis);
+                SymmertryMode::MirrorX.apply_position(inner_joint.swing_axis);
             mirror_spherical_joint.twist_axis =
-                SymmertryMode::MirrorX.apply_position(spherical_joint.twist_axis);
+                SymmertryMode::MirrorX.apply_position(inner_joint.twist_axis);
 
             mirrored_joint.variant = JointVariant::Spherical(mirror_spherical_joint);
+        }
+        JointVariant::Revolute(inner_joint) => {
+            let mut mirror_inner_joint = inner_joint.clone();
+
+            let mirrored_body1 = reverse_body_index
+                .get(&inner_joint.body1)
+                .copied()
+                .unwrap_or(inner_joint.body1);
+            let mirrored_body2 = reverse_body_index
+                .get(&inner_joint.body2)
+                .copied()
+                .unwrap_or(inner_joint.body2);
+
+            mirror_inner_joint.body1 = mirrored_body1;
+            mirror_inner_joint.body2 = mirrored_body2;
+
+            mirror_inner_joint.angle_limit = inner_joint.angle_limit.as_ref().map(|l| AngleLimit {
+                min: -l.max,
+                max: -l.min,
+            });
+
+            mirror_inner_joint.position =
+                SymmertryMode::MirrorX.apply_position(inner_joint.position);
+
+            mirror_inner_joint.aligned_axis =
+                SymmertryMode::MirrorX.apply_position(inner_joint.aligned_axis);
+
+            mirrored_joint.variant = JointVariant::Revolute(mirror_inner_joint);
         }
     }
 

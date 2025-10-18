@@ -1,5 +1,6 @@
 use bevy::{
     asset::Asset,
+    ecs::component::Component,
     math::{Isometry3d, Vec3, primitives::Cuboid},
     platform::collections::HashMap,
     reflect::Reflect,
@@ -163,7 +164,7 @@ impl Body {
     }
 }
 
-#[derive(Reflect, Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Reflect, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum BodyMode {
     Kinematic,
     Dynamic,
@@ -236,6 +237,7 @@ impl Joint {
 #[derive(Reflect, Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub enum JointVariant {
     Spherical(SphericalJoint),
+    Revolute(RevoluteJoint),
 }
 
 #[derive(Reflect, Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
@@ -256,6 +258,24 @@ pub struct SphericalJoint {
     pub force: Vec3,
     pub swing_torque: Vec3,
     pub twist_torque: Vec3,
+}
+
+#[derive(Reflect, Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
+pub struct RevoluteJoint {
+    pub body1: BodyId,
+    pub body2: BodyId,
+    pub position: Vec3,
+    pub aligned_axis: Vec3,
+    pub angle_limit: Option<AngleLimit>,
+    pub damping_linear: f32,
+    pub damping_angular: f32,
+    pub position_lagrange: f32,
+    pub align_lagrange: f32,
+    pub angle_limit_lagrange: f32,
+    pub compliance: f32,
+    pub force: Vec3,
+    pub align_torque: Vec3,
+    pub angle_limit_torque: Vec3,
 }
 
 #[derive(Reflect, Debug, Clone, Serialize, Deserialize, Default, PartialEq)]
@@ -306,3 +326,12 @@ impl std::fmt::Debug for JointId {
         self.uuid.fmt(f)
     }
 }
+
+#[derive(Component, Reflect)]
+pub struct BodyLabel(pub String);
+
+#[derive(Component, Reflect)]
+pub struct JointLabel(pub String);
+
+#[derive(Component, Reflect)]
+pub struct ColliderLabel(pub String);

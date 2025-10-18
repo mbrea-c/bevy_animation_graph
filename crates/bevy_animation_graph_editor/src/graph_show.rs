@@ -188,6 +188,24 @@ fn param_spec_to_colors(spec: DataSpec) -> (PinStyleArgs, LinkStyleArgs) {
                 },
             )
         }
+        DataSpec::RagdollConfig => {
+            let base = Color32::from_rgb(28, 140, 3);
+            let hovered = Color32::from_rgb(99, 184, 74);
+            let selected = Color32::from_rgb(99, 184, 74);
+            (
+                PinStyleArgs {
+                    background: Some(base),
+                    hovered: Some(hovered),
+                    shape: Some(PinShape::CircleFilled),
+                },
+                LinkStyleArgs {
+                    base: Some(base),
+                    hovered: Some(hovered),
+                    selected: Some(selected),
+                    thickness: Some(6.),
+                },
+            )
+        }
     }
 }
 
