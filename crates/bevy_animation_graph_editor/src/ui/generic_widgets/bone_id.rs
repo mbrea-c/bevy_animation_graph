@@ -1,5 +1,6 @@
 use bevy_animation_graph::core::{id::BoneId, skeleton::Skeleton};
-use uuid::Uuid;
+
+use crate::ui::generic_widgets::uuid::UuidWidget;
 
 pub struct BoneIdWidget<'a> {
     pub bone_id: &'a mut BoneId,
@@ -31,17 +32,13 @@ impl<'a> egui::Widget for BoneIdWidget<'a> {
                         let picker_response =
                             self.skeleton.map(|skn| picker(ui, self.bone_id, skn));
 
-                        let mut uuid_str = format!("{}", self.bone_id.id().hyphenated());
-                        let mut response = ui.add(
-                            egui::TextEdit::singleline(&mut uuid_str)
-                                .min_size(egui::Vec2::new(200., 0.)),
-                        );
+                        let mut uuid = self.bone_id.id();
+                        let mut response =
+                            ui.add(UuidWidget::new_salted(&mut uuid, "bone id uuid"));
                         if let Some(picker_response) = picker_response {
                             response |= picker_response;
                         }
-                        if let Ok(uuid) = Uuid::parse_str(&uuid_str) {
-                            *self.bone_id = BoneId::from_uuid(uuid);
-                        }
+                        *self.bone_id = BoneId::from_uuid(uuid);
 
                         response
                     })

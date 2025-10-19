@@ -1,5 +1,6 @@
 use bevy_animation_graph::core::ragdoll::definition::{BodyId, Ragdoll};
-use uuid::Uuid;
+
+use crate::ui::generic_widgets::uuid::UuidWidget;
 
 pub struct BodyIdWidget<'a> {
     pub body_id: &'a mut BodyId,
@@ -30,14 +31,13 @@ impl<'a> egui::Widget for BodyIdWidget<'a> {
                     .horizontal(|ui| {
                         let picker_response = self.ragdoll.map(|r| picker(ui, self.body_id, r));
 
-                        let mut uuid_str = format!("{}", self.body_id.uuid().hyphenated());
-                        let mut response = ui.text_edit_singleline(&mut uuid_str);
+                        let mut uuid = self.body_id.uuid();
+                        let mut response =
+                            ui.add(UuidWidget::new_salted(&mut uuid, "body id uuid"));
                         if let Some(picker_response) = picker_response {
                             response |= picker_response;
                         }
-                        if let Ok(uuid) = Uuid::parse_str(&uuid_str) {
-                            *self.body_id = BodyId::from_uuid(uuid);
-                        }
+                        *self.body_id = BodyId::from_uuid(uuid);
 
                         response
                     })

@@ -7,4 +7,5 @@ pub mod list;
 pub mod quat;
 pub mod ragdoll_config;
 pub mod u32_flags;
+pub mod uuid;
 pub mod vec3;

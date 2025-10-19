@@ -1,9 +1,10 @@
 use bevy_animation_graph::core::ragdoll::configuration::RagdollConfig;
 
+use crate::ui::generic_widgets::{bone_id::BoneIdWidget, hashmap::HashMapWidget};
+
 pub struct RagdollConfigWidget<'a> {
     pub config: &'a mut RagdollConfig,
     pub id_hash: egui::Id,
-    pub width: f32,
 }
 
 impl<'a> RagdollConfigWidget<'a> {
@@ -11,42 +12,47 @@ impl<'a> RagdollConfigWidget<'a> {
         Self {
             config,
             id_hash: egui::Id::new(salt),
-            width: 300.,
         }
-    }
-
-    pub fn with_width(mut self, width: f32) -> Self {
-        self.width = width;
-        self
     }
 }
 
 impl<'a> egui::Widget for RagdollConfigWidget<'a> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
-        let button_response = ui.button("Edit");
-        let popup_response =
-            egui::Popup::from_toggle_button_response(&button_response).show(|ui| {
-                // let mut response = ui.label("default mode:");
-                // response |= egui::ComboBox::from_id_salt("joint variant")
-                //     .selected_text(match &self.joint.variant {
-                //         JointVariant::Spherical(_) => "Spherical",
-                //         JointVariant::Revolute(_) => "Revolute",
-                //     })
-                //     .show_ui(ui, |ui| {
-                //         ui.selectable_value(
-                //             &mut self.joint.variant,
-                //             JointVariant::Spherical(SphericalJoint::default()),
-                //             "Spherical",
-                //         );
-                //         ui.selectable_value(
-                //             &mut self.joint.variant,
-                //             JointVariant::Revolute(RevoluteJoint::default()),
-                //             "Revolute",
-                //         );
-                //     })
-                //     .response;
-            });
+        ui.push_id(self.id_hash, |ui| {
+            let mut response = ui.button("Edit");
+            let popup_response = egui::Popup::from_toggle_button_response(&response)
+                .close_behavior(egui::PopupCloseBehavior::IgnoreClicks)
+                .show(|ui| {
+                    ui.push_id("default mode", |ui| {
+                        // env.ui_for_reflect(&mut value.default_mode, ui)
+                    })
+                    .inner;
+                    ui.push_id("default readback", |ui| {
+                        // env.ui_for_reflect(&mut value.default_readback, ui)
+                    })
+                    .inner;
+                    let response = HashMapWidget::new_salted(
+                        &mut self.config.readback_overrides,
+                        "readback overrides",
+                    )
+                    .ui(
+                        ui,
+                        |ui, key| ui.add(BoneIdWidget::new_salted(key, "bone id edit")),
+                        |ui, key| ui.label(format!("{}", key.id().hyphenated())),
+                        |ui, value| ui.add(egui::Checkbox::without_text(value)),
+                    );
 
-        button_response
+                    response
+                });
+
+            if let Some(popup_response) = popup_response {
+                if popup_response.inner.changed() {
+                    response.mark_changed();
+                }
+            }
+
+            response
+        })
+        .inner
     }
 }
