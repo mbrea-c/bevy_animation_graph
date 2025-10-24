@@ -17,7 +17,7 @@ use egui_dock::egui;
 
 use crate::ui::{
     OverrideSceneAnimation, PartOfSubScene, PreviewScene, SubSceneConfig, SubSceneSyncAction,
-    core::{EditorWindowContext, EditorWindowExtension, InspectorSelection},
+    core::{EditorWindowExtension, InspectorSelection, LegacyEditorWindowContext},
     utils::{
         self, OrbitView, orbit_camera_scene_show, orbit_camera_transform, orbit_camera_update,
         using_inspector_env,
@@ -30,7 +30,7 @@ pub struct DebuggerWindow {
 }
 
 impl EditorWindowExtension for DebuggerWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
+    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut LegacyEditorWindowContext) {
         if ctx.global_state.scene.is_none() {
             return;
         };
@@ -204,7 +204,7 @@ impl DebuggerWindow {
         ui: &mut egui::Ui,
         world: &mut World,
         id: egui::Id,
-        _ctx: &mut EditorWindowContext,
+        _ctx: &mut LegacyEditorWindowContext,
     ) {
         let config = PoseSubSceneConfig {
             pose: pose.clone(),

@@ -14,7 +14,7 @@ use crate::ui::{
         },
         window::DynWindowAction,
     },
-    core::{EditorWindowContext, EditorWindowExtension},
+    core::{EditorWindowExtension, LegacyEditorWindowContext},
     reflect_widgets::wrap_ui::using_wrap_ui,
     utils::{OrbitView, orbit_camera_scene_show},
 };
@@ -45,7 +45,7 @@ pub enum ClipPreviewAction {
 }
 
 impl EditorWindowExtension for ClipPreviewWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
+    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut LegacyEditorWindowContext) {
         let timeline_height = 30.;
 
         egui::TopBottomPanel::top("Clip preview base scene selector")
@@ -171,7 +171,7 @@ impl ClipPreviewWindow {
         &self,
         ui: &mut egui::Ui,
         world: &mut World,
-        ctx: &mut EditorWindowContext,
+        ctx: &mut LegacyEditorWindowContext,
     ) {
         using_wrap_ui(world, |mut env| {
             if let Some(new_handle) = env.mutable_buffered(

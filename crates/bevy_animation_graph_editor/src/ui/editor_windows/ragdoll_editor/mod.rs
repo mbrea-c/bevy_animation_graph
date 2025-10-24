@@ -26,7 +26,7 @@ use crate::ui::{
         },
         window::DynWindowAction,
     },
-    core::{EditorWindowContext, EditorWindowExtension},
+    core::{EditorWindowExtension, LegacyEditorWindowContext},
     editor_windows::ragdoll_editor::{
         body_inspector::BodyInspector,
         body_mapping_inspector::BodyMappingInspector,
@@ -144,7 +144,7 @@ pub enum RagdollEditorAction {
 }
 
 impl EditorWindowExtension for RagdollEditorWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
+    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut LegacyEditorWindowContext) {
         self.top_panel(ui, world, ctx);
         self.left_panel(ui, world, ctx);
         self.right_panel(ui, world, ctx);
@@ -196,7 +196,7 @@ impl RagdollEditorWindow {
         &mut self,
         ui: &mut egui::Ui,
         world: &mut World,
-        ctx: &mut EditorWindowContext,
+        ctx: &mut LegacyEditorWindowContext,
     ) {
         let timeline_height = 30.;
 
@@ -220,7 +220,7 @@ impl RagdollEditorWindow {
         &mut self,
         ui: &mut egui::Ui,
         world: &mut World,
-        ctx: &mut EditorWindowContext,
+        ctx: &mut LegacyEditorWindowContext,
     ) {
         egui::SidePanel::left("Hierarchical tree view")
             .resizable(true)
@@ -258,8 +258,8 @@ impl RagdollEditorWindow {
 
     fn submit_row(
         ui: &mut egui::Ui,
-        ctx: &mut EditorWindowContext,
-        on_submit: impl FnOnce(&mut EditorWindowContext),
+        ctx: &mut LegacyEditorWindowContext,
+        on_submit: impl FnOnce(&mut LegacyEditorWindowContext),
     ) {
         ui.horizontal(|ui| {
             if ui.button("Apply").clicked() {
@@ -276,7 +276,7 @@ impl RagdollEditorWindow {
         &mut self,
         ui: &mut egui::Ui,
         world: &mut World,
-        ctx: &mut EditorWindowContext,
+        ctx: &mut LegacyEditorWindowContext,
     ) {
         egui::SidePanel::right("Inspector panel")
             .resizable(true)
@@ -515,7 +515,7 @@ impl RagdollEditorWindow {
         &mut self,
         ui: &mut egui::Ui,
         world: &mut World,
-        ctx: &mut EditorWindowContext,
+        ctx: &mut LegacyEditorWindowContext,
     ) {
         if let Some(base_scene) = &self.scene
             && let Some(ragdoll) = &self.ragdoll
@@ -544,7 +544,7 @@ impl RagdollEditorWindow {
         &mut self,
         ui: &mut egui::Ui,
         world: &mut World,
-        ctx: &mut EditorWindowContext,
+        ctx: &mut LegacyEditorWindowContext,
     ) {
         if self.show_global_settings {
             egui::Window::new("Skeleton collider settings").show(ui.ctx(), |ui| {

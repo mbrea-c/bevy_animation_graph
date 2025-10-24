@@ -30,7 +30,7 @@ impl EditorWindowExtension for ScenePreviewWindow {
         &mut self,
         ui: &mut egui_dock::egui::Ui,
         world: &mut bevy::prelude::World,
-        ctx: &mut crate::ui::core::EditorWindowContext,
+        ctx: &mut crate::ui::core::LegacyEditorWindowContext,
     ) {
         let Some(scene_selection) = &ctx.global_state.scene else {
             return;

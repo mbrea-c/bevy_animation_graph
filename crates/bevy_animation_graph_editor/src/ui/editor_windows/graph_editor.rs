@@ -23,7 +23,9 @@ use crate::{
                 MoveOutput, RemoveLink, RemoveNode,
             },
         },
-        core::{EditorWindowContext, EditorWindowExtension, InspectorSelection, NodeSelection},
+        core::{
+            EditorWindowExtension, InspectorSelection, LegacyEditorWindowContext, NodeSelection,
+        },
         utils::{self, popup::CustomPopup, using_inspector_env},
     },
 };
@@ -40,7 +42,7 @@ struct TypeInfo {
 pub struct GraphEditorWindow;
 
 impl EditorWindowExtension for GraphEditorWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
+    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut LegacyEditorWindowContext) {
         let Some(graph_selection) = &mut ctx.global_state.graph_editor else {
             ui.centered_and_justified(|ui| ui.label("Select a graph to edit!"));
             return;
@@ -186,7 +188,7 @@ impl GraphEditorWindow {
         &self,
         ui: &mut egui::Ui,
         world: &mut World,
-        ctx: &mut EditorWindowContext,
+        ctx: &mut LegacyEditorWindowContext,
     ) {
         let Some(mut types): Option<Vec<_>> = world
             .get_resource::<AppTypeRegistry>()

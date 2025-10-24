@@ -16,8 +16,8 @@ use crate::{
             fsm::{FsmAction, GenerateIndices, MoveState, RemoveState, RemoveTransition},
         },
         core::{
-            EditorWindowContext, EditorWindowExtension, FsmStateSelection, FsmTransitionSelection,
-            InspectorSelection,
+            EditorWindowExtension, FsmStateSelection, FsmTransitionSelection, InspectorSelection,
+            LegacyEditorWindowContext,
         },
         utils,
     },
@@ -27,7 +27,7 @@ use crate::{
 pub struct FsmEditorWindow;
 
 impl EditorWindowExtension for FsmEditorWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
+    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut LegacyEditorWindowContext) {
         let Some(fsm_selection) = &mut ctx.global_state.fsm_editor else {
             ui.centered_and_justified(|ui| ui.label("Select a state machine to edit!"));
             return;

@@ -2,11 +2,11 @@ use bevy::ecs::world::World;
 use bevy_animation_graph::core::ragdoll::definition::{Body, BodyMode};
 use egui::Widget;
 
-use crate::ui::{core::EditorWindowContext, generic_widgets::vec3::Vec3Widget};
+use crate::ui::{core::LegacyEditorWindowContext, generic_widgets::vec3::Vec3Widget};
 
 pub struct BodyInspector<'a, 'b> {
     pub world: &'a mut World,
-    pub ctx: &'a mut EditorWindowContext<'b>,
+    pub ctx: &'a mut LegacyEditorWindowContext<'b>,
     pub body: &'a mut Body,
 }
 

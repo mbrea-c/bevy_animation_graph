@@ -5,13 +5,13 @@ use bevy_animation_graph::core::ragdoll::definition::{
 use egui::{ComboBox, Widget};
 
 use crate::ui::{
-    core::EditorWindowContext,
+    core::LegacyEditorWindowContext,
     generic_widgets::{angle_limit::AngleLimitWidget, body_id::BodyIdWidget, vec3::Vec3Widget},
 };
 
 pub struct JointInspector<'a, 'b> {
     pub world: &'a mut World,
-    pub ctx: &'a mut EditorWindowContext<'b>,
+    pub ctx: &'a mut LegacyEditorWindowContext<'b>,
     pub joint: &'a mut Joint,
     pub ragdoll: &'a Ragdoll,
 }

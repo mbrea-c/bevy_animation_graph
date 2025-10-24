@@ -3,7 +3,7 @@ use bevy_animation_graph::{core::edge_data::AnimationEvent, prelude::AnimatedSce
 use egui_dock::egui;
 
 use crate::ui::{
-    core::{EditorWindowContext, EditorWindowExtension, SceneSelection},
+    core::{EditorWindowExtension, LegacyEditorWindowContext, SceneSelection},
     utils::tree_asset_selector,
 };
 
@@ -11,7 +11,7 @@ use crate::ui::{
 pub struct SceneSelectorWindow;
 
 impl EditorWindowExtension for SceneSelectorWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
+    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut LegacyEditorWindowContext) {
         let chosen_handle = tree_asset_selector::<AnimatedScene>(ui, world);
 
         // TODO: Make sure to clear out all places that hold a graph context id

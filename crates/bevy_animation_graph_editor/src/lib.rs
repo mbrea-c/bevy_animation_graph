@@ -63,8 +63,9 @@ impl Plugin for AnimationGraphEditorPlugin {
         #[cfg(feature = "physics_avian")]
         app.add_plugins(avian3d::prelude::PhysicsPlugins::new(FixedPostUpdate));
 
-        app.insert_resource(UiState::new())
-            .insert_resource(PendingActions::default())
+        UiState::init(app.world_mut());
+
+        app.insert_resource(PendingActions::default())
             .insert_resource(DirtyAssets::default())
             .insert_resource(GraphIndicesMap::default())
             .insert_resource(FsmIndicesMap::default())

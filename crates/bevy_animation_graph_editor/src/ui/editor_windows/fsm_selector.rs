@@ -5,7 +5,9 @@ use egui_dock::egui;
 use crate::{
     egui_fsm::lib::FsmUiContext,
     ui::{
-        core::{EditorWindowContext, EditorWindowExtension, FsmSelection, InspectorSelection},
+        core::{
+            EditorWindowExtension, FsmSelection, InspectorSelection, LegacyEditorWindowContext,
+        },
         utils::tree_asset_selector,
     },
 };
@@ -14,7 +16,7 @@ use crate::{
 pub struct FsmSelectorWindow;
 
 impl EditorWindowExtension for FsmSelectorWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
+    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut LegacyEditorWindowContext) {
         let mut queue = CommandQueue::default();
         let chosen_handle = tree_asset_selector::<StateMachine>(ui, world);
 

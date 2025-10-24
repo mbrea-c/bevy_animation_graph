@@ -20,7 +20,7 @@ use crate::ui::{
         saving::{SaveAction, SaveMultiple},
         window::CloseWindowAction,
     },
-    core::{EditorWindowContext, EditorWindowExtension},
+    core::{EditorWindowExtension, LegacyEditorWindowContext},
     reflect_widgets::wrap_ui::using_wrap_ui,
 };
 
@@ -46,7 +46,7 @@ impl SaveWindow {
 }
 
 impl EditorWindowExtension for SaveWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
+    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut LegacyEditorWindowContext) {
         for meta in &mut self.assets {
             ui.label(Self::displays_type_name(meta.id.type_id()));
             ui.horizontal(|ui| {

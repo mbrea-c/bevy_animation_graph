@@ -6,7 +6,7 @@ use crate::{
     tree::{Tree, TreeResult},
     ui::{
         PreviewScene,
-        core::{EditorWindowContext, EditorWindowExtension},
+        core::{EditorWindowExtension, LegacyEditorWindowContext},
         utils,
     },
 };
@@ -15,7 +15,7 @@ use crate::{
 pub struct PreviewHierarchyWindow;
 
 impl EditorWindowExtension for PreviewHierarchyWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
+    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut LegacyEditorWindowContext) {
         if ctx.global_state.scene.is_none() {
             return;
         };

@@ -5,7 +5,7 @@ use bevy::{
 use bevy_animation_graph::core::ragdoll::definition::Ragdoll;
 use egui::Widget;
 
-use crate::ui::core::EditorWindowContext;
+use crate::ui::core::LegacyEditorWindowContext;
 
 #[derive(Debug, Default)]
 pub struct RagdollEditorSettings {
@@ -15,7 +15,7 @@ pub struct RagdollEditorSettings {
 pub struct SettingsPanel<'a, 'b> {
     pub target: Handle<Ragdoll>,
     pub world: &'a mut World,
-    pub ctx: &'a mut EditorWindowContext<'b>,
+    pub ctx: &'a mut LegacyEditorWindowContext<'b>,
     pub settings: &'a mut RagdollEditorSettings,
 }
 

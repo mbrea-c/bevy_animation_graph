@@ -18,7 +18,7 @@ use crate::{
             CreateRagdollBody, CreateRagdollCollider, CreateRagdollJoint, DeleteRagdollBody,
             DeleteRagdollCollider, DeleteRagdollJoint, RecomputeRagdollSymmetry,
         },
-        core::EditorWindowContext,
+        core::LegacyEditorWindowContext,
         editor_windows::ragdoll_editor::{RagdollEditorAction, SelectedItem},
         utils::collapsing::Collapser,
     },
@@ -28,7 +28,7 @@ pub struct BodyTree<'a, 'b> {
     pub ragdoll: Handle<Ragdoll>,
     pub ragdoll_bone_map: Handle<RagdollBoneMap>,
     pub world: &'a mut World,
-    pub ctx: &'a mut EditorWindowContext<'b>,
+    pub ctx: &'a mut LegacyEditorWindowContext<'b>,
 }
 
 impl BodyTree<'_, '_> {

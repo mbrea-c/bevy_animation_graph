@@ -2,8 +2,13 @@ use std::any::Any;
 
 use crate::egui_fsm::lib::FsmUiContext;
 use crate::egui_nodes::lib::NodesContext;
+use crate::ui::ecs_utils::get_view_state;
 use crate::ui::editor_windows::ragdoll_editor::RagdollEditorWindow;
+use crate::ui::global_state;
+use crate::ui::native_views::{EditorView, EditorViewContext, EditorViewUiState};
+use crate::ui::native_windows::{NativeEditorWindow, NativeEditorWindowExtension};
 use bevy::asset::UntypedAssetId;
+use bevy::ecs::world::CommandQueue;
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 use bevy_animation_graph::core::animated_scene::AnimatedScene;
@@ -62,11 +67,20 @@ pub fn show_ui_system(world: &mut World) {
     };
     let mut egui_context = egui_context.clone();
 
+    let mut command_queue = CommandQueue::default();
+
     world.resource_scope::<UiState, _>(|world, mut ui_state| {
         world.resource_scope::<PendingActions, _>(|world, mut pending_actions| {
-            ui_state.ui(world, egui_context.get_mut(), &mut pending_actions)
+            ui_state.ui(
+                world,
+                egui_context.get_mut(),
+                &mut pending_actions,
+                &mut command_queue,
+            )
         });
     });
+
+    command_queue.apply(world);
 }
 
 pub struct GraphSelection {
@@ -137,13 +151,23 @@ pub struct GlobalState {
     pub(crate) entity_path: Option<EntityPath>,
 }
 
+pub enum EditorViewVariant {
+    Legacy(ViewState),
+    Native(EditorViewUiState),
+}
+
 pub struct ViewState {
     pub(crate) name: String,
     pub(crate) dock_state: DockState<EguiWindow>,
 }
 
 impl ViewState {
-    pub fn ui(&mut self, ctx: &mut egui::Context, world: &mut World, context: EditorViewContext) {
+    pub fn ui(
+        &mut self,
+        ctx: &mut egui::Context,
+        world: &mut World,
+        context: LegacyEditorViewContext,
+    ) {
         let mut tab_viewer = TabViewer { world, context };
 
         DockArea::new(&mut self.dock_state)
@@ -250,33 +274,57 @@ pub struct UiState {
 
     pub(crate) notifications: Toasts,
 
-    pub(crate) views: Vec<ViewState>,
+    pub(crate) views: Vec<EditorViewVariant>,
     pub(crate) active_view: Option<usize>,
 }
 
 impl UiState {
-    pub fn new() -> Self {
-        let mut windows = Windows::default();
-
-        Self {
+    pub fn init(world: &mut World) {
+        let mut ui_state = Self {
             global_state: GlobalState::default(),
             notifications: Toasts::new()
                 .with_anchor(Anchor::BottomRight)
                 .with_default_font(egui::FontId::proportional(12.)),
 
-            views: vec![
-                ViewState::main_view(&mut windows, "Graph editing"),
-                ViewState::event_track_view(&mut windows, "Event tracks"),
-                ViewState::skeleton_colliders_view(&mut windows, "Skeleton colliders"),
-                ViewState::ragdoll_view(&mut windows, "Ragdoll"),
-            ],
+            views: Vec::new(),
             active_view: Some(0),
-            windows,
-        }
+            windows: Windows::default(),
+        };
+
+        let main_view = ViewState::main_view(&mut ui_state.windows, "Graph editing");
+        ui_state.new_legacy_view(main_view);
+        let event_tracks = ViewState::event_track_view(&mut ui_state.windows, "Event tracks");
+        ui_state.new_legacy_view(event_tracks);
+        let skeleton_colliders =
+            ViewState::skeleton_colliders_view(&mut ui_state.windows, "Skeleton colliders");
+        ui_state.new_legacy_view(skeleton_colliders);
+
+        let ragdoll_view = EditorViewUiState::ragdoll(world, &mut ui_state.windows, "Ragdoll");
+        ui_state.new_native_view(ragdoll_view);
+
+        let test_view = EditorViewUiState::test(world, &mut ui_state.windows, "!!! Test");
+        ui_state.new_native_view(test_view);
+
+        world.insert_resource(ui_state);
+        global_state::GlobalState::init(world);
     }
 
-    fn ui(&mut self, world: &mut World, ctx: &mut egui::Context, queue: &mut PendingActions) {
-        if let Some(view_action) = view_selection_bar(ctx, self) {
+    pub fn new_legacy_view(&mut self, view_state: ViewState) {
+        self.views.push(EditorViewVariant::Legacy(view_state));
+    }
+
+    pub fn new_native_view(&mut self, state: EditorViewUiState) {
+        self.views.push(EditorViewVariant::Native(state));
+    }
+
+    fn ui(
+        &mut self,
+        world: &mut World,
+        ctx: &mut egui::Context,
+        queue: &mut PendingActions,
+        command_queue: &mut CommandQueue,
+    ) {
+        if let Some(view_action) = view_selection_bar(world, ctx, self) {
             queue.actions.push(EditorAction::View(view_action));
         }
 
@@ -286,30 +334,44 @@ impl UiState {
                 .push(EditorAction::Save(SaveAction::RequestMultiple));
         }
 
-        let view_context = EditorViewContext {
-            global_state: &mut self.global_state,
-            windows: &mut self.windows,
-            notifications: &mut self.notifications,
-            editor_actions: &mut queue.actions,
-        };
-
         if let Some(active_view_idx) = self.active_view {
             let active_view = &mut self.views[active_view_idx];
-            active_view.ui(ctx, world, view_context);
+            match active_view {
+                EditorViewVariant::Legacy(view_state) => {
+                    let view_context = LegacyEditorViewContext {
+                        global_state: &mut self.global_state,
+                        windows: &mut self.windows,
+                        notifications: &mut self.notifications,
+                        editor_actions: &mut queue.actions,
+                    };
+                    view_state.ui(ctx, world, view_context);
+                }
+                EditorViewVariant::Native(view_state) => {
+                    let view_context = EditorViewContext {
+                        global_state: &mut self.global_state,
+                        windows: &mut self.windows,
+                        notifications: &mut self.notifications,
+                        editor_actions: &mut queue.actions,
+                        view_entity: view_state.entity,
+                        command_queue,
+                    };
+                    view_state.ui(ctx, world, view_context);
+                }
+            };
         }
 
         self.notifications.show(ctx);
     }
 }
 
-pub struct EditorViewContext<'a> {
+pub struct LegacyEditorViewContext<'a> {
     pub global_state: &'a mut GlobalState,
     pub windows: &'a mut Windows,
     pub notifications: &'a mut Toasts,
     pub editor_actions: &'a mut PushQueue<EditorAction>,
 }
 
-pub struct EditorWindowContext<'a> {
+pub struct LegacyEditorWindowContext<'a> {
     pub window_id: WindowId,
     /// Read-only view on windows other than the current one
     pub windows: &'a Windows,
@@ -319,7 +381,7 @@ pub struct EditorWindowContext<'a> {
     pub editor_actions: &'a mut PushQueue<EditorAction>,
 }
 
-impl EditorWindowContext<'_> {
+impl LegacyEditorWindowContext<'_> {
     pub fn window_action(&mut self, event: impl Any + Send + Sync) {
         self.editor_actions.window(self.window_id, event)
     }
@@ -328,6 +390,7 @@ impl EditorWindowContext<'_> {
 #[derive(Debug)]
 pub enum EguiWindow {
     DynWindow(WindowId),
+    EntityWindow(NativeEditorWindow),
 }
 
 impl From<WindowId> for EguiWindow {
@@ -336,17 +399,24 @@ impl From<WindowId> for EguiWindow {
     }
 }
 
+impl From<NativeEditorWindow> for EguiWindow {
+    fn from(window: NativeEditorWindow) -> Self {
+        EguiWindow::EntityWindow(window)
+    }
+}
+
 impl EguiWindow {
     pub fn display_name(&self, windows: &Windows) -> String {
         match self {
             EguiWindow::DynWindow(id) => windows.name_for_window(*id),
+            EguiWindow::EntityWindow(window) => window.display_name(),
         }
     }
 }
 
 struct TabViewer<'a> {
     world: &'a mut World,
-    context: EditorViewContext<'a>,
+    context: LegacyEditorViewContext<'a>,
 }
 
 impl egui_dock::TabViewer for TabViewer<'_> {
@@ -358,7 +428,7 @@ impl egui_dock::TabViewer for TabViewer<'_> {
                 self.context
                     .windows
                     .with_window_mut(*editor_window, |window, windows| {
-                        let mut ctx = EditorWindowContext {
+                        let mut ctx = LegacyEditorWindowContext {
                             window_id: *editor_window,
                             global_state: self.context.global_state,
                             notifications: self.context.notifications,
@@ -371,6 +441,7 @@ impl egui_dock::TabViewer for TabViewer<'_> {
                         })
                     });
             }
+            EguiWindow::EntityWindow(window) => todo!(),
         }
     }
 
@@ -378,8 +449,11 @@ impl egui_dock::TabViewer for TabViewer<'_> {
         window.display_name(self.context.windows).into()
     }
 
-    fn force_close(&mut self, EguiWindow::DynWindow(window_id): &mut Self::Tab) -> bool {
-        !self.context.windows.window_exists(*window_id)
+    fn force_close(&mut self, window: &mut Self::Tab) -> bool {
+        match window {
+            EguiWindow::DynWindow(window_id) => !self.context.windows.window_exists(*window_id),
+            EguiWindow::EntityWindow(entity) => todo!(),
+        }
     }
 
     fn closeable(&mut self, tab: &mut Self::Tab) -> bool {
@@ -389,6 +463,7 @@ impl egui_dock::TabViewer for TabViewer<'_> {
                 .windows
                 .get_window(*window_id)
                 .is_some_and(|w| w.closeable()),
+            EguiWindow::EntityWindow(entity) => todo!(),
         }
     }
 }
@@ -400,7 +475,11 @@ pub enum ViewAction {
     New(String),
 }
 
-fn view_selection_bar(ctx: &mut egui::Context, ui_state: &UiState) -> Option<ViewAction> {
+fn view_selection_bar(
+    world: &mut World,
+    ctx: &mut egui::Context,
+    ui_state: &UiState,
+) -> Option<ViewAction> {
     egui::TopBottomPanel::top("View selector")
         .show(ctx, |ui| {
             ui.horizontal(|ui| {
@@ -408,6 +487,7 @@ fn view_selection_bar(ctx: &mut egui::Context, ui_state: &UiState) -> Option<Vie
                 for (i, view) in ui_state.views.iter().enumerate() {
                     action = action.or(view_button(
                         ui,
+                        world,
                         i,
                         view,
                         ui_state
@@ -431,8 +511,9 @@ fn view_selection_bar(ctx: &mut egui::Context, ui_state: &UiState) -> Option<Vie
 
 fn view_button(
     ui: &mut egui::Ui,
+    world: &mut World,
     index: usize,
-    view: &ViewState,
+    view: &EditorViewVariant,
     is_selected: bool,
 ) -> Option<ViewAction> {
     egui::Frame::NONE
@@ -457,7 +538,14 @@ fn view_button(
         })
         .show(ui, |ui| {
             ui.horizontal(|ui| {
-                let select_response = ui.add(egui::Button::new(&view.name).frame(false));
+                let name = match view {
+                    EditorViewVariant::Legacy(view_state) => view_state.name.clone(),
+                    EditorViewVariant::Native(view_state) => {
+                        get_view_state::<EditorView>(world, view_state.entity)
+                            .map_or("<VIEW_NOT_FOUND>".into(), |v| v.name.clone())
+                    }
+                };
+                let select_response = ui.add(egui::Button::new(name).frame(false));
                 let close_response = ui.add(egui::Button::new("❌").frame(false));
 
                 if select_response.clicked() {

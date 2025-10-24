@@ -6,7 +6,9 @@ use crate::{
     egui_nodes::lib::NodesContext,
     ui::{
         actions::graph::CreateGraphAction,
-        core::{EditorWindowContext, EditorWindowExtension, GraphSelection, InspectorSelection},
+        core::{
+            EditorWindowExtension, GraphSelection, InspectorSelection, LegacyEditorWindowContext,
+        },
         utils::tree_asset_selector,
     },
 };
@@ -15,7 +17,7 @@ use crate::{
 pub struct GraphSelectorWindow;
 
 impl EditorWindowExtension for GraphSelectorWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
+    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut LegacyEditorWindowContext) {
         let mut queue = CommandQueue::default();
         let chosen_handle = tree_asset_selector::<AnimationGraph>(ui, world);
 

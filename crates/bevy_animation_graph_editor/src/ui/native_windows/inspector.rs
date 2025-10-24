@@ -37,6 +37,8 @@ use crate::ui::{
 #[derive(Debug)]
 pub struct InspectorWindow;
 
+TODO
+
 impl EditorWindowExtension for InspectorWindow {
     fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut LegacyEditorWindowContext) {
         match ctx.global_state.inspector_selection {

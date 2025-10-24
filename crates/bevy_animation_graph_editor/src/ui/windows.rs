@@ -6,7 +6,7 @@ use uuid::Uuid;
 
 use super::{
     actions::window::{DynWindowAction, WindowAction},
-    core::EditorWindowContext,
+    core::LegacyEditorWindowContext,
 };
 
 pub trait AsAny {
@@ -20,7 +20,7 @@ impl<T: 'static> AsAny for T {
 }
 
 pub trait EditorWindowExtension: AsAny + std::fmt::Debug + Send + Sync + 'static {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext);
+    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut LegacyEditorWindowContext);
     fn display_name(&self) -> String;
     #[allow(unused_variables)]
     fn handle_action(&mut self, action: DynWindowAction) {}
@@ -45,7 +45,7 @@ pub struct EditorWindow {
 }
 
 impl EditorWindowExtension for EditorWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
+    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut LegacyEditorWindowContext) {
         self.window.ui(ui, world, ctx);
     }
 

@@ -5,7 +5,7 @@ use bevy_animation_graph::{
 };
 
 use crate::ui::{
-    core::EditorWindowContext, editor_windows::ragdoll_editor::RagdollEditorAction,
+    core::LegacyEditorWindowContext, editor_windows::ragdoll_editor::RagdollEditorAction,
     reflect_widgets::wrap_ui::using_wrap_ui,
 };
 
@@ -14,7 +14,7 @@ pub struct TopPanel<'a, 'b> {
     pub ragdoll_bone_map: Option<Handle<RagdollBoneMap>>,
     pub scene: Option<Handle<AnimatedScene>>,
     pub world: &'a mut World,
-    pub ctx: &'a mut EditorWindowContext<'b>,
+    pub ctx: &'a mut LegacyEditorWindowContext<'b>,
 }
 
 impl TopPanel<'_, '_> {

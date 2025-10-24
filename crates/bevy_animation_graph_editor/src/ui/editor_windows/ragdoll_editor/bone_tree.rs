@@ -4,7 +4,7 @@ use bevy_animation_graph::core::skeleton::Skeleton;
 use crate::{
     tree::{SkeletonTreeRenderer, Tree, TreeResult},
     ui::{
-        core::EditorWindowContext, editor_windows::ragdoll_editor::RagdollEditorAction,
+        core::LegacyEditorWindowContext, editor_windows::ragdoll_editor::RagdollEditorAction,
         utils::with_assets_all,
     },
 };
@@ -14,7 +14,7 @@ use super::SelectedItem;
 pub struct BoneTree<'a, 'b> {
     pub skeleton: Handle<Skeleton>,
     pub world: &'a mut World,
-    pub ctx: &'a mut EditorWindowContext<'b>,
+    pub ctx: &'a mut LegacyEditorWindowContext<'b>,
 }
 
 impl BoneTree<'_, '_> {

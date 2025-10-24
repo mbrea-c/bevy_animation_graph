@@ -28,7 +28,7 @@ use bevy_animation_graph::{
 
 use crate::ui::{
     PartOfSubScene, PreviewScene, SubSceneConfig, SubSceneSyncAction,
-    core::EditorWindowContext,
+    core::LegacyEditorWindowContext,
     editor_windows::ragdoll_editor::SelectedItem,
     utils::{
         OrbitView, orbit_camera_scene_show, orbit_camera_transform, orbit_camera_update,
@@ -38,7 +38,7 @@ use crate::ui::{
 
 pub struct RagdollPreview<'a, 'b> {
     pub world: &'a mut World,
-    pub ctx: &'a mut EditorWindowContext<'b>,
+    pub ctx: &'a mut LegacyEditorWindowContext<'b>,
     pub orbit_view: &'a mut OrbitView,
 
     pub ragdoll: Handle<Ragdoll>,

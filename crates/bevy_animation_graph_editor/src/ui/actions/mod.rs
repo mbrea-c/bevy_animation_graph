@@ -17,7 +17,7 @@ use std::{any::Any, cmp::Ordering, collections::VecDeque, fmt::Display};
 use bevy::{
     ecs::{
         resource::Resource,
-        system::{In, IntoSystem, ResMut, SystemInput},
+        system::{Commands, In, IntoSystem, ResMut, SystemInput},
         world::World,
     },
     log::error,
@@ -29,9 +29,11 @@ use graph::{GraphAction, handle_graph_action};
 use saving::{SaveAction, handle_save_action};
 use window::WindowAction;
 
+use crate::ui::native_views::EditorViewUiState;
+
 use super::{
     UiState,
-    core::{ViewAction, ViewState},
+    core::{EditorViewVariant, ViewAction},
     windows::WindowId,
 };
 
@@ -98,10 +100,20 @@ pub fn handle_editor_action(world: &mut World, action: EditorAction, ctx: &mut A
     }
 }
 
-fn handle_view_action(In(view_action): In<ViewAction>, mut ui_state: ResMut<UiState>) {
+fn handle_view_action(
+    In(view_action): In<ViewAction>,
+    mut ui_state: ResMut<UiState>,
+    mut commands: Commands,
+) {
     match view_action {
         ViewAction::Close(index) => {
-            ui_state.views.remove(index);
+            match ui_state.views.remove(index) {
+                EditorViewVariant::Legacy(_) => {}
+                EditorViewVariant::Native(view_state) => {
+                    commands.entity(view_state.entity).despawn();
+                }
+            }
+
             if let Some(idx) = ui_state.active_view {
                 match idx.cmp(&index) {
                     Ordering::Less => {}
@@ -117,10 +129,13 @@ fn handle_view_action(In(view_action): In<ViewAction>, mut ui_state: ResMut<UiSt
         ViewAction::Select(index) => {
             ui_state.active_view = Some(index);
         }
-        ViewAction::New(name) => ui_state.views.push(ViewState {
-            name,
-            dock_state: DockState::new(vec![]),
-        }),
+        ViewAction::New(name) => {
+            commands.queue(|world: &mut World| {
+                let view_state = EditorViewUiState::init(world, name, DockState::new(vec![]));
+                let mut ui_state = world.resource_mut::<UiState>();
+                ui_state.new_native_view(view_state);
+            });
+        }
     }
 }
 

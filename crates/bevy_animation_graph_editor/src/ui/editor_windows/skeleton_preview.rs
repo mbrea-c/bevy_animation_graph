@@ -46,7 +46,7 @@ use crate::{
             },
             window::DynWindowAction,
         },
-        core::{EditorWindowContext, EditorWindowExtension},
+        core::{EditorWindowExtension, LegacyEditorWindowContext},
         reflect_widgets::wrap_ui::using_wrap_ui,
         utils::{OrbitView, orbit_camera_scene_show, orbit_camera_transform, orbit_camera_update},
     },
@@ -100,7 +100,7 @@ pub enum CollidersPreviewAction {
 }
 
 impl EditorWindowExtension for SkeletonCollidersPreviewWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
+    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut LegacyEditorWindowContext) {
         let timeline_height = 30.;
 
         egui::TopBottomPanel::top("Top panel")
@@ -176,7 +176,7 @@ impl SkeletonCollidersPreviewWindow {
         &mut self,
         ui: &mut egui::Ui,
         world: &mut World,
-        ctx: &mut EditorWindowContext,
+        ctx: &mut LegacyEditorWindowContext,
     ) {
         let Some(target) = &self.target else {
             ui.centered_and_justified(|ui| {
@@ -287,7 +287,7 @@ impl SkeletonCollidersPreviewWindow {
         &mut self,
         ui: &mut egui::Ui,
         world: &mut World,
-        ctx: &mut EditorWindowContext,
+        ctx: &mut LegacyEditorWindowContext,
     ) {
         ui.horizontal(|ui| {
             using_wrap_ui(world, |mut env| {
@@ -330,7 +330,7 @@ impl SkeletonCollidersPreviewWindow {
         &mut self,
         ui: &mut egui::Ui,
         world: &mut World,
-        ctx: &mut EditorWindowContext,
+        ctx: &mut LegacyEditorWindowContext,
     ) {
         let Some(target) = &self.target else {
             ui.centered_and_justified(|ui| {
@@ -673,7 +673,7 @@ impl SkeletonCollidersPreviewWindow {
         &mut self,
         ui: &mut egui::Ui,
         world: &mut World,
-        _ctx: &mut EditorWindowContext,
+        _ctx: &mut LegacyEditorWindowContext,
     ) {
         let Some(target) = &self.target else {
             ui.centered_and_justified(|ui| {

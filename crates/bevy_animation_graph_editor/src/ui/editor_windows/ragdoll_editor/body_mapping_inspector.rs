@@ -3,13 +3,13 @@ use bevy_animation_graph::core::{ragdoll::bone_mapping::BodyMapping, skeleton::S
 use egui::Widget;
 
 use crate::ui::{
-    core::EditorWindowContext,
+    core::LegacyEditorWindowContext,
     generic_widgets::{bone_id::BoneIdWidget, isometry3d::Isometry3dWidget},
 };
 
 pub struct BodyMappingInspector<'a, 'b> {
     pub world: &'a mut World,
-    pub ctx: &'a mut EditorWindowContext<'b>,
+    pub ctx: &'a mut LegacyEditorWindowContext<'b>,
     pub body_mapping: &'a mut BodyMapping,
     pub skeleton: &'a Skeleton,
 }

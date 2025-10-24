@@ -25,7 +25,7 @@ use crate::ui::{
         event_tracks::{EditEventAction, EventTrackAction, NewEventAction, NewTrackAction},
         window::{DynWindowAction, TypeTargetedWindowAction},
     },
-    core::{EditorWindowContext, EditorWindowExtension},
+    core::{EditorWindowExtension, LegacyEditorWindowContext},
     reflect_widgets::{submittable::Submittable, wrap_ui::using_wrap_ui},
     utils::popup::CustomPopup,
     windows::WindowId,
@@ -88,7 +88,7 @@ impl Default for EventTrackEditorWindow {
 }
 
 impl EditorWindowExtension for EventTrackEditorWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
+    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut LegacyEditorWindowContext) {
         let timeline_height = 30.;
 
         let sister_window_id = ctx.windows.find_window_with_type::<ClipPreviewWindow>();
@@ -199,7 +199,7 @@ impl EventTrackEditorWindow {
         ui: &mut egui::Ui,
         world: &mut World,
         active_tracks: ActiveTracks,
-        ctx: &mut EditorWindowContext,
+        ctx: &mut LegacyEditorWindowContext,
     ) {
         let available_size = ui.available_size();
         let (_, rect) = ui.allocate_space(available_size);
@@ -378,7 +378,7 @@ impl EventTrackEditorWindow {
         world: &mut World,
         active_tracks: ActiveTracks,
         vertical_offset_pixels: f32,
-        ctx: &mut EditorWindowContext,
+        ctx: &mut LegacyEditorWindowContext,
     ) {
         let available_size = ui.available_size();
         let (_, area_rect) = ui.allocate_space(available_size);
@@ -442,7 +442,7 @@ impl EventTrackEditorWindow {
         ui: &mut egui::Ui,
         current_time: Option<f32>,
         sister_window_id: Option<WindowId>,
-        ctx: &mut EditorWindowContext,
+        ctx: &mut LegacyEditorWindowContext,
     ) {
         let available_size = ui.available_size();
         let (_, area_rect) = ui.allocate_space(available_size);
@@ -526,7 +526,7 @@ impl EventTrackEditorWindow {
         &self,
         ui: &mut egui::Ui,
         world: &mut World,
-        ctx: &mut EditorWindowContext,
+        ctx: &mut LegacyEditorWindowContext,
     ) {
         ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
             if let Some(new_selection) = using_wrap_ui(world, |mut env| {
@@ -554,7 +554,7 @@ impl EventTrackEditorWindow {
         ui: &mut egui::Ui,
         world: &mut World,
         event: &TrackItemValue,
-        ctx: &mut EditorWindowContext,
+        ctx: &mut LegacyEditorWindowContext,
     ) {
         if let Some(edited_event) = using_wrap_ui(world, |mut env| {
             env.mutable_buffered(

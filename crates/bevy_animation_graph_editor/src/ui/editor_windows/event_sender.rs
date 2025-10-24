@@ -2,7 +2,7 @@ use bevy::prelude::World;
 use egui_dock::egui;
 
 use crate::ui::{
-    core::{EditorWindowContext, EditorWindowExtension},
+    core::{EditorWindowExtension, LegacyEditorWindowContext},
     utils,
 };
 
@@ -10,7 +10,7 @@ use crate::ui::{
 pub struct EventSenderWindow;
 
 impl EditorWindowExtension for EventSenderWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
+    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut LegacyEditorWindowContext) {
         let Some(scene_selection) = &mut ctx.global_state.scene else {
             return;
         };

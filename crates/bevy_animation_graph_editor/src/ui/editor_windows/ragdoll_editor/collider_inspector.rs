@@ -3,14 +3,14 @@ use bevy_animation_graph::core::ragdoll::definition::Collider;
 use egui::Widget;
 
 use crate::ui::{
-    core::EditorWindowContext,
+    core::LegacyEditorWindowContext,
     generic_widgets::{isometry3d::Isometry3dWidget, u32_flags::U32Flags},
     utils::using_inspector_env,
 };
 
 pub struct ColliderInspector<'a, 'b> {
     pub world: &'a mut World,
-    pub ctx: &'a mut EditorWindowContext<'b>,
+    pub ctx: &'a mut LegacyEditorWindowContext<'b>,
     pub collider: &'a mut Collider,
 }
 
