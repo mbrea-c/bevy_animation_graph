@@ -12,7 +12,7 @@ use bevy::{
 };
 use bevy_animation_graph::{
     core::state_machine::high_level::{State, StateMachine, Transition},
-    prelude::{AnimationGraph, ReflectEditProxy, ReflectNodeLike},
+    prelude::{AnimationGraph, AnimationNode, ReflectNodeLike},
 };
 use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
 use egui_dock::egui;
@@ -29,26 +29,46 @@ use crate::ui::{
             UpdateOutputData, UpdateOutputTime,
         },
     },
-    core::{EditorWindowExtension, FsmSelection, InspectorSelection, LegacyEditorWindowContext},
+    core::{FsmSelection, LegacyEditorWindowContext},
     egui_inspector_impls::OrderedMap,
-    utils::{self, using_inspector_env},
+    global_state::{
+        active_fsm_state::ActiveFsmState, active_fsm_transition::ActiveFsmTransition,
+        active_graph_node::ActiveGraphNode, get_global_state,
+        inspector_selection::InspectorSelection,
+    },
+    native_windows::{EditorWindowContext, NativeEditorWindowExtension},
+    node_editors::{ReflectEditable, reflect_editor::ReflectNodeEditor},
+    utils::{self, using_inspector_env, with_assets_all},
 };
 
 #[derive(Debug)]
 pub struct InspectorWindow;
 
-TODO
-
-impl EditorWindowExtension for InspectorWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut LegacyEditorWindowContext) {
-        match ctx.global_state.inspector_selection {
-            InspectorSelection::FsmTransition(_) => transition_inspector(world, ui, ctx),
-            InspectorSelection::FsmState(_) => state_inspector(world, ui, ctx),
-            InspectorSelection::Node(_) => node_inspector(world, ui, ctx),
-            InspectorSelection::Graph => graph_inspector(world, ui, ctx),
-            InspectorSelection::Fsm => fsm_inspector(world, ui, ctx),
-            InspectorSelection::Nothing => {}
-        }
+impl NativeEditorWindowExtension for InspectorWindow {
+    fn ui(&self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
+        let inspector_selection = get_global_state::<InspectorSelection>(world);
+        ui.push_id(inspector_selection, |ui| {
+            match inspector_selection {
+                ActiveScene => todo!(),
+                ActiveFsm => todo!(),
+                ActiveFsmTransition => {
+                    transition_inspector(world, ui, ctx);
+                }
+                ActiveFsmState => {
+                    state_inspector(world, ui, ctx);
+                }
+                ActiveGraph => todo!(),
+                ActiveNode => {
+                    node_inspector(world, ui, ctx);
+                }
+                Nothing => {} // InspectorSelection::FsmTransition(_) => transition_inspector(world, ui, ctx),
+                              // InspectorSelection::FsmState(_) => state_inspector(world, ui, ctx),
+                              // InspectorSelection::Node(_) => node_inspector(world, ui, ctx),
+                              // InspectorSelection::Graph => graph_inspector(world, ui, ctx),
+                              // InspectorSelection::Fsm => fsm_inspector(world, ui, ctx),
+                              // InspectorSelection::Nothing => {}
+            }
+        });
     }
 
     fn display_name(&self) -> String {
@@ -56,77 +76,85 @@ impl EditorWindowExtension for InspectorWindow {
     }
 }
 
-fn node_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut LegacyEditorWindowContext) {
+fn node_inspector(
+    world: &mut World,
+    ui: &mut egui::Ui,
+    ctx: &mut EditorWindowContext,
+) -> Option<()> {
     ui.heading("Graph node");
 
-    world.resource_scope::<Assets<AnimationGraph>, _>(|world, graph_assets| {
-        let InspectorSelection::Node(node_selection) = &mut ctx.global_state.inspector_selection
-        else {
-            return;
-        };
+    let active_node = get_global_state::<ActiveGraphNode>(world).cloned()?;
 
-        let graph = graph_assets.get(&node_selection.graph).unwrap();
-        let Some(node) = graph.nodes.get(&node_selection.node) else {
-            ctx.global_state.inspector_selection = InspectorSelection::Nothing;
-            return;
-        };
+    with_assets_all(
+        world,
+        [active_node.handle.id()],
+        |world: &mut World, [graph]| -> Option<_> {
+            let node = graph.nodes.get(&active_node.node)?;
 
-        let response = ui.text_edit_singleline(&mut node_selection.name_buf);
-        if response.lost_focus() {
-            ctx.editor_actions
-                .push(EditorAction::Graph(GraphAction::RenameNode(RenameNode {
-                    graph: node_selection.graph.clone(),
-                    node: node_selection.node.clone(),
-                    new_name: node_selection.name_buf.clone(),
-                })));
-        }
+            let node_buffer_id = ui.id().with("graph node buffer");
 
-        let changed = using_inspector_env(world, |mut env| {
-            if let Some(edit_proxy) = env
-                .type_registry
-                .get_type_data::<ReflectEditProxy>(node.inner.type_id())
-            {
-                let mut proxy = (edit_proxy.to_proxy)(node.inner.as_ref());
-                let changed = env.ui_for_reflect_with_options(
-                    proxy.as_partial_reflect_mut(),
-                    ui,
-                    ui.id(),
-                    &(),
-                );
-                changed.then(|| (edit_proxy.from_proxy)(proxy.as_ref()))
-            } else {
-                let mut current_inner = node.inner.clone();
-                let changed = env.ui_for_reflect(current_inner.as_partial_reflect_mut(), ui);
-                changed.then_some(current_inner)
+            let node_buffer = ctx
+                .buffers
+                .get_mut_or_insert_with(node_buffer_id, || node.clone());
+
+            let response = ui.text_edit_singleline(&mut node_buffer.name);
+            let mut clear = false;
+
+            if response.lost_focus() {
+                ctx.editor_actions
+                    .push(EditorAction::Graph(GraphAction::RenameNode(RenameNode {
+                        graph: active_node.handle.clone(),
+                        node: active_node.node.clone(),
+                        new_name: node_buffer.name.clone(),
+                    })));
+                clear = true;
             }
-        });
 
-        if let Some(changed) = changed {
-            ctx.editor_actions
-                .push(EditorAction::Graph(GraphAction::EditNode(EditNode {
-                    graph: node_selection.graph.clone(),
-                    node: node.name.clone(),
-                    new_inner: changed,
-                })));
-        }
-    });
+            let editor = if let Some(editable) = world
+                .resource::<AppTypeRegistry>()
+                .0
+                .clone()
+                .read()
+                .get_type_data::<ReflectEditable>(node.inner.type_id())
+            {
+                (editable.get_editor)(node.inner.as_ref())
+            } else {
+                Box::new(ReflectNodeEditor)
+            };
+
+            let inner_edit_response = editor.show_dyn(ui, world, node_buffer.inner.as_mut());
+
+            if inner_edit_response.changed() {
+                ctx.editor_actions
+                    .push(EditorAction::Graph(GraphAction::EditNode(EditNode {
+                        graph: active_node.handle.clone(),
+                        node: node.name.clone(),
+                        new_inner: node_buffer.inner.clone(),
+                    })));
+                clear = true;
+            }
+
+            if clear {
+                ctx.buffers.clear::<AnimationNode>(node_buffer_id);
+            }
+
+            Some(())
+        },
+    )
+    .flatten()
 }
 
-fn state_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut LegacyEditorWindowContext) {
+fn state_inspector(
+    world: &mut World,
+    ui: &mut egui::Ui,
+    ctx: &mut EditorWindowContext,
+) -> Option<()> {
     ui.heading("FSM State");
 
-    world.resource_scope::<Assets<StateMachine>, _>(|world, fsm_assets| {
-        let InspectorSelection::FsmState(state_selection) =
-            &mut ctx.global_state.inspector_selection
-        else {
-            return;
-        };
-        let fsm = fsm_assets.get(&state_selection.fsm).unwrap();
+    let active_state = get_global_state::<ActiveFsmState>(world)?.clone();
 
-        let Some(state) = fsm.states.get(&state_selection.state) else {
-            ctx.global_state.inspector_selection = InspectorSelection::Nothing;
-            return;
-        };
+    with_assets_all(world, [active_state.handle.id()], |world, [fsm]| {
+        let state = fsm.states.get(&active_state.state)?;
 
         using_inspector_env(world, |mut env| {
             let mut copy = state.clone();
@@ -134,32 +162,29 @@ fn state_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut LegacyEditorW
             if changed {
                 ctx.editor_actions
                     .push(EditorAction::Fsm(FsmAction::UpdateState(UpdateState {
-                        fsm: state_selection.fsm.clone(),
-                        state_id: state_selection.state.clone(),
+                        fsm: active_state.handle.clone(),
+                        state_id: active_state.state.clone(),
                         new_state: copy,
                     })));
             }
         });
-    });
+
+        Some(())
+    })
+    .flatten()
 }
 
-fn transition_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut LegacyEditorWindowContext) {
+fn transition_inspector(
+    world: &mut World,
+    ui: &mut egui::Ui,
+    ctx: &mut EditorWindowContext,
+) -> Option<()> {
     ui.heading("FSM Transition");
 
-    world.resource_scope::<Assets<StateMachine>, _>(|world, fsm_assets| {
-        let Some(fsm_selection) = &mut ctx.global_state.fsm_editor else {
-            return;
-        };
-        let InspectorSelection::FsmTransition(transition_selection) =
-            &mut ctx.global_state.inspector_selection
-        else {
-            return;
-        };
-        let fsm = fsm_assets.get(&fsm_selection.fsm).unwrap();
-        let Some(transition) = fsm.transitions.get(&transition_selection.state) else {
-            ctx.global_state.inspector_selection = InspectorSelection::Nothing;
-            return;
-        };
+    let active_transition = get_global_state::<ActiveFsmTransition>(world)?.clone();
+
+    with_assets_all(world, [active_transition.handle.id()], |world, [fsm]| {
+        let transition = fsm.transitions.get(&active_transition.transition)?;
 
         using_inspector_env(world, |mut env| {
             let mut copy = transition.clone();
@@ -168,22 +193,26 @@ fn transition_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut LegacyEd
                 ctx.editor_actions
                     .push(EditorAction::Fsm(FsmAction::UpdateTransition(
                         UpdateTransition {
-                            fsm: transition_selection.fsm.clone(),
-                            transition_id: transition_selection.state.clone(),
+                            fsm: active_transition.handle.clone(),
+                            transition_id: active_transition.transition.clone(),
                             new_transition: copy,
                         },
                     )));
             }
         });
-    });
+        Some(())
+    })
+    .flatten()
 }
 
-fn graph_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut LegacyEditorWindowContext) {
+fn graph_inspector(
+    world: &mut World,
+    ui: &mut egui::Ui,
+    ctx: &mut EditorWindowContext,
+) -> Option<()> {
     ui.heading("Animation graph");
 
     utils::select_graph_context(world, ui, ctx.global_state);
-
-    ui.collapsing("Create node", |ui| node_creator(world, ui, ctx));
 
     let Some(graph_selection) = &mut ctx.global_state.graph_editor else {
         return;
@@ -292,7 +321,7 @@ fn graph_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut LegacyEditorW
     });
 }
 
-fn fsm_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut LegacyEditorWindowContext) {
+fn fsm_inspector(world: &mut World, ui: &mut egui::Ui, ctx: &mut EditorWindowContext) {
     ui.heading("State machine");
 
     utils::select_graph_context_fsm(world, ui, ctx.global_state);

@@ -2,7 +2,7 @@ use crate::{
     Cli,
     ui::{
         UiState,
-        core::{EditorViewVariant, EguiWindow},
+        core::EguiWindow,
         editor_windows::saving::{SaveWindow, SaveWindowAssetMeta},
     },
 };
@@ -367,14 +367,6 @@ pub fn handle_request_save_multiple(
 
         let UiState { views, .. } = ui_state.into_inner();
 
-        match &mut views[active_view_idx] {
-            EditorViewVariant::Legacy(view_state) => {
-                view_state.dock_state.add_window(vec![window]);
-            }
-
-            EditorViewVariant::Native(view_state) => {
-                view_state.dock_state.add_window(vec![window]);
-            }
-        }
+        views[active_view_idx].dock_state.add_window(vec![window]);
     }
 }

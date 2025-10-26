@@ -1,0 +1,86 @@
+pub mod reflect_editor;
+
+use std::any::{Any, TypeId};
+
+use bevy::{
+    app::App,
+    ecs::world::World,
+    reflect::{FromType, Reflect, TypePath},
+};
+use bevy_animation_graph::prelude::NodeLike;
+
+pub trait NodeEditor: 'static {
+    type Target: 'static;
+    fn show(&self, ui: &mut egui::Ui, world: &mut World, node: &mut Self::Target)
+    -> egui::Response;
+}
+
+pub trait DynNodeEditor: 'static {
+    fn show_dyn(
+        &self,
+        ui: &mut egui::Ui,
+        world: &mut World,
+        node: &mut dyn NodeLike,
+    ) -> egui::Response;
+}
+
+impl<E> DynNodeEditor for E
+where
+    E: NodeEditor,
+{
+    fn show_dyn(
+        &self,
+        ui: &mut egui::Ui,
+        world: &mut World,
+        node: &mut dyn NodeLike,
+    ) -> egui::Response {
+        self.show(
+            ui,
+            world,
+            node.as_any_mut()
+                .downcast_mut()
+                .expect("Mismatched node editor used"),
+        )
+    }
+}
+
+pub trait Editable: 'static {
+    type Editor: DynNodeEditor;
+
+    fn get_editor(&self) -> Self::Editor;
+}
+
+#[derive(Clone)]
+pub struct ReflectEditable {
+    pub editor_type_id: TypeId,
+    pub get_editor: fn(&dyn Any) -> Box<dyn DynNodeEditor>,
+}
+
+impl<T> FromType<T> for ReflectEditable
+where
+    T: Editable,
+{
+    fn from_type() -> Self {
+        Self {
+            editor_type_id: TypeId::of::<T::Editor>(),
+            get_editor: reflect_get_editor::<T>,
+        }
+    }
+}
+
+fn reflect_get_editor<T: Editable>(value: &dyn Any) -> Box<dyn DynNodeEditor> {
+    let static_value = value.downcast_ref::<T>().expect("Reflection type mismatch");
+    Box::new(static_value.get_editor())
+}
+
+pub trait RegisterEditableReflectExt {
+    fn register_editable_reflect<T: Editable + Reflect + TypePath>(&mut self) -> &mut Self;
+}
+
+impl RegisterEditableReflectExt for App {
+    fn register_editable_reflect<T: Editable + Reflect + TypePath>(&mut self) -> &mut Self {
+        self.register_type_data::<T, ReflectEditable>()
+    }
+}
+
+pub fn register_node_editables(app: &mut App) {}

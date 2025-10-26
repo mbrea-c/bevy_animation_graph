@@ -31,11 +31,7 @@ use window::WindowAction;
 
 use crate::ui::native_views::EditorViewUiState;
 
-use super::{
-    UiState,
-    core::{EditorViewVariant, ViewAction},
-    windows::WindowId,
-};
+use super::{UiState, core::ViewAction, windows::WindowId};
 
 #[derive(Resource, Default)]
 pub struct PendingActions {
@@ -107,12 +103,8 @@ fn handle_view_action(
 ) {
     match view_action {
         ViewAction::Close(index) => {
-            match ui_state.views.remove(index) {
-                EditorViewVariant::Legacy(_) => {}
-                EditorViewVariant::Native(view_state) => {
-                    commands.entity(view_state.entity).despawn();
-                }
-            }
+            let view_state = ui_state.views.remove(index);
+            commands.entity(view_state.entity).despawn();
 
             if let Some(idx) = ui_state.active_view {
                 match idx.cmp(&index) {

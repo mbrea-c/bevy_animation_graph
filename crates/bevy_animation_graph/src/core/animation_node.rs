@@ -15,7 +15,7 @@ use bevy::{
 use std::{any::TypeId, fmt::Debug};
 
 #[reflect_trait]
-pub trait NodeLike: NodeLikeClone + Send + Sync + Debug + Reflect {
+pub trait NodeLike: NodeLikeClone + Send + Sync + Debug + Reflect + 'static {
     fn duration(&self, _ctx: PassContext) -> Result<(), GraphError> {
         Ok(())
     }

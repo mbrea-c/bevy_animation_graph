@@ -10,6 +10,12 @@ use bevy::ecs::{
 use egui_dock::egui;
 use egui_notify::Toasts;
 
+use crate::ui::{
+    actions::{EditorAction, PushQueue},
+    core::Buffers,
+};
+
+pub mod inspector;
 pub mod scene_picker;
 
 pub struct EditorWindowContext<'a> {
@@ -17,6 +23,10 @@ pub struct EditorWindowContext<'a> {
     pub view_entity: Entity,
     pub notifications: &'a mut Toasts,
     pub command_queue: &'a mut CommandQueue,
+    pub buffers: &'a mut Buffers,
+
+    // Legacy stuff for backwards compat
+    pub editor_actions: &'a mut PushQueue<EditorAction>,
 }
 
 #[derive(Component)]
