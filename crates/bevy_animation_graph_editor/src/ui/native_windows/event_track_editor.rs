@@ -2,6 +2,7 @@ use std::{any::TypeId, hash::Hash};
 
 use bevy::{
     asset::{Assets, Handle},
+    ecs::{component::Component, event::Event, observer::Trigger, system::Query},
     platform::collections::HashMap,
     prelude::World,
     reflect::Reflect,
@@ -23,22 +24,38 @@ use crate::ui::{
     actions::{
         EditorAction,
         event_tracks::{EditEventAction, EventTrackAction, NewEventAction, NewTrackAction},
-        window::{DynWindowAction, TypeTargetedWindowAction},
+        window::TypeTargetedWindowAction,
     },
-    core::{EditorWindowExtension, LegacyEditorWindowContext},
+    native_windows::{
+        EditorWindowContext, EditorWindowRegistrationContext, NativeEditorWindowExtension,
+    },
     reflect_widgets::{submittable::Submittable, wrap_ui::using_wrap_ui},
     utils::popup::CustomPopup,
     windows::WindowId,
 };
 
-use super::animation_clip_preview::{ClipPreviewAction, ClipPreviewWindow, TimingOrder};
+use super::animation_clip_preview::{ClipPreviewAction, ClipPreviewTimingOrder, ClipPreviewWindow};
 
 #[derive(Debug)]
-pub struct EventTrackEditorWindow {
+pub struct EventTrackEditorWindow;
+
+#[derive(Component, Debug, Clone)]
+pub struct EventTrackEditorState {
     scroll_config: ScrollConfig,
     selected_track: Option<String>,
     selected_event: Option<Uuid>,
     target_tracks: Option<TargetTracks>,
+}
+
+#[derive(Event)]
+pub struct MutateEventTrackEditorState {
+    f: Box<dyn Fn(&mut EventTrackEditorState) + Send + Sync + 'static>,
+}
+
+impl MutateEventTrackEditorState {
+    pub fn new(f: impl Fn(&mut EventTrackEditorState) + Send + Sync + 'static) -> Self {
+        Self { f: Box::new(f) }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -66,13 +83,39 @@ struct ActiveTracks<'a> {
     tracks: &'a HashMap<String, EventTrack>,
 }
 
+#[derive(Event, Clone)]
 pub enum EventTrackEditorAction {
     SelectEvent { track_name: String, event_id: Uuid },
     SetScrollConfig(ScrollConfig),
     SetTrackSource(Option<TargetTracks>),
 }
 
-impl Default for EventTrackEditorWindow {
+impl EventTrackEditorAction {
+    pub fn observe(
+        action: Trigger<EventTrackEditorAction>,
+        mut query: Query<&mut EventTrackEditorState>,
+    ) {
+        if let Ok(mut state) = query.get_mut(action.target()) {
+            match action.event().clone() {
+                EventTrackEditorAction::SelectEvent {
+                    track_name,
+                    event_id,
+                } => {
+                    state.selected_track = Some(track_name);
+                    state.selected_event = Some(event_id);
+                }
+                EventTrackEditorAction::SetScrollConfig(scroll_config) => {
+                    state.scroll_config = scroll_config
+                }
+                EventTrackEditorAction::SetTrackSource(target_tracks) => {
+                    state.target_tracks = target_tracks;
+                }
+            }
+        }
+    }
+}
+
+impl Default for EventTrackEditorState {
     fn default() -> Self {
         Self {
             scroll_config: ScrollConfig {
@@ -87,26 +130,28 @@ impl Default for EventTrackEditorWindow {
     }
 }
 
-impl EditorWindowExtension for EventTrackEditorWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut LegacyEditorWindowContext) {
+impl NativeEditorWindowExtension for EventTrackEditorWindow {
+    fn ui(&self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
         let timeline_height = 30.;
 
-        let sister_window_id = ctx.windows.find_window_with_type::<ClipPreviewWindow>();
-        let sister_window = sister_window_id
-            .and_then(|id| ctx.windows.get_window(id))
-            .and_then(|w| w.as_inner::<ClipPreviewWindow>());
+        let Some(state) = ctx
+            .get_window_state::<EventTrackEditorState>(world)
+            .cloned()
+        else {
+            return;
+        };
 
         egui::SidePanel::left("Track names")
             .resizable(true)
             .default_width(200.)
             .min_width(100.)
             .show_inside(ui, |ui| {
-                Self::with_tracks(
+                EventTrackEditorState::with_tracks(
                     ui,
-                    &self.target_tracks,
+                    &state.target_tracks,
                     world,
                     |ui, world, active_tracks| {
-                        self.draw_track_names(ui, world, active_tracks, 2. * timeline_height, ctx);
+                        state.draw_track_names(ui, world, active_tracks, 2. * timeline_height, ctx);
                     },
                     |ui, _| {
                         ui.label("No event track selected");
@@ -119,14 +164,14 @@ impl EditorWindowExtension for EventTrackEditorWindow {
             .default_width(200.)
             .min_width(100.)
             .show_inside(ui, |ui| {
-                Self::with_event(
+                EventTrackEditorState::with_event(
                     ui,
-                    &self.target_tracks,
-                    &self.selected_track,
-                    &self.selected_event,
+                    &state.target_tracks,
+                    &state.selected_track,
+                    &state.selected_event,
                     world,
                     |ui, world, event| {
-                        self.draw_event_editor(ui, world, &event.value, ctx);
+                        state.draw_event_editor(ui, world, &event.value, ctx);
                     },
                     |_, _| {},
                 );
@@ -137,7 +182,7 @@ impl EditorWindowExtension for EventTrackEditorWindow {
             .exact_height(timeline_height)
             .frame(egui::Frame::NONE)
             .show_inside(ui, |ui| {
-                self.draw_track_source_selector(ui, world, ctx);
+                state.draw_track_source_selector(ui, world, ctx);
             });
 
         egui::TopBottomPanel::top("Timeline")
@@ -145,7 +190,7 @@ impl EditorWindowExtension for EventTrackEditorWindow {
             .exact_height(timeline_height)
             .frame(egui::Frame::NONE)
             .show_inside(ui, |ui| {
-                self.draw_timeline(
+                state.draw_timeline(
                     ui,
                     sister_window.and_then(|w| w.current_time),
                     sister_window_id,
@@ -153,12 +198,12 @@ impl EditorWindowExtension for EventTrackEditorWindow {
                 );
             });
 
-        Self::with_tracks(
+        EventTrackEditorState::with_tracks(
             ui,
-            &self.target_tracks,
+            &state.target_tracks,
             world,
             |ui, world, active_tracks| {
-                self.draw_event_tracks(ui, world, active_tracks, ctx);
+                state.draw_event_tracks(ui, world, active_tracks, ctx);
             },
             |ui, _| {
                 ui.label("No event track selected");
@@ -170,36 +215,27 @@ impl EditorWindowExtension for EventTrackEditorWindow {
         "Edit tracks".to_string()
     }
 
-    fn handle_action(&mut self, action: DynWindowAction) {
-        let Ok(editor_action): Result<Box<EventTrackEditorAction>, _> = action.downcast() else {
-            return;
-        };
+    fn init(&self, world: &mut World, ctx: &EditorWindowRegistrationContext) {
+        world
+            .entity_mut(ctx.window)
+            .insert(EventTrackEditorState::default());
+    }
 
-        match *editor_action {
-            EventTrackEditorAction::SelectEvent {
-                track_name,
-                event_id,
-            } => {
-                self.selected_track = Some(track_name);
-                self.selected_event = Some(event_id);
-            }
-            EventTrackEditorAction::SetScrollConfig(scroll_config) => {
-                self.scroll_config = scroll_config
-            }
-            EventTrackEditorAction::SetTrackSource(target_tracks) => {
-                self.target_tracks = target_tracks;
-            }
-        }
+    fn register_observers(&self, world: &mut World, ctx: &EditorWindowRegistrationContext) {
+        let window = ctx.window;
+        world
+            .entity_mut(ctx.window)
+            .observe(EventTrackEditorAction::observe);
     }
 }
 
-impl EventTrackEditorWindow {
+impl EventTrackEditorState {
     fn draw_event_tracks(
         &self,
         ui: &mut egui::Ui,
         world: &mut World,
         active_tracks: ActiveTracks,
-        ctx: &mut LegacyEditorWindowContext,
+        ctx: &mut EditorWindowContext,
     ) {
         let available_size = ui.available_size();
         let (_, rect) = ui.allocate_space(available_size);
@@ -237,13 +273,10 @@ impl EventTrackEditorWindow {
             for event in track.events.iter() {
                 let response = self.draw_event(ui, rect, &event.value, track_number);
                 if response.clicked() {
-                    ctx.editor_actions.window(
-                        ctx.window_id,
-                        EventTrackEditorAction::SelectEvent {
-                            track_name: track.name.clone(),
-                            event_id: event.id,
-                        },
-                    );
+                    ctx.trigger_window(EventTrackEditorAction::SelectEvent {
+                        track_name: track.name.clone(),
+                        event_id: event.id,
+                    });
                 }
             }
         }
@@ -272,10 +305,7 @@ impl EventTrackEditorWindow {
                 }
 
                 if current_config != self.scroll_config {
-                    ctx.editor_actions.window(
-                        ctx.window_id,
-                        EventTrackEditorAction::SetScrollConfig(current_config),
-                    );
+                    ctx.trigger_window(EventTrackEditorAction::SetScrollConfig(current_config));
                 }
             });
         }
@@ -378,7 +408,7 @@ impl EventTrackEditorWindow {
         world: &mut World,
         active_tracks: ActiveTracks,
         vertical_offset_pixels: f32,
-        ctx: &mut LegacyEditorWindowContext,
+        ctx: &mut EditorWindowContext,
     ) {
         let available_size = ui.available_size();
         let (_, area_rect) = ui.allocate_space(available_size);
@@ -442,7 +472,7 @@ impl EventTrackEditorWindow {
         ui: &mut egui::Ui,
         current_time: Option<f32>,
         sister_window_id: Option<WindowId>,
-        ctx: &mut LegacyEditorWindowContext,
+        ctx: &mut EditorWindowContext,
     ) {
         let available_size = ui.available_size();
         let (_, area_rect) = ui.allocate_space(available_size);
@@ -516,7 +546,7 @@ impl EventTrackEditorWindow {
                 let time = self.pixel_to_time(click_pos.x, area_rect);
                 ctx.editor_actions.window(
                     sister_window_id,
-                    ClipPreviewAction::TimingOrder(TimingOrder::Seek { time }),
+                    ClipPreviewAction::TimingOrder(ClipPreviewTimingOrder::Seek { time }),
                 );
             }
         }
@@ -526,7 +556,7 @@ impl EventTrackEditorWindow {
         &self,
         ui: &mut egui::Ui,
         world: &mut World,
-        ctx: &mut LegacyEditorWindowContext,
+        ctx: &mut EditorWindowContext,
     ) {
         ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
             if let Some(new_selection) = using_wrap_ui(world, |mut env| {
@@ -537,10 +567,9 @@ impl EventTrackEditorWindow {
                     &(),
                 )
             }) {
-                ctx.editor_actions.window(
-                    ctx.window_id,
-                    EventTrackEditorAction::SetTrackSource(new_selection.clone()),
-                );
+                ctx.trigger_window(EventTrackEditorAction::SetTrackSource(
+                    new_selection.clone(),
+                ));
                 ctx.editor_actions.dynamic(TypeTargetedWindowAction {
                     target_window_type: TypeId::of::<ClipPreviewWindow>(),
                     action: Box::new(ClipPreviewAction::SelectTarget(new_selection)),
@@ -554,7 +583,7 @@ impl EventTrackEditorWindow {
         ui: &mut egui::Ui,
         world: &mut World,
         event: &TrackItemValue,
-        ctx: &mut LegacyEditorWindowContext,
+        ctx: &mut EditorWindowContext,
     ) {
         if let Some(edited_event) = using_wrap_ui(world, |mut env| {
             env.mutable_buffered(

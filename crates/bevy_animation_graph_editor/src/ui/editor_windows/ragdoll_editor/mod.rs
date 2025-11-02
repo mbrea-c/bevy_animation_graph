@@ -1,6 +1,5 @@
 use bevy::{
     asset::{AssetId, Handle},
-    ecs::world::CommandQueue,
     platform::collections::HashMap,
     prelude::World,
     utils::default,
@@ -39,7 +38,7 @@ use crate::ui::{
         settings_panel::{RagdollEditorSettings, SettingsPanel},
         top_panel::TopPanel,
     },
-    utils::{OrbitView, with_assets_all},
+    utils::with_assets_all,
 };
 
 mod body_inspector;
@@ -55,7 +54,6 @@ mod top_panel;
 
 #[derive(Debug)]
 pub struct RagdollEditorWindow {
-    pub orbit_view: OrbitView,
     pub ragdoll: Option<Handle<Ragdoll>>,
     pub ragdoll_bone_map: Option<Handle<RagdollBoneMap>>,
     pub scene: Option<Handle<AnimatedScene>>,
@@ -77,7 +75,6 @@ pub struct RagdollEditorWindow {
 impl Default for RagdollEditorWindow {
     fn default() -> Self {
         Self {
-            orbit_view: OrbitView::default(),
             ragdoll: None,
             ragdoll_bone_map: None,
             scene: None,
@@ -523,7 +520,6 @@ impl RagdollEditorWindow {
             RagdollPreview {
                 world,
                 ctx,
-                orbit_view: &mut self.orbit_view,
                 ragdoll: ragdoll.clone(),
                 base_scene: base_scene.clone(),
                 body_buffers: self.body_edit_buffers.clone(),

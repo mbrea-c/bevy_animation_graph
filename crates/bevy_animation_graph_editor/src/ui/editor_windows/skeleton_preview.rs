@@ -3,10 +3,9 @@ use std::sync::Arc;
 use bevy::{
     asset::{Assets, Handle},
     color::{
-        Alpha, Color, LinearRgba,
+        Alpha, Color,
         palettes::css::{self, DARK_RED, GRAY, ORANGE, YELLOW},
     },
-    core_pipeline::core_3d::Camera3d,
     ecs::{
         hierarchy::ChildSpawnerCommands,
         system::{In, Query, Res},
@@ -17,7 +16,6 @@ use bevy::{
     pbr::PointLight,
     platform::collections::HashMap,
     prelude::World,
-    render::camera::{Camera, ClearColorConfig, RenderTarget},
     transform::components::Transform,
     utils::default,
 };
@@ -48,13 +46,12 @@ use crate::{
         },
         core::{EditorWindowExtension, LegacyEditorWindowContext},
         reflect_widgets::wrap_ui::using_wrap_ui,
-        utils::{OrbitView, orbit_camera_scene_show, orbit_camera_transform, orbit_camera_update},
+        utils::orbit_camera_scene_show,
     },
 };
 
 #[derive(Debug)]
 pub struct SkeletonCollidersPreviewWindow {
-    pub orbit_view: OrbitView,
     pub target: Option<Handle<SkeletonColliders>>,
     pub reverse_index: Option<ReverseSkeletonIndex>,
     pub base_scene: Option<Handle<AnimatedScene>>,
@@ -78,7 +75,6 @@ pub enum SelectableCollider {
 impl Default for SkeletonCollidersPreviewWindow {
     fn default() -> Self {
         Self {
-            orbit_view: OrbitView::default(),
             target: None,
             reverse_index: None,
             base_scene: None,
@@ -140,14 +136,13 @@ impl EditorWindowExtension for SkeletonCollidersPreviewWindow {
 
         let config = SkeletonCollidersPreviewConfig {
             animated_scene: base_scene.clone(),
-            view: self.orbit_view.clone(),
             hovered: self.hovered,
             selected: self.selected,
             draw_colliders: std::mem::take(&mut self.draw_colliders),
         };
 
         let ui_texture_id = ui.id().with("clip preview texture");
-        orbit_camera_scene_show(&config, &mut self.orbit_view, ui, world, ui_texture_id);
+        orbit_camera_scene_show(&config, ui, world, ui_texture_id);
     }
 
     fn display_name(&self) -> String {
@@ -715,29 +710,16 @@ impl SkeletonCollidersPreviewWindow {
 #[derive(Clone)]
 pub struct SkeletonCollidersPreviewConfig {
     pub animated_scene: Handle<AnimatedScene>,
-    pub view: OrbitView,
     pub hovered: Option<BoneId>,
     pub selected: Option<BoneId>,
     pub draw_colliders: Vec<(ColliderConfig, Color)>,
 }
 
 impl SubSceneConfig for SkeletonCollidersPreviewConfig {
-    fn spawn(&self, builder: &mut ChildSpawnerCommands, render_target: Handle<Image>) {
+    fn spawn(&self, builder: &mut ChildSpawnerCommands, _: Handle<Image>) {
         builder.spawn((
             PointLight::default(),
             Transform::from_translation(Vec3::new(0.0, 0.0, 10.0)),
-        ));
-
-        builder.spawn((
-            Camera3d::default(),
-            Camera {
-                // render before the "main pass" camera
-                order: -1,
-                clear_color: ClearColorConfig::Custom(Color::from(LinearRgba::new(0., 0., 0., 1.))),
-                target: RenderTarget::Image(render_target.into()),
-                ..default()
-            },
-            orbit_camera_transform(&self.view),
         ));
 
         builder.spawn((
@@ -757,9 +739,6 @@ impl SubSceneConfig for SkeletonCollidersPreviewConfig {
     }
 
     fn update(&self, id: egui::Id, world: &mut World) {
-        world
-            .run_system_cached_with(orbit_camera_update, (id, self.view.clone()))
-            .unwrap();
         world
             .run_system_cached_with(
                 highlight_bones,

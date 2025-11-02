@@ -1,4 +1,5 @@
 pub mod angle_limit;
+pub mod animation_node;
 pub mod asset_picker;
 pub mod body_id;
 pub mod bone_id;

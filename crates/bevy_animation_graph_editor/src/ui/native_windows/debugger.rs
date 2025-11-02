@@ -1,85 +1,71 @@
 use bevy::{
-    color::LinearRgba,
     ecs::hierarchy::ChildSpawnerCommands,
     math::Vec3,
     pbr::PointLight,
-    prelude::{Camera, Camera3d, ClearColorConfig, Handle, Image, In, Query, Transform, World},
-    render::camera::RenderTarget,
-    utils::default,
+    prelude::{Handle, Image, In, Query, Transform, World},
 };
 use bevy_animation_graph::{
     core::{animation_graph::SourcePin, pose::Pose},
-    prelude::{
-        AnimatedScene, AnimatedSceneHandle, AnimatedSceneInstance, AnimationGraphPlayer, DataValue,
-    },
+    prelude::{AnimatedScene, AnimatedSceneHandle, AnimationGraphPlayer, DataValue},
 };
 use egui_dock::egui;
 
 use crate::ui::{
-    OverrideSceneAnimation, PartOfSubScene, PreviewScene, SubSceneConfig, SubSceneSyncAction,
-    core::{EditorWindowExtension, InspectorSelection, LegacyEditorWindowContext},
-    utils::{
-        self, OrbitView, orbit_camera_scene_show, orbit_camera_transform, orbit_camera_update,
-        using_inspector_env,
+    OverrideSceneAnimation, PartOfSubScene, SubSceneConfig, SubSceneSyncAction,
+    global_state::{
+        active_graph_context::ActiveContexts,
+        active_graph_node::{ActiveGraphNode, SetActiveGraphNode},
+        active_scene::ActiveScene,
+        get_global_state,
     },
+    native_windows::{EditorWindowContext, NativeEditorWindowExtension},
+    utils::{self, orbit_camera_scene_show, using_inspector_env},
 };
 
 #[derive(Debug, Default)]
-pub struct DebuggerWindow {
-    pub orbit_view: OrbitView,
-}
+pub struct DebuggerWindow;
 
-impl EditorWindowExtension for DebuggerWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut LegacyEditorWindowContext) {
-        if ctx.global_state.scene.is_none() {
+impl NativeEditorWindowExtension for DebuggerWindow {
+    fn ui(&self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
+        let Some(active_node) = get_global_state::<ActiveGraphNode>(world).cloned() else {
             return;
         };
-        let mut query = world.query::<(&AnimatedSceneInstance, &PreviewScene)>();
-        let Ok((instance, _)) = query.single(world) else {
+        let Some(active_scene) = get_global_state::<ActiveScene>(world).cloned() else {
             return;
         };
-        let entity = instance.player_entity();
-        let mut query = world.query::<&AnimationGraphPlayer>();
 
-        let InspectorSelection::Node(node_selection) = &mut ctx.global_state.inspector_selection
+        let Some(data_pin_map) =
+            utils::get_node_output_data_pins(world, active_node.handle.id(), &active_node.node)
         else {
             return;
         };
 
-        let Some(data_pin_map) = utils::get_node_output_data_pins(
-            world,
-            node_selection.graph.id(),
-            &node_selection.node,
-        ) else {
+        let Some(contexts) = get_global_state::<ActiveContexts>(world) else {
             return;
         };
 
+        let Some((entity, context_id)) = contexts
+            .by_asset
+            .get(&active_node.handle.id().untyped())
+            .cloned()
+        else {
+            return;
+        };
+
+        let mut query = world.query::<&AnimationGraphPlayer>();
         let Ok(player) = query.get(world, entity) else {
             return;
         };
 
-        let Some(graph_selection) = &ctx.global_state.graph_editor else {
-            return;
-        };
-
-        let Some(scene_selection) = ctx.global_state.scene.as_ref() else {
-            return;
-        };
-
-        let Some(graph_context) = scene_selection
-            .active_context
-            .get(&graph_selection.graph.id().untyped())
-            .and_then(|id| Some(id).zip(player.get_context_arena()))
-            .and_then(|(id, ca)| ca.get_context(*id))
+        let Some(graph_context) = Some(context_id)
+            .zip(player.get_context_arena())
+            .and_then(|(id, ca)| ca.get_context(id))
         else {
             return;
         };
 
         // Select data to display cached value of
-        let mut selected_pin_id = node_selection
-            .selected_pin_id
-            .clone()
-            .unwrap_or("".to_string());
+        let mut selected_pin_id = active_node.selected_pin.clone().unwrap_or("".to_string());
         egui::ComboBox::new("cache debugger window", "Pin")
             .selected_text(&selected_pin_id)
             .show_ui(ui, |ui| {
@@ -96,15 +82,20 @@ impl EditorWindowExtension for DebuggerWindow {
             Some(selected_pin_id)
         };
 
-        if new_pin_id != node_selection.selected_pin_id {
-            node_selection.selected_pin_id = new_pin_id.clone();
+        if new_pin_id != active_node.selected_pin {
+            ctx.trigger(SetActiveGraphNode {
+                new: ActiveGraphNode {
+                    selected_pin: new_pin_id.clone(),
+                    ..active_node.clone()
+                },
+            });
         }
 
         // Now get the selected value and display it!
 
         let Some(val) = new_pin_id.and_then(|pin_id| {
             graph_context.caches.get_primary(|c| {
-                let node_id = node_selection.node.clone();
+                let node_id = active_node.node.clone();
                 let pin_id = pin_id.clone();
                 c.get_data(&SourcePin::NodeData(node_id, pin_id)).cloned()
             })
@@ -114,7 +105,7 @@ impl EditorWindowExtension for DebuggerWindow {
 
         match &val {
             DataValue::Pose(pose) => {
-                self.pose_readonly(pose, scene_selection.scene.clone(), ui, world, ui.id(), ctx);
+                self.pose_readonly(pose, active_scene.handle.clone(), ui, world, ui.id());
             }
             _ => using_inspector_env(world, |mut env| env.ui_for_reflect_readonly(&val, ui)),
         }
@@ -129,27 +120,13 @@ impl EditorWindowExtension for DebuggerWindow {
 pub struct PoseSubSceneConfig {
     pose: Pose,
     animated_scene: Handle<AnimatedScene>,
-    view: OrbitView,
 }
 
 impl SubSceneConfig for PoseSubSceneConfig {
-    fn spawn(&self, builder: &mut ChildSpawnerCommands, render_target: Handle<Image>) {
+    fn spawn(&self, builder: &mut ChildSpawnerCommands, _render_target: Handle<Image>) {
         builder.spawn((
             PointLight::default(),
             Transform::from_translation(Vec3::new(0.0, 0.0, 10.0)),
-        ));
-
-        builder.spawn((
-            Camera3d::default(),
-            Camera {
-                // render before the "main pass" camera
-                order: -1,
-                clear_color: ClearColorConfig::Custom(LinearRgba::new(1.0, 1.0, 1.0, 0.0).into()),
-                target: RenderTarget::Image(render_target.into()),
-                ..default()
-            },
-            // Position based on orbit camera parameters
-            orbit_camera_transform(&self.view),
         ));
 
         builder.spawn((
@@ -162,21 +139,16 @@ impl SubSceneConfig for PoseSubSceneConfig {
         match (
             self.animated_scene == new_config.animated_scene,
             self.pose == new_config.pose,
-            self.view == new_config.view,
         ) {
-            (true, true, true) => SubSceneSyncAction::Nothing,
-            (true, false, _) => SubSceneSyncAction::Update,
-            (true, _, false) => SubSceneSyncAction::Update,
-            (false, _, _) => SubSceneSyncAction::Respawn,
+            (true, true) => SubSceneSyncAction::Nothing,
+            (true, false) => SubSceneSyncAction::Update,
+            (false, _) => SubSceneSyncAction::Respawn,
         }
     }
 
     fn update(&self, id: egui::Id, world: &mut World) {
         world
             .run_system_cached_with(update_pose_subscene, (id, self.pose.clone()))
-            .unwrap();
-        world
-            .run_system_cached_with(orbit_camera_update, (id, self.view.clone()))
             .unwrap();
     }
 }
@@ -198,25 +170,23 @@ impl DebuggerWindow {
     // Easier to manually display widget here than rely on bevy-inspector-egui, as we need mutable
     // world access for setting up the Bevy scene
     fn pose_readonly(
-        &mut self,
+        &self,
         pose: &Pose,
         scene: Handle<AnimatedScene>,
         ui: &mut egui::Ui,
         world: &mut World,
         id: egui::Id,
-        _ctx: &mut LegacyEditorWindowContext,
     ) {
         let config = PoseSubSceneConfig {
             pose: pose.clone(),
             animated_scene: scene,
-            view: self.orbit_view.clone(),
         };
 
         let mut size = ui.available_size();
         size.y *= 0.6;
 
         ui.allocate_ui(size, |ui| {
-            orbit_camera_scene_show(&config, &mut self.orbit_view, ui, world, id);
+            orbit_camera_scene_show(&config, ui, world, id);
         });
 
         ui.separator();

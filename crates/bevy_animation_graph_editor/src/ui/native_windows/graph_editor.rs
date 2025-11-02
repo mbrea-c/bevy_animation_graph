@@ -1,19 +1,20 @@
 use std::any::TypeId;
 
 use bevy::{
-    asset::{Assets, Handle},
+    asset::{AssetId, Assets, Handle},
     ecs::reflect::AppTypeRegistry,
     prelude::World,
     reflect::{TypeRegistry, prelude::ReflectDefault},
+    utils::default,
 };
 use bevy_animation_graph::{
     core::state_machine::high_level::StateMachine,
-    prelude::{AnimationGraph, ReflectNodeLike, SpecContext},
+    prelude::{AnimationGraph, AnimationNode, ReflectNodeLike, SpecContext},
 };
 use egui_dock::egui;
 
 use crate::{
-    egui_nodes::lib::GraphChange as EguiGraphChange,
+    egui_nodes::lib::{GraphChange as EguiGraphChange, NodesContext},
     graph_show::{GraphIndices, GraphIndicesMap, GraphReprSpec, Pin},
     ui::{
         actions::{
@@ -23,10 +24,16 @@ use crate::{
                 MoveOutput, RemoveLink, RemoveNode,
             },
         },
-        core::{
-            EditorWindowExtension, InspectorSelection, LegacyEditorWindowContext, NodeSelection,
+        generic_widgets::animation_node::AnimationNodeWidget,
+        global_state::{
+            active_graph::ActiveGraph,
+            active_graph_context::ActiveContexts,
+            active_graph_node::{ActiveGraphNode, SetActiveGraphNode},
+            get_global_state,
+            inspector_selection::{InspectorSelection, SetInspectorSelection},
         },
-        utils::{self, popup::CustomPopup, using_inspector_env},
+        native_windows::{EditorWindowContext, NativeEditorWindowExtension},
+        utils::{self, popup::CustomPopup},
     },
 };
 
@@ -41,128 +48,136 @@ struct TypeInfo {
 #[derive(Debug)]
 pub struct GraphEditorWindow;
 
-impl EditorWindowExtension for GraphEditorWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut LegacyEditorWindowContext) {
-        let Some(graph_selection) = &mut ctx.global_state.graph_editor else {
+#[derive(Default)]
+pub struct GraphEditBuffer {
+    pub graph: AssetId<AnimationGraph>,
+    pub nodes_context: NodesContext,
+}
+
+impl NativeEditorWindowExtension for GraphEditorWindow {
+    fn ui(&self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
+        let Some(active_graph) = get_global_state::<ActiveGraph>(world).cloned() else {
             ui.centered_and_justified(|ui| ui.label("Select a graph to edit!"));
             return;
         };
 
-        world.resource_scope::<Assets<AnimationGraph>, _>(|world, mut graph_assets| {
-            world.resource_scope::<Assets<StateMachine>, _>(|world, fsm_assets| {
-                world.resource_scope::<GraphIndicesMap, _>(|world, graph_indices_map| {
-                    if !graph_assets.contains(&graph_selection.graph) {
-                        return;
-                    }
+        let buffer_id = ui.id().with("Graph editor nodes context buffer");
+        let buffer = ctx
+            .buffers
+            .get_mut_or_insert_with(buffer_id, || GraphEditBuffer {
+                graph: active_graph.handle.id(),
+                ..default()
+            });
+        let buffer = if buffer.graph != active_graph.handle.id() {
+            ctx.buffers.clear::<GraphEditBuffer>(buffer_id);
+            ctx.buffers
+                .get_mut_or_insert_with(buffer_id, || GraphEditBuffer {
+                    graph: active_graph.handle.id(),
+                    ..default()
+                })
+        } else {
+            buffer
+        };
 
-                    let Some(graph_indices) =
-                        graph_indices_map.indices.get(&graph_selection.graph.id())
-                    else {
-                        ctx.editor_actions
-                            .push(EditorAction::Graph(GraphAction::GenerateIndices(
-                                GenerateIndices {
-                                    graph: graph_selection.graph.id(),
-                                },
-                            )));
-                        return;
-                    };
-
-                    {
-                        let graph = graph_assets.get(&graph_selection.graph).unwrap();
-                        let spec_context = SpecContext {
-                            graph_assets: &graph_assets,
-                            fsm_assets: &fsm_assets,
+        let result =
+            world.resource_scope::<Assets<AnimationGraph>, _>(|world, mut graph_assets| {
+                world.resource_scope::<Assets<StateMachine>, _>(|world, fsm_assets| {
+                    world.resource_scope::<GraphIndicesMap, _>(|world, graph_indices_map| {
+                        let graph = graph_assets.get(&active_graph.handle)?;
+                        let Some(graph_indices) =
+                            graph_indices_map.indices.get(&active_graph.handle.id())
+                        else {
+                            ctx.editor_actions.push(EditorAction::Graph(
+                                GraphAction::GenerateIndices(GenerateIndices {
+                                    graph: active_graph.handle.id(),
+                                }),
+                            ));
+                            return None;
                         };
 
-                        // Autoselect context if none selected and some available
-                        if let Some(scene) = &mut ctx.global_state.scene
-                            && let Some(available_contexts) =
-                                utils::list_graph_contexts(world, |ctx| {
-                                    ctx.get_graph_id() == graph_selection.graph.id()
+                        {
+                            let spec_context = SpecContext {
+                                graph_assets: &graph_assets,
+                                fsm_assets: &fsm_assets,
+                            };
+
+                            let maybe_graph_context = get_global_state::<ActiveContexts>(world)
+                                .and_then(|s| s.by_asset.get(&active_graph.handle.id().untyped()))
+                                .and_then(|(entity, id)| {
+                                    Some((
+                                        id,
+                                        utils::get_specific_animation_graph_player(world, *entity)?,
+                                    ))
                                 })
-                            && scene
-                                .active_context
-                                .get(&graph_selection.graph.id().untyped())
-                                .is_none()
-                            && !available_contexts.is_empty()
-                        {
-                            scene.active_context.insert(
-                                graph_selection.graph.id().untyped(),
-                                available_contexts[0],
+                                .and_then(|(id, p)| Some(id).zip(p.get_context_arena()))
+                                .and_then(|(id, ca)| ca.get_context(*id));
+
+                            let nodes = GraphReprSpec::from_graph(
+                                graph,
+                                graph_indices,
+                                spec_context,
+                                maybe_graph_context,
                             );
+
+                            buffer.nodes_context.show(nodes.nodes, nodes.edges, ui);
+                            buffer.nodes_context.get_changes().clone()
                         }
+                        .into_iter()
+                        .map(|c| {
+                            convert_graph_change(c, graph_indices, active_graph.handle.clone())
+                        })
+                        .for_each(|action| ctx.editor_actions.push(EditorAction::Graph(action)));
 
-                        let graph_player = utils::get_animation_graph_player(world);
+                        // --- Update selection for node inspector.
+                        // --- And enable debug render for latest node selected only
+                        // ----------------------------------------------------------------
 
-                        let maybe_graph_context = ctx
-                            .global_state
-                            .scene
-                            .as_ref()
-                            .and_then(|s| {
-                                s.active_context.get(&graph_selection.graph.id().untyped())
-                            })
-                            .zip(graph_player)
-                            .and_then(|(id, p)| Some(id).zip(p.get_context_arena()))
-                            .and_then(|(id, ca)| ca.get_context(*id));
-
-                        let nodes = GraphReprSpec::from_graph(
-                            graph,
-                            graph_indices,
-                            spec_context,
-                            maybe_graph_context,
-                        );
-
-                        graph_selection
+                        let graph = graph_assets.get_mut(&active_graph.handle).unwrap();
+                        for (_, node) in graph.nodes.iter_mut() {
+                            node.should_debug = false;
+                        }
+                        if let Some(selected_node) = buffer
                             .nodes_context
-                            .show(nodes.nodes, nodes.edges, ui);
-                        graph_selection.nodes_context.get_changes().clone()
-                    }
-                    .into_iter()
-                    .map(|c| convert_graph_change(c, graph_indices, graph_selection.graph.clone()))
-                    .for_each(|action| ctx.editor_actions.push(EditorAction::Graph(action)));
-
-                    // --- Update selection for node inspector.
-                    // --- And enable debug render for latest node selected only
-                    // ----------------------------------------------------------------
-
-                    let graph = graph_assets.get_mut(&graph_selection.graph).unwrap();
-                    for (_, node) in graph.nodes.iter_mut() {
-                        node.should_debug = false;
-                    }
-                    if let Some(selected_node) = graph_selection
-                        .nodes_context
-                        .get_selected_nodes()
-                        .iter()
-                        .rev()
-                        .find(|id| **id > 1)
-                        && *selected_node > 1
-                    {
-                        let node_name = graph_indices.node_indices.name(*selected_node).unwrap();
-                        graph.nodes.get_mut(node_name).unwrap().should_debug = true;
-                        if let InspectorSelection::Node(node_selection) =
-                            &mut ctx.global_state.inspector_selection
+                            .get_selected_nodes()
+                            .iter()
+                            .rev()
+                            .find(|id| **id > 1)
+                            && *selected_node > 1
                         {
-                            if &node_selection.node != node_name
-                                || node_selection.graph != graph_selection.graph
+                            let node_name =
+                                graph_indices.node_indices.name(*selected_node).unwrap();
+                            graph.nodes.get_mut(node_name).unwrap().should_debug = true;
+                            if let Some(active_node) = get_global_state::<ActiveGraphNode>(world)
+                                && let Some(InspectorSelection::ActiveNode) =
+                                    get_global_state::<InspectorSelection>(world)
+                                && &active_node.node == node_name
+                                && &active_node.handle == &active_graph.handle
                             {
-                                node_selection.node.clone_from(node_name);
-                                node_selection.name_buf.clone_from(node_name);
-                                node_selection.graph = graph_selection.graph.clone();
+                                // pass
+                            } else {
+                                return Some((
+                                    SetActiveGraphNode {
+                                        new: ActiveGraphNode {
+                                            handle: active_graph.handle.clone(),
+                                            node: node_name.clone(),
+                                            selected_pin: None,
+                                        },
+                                    },
+                                    SetInspectorSelection {
+                                        selection: InspectorSelection::ActiveNode,
+                                    },
+                                ));
                             }
-                        } else if graph_selection.nodes_context.is_node_just_selected() {
-                            ctx.global_state.inspector_selection =
-                                InspectorSelection::Node(NodeSelection {
-                                    graph: graph_selection.graph.clone(),
-                                    node: node_name.clone(),
-                                    name_buf: node_name.clone(),
-                                    selected_pin_id: None,
-                                });
                         }
-                    }
-                    // ----------------------------------------------------------------
-                });
+                        // ----------------------------------------------------------------
+                        None
+                    })
+                })
             });
-        });
+        if let Some((set_active_graph_node, set_inspector_selection)) = result {
+            ctx.trigger(set_active_graph_node);
+            ctx.trigger(set_inspector_selection);
+        }
 
         let available_size = ui.available_size();
         let (id, rect) = ui.allocate_space(available_size);
@@ -183,13 +198,24 @@ impl EditorWindowExtension for GraphEditorWindow {
     }
 }
 
+#[derive(Default)]
+pub struct NodeCreationBuffer {
+    pub node_type_search: String,
+    pub node: AnimationNode,
+}
+
 impl GraphEditorWindow {
     fn node_creator_popup(
         &self,
         ui: &mut egui::Ui,
         world: &mut World,
-        ctx: &mut LegacyEditorWindowContext,
+        ctx: &mut EditorWindowContext,
     ) {
+        let buffer_id = ui.id().with("node creator popup");
+        let buffer = ctx
+            .buffers
+            .get_mut_or_default::<NodeCreationBuffer>(buffer_id);
+
         let Some(mut types): Option<Vec<_>> = world
             .get_resource::<AppTypeRegistry>()
             .map(|atr| atr.0.read())
@@ -197,7 +223,7 @@ impl GraphEditorWindow {
                 Self::get_all_nodes_type_info(&tr)
                     .into_iter()
                     .filter(|ty| {
-                        let query = &ctx.global_state.node_creation.node_type_search;
+                        let query = &buffer.node_type_search;
 
                         if query.is_empty() {
                             true
@@ -215,7 +241,7 @@ impl GraphEditorWindow {
 
         types.sort_unstable_by(|a, b| a.path.cmp(&b.path));
 
-        let original_type_id = ctx.global_state.node_creation.node.inner.type_id();
+        let original_type_id = buffer.node.inner.type_id();
         let mut new_type_id = original_type_id;
 
         egui::SidePanel::left("Node type selector")
@@ -223,7 +249,7 @@ impl GraphEditorWindow {
             .default_width(175.)
             .min_width(150.)
             .show_inside(ui, |ui| {
-                ui.text_edit_singleline(&mut ctx.global_state.node_creation.node_type_search);
+                ui.text_edit_singleline(&mut buffer.node_type_search);
                 egui::ScrollArea::vertical()
                     .auto_shrink(false)
                     .show(ui, |ui| {
@@ -254,7 +280,7 @@ impl GraphEditorWindow {
                     let inner = node_like
                         .get_boxed(reflect_default.default())
                         .map_err(|_| "default-created value is not a `NodeLike`")?;
-                    ctx.global_state.node_creation.node.inner = inner;
+                    buffer.node.inner = inner;
                     Ok::<_, &str>(())
                 })();
             }
@@ -264,26 +290,11 @@ impl GraphEditorWindow {
             egui::ScrollArea::vertical()
                 .auto_shrink(false)
                 .show(ui, |ui| {
-                    using_inspector_env(world, |mut env| {
-                        let node = &mut ctx.global_state.node_creation.node;
-
-                        ui.horizontal(|ui| {
-                            ui.label("Name:");
-                            env.ui_for_reflect_with_options(
-                                &mut node.name,
-                                ui,
-                                ui.id().with("Node creator name edit"),
-                                &(),
-                            );
-                        });
-
-                        env.ui_for_reflect_with_options(
-                            node.inner.as_partial_reflect_mut(),
-                            ui,
-                            ui.id().with("Create node reflect"),
-                            &(),
-                        );
-                    });
+                    ui.add(AnimationNodeWidget::new_salted(
+                        &mut buffer.node,
+                        world,
+                        "create animation node widget",
+                    ));
 
                     let submit_response = ui
                         .with_layout(egui::Layout::bottom_up(egui::Align::RIGHT), |ui| {
@@ -291,13 +302,13 @@ impl GraphEditorWindow {
                         })
                         .inner;
 
-                    if submit_response.clicked() && ctx.global_state.graph_editor.is_some() {
-                        let graph_selection = ctx.global_state.graph_editor.as_ref().unwrap();
-
+                    if submit_response.clicked()
+                        && let Some(active_graph) = get_global_state::<ActiveGraph>(world)
+                    {
                         ctx.editor_actions
                             .push(EditorAction::Graph(GraphAction::CreateNode(CreateNode {
-                                graph: graph_selection.graph.clone(),
-                                node: ctx.global_state.node_creation.node.clone(),
+                                graph: active_graph.handle.clone(),
+                                node: buffer.node.clone(),
                             })));
                     }
                 });

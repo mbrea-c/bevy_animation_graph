@@ -1,3 +1,4 @@
+use bevy::ecs::world::World;
 use bevy_animation_graph::prelude::{NodeLike, ReflectEditProxy};
 
 use crate::ui::{node_editors::DynNodeEditor, utils::using_inspector_env};
@@ -9,7 +10,7 @@ impl DynNodeEditor for ReflectNodeEditor {
     fn show_dyn(
         &self,
         ui: &mut egui::Ui,
-        world: &mut bevy::ecs::world::World,
+        world: &mut World,
         node: &mut dyn NodeLike,
     ) -> egui::Response {
         let mut response = ui.allocate_response(egui::Vec2::ZERO, egui::Sense::hover());

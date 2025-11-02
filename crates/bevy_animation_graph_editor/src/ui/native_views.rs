@@ -1,7 +1,6 @@
 use bevy::ecs::{
     component::Component,
     entity::Entity,
-    query::With,
     world::{CommandQueue, World},
 };
 use egui_dock::{DockArea, DockState, NodeIndex};
@@ -11,18 +10,16 @@ use crate::ui::{
     actions::{EditorAction, PushQueue},
     core::{Buffers, EditorWindowExtension, EguiWindow, GlobalState, LegacyEditorWindowContext},
     editor_windows::{
-        animation_clip_preview::ClipPreviewWindow, debugger::DebuggerWindow,
-        event_sender::EventSenderWindow, event_track_editor::EventTrackEditorWindow,
-        fsm_editor::FsmEditorWindow, fsm_selector::FsmSelectorWindow,
-        graph_editor::GraphEditorWindow, graph_selector::GraphSelectorWindow,
-        inspector::InspectorWindow, preview_hierarchy::PreviewHierarchyWindow,
-        ragdoll_editor::RagdollEditorWindow, scene_preview::ScenePreviewWindow,
-        scene_preview_errors::ScenePreviewErrorsWindow, scene_selector::SceneSelectorWindow,
-        skeleton_preview::SkeletonCollidersPreviewWindow,
+        ragdoll_editor::RagdollEditorWindow, skeleton_preview::SkeletonCollidersPreviewWindow,
     },
     native_windows::{
         EditorWindowContext, NativeEditorWindow, NativeEditorWindowExtension,
-        scene_picker::ScenePickerWindow,
+        animation_clip_preview::ClipPreviewWindow, debugger::DebuggerWindow,
+        event_sender::EventSenderWindow, event_track_editor::EventTrackEditorWindow,
+        fsm_editor::FsmEditorWindow, fsm_picker::FsmPickerWindow, graph_editor::GraphEditorWindow,
+        graph_picker::GraphPickerWindow, inspector::InspectorWindow,
+        preview_hierarchy::PreviewHierarchyWindow, scene_picker::ScenePickerWindow,
+        scene_preview::ScenePreviewWindow, scene_preview_errors::ScenePreviewErrorsWindow,
     },
     windows::Windows,
 };
@@ -41,11 +38,13 @@ impl EditorView {
             .spawn((EditorViewState, EditorView { name: name.into() }))
             .id()
     }
-
-    pub fn ui() {}
 }
 
-fn ragdoll_view(world: &mut World, windows: &mut Windows) -> DockState<EguiWindow> {
+fn ragdoll_view(
+    _world: &mut World,
+    windows: &mut Windows,
+    view_entity: Entity,
+) -> DockState<EguiWindow> {
     let preview_window = windows.open(RagdollEditorWindow::default());
 
     let state = DockState::new(vec![preview_window.into()]);
@@ -53,16 +52,20 @@ fn ragdoll_view(world: &mut World, windows: &mut Windows) -> DockState<EguiWindo
     state
 }
 
-fn test_view(world: &mut World) -> DockState<EguiWindow> {
-    let scene_picker = NativeEditorWindow::create(world, ScenePickerWindow);
+fn test_view(world: &mut World, view_entity: Entity) -> DockState<EguiWindow> {
+    let scene_picker = NativeEditorWindow::create(world, view_entity, ScenePickerWindow);
     let state = DockState::new(vec![scene_picker.into()]);
 
     state
 }
 
-fn event_track_view(world: &mut World, windows: &mut Windows) -> DockState<EguiWindow> {
-    let event_track_window = windows.open(EventTrackEditorWindow::default());
-    let clip_preview_window = windows.open(ClipPreviewWindow::default());
+fn event_track_view(
+    world: &mut World,
+    windows: &mut Windows,
+    view_entity: Entity,
+) -> DockState<EguiWindow> {
+    let event_track_window = NativeEditorWindow::create(world, view_entity, EventTrackEditorWindow);
+    let clip_preview_window = NativeEditorWindow::create(world, view_entity, ClipPreviewWindow);
 
     let mut state = DockState::new(vec![event_track_window.into()]);
 
@@ -73,18 +76,23 @@ fn event_track_view(world: &mut World, windows: &mut Windows) -> DockState<EguiW
     state
 }
 
-fn main_view(world: &mut World, windows: &mut Windows) -> DockState<EguiWindow> {
-    let graph_editor = windows.open(GraphEditorWindow);
-    let fsm_editor = windows.open(FsmEditorWindow);
-    let inspector = windows.open(InspectorWindow);
-    let debugger = windows.open(DebuggerWindow::default());
-    let graph_selector = windows.open(GraphSelectorWindow);
-    let scene_selector = windows.open(SceneSelectorWindow);
-    let fsm_selector = windows.open(FsmSelectorWindow);
-    let scene_preview = windows.open(ScenePreviewWindow::default());
-    let preview_hierarchy = windows.open(PreviewHierarchyWindow);
-    let event_sender = windows.open(EventSenderWindow);
-    let scene_preview_errors = windows.open(ScenePreviewErrorsWindow);
+fn main_view(
+    world: &mut World,
+    _windows: &mut Windows,
+    view_entity: Entity,
+) -> DockState<EguiWindow> {
+    let graph_editor = NativeEditorWindow::create(world, view_entity, GraphEditorWindow);
+    let fsm_editor = NativeEditorWindow::create(world, view_entity, FsmEditorWindow);
+    let inspector = NativeEditorWindow::create(world, view_entity, InspectorWindow);
+    let debugger = NativeEditorWindow::create(world, view_entity, DebuggerWindow);
+    let graph_selector = NativeEditorWindow::create(world, view_entity, GraphPickerWindow);
+    let scene_selector = NativeEditorWindow::create(world, view_entity, ScenePickerWindow);
+    let fsm_selector = NativeEditorWindow::create(world, view_entity, FsmPickerWindow);
+    let scene_preview = NativeEditorWindow::create(world, view_entity, ScenePreviewWindow);
+    let preview_hierarchy = NativeEditorWindow::create(world, view_entity, PreviewHierarchyWindow);
+    let event_sender = NativeEditorWindow::create(world, view_entity, EventSenderWindow);
+    let scene_preview_errors =
+        NativeEditorWindow::create(world, view_entity, ScenePreviewErrorsWindow);
 
     let mut state = DockState::new(vec![graph_editor.into(), fsm_editor.into()]);
     let tree = state.main_surface_mut();
@@ -139,12 +147,7 @@ pub struct EditorViewUiState {
 }
 
 impl EditorViewUiState {
-    pub fn init(
-        world: &mut World,
-        name: impl Into<String>,
-        dock_state: DockState<EguiWindow>,
-    ) -> Self {
-        let entity = EditorView::init(world, name);
+    pub fn init(entity: Entity, dock_state: DockState<EguiWindow>) -> Self {
         Self { entity, dock_state }
     }
 
@@ -158,18 +161,21 @@ impl EditorViewUiState {
     }
 
     pub fn ragdoll(world: &mut World, windows: &mut Windows, name: impl Into<String>) -> Self {
-        let dock_state = ragdoll_view(world, windows);
-        Self::init(world, name, dock_state)
+        let entity = EditorView::init(world, name);
+        let dock_state = ragdoll_view(world, windows, entity);
+        Self::init(entity, dock_state)
     }
 
     pub fn test(world: &mut World, _windows: &mut Windows, name: impl Into<String>) -> Self {
-        let dock_state = test_view(world);
-        Self::init(world, name, dock_state)
+        let entity = EditorView::init(world, name);
+        let dock_state = test_view(world, entity);
+        Self::init(entity, dock_state)
     }
 
     pub fn event_tracks(world: &mut World, windows: &mut Windows, name: impl Into<String>) -> Self {
-        let dock_state = event_track_view(world, windows);
-        Self::init(world, name, dock_state)
+        let entity = EditorView::init(world, name);
+        let dock_state = event_track_view(world, windows, entity);
+        Self::init(entity, dock_state)
     }
 
     pub fn animation_graphs(
@@ -177,8 +183,9 @@ impl EditorViewUiState {
         windows: &mut Windows,
         name: impl Into<String>,
     ) -> Self {
-        let dock_state = main_view(world, windows);
-        Self::init(world, name, dock_state)
+        let entity = EditorView::init(world, name);
+        let dock_state = main_view(world, windows, entity);
+        Self::init(entity, dock_state)
     }
 
     pub fn skeleton_colliders(
@@ -186,8 +193,9 @@ impl EditorViewUiState {
         windows: &mut Windows,
         name: impl Into<String>,
     ) -> Self {
+        let entity = EditorView::init(world, name);
         let dock_state = skeleton_colliders_view(windows);
-        Self::init(world, name, dock_state)
+        Self::init(entity, dock_state)
     }
 }
 

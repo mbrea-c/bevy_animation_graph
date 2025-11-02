@@ -2,17 +2,14 @@ use std::sync::Arc;
 
 use bevy::{
     asset::Handle,
-    color::{Alpha, Color, Hsla, LinearRgba, palettes::css},
-    core_pipeline::core_3d::Camera3d,
+    color::{Alpha, Hsla, palettes::css},
     ecs::{hierarchy::ChildSpawnerCommands, world::World},
     gizmos::primitives::dim3::GizmoPrimitive3d,
     image::Image,
     math::{Isometry3d, Quat, Vec3},
     pbr::PointLight,
     platform::collections::HashMap,
-    render::camera::{Camera, ClearColorConfig, RenderTarget},
     transform::components::Transform,
-    utils::default,
 };
 use bevy_animation_graph::{
     core::{
@@ -30,16 +27,12 @@ use crate::ui::{
     PartOfSubScene, PreviewScene, SubSceneConfig, SubSceneSyncAction,
     core::LegacyEditorWindowContext,
     editor_windows::ragdoll_editor::SelectedItem,
-    utils::{
-        OrbitView, orbit_camera_scene_show, orbit_camera_transform, orbit_camera_update,
-        with_assets_all,
-    },
+    utils::{orbit_camera_scene_show, with_assets_all},
 };
 
 pub struct RagdollPreview<'a, 'b> {
     pub world: &'a mut World,
     pub ctx: &'a mut LegacyEditorWindowContext<'b>,
-    pub orbit_view: &'a mut OrbitView,
 
     pub ragdoll: Handle<Ragdoll>,
     pub base_scene: Handle<AnimatedScene>,
@@ -56,7 +49,6 @@ impl RagdollPreview<'_, '_> {
     pub fn draw(self, ui: &mut egui::Ui) {
         let config = RagdollPreviewConfig {
             animated_scene: self.base_scene.clone(),
-            view: self.orbit_view.clone(),
             gizmo_overlays: vec![
                 Arc::new(RagdollBodies {
                     ragdoll: self.ragdoll.clone(),
@@ -92,34 +84,21 @@ impl RagdollPreview<'_, '_> {
         };
 
         let ui_texture_id = ui.id().with("clip preview texture");
-        orbit_camera_scene_show(&config, self.orbit_view, ui, self.world, ui_texture_id);
+        orbit_camera_scene_show(&config, ui, self.world, ui_texture_id);
     }
 }
 
 #[derive(Clone)]
 pub struct RagdollPreviewConfig {
     pub animated_scene: Handle<AnimatedScene>,
-    pub view: OrbitView,
     pub gizmo_overlays: Vec<Arc<dyn GizmoOverlay>>,
 }
 
 impl SubSceneConfig for RagdollPreviewConfig {
-    fn spawn(&self, builder: &mut ChildSpawnerCommands, render_target: Handle<Image>) {
+    fn spawn(&self, builder: &mut ChildSpawnerCommands, _: Handle<Image>) {
         builder.spawn((
             PointLight::default(),
             Transform::from_translation(Vec3::new(0.0, 0.0, 10.0)),
-        ));
-
-        builder.spawn((
-            Camera3d::default(),
-            Camera {
-                // render before the "main pass" camera
-                order: -1,
-                clear_color: ClearColorConfig::Custom(Color::from(LinearRgba::new(0., 0., 0., 1.))),
-                target: RenderTarget::Image(render_target.into()),
-                ..default()
-            },
-            orbit_camera_transform(&self.view),
         ));
 
         builder.spawn((
@@ -139,9 +118,6 @@ impl SubSceneConfig for RagdollPreviewConfig {
     }
 
     fn update(&self, id: egui::Id, world: &mut World) {
-        world
-            .run_system_cached_with(orbit_camera_update, (id, self.view.clone()))
-            .unwrap();
         for overlay in &self.gizmo_overlays {
             draw_gizmo_overlay(id, overlay, world);
         }

@@ -1,26 +1,34 @@
 use bevy::{
     asset::Handle,
-    ecs::{component::Component, event::Event, observer::Trigger, query::With, system::Single},
+    ecs::{component::Component, entity::Entity, event::Event, world::World},
 };
 use bevy_animation_graph::core::state_machine::high_level::StateMachine;
 
-use crate::ui::global_state::GlobalState;
+use crate::ui::global_state::{
+    RegisterGlobalState, SetOrInsertEvent, observe_clear_global_state, observe_set_or_insert_event,
+};
 
-#[derive(Debug, Component, Default)]
+#[derive(Debug, Component, Default, Clone)]
 pub struct ActiveFsm {
-    pub handle: Option<Handle<StateMachine>>,
+    pub handle: Handle<StateMachine>,
+}
+
+impl RegisterGlobalState for ActiveFsm {
+    fn register(world: &mut World, _global_state_entity: Entity) {
+        world.add_observer(observe_set_or_insert_event::<ActiveFsm, SetActiveFsm>);
+        world.add_observer(observe_clear_global_state::<Self>);
+    }
 }
 
 #[derive(Event)]
 pub struct SetActiveFsm {
-    pub handle: Option<Handle<StateMachine>>,
+    pub new: ActiveFsm,
 }
 
-impl SetActiveFsm {
-    pub fn observe(
-        set_active_fsm: Trigger<SetActiveFsm>,
-        global_state: Single<&mut ActiveFsm, With<GlobalState>>,
-    ) {
-        global_state.into_inner().handle = set_active_fsm.event().handle.clone();
+impl SetOrInsertEvent for SetActiveFsm {
+    type Target = ActiveFsm;
+
+    fn get_component(&self) -> Self::Target {
+        self.new.clone()
     }
 }

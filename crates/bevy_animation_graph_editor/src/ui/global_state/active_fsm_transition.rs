@@ -1,17 +1,10 @@
 use bevy::{
     asset::Handle,
-    ecs::{
-        component::Component,
-        entity::Entity,
-        event::Event,
-        observer::Trigger,
-        query::With,
-        system::{Commands, Single},
-    },
+    ecs::{component::Component, entity::Entity, event::Event, world::World},
 };
 use bevy_animation_graph::core::state_machine::high_level::{StateMachine, TransitionId};
 
-use crate::ui::global_state::GlobalState;
+use crate::ui::global_state::{RegisterGlobalState, SetOrInsertEvent, observe_set_or_insert_event};
 
 #[derive(Debug, Component, Default, Clone)]
 pub struct ActiveFsmTransition {
@@ -19,25 +12,23 @@ pub struct ActiveFsmTransition {
     pub transition: TransitionId,
 }
 
+impl RegisterGlobalState for ActiveFsmTransition {
+    fn register(world: &mut World, _global_state_entity: Entity) {
+        world.add_observer(
+            observe_set_or_insert_event::<ActiveFsmTransition, SetActiveFsmTransition>,
+        );
+    }
+}
+
 #[derive(Event)]
 pub struct SetActiveFsmTransition {
     pub new: ActiveFsmTransition,
 }
 
-impl SetActiveFsmTransition {
-    pub fn observe(
-        new_state: Trigger<SetActiveFsmTransition>,
-        global_state: Single<(Entity, Option<&mut ActiveFsmTransition>), With<GlobalState>>,
-        mut commands: Commands,
-    ) {
-        let (entity, old_state) = global_state.into_inner();
+impl SetOrInsertEvent for SetActiveFsmTransition {
+    type Target = ActiveFsmTransition;
 
-        if let Some(mut old_state) = old_state {
-            *old_state = new_state.event().new.clone();
-        } else {
-            commands
-                .entity(entity)
-                .insert(new_state.event().new.clone());
-        }
+    fn get_component(&self) -> Self::Target {
+        self.new.clone()
     }
 }

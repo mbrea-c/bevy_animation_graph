@@ -1,16 +1,3 @@
-pub mod animation_clip_preview;
-pub mod debugger;
-pub mod event_sender;
-pub mod event_track_editor;
-pub mod fsm_editor;
-pub mod fsm_selector;
-pub mod graph_editor;
-pub mod graph_selector;
-pub mod inspector;
-pub mod preview_hierarchy;
 pub mod ragdoll_editor;
 pub mod saving;
-pub mod scene_preview;
-pub mod scene_preview_errors;
-pub mod scene_selector;
 pub mod skeleton_preview;

@@ -17,11 +17,11 @@ use fsm_show::FsmIndicesMap;
 use graph_show::GraphIndicesMap;
 use scanner::ScannerPlugin;
 use std::path::PathBuf;
+use ui::UiState;
 use ui::actions::PendingActions;
 use ui::actions::clip_preview::ClipPreviewScenes;
 use ui::actions::saving::DirtyAssets;
 use ui::egui_inspector_impls::BetterInspectorPlugin;
-use ui::{UiState, graph_debug_draw_bone_system};
 
 #[derive(Parser, Resource)]
 struct Cli {
@@ -83,7 +83,6 @@ impl Plugin for AnimationGraphEditorPlugin {
                 ui::override_scene_animations,
                 ui::render_pose_gizmos,
                 ui::propagate_layers,
-                graph_debug_draw_bone_system,
             )
                 .chain(),
         );

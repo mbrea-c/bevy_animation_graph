@@ -1,13 +1,13 @@
 use bevy::{
     asset::Handle,
-    ecs::{component::Component, event::Event, observer::Trigger, query::With, system::Single},
+    ecs::{component::Component, entity::Entity, event::Event, world::World},
 };
 use bevy_animation_graph::{
     core::animation_graph::{NodeId, PinId},
     prelude::AnimationGraph,
 };
 
-use crate::ui::global_state::GlobalState;
+use crate::ui::global_state::{RegisterGlobalState, SetOrInsertEvent, observe_set_or_insert_event};
 
 #[derive(Debug, Component, Default, Clone)]
 pub struct ActiveGraphNode {
@@ -16,16 +16,21 @@ pub struct ActiveGraphNode {
     pub selected_pin: Option<PinId>,
 }
 
+impl RegisterGlobalState for ActiveGraphNode {
+    fn register(world: &mut World, _global_state_entity: Entity) {
+        world.add_observer(observe_set_or_insert_event::<ActiveGraphNode, SetActiveGraphNode>);
+    }
+}
+
 #[derive(Event)]
 pub struct SetActiveGraphNode {
     pub new: ActiveGraphNode,
 }
 
-impl SetActiveGraphNode {
-    pub fn observe(
-        event: Trigger<SetActiveGraphNode>,
-        global_state: Single<&mut ActiveGraphNode, With<GlobalState>>,
-    ) {
-        *global_state.into_inner() = event.event().new.clone();
+impl SetOrInsertEvent for SetActiveGraphNode {
+    type Target = ActiveGraphNode;
+
+    fn get_component(&self) -> Self::Target {
+        self.new.clone()
     }
 }

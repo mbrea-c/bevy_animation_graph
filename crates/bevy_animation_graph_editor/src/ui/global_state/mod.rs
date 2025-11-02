@@ -1,19 +1,28 @@
-use bevy::ecs::{component::Component, entity::Entity, query::With, world::World};
+use std::marker::PhantomData;
+
+use bevy::ecs::{
+    component::{Component, Mutable},
+    entity::Entity,
+    error::BevyError,
+    event::Event,
+    observer::Trigger,
+    query::With,
+    system::{Commands, Query, Single},
+    world::World,
+};
 
 use crate::ui::global_state::{
-    active_fsm::{ActiveFsm, SetActiveFsm},
-    active_fsm_state::SetActiveFsmState,
-    active_fsm_transition::SetActiveFsmTransition,
-    active_graph::ActiveGraph,
-    active_graph_node::{ActiveGraphNode, SetActiveGraphNode},
-    active_scene::{ActiveScene, SetActiveScene},
-    inspector_selection::{InspectorSelection, SetInspectorSelection},
+    active_fsm::ActiveFsm, active_fsm_state::ActiveFsmState,
+    active_fsm_transition::ActiveFsmTransition, active_graph::ActiveGraph,
+    active_graph_context::ActiveContexts, active_graph_node::ActiveGraphNode,
+    active_scene::ActiveScene, inspector_selection::InspectorSelection,
 };
 
 pub mod active_fsm;
 pub mod active_fsm_state;
 pub mod active_fsm_transition;
 pub mod active_graph;
+pub mod active_graph_context;
 pub mod active_graph_node;
 pub mod active_scene;
 pub mod inspector_selection;
@@ -23,24 +32,16 @@ pub struct GlobalState;
 
 impl GlobalState {
     pub fn init(world: &mut World) {
-        let entity = world
-            .spawn((
-                GlobalState,
-                ActiveScene::default(),
-                ActiveFsm::default(),
-                ActiveGraphNode::default(),
-                InspectorSelection::default(),
-            ))
-            .id();
+        let entity = world.spawn(GlobalState).id();
 
+        ActiveContexts::register(world, entity);
+        ActiveFsm::register(world, entity);
+        ActiveFsmState::register(world, entity);
+        ActiveFsmTransition::register(world, entity);
         ActiveGraph::register(world, entity);
-
-        world.add_observer(SetActiveScene::observe);
-        world.add_observer(SetActiveFsm::observe);
-        world.add_observer(SetActiveGraphNode::observe);
-        world.add_observer(SetInspectorSelection::observe);
-        world.add_observer(SetActiveFsmState::observe);
-        world.add_observer(SetActiveFsmTransition::observe);
+        ActiveGraphNode::register(world, entity);
+        ActiveScene::register(world, entity);
+        InspectorSelection::register(world, entity);
     }
 }
 
@@ -51,4 +52,43 @@ pub trait RegisterGlobalState {
 pub fn get_global_state<T: Component>(world: &World) -> Option<&T> {
     let mut query_state = world.try_query_filtered::<&T, With<GlobalState>>()?;
     query_state.single(world).ok()
+}
+
+// For convenience, since it's a common pattern
+pub trait SetOrInsertEvent: Event {
+    type Target: Component;
+
+    fn get_component(&self) -> Self::Target;
+}
+
+fn observe_set_or_insert_event<T, E>(
+    new_state: Trigger<E>,
+    global_state: Single<(Entity, Option<&mut T>), With<GlobalState>>,
+    mut commands: Commands,
+) where
+    T: Component<Mutability = Mutable>,
+    E: SetOrInsertEvent<Target = T>,
+{
+    let (entity, old_state) = global_state.into_inner();
+
+    if let Some(mut old_state) = old_state {
+        *old_state = new_state.event().get_component();
+    } else {
+        commands
+            .entity(entity)
+            .insert(new_state.event().get_component());
+    }
+}
+
+#[derive(Default, Event)]
+pub struct ClearGlobalState<T>(PhantomData<T>);
+
+pub fn observe_clear_global_state<T: Component>(
+    event: Trigger<ClearGlobalState<T>>,
+    global_state: Query<Entity, With<GlobalState>>,
+    mut commands: Commands,
+) -> Result<(), BevyError> {
+    let global_state_entity = global_state.single()?;
+    commands.entity(global_state_entity).remove::<T>();
+    Ok(())
 }

@@ -6,7 +6,7 @@ use crate::{
     tree::{Tree, TreeResult},
     ui::{
         PreviewScene,
-        core::{EditorWindowExtension, LegacyEditorWindowContext},
+        native_windows::{EditorWindowContext, NativeEditorWindowExtension},
         utils,
     },
 };
@@ -14,11 +14,8 @@ use crate::{
 #[derive(Debug)]
 pub struct PreviewHierarchyWindow;
 
-impl EditorWindowExtension for PreviewHierarchyWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut LegacyEditorWindowContext) {
-        if ctx.global_state.scene.is_none() {
-            return;
-        };
+impl NativeEditorWindowExtension for PreviewHierarchyWindow {
+    fn ui(&self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
         let mut query = world.query::<(&AnimatedSceneInstance, &PreviewScene)>();
         let Ok((instance, _)) = query.single(world) else {
             return;
@@ -34,7 +31,7 @@ impl EditorWindowExtension for PreviewHierarchyWindow {
                 });
                 ctx.notifications
                     .info(format!("{} copied to clipboard", path.to_slashed_string()));
-                ctx.global_state.entity_path = Some(path);
+                // ctx.global_state.entity_path = Some(path);
             }
             TreeResult::Node((_, path), _) => {
                 let path = EntityPath { parts: path };
@@ -44,7 +41,7 @@ impl EditorWindowExtension for PreviewHierarchyWindow {
                 });
                 ctx.notifications
                     .info(format!("{} copied to clipboard", path.to_slashed_string()));
-                ctx.global_state.entity_path = Some(path);
+                // ctx.global_state.entity_path = Some(path);
             }
             TreeResult::None => (),
         }

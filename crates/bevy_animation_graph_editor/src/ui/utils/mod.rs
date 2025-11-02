@@ -2,9 +2,11 @@ use std::f32::consts::{FRAC_PI_2, PI};
 use std::path::PathBuf;
 
 use crate::tree::{Tree, TreeInternal, TreeResult};
+use crate::ui::SubSceneSyncAction;
 use bevy::asset::UntypedAssetId;
 use bevy::ecs::world::CommandQueue;
 use bevy::prelude::*;
+use bevy::render::camera::RenderTarget;
 use bevy::render::render_resource::Extent3d;
 use bevy_animation_graph::core::animation_graph::{AnimationGraph, NodeId, PinMap};
 use bevy_animation_graph::core::context::SpecContext;
@@ -16,7 +18,6 @@ use bevy_inspector_egui::bevy_egui::EguiUserTextures;
 use bevy_inspector_egui::egui;
 use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
 
-use super::core::GlobalState;
 use super::{PartOfSubScene, PreviewScene, SubSceneConfig, provide_texture_for_scene};
 
 pub mod collapsing;
@@ -122,46 +123,6 @@ pub(crate) fn select_from_tree_internal<I, L>(
     }
 }
 
-pub(crate) fn select_graph_context(
-    world: &mut World,
-    ui: &mut egui::Ui,
-    selection: &mut GlobalState,
-) {
-    let Some(graph) = &selection.graph_editor else {
-        return;
-    };
-
-    let Some(available) = list_graph_contexts(world, |ctx| ctx.get_graph_id() == graph.graph.id())
-    else {
-        return;
-    };
-
-    let Some(scene) = &mut selection.scene else {
-        return;
-    };
-
-    let mut selected = scene
-        .active_context
-        .get(&graph.graph.id().untyped())
-        .copied();
-    egui::ComboBox::from_label("Active context")
-        .selected_text(format!("{selected:?}"))
-        .show_ui(ui, |ui| {
-            ui.selectable_value(&mut selected, None, format!("{:?}", None::<GraphContextId>));
-            for id in available {
-                ui.selectable_value(&mut selected, Some(id), format!("{:?}", Some(id)));
-            }
-        });
-
-    if let Some(selected) = selected {
-        scene
-            .active_context
-            .insert(graph.graph.id().untyped(), selected);
-    } else {
-        scene.active_context.remove(&graph.graph.id().untyped());
-    }
-}
-
 pub(crate) fn list_graph_contexts(
     world: &mut World,
     filter: impl Fn(&GraphContext) -> bool,
@@ -180,50 +141,12 @@ pub(crate) fn list_graph_contexts(
     )
 }
 
-pub(crate) fn select_graph_context_fsm(
-    world: &mut World,
-    ui: &mut egui::Ui,
-    selection: &mut GlobalState,
-) {
-    let Some(fsm) = &selection.fsm_editor else {
-        return;
-    };
-
-    let Some(available) =
-        world.resource_scope::<Assets<AnimationGraph>, _>(|world, graph_assets| {
-            list_graph_contexts(world, |ctx| {
-                let graph_id = ctx.get_graph_id();
-                let Some(graph) = graph_assets.get(graph_id) else {
-                    return false;
-                };
-                graph.contains_state_machine(fsm.fsm.id()).is_some()
-            })
-        })
-    else {
-        return;
-    };
-
-    let Some(scene) = &mut selection.scene else {
-        return;
-    };
-
-    let mut selected = scene.active_context.get(&fsm.fsm.id().untyped()).copied();
-    egui::ComboBox::from_label("Active context")
-        .selected_text(format!("{selected:?}"))
-        .show_ui(ui, |ui| {
-            ui.selectable_value(&mut selected, None, format!("{:?}", None::<GraphContextId>));
-            for id in available {
-                ui.selectable_value(&mut selected, Some(id), format!("{:?}", Some(id)));
-            }
-        });
-
-    if let Some(selected) = selected {
-        scene
-            .active_context
-            .insert(fsm.fsm.id().untyped(), selected);
-    } else {
-        scene.active_context.remove(&fsm.fsm.id().untyped());
-    }
+pub(crate) fn get_specific_animation_graph_player(
+    world: &World,
+    entity: Entity,
+) -> Option<&AnimationGraphPlayer> {
+    let mut query = world.try_query::<&AnimationGraphPlayer>()?;
+    query.get(world, entity).ok()
 }
 
 pub(crate) fn get_animation_graph_player(world: &mut World) -> Option<&AnimationGraphPlayer> {
@@ -234,6 +157,23 @@ pub(crate) fn get_animation_graph_player(world: &mut World) -> Option<&Animation
     let entity = instance.player_entity();
     let mut query = world.query::<&AnimationGraphPlayer>();
     query.get(world, entity).ok()
+}
+
+pub(crate) fn iter_animation_graph_players(world: &World) -> Vec<(Entity, &AnimationGraphPlayer)> {
+    let mut scene_query = world
+        .try_query::<(&AnimatedSceneInstance, &PreviewScene)>()
+        .unwrap();
+    let mut player_query = world
+        .try_query::<(Entity, &AnimationGraphPlayer)>()
+        .unwrap();
+
+    scene_query
+        .iter(world)
+        .filter_map(|(instance, _)| {
+            let entity = instance.player_entity();
+            player_query.get(world, entity).ok()
+        })
+        .collect()
 }
 
 pub(crate) fn get_animation_graph_player_mut(
@@ -324,17 +264,70 @@ impl Default for OrbitView {
     }
 }
 
+#[derive(Clone)]
+pub struct OrbitCameraSceneConfig<T> {
+    pub view: OrbitView,
+    pub inner: T,
+}
+
+impl<T: SubSceneConfig> SubSceneConfig for OrbitCameraSceneConfig<T> {
+    fn spawn(&self, builder: &mut ChildSpawnerCommands, render_target: Handle<Image>) {
+        builder.spawn((
+            Camera3d::default(),
+            Camera {
+                // render before the "main pass" camera
+                order: -1,
+                clear_color: ClearColorConfig::Custom(LinearRgba::new(1.0, 1.0, 1.0, 0.0).into()),
+                target: RenderTarget::Image(render_target.clone().into()),
+                ..default()
+            },
+            // Position based on orbit camera parameters
+            orbit_camera_transform(&self.view),
+        ));
+
+        self.inner.spawn(builder, render_target);
+    }
+
+    fn sync_action(&self, new_config: &Self) -> SubSceneSyncAction {
+        let outer = if self.view == new_config.view {
+            SubSceneSyncAction::Update
+        } else {
+            SubSceneSyncAction::Nothing
+        };
+
+        outer | self.inner.sync_action(&new_config.inner)
+    }
+
+    fn update(&self, id: egui::Id, world: &mut World) {
+        world
+            .run_system_cached_with(orbit_camera_update, (id, self.view.clone()))
+            .unwrap();
+        self.inner.update(id, world);
+    }
+}
+
 pub fn orbit_camera_scene_show<T: SubSceneConfig>(
     config: &T,
-    orbit: &mut OrbitView,
     ui: &mut egui::Ui,
     world: &mut World,
     id: egui::Id,
 ) {
+    let mut orbit = ui.memory_mut(|mem| {
+        mem.data
+            .get_temp_mut_or_default::<OrbitView>(ui.id().with("orbit"))
+            .clone()
+    });
+
+    let orbit_config = OrbitCameraSceneConfig {
+        view: orbit.clone(),
+        inner: config.clone(),
+    };
+
     // First we need to make sure the subscene is created and get the camera image handle
-    let texture = provide_texture_for_scene(world, id, config.clone());
+    let texture = provide_texture_for_scene(world, id, orbit_config.clone());
     let response = render_image(ui, world, &texture);
     let motion = response.drag_motion() * 0.01;
+
     orbit.angles = Vec2::new(
         (orbit.angles.x + motion.x).rem_euclid(2. * PI),
         (orbit.angles.y + motion.y).clamp(-FRAC_PI_2, FRAC_PI_2),
@@ -356,6 +349,11 @@ pub fn orbit_camera_scene_show<T: SubSceneConfig>(
         });
         orbit.distance = (orbit.distance - zoom).max(0.001);
     }
+
+    ui.memory_mut(|mem| {
+        mem.data
+            .insert_temp::<OrbitView>(ui.id().with("orbit"), orbit)
+    });
 }
 
 pub fn orbit_camera_transform(view: &OrbitView) -> Transform {
@@ -415,4 +413,19 @@ pub fn with_assets_all<A: Asset, T, const N: usize>(
             std::array::from_fn(|i| maybe_assets[i].expect("Already checked it's not None"));
         Some(f(world, all_assets))
     })
+}
+
+pub fn insert_if_missing<T: Component>(
+    world: &mut World,
+    entity: Entity,
+    create: impl FnOnce() -> T,
+) {
+    let mut entity_mut = world.entity_mut(entity);
+    if !entity_mut.contains::<T>() {
+        entity_mut.insert(create());
+    }
+}
+
+pub fn insert_default_if_missing<T: Component + Default>(world: &mut World, entity: Entity) {
+    insert_if_missing(world, entity, || T::default());
 }

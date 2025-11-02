@@ -1,13 +1,10 @@
 use bevy::{
     asset::Handle,
-    color::{Color, LinearRgba},
     ecs::hierarchy::ChildSpawnerCommands,
     image::Image,
     math::Vec3,
     pbr::PointLight,
-    prelude::{Camera, Camera3d, ClearColorConfig, Transform, World},
-    render::camera::RenderTarget,
-    utils::default,
+    prelude::{Transform, World},
 };
 use bevy_animation_graph::prelude::{
     AnimatedScene, AnimatedSceneHandle, AnimatedSceneInstance, AnimationGraphPlayer,
@@ -16,29 +13,22 @@ use egui_dock::egui;
 
 use crate::ui::{
     PartOfSubScene, PreviewScene, SubSceneConfig, SubSceneSyncAction,
-    core::EditorWindowExtension,
-    utils::{OrbitView, orbit_camera_scene_show, orbit_camera_transform, orbit_camera_update},
+    global_state::{ClearGlobalState, active_scene::ActiveScene, get_global_state},
+    native_windows::{EditorWindowContext, NativeEditorWindowExtension},
+    utils::orbit_camera_scene_show,
 };
 
 #[derive(Debug, Default)]
-pub struct ScenePreviewWindow {
-    pub orbit_view: OrbitView,
-}
+pub struct ScenePreviewWindow;
 
-impl EditorWindowExtension for ScenePreviewWindow {
-    fn ui(
-        &mut self,
-        ui: &mut egui_dock::egui::Ui,
-        world: &mut bevy::prelude::World,
-        ctx: &mut crate::ui::core::LegacyEditorWindowContext,
-    ) {
-        let Some(scene_selection) = &ctx.global_state.scene else {
+impl NativeEditorWindowExtension for ScenePreviewWindow {
+    fn ui(&self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
+        let Some(active_scene) = get_global_state::<ActiveScene>(world) else {
             return;
         };
 
         let config = ScenePreviewConfig {
-            animated_scene: scene_selection.scene.clone(),
-            view: self.orbit_view.clone(),
+            animated_scene: active_scene.handle.clone(),
         };
 
         let ui_texture_id = ui.id().with("Scene preview texture");
@@ -57,7 +47,7 @@ impl EditorWindowExtension for ScenePreviewWindow {
 
             ui.horizontal(|ui| {
                 if ui.button("X").on_hover_text("Close preview").clicked() {
-                    ctx.global_state.scene = None;
+                    ctx.trigger(ClearGlobalState::<ActiveScene>::default());
                 }
 
                 if ui.button("||").on_hover_text("Pause").clicked() {
@@ -74,7 +64,7 @@ impl EditorWindowExtension for ScenePreviewWindow {
             });
         }
 
-        orbit_camera_scene_show(&config, &mut self.orbit_view, ui, world, ui_texture_id);
+        orbit_camera_scene_show(&config, ui, world, ui_texture_id);
     }
 
     fn display_name(&self) -> String {
@@ -85,28 +75,13 @@ impl EditorWindowExtension for ScenePreviewWindow {
 #[derive(Clone, PartialEq)]
 pub struct ScenePreviewConfig {
     pub animated_scene: Handle<AnimatedScene>,
-    pub view: OrbitView,
 }
 
 impl SubSceneConfig for ScenePreviewConfig {
-    fn spawn(&self, builder: &mut ChildSpawnerCommands, render_target: Handle<Image>) {
+    fn spawn(&self, builder: &mut ChildSpawnerCommands, _: Handle<Image>) {
         builder.spawn((
             PointLight::default(),
             Transform::from_translation(Vec3::new(0.0, 0.0, 10.0)),
-        ));
-
-        builder.spawn((
-            Camera3d::default(),
-            Camera {
-                // render before the "main pass" camera
-                order: -1,
-                clear_color: ClearColorConfig::Custom(Color::from(LinearRgba::new(
-                    1.0, 1.0, 1.0, 0.0,
-                ))),
-                target: RenderTarget::Image(render_target.into()),
-                ..default()
-            },
-            orbit_camera_transform(&self.view),
         ));
 
         builder.spawn((
@@ -116,19 +91,11 @@ impl SubSceneConfig for ScenePreviewConfig {
     }
 
     fn sync_action(&self, new_config: &Self) -> SubSceneSyncAction {
-        match (
-            self.animated_scene == new_config.animated_scene,
-            self.view == new_config.view,
-        ) {
-            (true, true) => SubSceneSyncAction::Nothing,
-            (true, false) => SubSceneSyncAction::Update,
-            (false, _) => SubSceneSyncAction::Respawn,
+        match self.animated_scene == new_config.animated_scene {
+            true => SubSceneSyncAction::Nothing,
+            false => SubSceneSyncAction::Respawn,
         }
     }
 
-    fn update(&self, id: egui::Id, world: &mut World) {
-        world
-            .run_system_cached_with(orbit_camera_update, (id, self.view.clone()))
-            .unwrap();
-    }
+    fn update(&self, _id: egui::Id, _world: &mut World) {}
 }

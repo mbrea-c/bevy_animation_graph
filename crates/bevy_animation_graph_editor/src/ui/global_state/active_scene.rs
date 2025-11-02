@@ -1,26 +1,34 @@
 use bevy::{
     asset::Handle,
-    ecs::{component::Component, event::Event, observer::Trigger, query::With, system::Single},
+    ecs::{component::Component, entity::Entity, event::Event, world::World},
 };
 use bevy_animation_graph::prelude::AnimatedScene;
 
-use crate::ui::global_state::GlobalState;
+use crate::ui::global_state::{
+    RegisterGlobalState, SetOrInsertEvent, observe_clear_global_state, observe_set_or_insert_event,
+};
 
-#[derive(Debug, Component, Default)]
+#[derive(Debug, Component, Default, Clone)]
 pub struct ActiveScene {
-    pub handle: Option<Handle<AnimatedScene>>,
+    pub handle: Handle<AnimatedScene>,
+}
+
+impl RegisterGlobalState for ActiveScene {
+    fn register(world: &mut World, _global_state_entity: Entity) {
+        world.add_observer(observe_set_or_insert_event::<ActiveScene, SetActiveScene>);
+        world.add_observer(observe_clear_global_state::<Self>);
+    }
 }
 
 #[derive(Event)]
 pub struct SetActiveScene {
-    pub handle: Option<Handle<AnimatedScene>>,
+    pub new: ActiveScene,
 }
 
-impl SetActiveScene {
-    pub fn observe(
-        set_active_scene: Trigger<SetActiveScene>,
-        global_state: Single<&mut ActiveScene, With<GlobalState>>,
-    ) {
-        global_state.into_inner().handle = set_active_scene.event().handle.clone();
+impl SetOrInsertEvent for SetActiveScene {
+    type Target = ActiveScene;
+
+    fn get_component(&self) -> Self::Target {
+        self.new.clone()
     }
 }

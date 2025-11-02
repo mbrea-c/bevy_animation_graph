@@ -1,18 +1,10 @@
 use bevy::{
     asset::Handle,
-    ecs::{
-        component::Component,
-        entity::Entity,
-        event::Event,
-        observer::Trigger,
-        query::With,
-        system::{Commands, Single},
-        world::World,
-    },
+    ecs::{component::Component, entity::Entity, event::Event, world::World},
 };
 use bevy_animation_graph::prelude::AnimationGraph;
 
-use crate::ui::global_state::{GlobalState, RegisterGlobalState};
+use crate::ui::global_state::{RegisterGlobalState, SetOrInsertEvent, observe_set_or_insert_event};
 
 #[derive(Debug, Component, Default, Clone)]
 pub struct ActiveGraph {
@@ -20,8 +12,8 @@ pub struct ActiveGraph {
 }
 
 impl RegisterGlobalState for ActiveGraph {
-    fn register(world: &mut World, global_state_entity: Entity) {
-        world.add_observer(SetActiveGraph::observe);
+    fn register(world: &mut World, _global_state_entity: Entity) {
+        world.add_observer(observe_set_or_insert_event::<ActiveGraph, SetActiveGraph>);
     }
 }
 
@@ -30,20 +22,10 @@ pub struct SetActiveGraph {
     pub new: ActiveGraph,
 }
 
-impl SetActiveGraph {
-    pub fn observe(
-        new_state: Trigger<SetActiveGraph>,
-        global_state: Single<(Entity, Option<&mut ActiveGraph>), With<GlobalState>>,
-        mut commands: Commands,
-    ) {
-        let (entity, old_state) = global_state.into_inner();
+impl SetOrInsertEvent for SetActiveGraph {
+    type Target = ActiveGraph;
 
-        if let Some(mut old_state) = old_state {
-            *old_state = new_state.event().new.clone();
-        } else {
-            commands
-                .entity(entity)
-                .insert(new_state.event().new.clone());
-        }
+    fn get_component(&self) -> Self::Target {
+        self.new.clone()
     }
 }

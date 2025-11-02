@@ -127,14 +127,7 @@ pub struct NodeCreation {
 }
 
 #[derive(Default)]
-pub struct GlobalState {
-    pub graph_editor: Option<GraphSelection>,
-    pub fsm_editor: Option<FsmSelection>,
-    pub inspector_selection: InspectorSelection,
-    pub(crate) scene: Option<SceneSelection>,
-    pub(crate) node_creation: NodeCreation,
-    pub(crate) entity_path: Option<EntityPath>,
-}
+pub struct GlobalState {}
 
 #[derive(Resource)]
 pub struct UiState {
@@ -384,9 +377,14 @@ impl Buffers {
         self.by_id_and_type
             .entry(key)
             .or_insert(Box::new(default_provider()))
+            .as_mut()
             .any_mut()
             .downcast_mut::<T>()
             .expect("There must never be a type mismatch here")
+    }
+
+    pub fn get_mut_or_default<T: BufferType + Default>(&mut self, id: egui::Id) -> &mut T {
+        self.get_mut_or_insert_with(id, || T::default())
     }
 
     pub fn clear<T: BufferType>(&mut self, id: egui::Id) {

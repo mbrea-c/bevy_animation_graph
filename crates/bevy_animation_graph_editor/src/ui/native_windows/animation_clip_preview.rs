@@ -1,4 +1,8 @@
-use bevy::{asset::Handle, prelude::World};
+use bevy::{
+    asset::Handle,
+    ecs::{component::Component, event::Event, observer::Trigger},
+    prelude::World,
+};
 use bevy_animation_graph::{
     nodes::EventMarkupNode,
     prelude::{AnimatedScene, AnimatedSceneInstance, AnimationGraphPlayer},
@@ -14,38 +18,58 @@ use crate::ui::{
         },
         window::DynWindowAction,
     },
-    core::{EditorWindowExtension, LegacyEditorWindowContext},
+    core::LegacyEditorWindowContext,
+    native_windows::{EditorWindowContext, NativeEditorWindowExtension},
     reflect_widgets::wrap_ui::using_wrap_ui,
-    utils::{OrbitView, orbit_camera_scene_show},
+    utils::{self, orbit_camera_scene_show},
 };
 
-use super::{event_track_editor::TargetTracks, scene_preview::ScenePreviewConfig};
+use super::{
+    EditorWindowRegistrationContext, event_track_editor::TargetTracks,
+    scene_preview::ScenePreviewConfig,
+};
 
 #[derive(Debug, Default)]
 pub struct ClipPreviewWindow {
-    pub orbit_view: OrbitView,
     pub target: Option<TargetTracks>,
     pub base_scene: Option<Handle<AnimatedScene>>,
-    pub last_order: Option<TimingOrder>,
+    pub last_order: Option<ClipPreviewTimingOrder>,
     /// Updating this has no effect, this is just here as a means of "publishing"
     /// the value for other windows to see
     pub current_time: Option<f32>,
 }
 
-#[derive(Debug)]
-pub enum TimingOrder {
+#[derive(Component, Default)]
+pub struct ClipPreviewViewState {}
+
+#[derive(Component, Default)]
+pub struct ClipPreviewWindowState {}
+
+#[derive(Event, Debug)]
+pub enum ClipPreviewTimingOrder {
     Seek { time: f32 },
 }
 
-#[derive(Debug)]
+impl ClipPreviewTimingOrder {
+    pub fn observe(order: Trigger<ClipPreviewTimingOrder>) {}
+}
+
+#[derive(Event, Debug)]
 pub enum ClipPreviewAction {
-    TimingOrder(TimingOrder),
+    TimingOrder(ClipPreviewTimingOrder),
     SelectTarget(Option<TargetTracks>),
     SelectBaseScene(Handle<AnimatedScene>),
 }
 
-impl EditorWindowExtension for ClipPreviewWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut LegacyEditorWindowContext) {
+impl NativeEditorWindowExtension for ClipPreviewWindow {
+    fn init(&self, world: &mut World, ctx: &EditorWindowRegistrationContext) {
+        utils::insert_default_if_missing::<ClipPreviewViewState>(world, ctx.view);
+        utils::insert_default_if_missing::<ClipPreviewWindowState>(world, ctx.window);
+    }
+
+    fn register_observers(&self, world: &mut World, ctx: &EditorWindowRegistrationContext) {}
+
+    fn ui(&self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
         let timeline_height = 30.;
 
         egui::TopBottomPanel::top("Clip preview base scene selector")
@@ -110,7 +134,6 @@ impl EditorWindowExtension for ClipPreviewWindow {
 
         let config = ScenePreviewConfig {
             animated_scene: preview_scene.clone(),
-            view: self.orbit_view.clone(),
         };
 
         let ui_texture_id = ui.id().with("clip preview texture");
@@ -129,7 +152,7 @@ impl EditorWindowExtension for ClipPreviewWindow {
 
             if let Some(order) = self.last_order.take() {
                 match order {
-                    TimingOrder::Seek { time } => {
+                    ClipPreviewTimingOrder::Seek { time } => {
                         player.seek(time);
                         player.pause();
                     }
@@ -140,7 +163,7 @@ impl EditorWindowExtension for ClipPreviewWindow {
             self.current_time = None;
         }
 
-        orbit_camera_scene_show(&config, &mut self.orbit_view, ui, world, ui_texture_id);
+        orbit_camera_scene_show(&config, ui, world, ui_texture_id);
     }
 
     fn display_name(&self) -> String {

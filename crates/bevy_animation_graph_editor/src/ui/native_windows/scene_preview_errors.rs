@@ -4,17 +4,14 @@ use egui_dock::egui;
 
 use crate::ui::{
     PreviewScene,
-    core::{EditorWindowExtension, LegacyEditorWindowContext},
+    native_windows::{EditorWindowContext, NativeEditorWindowExtension},
 };
 
 #[derive(Debug)]
 pub struct ScenePreviewErrorsWindow;
 
-impl EditorWindowExtension for ScenePreviewErrorsWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut LegacyEditorWindowContext) {
-        if ctx.global_state.scene.is_none() {
-            return;
-        };
+impl NativeEditorWindowExtension for ScenePreviewErrorsWindow {
+    fn ui(&self, ui: &mut egui::Ui, world: &mut World, _ctx: &mut EditorWindowContext) {
         let mut query = world.query::<(&AnimatedSceneInstance, &PreviewScene)>();
         let Ok((instance, _)) = query.single(world) else {
             return;
