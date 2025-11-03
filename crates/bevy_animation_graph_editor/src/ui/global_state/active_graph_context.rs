@@ -8,14 +8,14 @@ use bevy::{
 };
 use bevy_animation_graph::prelude::GraphContextId;
 
-use crate::ui::global_state::{GlobalState, RegisterGlobalState};
+use crate::ui::global_state::{GlobalState, RegisterStateComponent};
 
 #[derive(Debug, Component, Clone, Default)]
 pub struct ActiveContexts {
     pub by_asset: HashMap<UntypedAssetId, (Entity, GraphContextId)>,
 }
 
-impl RegisterGlobalState for ActiveContexts {
+impl RegisterStateComponent for ActiveContexts {
     fn register(world: &mut World, global_state_entity: Entity) {
         world
             .entity_mut(global_state_entity)

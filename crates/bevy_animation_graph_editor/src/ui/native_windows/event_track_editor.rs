@@ -1,4 +1,4 @@
-use std::{any::TypeId, hash::Hash};
+use std::hash::Hash;
 
 use bevy::{
     asset::{Assets, Handle},
@@ -24,17 +24,16 @@ use crate::ui::{
     actions::{
         EditorAction,
         event_tracks::{EditEventAction, EventTrackAction, NewEventAction, NewTrackAction},
-        window::TypeTargetedWindowAction,
     },
     native_windows::{
         EditorWindowContext, EditorWindowRegistrationContext, NativeEditorWindowExtension,
     },
     reflect_widgets::{submittable::Submittable, wrap_ui::using_wrap_ui},
     utils::popup::CustomPopup,
-    windows::WindowId,
+    view_state::clip_preview::{
+        ClipPreviewTimingOrder, ClipPreviewViewState, SetOrder, SetTargetTracks,
+    },
 };
-
-use super::animation_clip_preview::{ClipPreviewAction, ClipPreviewTimingOrder, ClipPreviewWindow};
 
 #[derive(Debug)]
 pub struct EventTrackEditorWindow;
@@ -131,6 +130,13 @@ impl Default for EventTrackEditorState {
 }
 
 impl NativeEditorWindowExtension for EventTrackEditorWindow {
+    fn init(&self, world: &mut World, ctx: &EditorWindowRegistrationContext) {
+        world
+            .entity_mut(ctx.window)
+            .insert(EventTrackEditorState::default())
+            .observe(EventTrackEditorAction::observe);
+    }
+
     fn ui(&self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
         let timeline_height = 30.;
 
@@ -192,8 +198,8 @@ impl NativeEditorWindowExtension for EventTrackEditorWindow {
             .show_inside(ui, |ui| {
                 state.draw_timeline(
                     ui,
-                    sister_window.and_then(|w| w.current_time),
-                    sister_window_id,
+                    ctx.get_view_state::<ClipPreviewViewState>(&world)
+                        .map(|s| s.elapsed_time()),
                     ctx,
                 );
             });
@@ -213,19 +219,6 @@ impl NativeEditorWindowExtension for EventTrackEditorWindow {
 
     fn display_name(&self) -> String {
         "Edit tracks".to_string()
-    }
-
-    fn init(&self, world: &mut World, ctx: &EditorWindowRegistrationContext) {
-        world
-            .entity_mut(ctx.window)
-            .insert(EventTrackEditorState::default());
-    }
-
-    fn register_observers(&self, world: &mut World, ctx: &EditorWindowRegistrationContext) {
-        let window = ctx.window;
-        world
-            .entity_mut(ctx.window)
-            .observe(EventTrackEditorAction::observe);
     }
 }
 
@@ -471,7 +464,6 @@ impl EventTrackEditorState {
         &self,
         ui: &mut egui::Ui,
         current_time: Option<f32>,
-        sister_window_id: Option<WindowId>,
         ctx: &mut EditorWindowContext,
     ) {
         let available_size = ui.available_size();
@@ -531,24 +523,19 @@ impl EventTrackEditorState {
         }
 
         // Detect clicks on timeline to seek time
-        if let Some(sister_window_id) = sister_window_id {
-            if let Some(click_pos) = ui.input(|i| {
-                if i.pointer.primary_down()
-                    && i.pointer
-                        .latest_pos()
-                        .is_some_and(|p| area_rect.contains(p))
-                {
-                    i.pointer.latest_pos()
-                } else {
-                    None
-                }
-            }) {
-                let time = self.pixel_to_time(click_pos.x, area_rect);
-                ctx.editor_actions.window(
-                    sister_window_id,
-                    ClipPreviewAction::TimingOrder(ClipPreviewTimingOrder::Seek { time }),
-                );
+        if let Some(click_pos) = ui.input(|i| {
+            if i.pointer.primary_down()
+                && i.pointer
+                    .latest_pos()
+                    .is_some_and(|p| area_rect.contains(p))
+            {
+                i.pointer.latest_pos()
+            } else {
+                None
             }
+        }) {
+            let time = self.pixel_to_time(click_pos.x, area_rect);
+            ctx.trigger_view(SetOrder(ClipPreviewTimingOrder::Seek { time }));
         }
     }
 
@@ -570,9 +557,8 @@ impl EventTrackEditorState {
                 ctx.trigger_window(EventTrackEditorAction::SetTrackSource(
                     new_selection.clone(),
                 ));
-                ctx.editor_actions.dynamic(TypeTargetedWindowAction {
-                    target_window_type: TypeId::of::<ClipPreviewWindow>(),
-                    action: Box::new(ClipPreviewAction::SelectTarget(new_selection)),
+                ctx.trigger_view(SetTargetTracks {
+                    tracks: new_selection,
                 });
             }
         });

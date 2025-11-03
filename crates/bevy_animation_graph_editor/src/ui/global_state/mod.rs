@@ -45,8 +45,14 @@ impl GlobalState {
     }
 }
 
-pub trait RegisterGlobalState {
-    fn register(world: &mut World, global_state_entity: Entity);
+pub trait RegisterStateComponent: Component {
+    fn register(world: &mut World, state_entity: Entity);
+}
+
+pub fn register_if_missing<T: RegisterStateComponent>(world: &mut World, state_entity: Entity) {
+    if world.entity(state_entity).contains::<T>() {
+        T::register(world, state_entity);
+    }
 }
 
 pub fn get_global_state<T: Component>(world: &World) -> Option<&T> {
@@ -84,7 +90,7 @@ fn observe_set_or_insert_event<T, E>(
 pub struct ClearGlobalState<T>(PhantomData<T>);
 
 pub fn observe_clear_global_state<T: Component>(
-    event: Trigger<ClearGlobalState<T>>,
+    _: Trigger<ClearGlobalState<T>>,
     global_state: Query<Entity, With<GlobalState>>,
     mut commands: Commands,
 ) -> Result<(), BevyError> {

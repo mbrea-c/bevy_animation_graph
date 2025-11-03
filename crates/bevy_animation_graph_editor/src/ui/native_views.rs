@@ -160,6 +160,12 @@ impl EditorViewUiState {
             .show(ctx, &mut tab_viewer);
     }
 
+    pub fn empty(world: &mut World, name: impl Into<String>) -> Self {
+        let entity = EditorView::init(world, name);
+        let dock_state = DockState::new(vec![]);
+        Self::init(entity, dock_state)
+    }
+
     pub fn ragdoll(world: &mut World, windows: &mut Windows, name: impl Into<String>) -> Self {
         let entity = EditorView::init(world, name);
         let dock_state = ragdoll_view(world, windows, entity);

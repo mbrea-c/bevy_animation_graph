@@ -12,6 +12,7 @@ pub mod node_editors;
 pub mod reflect_widgets;
 pub mod scenes;
 pub mod utils;
+pub mod view_state;
 pub mod windows;
 
 pub use core::{UiState, setup_ui, show_ui_system};

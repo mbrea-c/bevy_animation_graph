@@ -4,6 +4,7 @@ use crate::{
         UiState,
         core::EguiWindow,
         editor_windows::saving::{SaveWindow, SaveWindowAssetMeta},
+        global_state::{ClearGlobalState, active_fsm::ActiveFsm, active_graph::ActiveGraph},
     },
 };
 use bevy::{asset::UntypedAssetId, platform::collections::HashMap, prelude::*};
@@ -96,9 +97,9 @@ pub fn handle_save_graph(
     In(save_graph): In<SaveGraph>,
     asset_server: Res<AssetServer>,
     graph_assets: Res<Assets<AnimationGraph>>,
-    mut ui_state: ResMut<UiState>,
     cli: Res<Cli>,
     registry: Res<AppTypeRegistry>,
+    mut commands: Commands,
 ) {
     let type_registry = registry.0.read();
     let graph = graph_assets.get(save_graph.asset_id).unwrap();
@@ -121,7 +122,7 @@ pub fn handle_save_graph(
     // editor selection.
     // Also delete the temporary asset
     if asset_server.get_path(save_graph.asset_id).is_none() {
-        ui_state.global_state.graph_editor = None;
+        commands.trigger(ClearGlobalState::<ActiveGraph>::default());
     }
 }
 
@@ -129,8 +130,8 @@ pub fn handle_save_fsm(
     In(save_fsm): In<SaveFsm>,
     asset_server: Res<AssetServer>,
     graph_assets: Res<Assets<StateMachine>>,
-    mut ui_state: ResMut<UiState>,
     cli: Res<Cli>,
+    mut commands: Commands,
 ) {
     let fsm = graph_assets.get(save_fsm.asset_id).unwrap();
     let graph_serial = StateMachineSerial::from(fsm);
@@ -152,15 +153,13 @@ pub fn handle_save_fsm(
     // editor selection.
     // Also delete the temporary asset
     if asset_server.get_path(save_fsm.asset_id).is_none() {
-        ui_state.global_state.fsm_editor = None;
+        commands.trigger(ClearGlobalState::<ActiveFsm>::default());
     }
 }
 
 pub fn handle_save_animation_clip(
     In(save_fsm): In<SaveClip>,
-    asset_server: Res<AssetServer>,
     clip_assets: Res<Assets<GraphClip>>,
-    mut ui_state: ResMut<UiState>,
     cli: Res<Cli>,
 ) {
     let clip = clip_assets.get(save_fsm.asset_id).unwrap();
@@ -181,13 +180,6 @@ pub fn handle_save_animation_clip(
             ron::ser::PrettyConfig::default(),
         )
         .unwrap();
-
-    // If we just saved a newly created graph, unload the in-memory asset from the
-    // editor selection.
-    // Also delete the temporary asset
-    if asset_server.get_path(save_fsm.asset_id).is_none() {
-        ui_state.global_state.fsm_editor = None;
-    }
 }
 
 pub fn handle_save_colliders(

@@ -4,14 +4,16 @@ use bevy::{
 };
 use bevy_animation_graph::prelude::AnimationGraph;
 
-use crate::ui::global_state::{RegisterGlobalState, SetOrInsertEvent, observe_set_or_insert_event};
+use crate::ui::global_state::{
+    RegisterStateComponent, SetOrInsertEvent, observe_set_or_insert_event,
+};
 
 #[derive(Debug, Component, Default, Clone)]
 pub struct ActiveGraph {
     pub handle: Handle<AnimationGraph>,
 }
 
-impl RegisterGlobalState for ActiveGraph {
+impl RegisterStateComponent for ActiveGraph {
     fn register(world: &mut World, _global_state_entity: Entity) {
         world.add_observer(observe_set_or_insert_event::<ActiveGraph, SetActiveGraph>);
     }

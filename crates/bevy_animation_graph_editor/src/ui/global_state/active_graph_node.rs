@@ -7,7 +7,9 @@ use bevy_animation_graph::{
     prelude::AnimationGraph,
 };
 
-use crate::ui::global_state::{RegisterGlobalState, SetOrInsertEvent, observe_set_or_insert_event};
+use crate::ui::global_state::{
+    RegisterStateComponent, SetOrInsertEvent, observe_set_or_insert_event,
+};
 
 #[derive(Debug, Component, Default, Clone)]
 pub struct ActiveGraphNode {
@@ -16,7 +18,7 @@ pub struct ActiveGraphNode {
     pub selected_pin: Option<PinId>,
 }
 
-impl RegisterGlobalState for ActiveGraphNode {
+impl RegisterStateComponent for ActiveGraphNode {
     fn register(world: &mut World, _global_state_entity: Entity) {
         world.add_observer(observe_set_or_insert_event::<ActiveGraphNode, SetActiveGraphNode>);
     }

@@ -1,27 +1,23 @@
-use bevy::{
-    asset::Handle,
-    ecs::{component::Component, event::Event, observer::Trigger},
-    prelude::World,
-};
+use bevy::prelude::World;
 use bevy_animation_graph::{
     nodes::EventMarkupNode,
-    prelude::{AnimatedScene, AnimatedSceneInstance, AnimationGraphPlayer},
+    prelude::{AnimatedSceneInstance, AnimationGraphPlayer},
 };
 use egui_dock::egui;
 
 use crate::ui::{
     PartOfSubScene, PreviewScene,
-    actions::{
-        clip_preview::{
-            ClipPreviewScenes, CreateClipPreview, CreateTrackNodePreview, NodePreviewKey,
-            NodePreviewScenes,
-        },
-        window::DynWindowAction,
+    actions::clip_preview::{
+        ClipPreviewScenes, CreateClipPreview, CreateTrackNodePreview, NodePreviewKey,
+        NodePreviewScenes,
     },
-    core::LegacyEditorWindowContext,
+    global_state::register_if_missing,
     native_windows::{EditorWindowContext, NativeEditorWindowExtension},
     reflect_widgets::wrap_ui::using_wrap_ui,
-    utils::{self, orbit_camera_scene_show},
+    utils::orbit_camera_scene_show,
+    view_state::clip_preview::{
+        ClipPreviewTimingOrder, ClipPreviewViewState, SetClipPreviewBaseScene, SetElapsedTime,
+    },
 };
 
 use super::{
@@ -30,44 +26,12 @@ use super::{
 };
 
 #[derive(Debug, Default)]
-pub struct ClipPreviewWindow {
-    pub target: Option<TargetTracks>,
-    pub base_scene: Option<Handle<AnimatedScene>>,
-    pub last_order: Option<ClipPreviewTimingOrder>,
-    /// Updating this has no effect, this is just here as a means of "publishing"
-    /// the value for other windows to see
-    pub current_time: Option<f32>,
-}
-
-#[derive(Component, Default)]
-pub struct ClipPreviewViewState {}
-
-#[derive(Component, Default)]
-pub struct ClipPreviewWindowState {}
-
-#[derive(Event, Debug)]
-pub enum ClipPreviewTimingOrder {
-    Seek { time: f32 },
-}
-
-impl ClipPreviewTimingOrder {
-    pub fn observe(order: Trigger<ClipPreviewTimingOrder>) {}
-}
-
-#[derive(Event, Debug)]
-pub enum ClipPreviewAction {
-    TimingOrder(ClipPreviewTimingOrder),
-    SelectTarget(Option<TargetTracks>),
-    SelectBaseScene(Handle<AnimatedScene>),
-}
+pub struct ClipPreviewWindow;
 
 impl NativeEditorWindowExtension for ClipPreviewWindow {
     fn init(&self, world: &mut World, ctx: &EditorWindowRegistrationContext) {
-        utils::insert_default_if_missing::<ClipPreviewViewState>(world, ctx.view);
-        utils::insert_default_if_missing::<ClipPreviewWindowState>(world, ctx.window);
+        register_if_missing::<ClipPreviewViewState>(world, ctx.view);
     }
-
-    fn register_observers(&self, world: &mut World, ctx: &EditorWindowRegistrationContext) {}
 
     fn ui(&self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
         let timeline_height = 30.;
@@ -80,13 +44,17 @@ impl NativeEditorWindowExtension for ClipPreviewWindow {
                 self.draw_base_scene_selector(ui, world, ctx);
             });
 
-        let Some(target) = &self.target else {
+        let Some(state) = ctx.get_view_state::<ClipPreviewViewState>(world) else {
+            return;
+        };
+
+        let Some(target) = state.target_tracks() else {
             ui.centered_and_justified(|ui| {
                 ui.label("No target selected");
             });
             return;
         };
-        let Some(base_scene) = &self.base_scene else {
+        let Some(base_scene) = state.base_scene() else {
             ui.centered_and_justified(|ui| {
                 ui.label("No base scene selected");
             });
@@ -136,6 +104,11 @@ impl NativeEditorWindowExtension for ClipPreviewWindow {
             animated_scene: preview_scene.clone(),
         };
 
+        let order_status = ctx
+            .get_view_state::<ClipPreviewViewState>(world)
+            .and_then(|s| s.order_status())
+            .cloned();
+
         let ui_texture_id = ui.id().with("clip preview texture");
         let mut query = world.query::<(&AnimatedSceneInstance, &PreviewScene, &PartOfSubScene)>();
         if let Some((instance, _, _)) = query
@@ -150,17 +123,17 @@ impl NativeEditorWindowExtension for ClipPreviewWindow {
                 return;
             };
 
-            if let Some(order) = self.last_order.take() {
-                match order {
+            if let Some(order) = order_status
+                && !order.applied_by.contains(&ctx.window_entity)
+            {
+                match &order.order {
                     ClipPreviewTimingOrder::Seek { time } => {
-                        player.seek(time);
+                        player.seek(*time);
                         player.pause();
                     }
                 }
             }
-            self.current_time = Some(player.elapsed());
-        } else {
-            self.current_time = None;
+            ctx.trigger_view(SetElapsedTime(player.elapsed()));
         }
 
         orbit_camera_scene_show(&config, ui, world, ui_texture_id);
@@ -169,24 +142,6 @@ impl NativeEditorWindowExtension for ClipPreviewWindow {
     fn display_name(&self) -> String {
         "Clip Preview".to_string()
     }
-
-    fn handle_action(&mut self, action: DynWindowAction) {
-        let Ok(action) = action.downcast::<ClipPreviewAction>() else {
-            return;
-        };
-
-        match *action {
-            ClipPreviewAction::TimingOrder(timing_order) => {
-                self.last_order = Some(timing_order);
-            }
-            ClipPreviewAction::SelectTarget(target) => {
-                self.target = target;
-            }
-            ClipPreviewAction::SelectBaseScene(handle) => {
-                self.base_scene = Some(handle);
-            }
-        }
-    }
 }
 
 impl ClipPreviewWindow {
@@ -194,19 +149,19 @@ impl ClipPreviewWindow {
         &self,
         ui: &mut egui::Ui,
         world: &mut World,
-        ctx: &mut LegacyEditorWindowContext,
+        ctx: &mut EditorWindowContext,
     ) {
+        let base_scene = ctx
+            .get_view_state::<ClipPreviewViewState>(world)
+            .and_then(|s| s.base_scene());
         using_wrap_ui(world, |mut env| {
             if let Some(new_handle) = env.mutable_buffered(
-                &self.base_scene.clone().unwrap_or_default(),
+                &base_scene.unwrap_or_default(),
                 ui,
                 ui.id().with("clip preview base scene selector"),
                 &(),
             ) {
-                ctx.editor_actions.window(
-                    ctx.window_id,
-                    ClipPreviewAction::SelectBaseScene(new_handle),
-                );
+                ctx.trigger_view(SetClipPreviewBaseScene(new_handle));
             }
         });
     }

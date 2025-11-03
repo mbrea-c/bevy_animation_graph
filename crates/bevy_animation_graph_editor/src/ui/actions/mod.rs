@@ -22,7 +22,6 @@ use bevy::{
     },
     log::error,
 };
-use egui_dock::DockState;
 use event_tracks::{EventTrackAction, handle_event_track_action};
 use fsm::{FsmAction, handle_fsm_action};
 use graph::{GraphAction, handle_graph_action};
@@ -123,7 +122,7 @@ fn handle_view_action(
         }
         ViewAction::New(name) => {
             commands.queue(|world: &mut World| {
-                let view_state = EditorViewUiState::init(world, name, DockState::new(vec![]));
+                let view_state = EditorViewUiState::empty(world, name);
                 let mut ui_state = world.resource_mut::<UiState>();
                 ui_state.new_native_view(view_state);
             });
