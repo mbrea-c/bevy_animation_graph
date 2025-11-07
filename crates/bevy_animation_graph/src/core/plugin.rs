@@ -82,6 +82,7 @@ impl Plugin for AnimationGraphPlugin {
         self.register_assets(app);
         self.register_types(app);
         self.register_nodes(app);
+        self.register_component_hooks(app);
 
         app.configure_sets(
             self.physics_schedule,
@@ -262,5 +263,20 @@ impl AnimationGraphPlugin {
 
         app.register_type::<RelativeKinematicBody>();
         app.register_type::<RelativeKinematicBodyPositionBased>();
+    }
+
+    fn register_component_hooks(&self, app: &mut App) {
+        app.world_mut()
+            .register_component_hooks::<AnimationGraphPlayer>()
+            .on_replace(|mut world, context| {
+                if let Some(spawned_ragdoll) = world
+                    .entity(context.entity)
+                    .get::<AnimationGraphPlayer>()
+                    .and_then(|p| p.spawned_ragdoll.as_ref())
+                    .map(|s| s.root)
+                {
+                    world.commands().entity(spawned_ragdoll).despawn();
+                }
+            });
     }
 }
