@@ -114,9 +114,10 @@ impl<'a> egui::Widget for RagdollConfigWidget<'a> {
                 });
 
             if let Some(popup_response) = popup_response
-                && popup_response.inner.changed() {
-                    response.mark_changed();
-                }
+                && popup_response.inner.changed()
+            {
+                response.mark_changed();
+            }
 
             response
         })

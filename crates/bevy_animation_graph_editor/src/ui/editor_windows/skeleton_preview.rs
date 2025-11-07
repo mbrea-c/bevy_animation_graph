@@ -781,9 +781,10 @@ fn highlight_bones(
         }
 
         if let Some(hovered) = input.hovered
-            && input.selected.is_none_or(|b| b != hovered) {
-                drawable.push((hovered, GRAY.into(), false));
-            }
+            && input.selected.is_none_or(|b| b != hovered)
+        {
+            drawable.push((hovered, GRAY.into(), false));
+        }
 
         player.gizmo_for_bones_with_color(drawable);
 

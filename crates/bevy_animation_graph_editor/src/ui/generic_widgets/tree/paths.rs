@@ -91,6 +91,7 @@ fn up_to_including(full_path: PathBuf, component: String) -> PathBuf {
 }
 
 pub struct PathTreeRenderer<T> {
+    #[allow(clippy::type_complexity)]
     pub is_selected: Box<dyn Fn(&PathBuf, &T) -> bool>,
 }
 
@@ -115,7 +116,8 @@ impl<T: Clone> TreeRenderer<PathBuf, (PathBuf, T)> for PathTreeRenderer<T> {
         ) -> egui::Response,
     ) -> egui::Response {
         let label = data
-            .components().next_back()
+            .components()
+            .next_back()
             .map(|s| match s {
                 std::path::Component::RootDir => "/".to_string(),
                 std::path::Component::Prefix(prefix_component) => {

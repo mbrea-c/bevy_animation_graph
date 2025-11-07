@@ -47,14 +47,11 @@ fn ragdoll_view(
 ) -> DockState<EguiWindow> {
     let preview_window = windows.open(RagdollEditorWindow::default());
 
-    
-
     DockState::new(vec![preview_window.into()])
 }
 
 fn test_view(world: &mut World, view_entity: Entity) -> DockState<EguiWindow> {
     let scene_picker = NativeEditorWindow::create(world, view_entity, ScenePickerWindow);
-    
 
     DockState::new(vec![scene_picker.into()])
 }
@@ -115,8 +112,6 @@ fn main_view(world: &mut World, view_entity: Entity) -> DockState<EguiWindow> {
 
 fn skeleton_colliders_view(windows: &mut Windows) -> DockState<EguiWindow> {
     let preview_window = windows.open(SkeletonCollidersPreviewWindow::default());
-
-    
 
     DockState::new(vec![preview_window.into()])
 }
