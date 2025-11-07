@@ -1,7 +1,7 @@
 use std::f32::consts::{FRAC_PI_2, PI};
 use std::path::PathBuf;
 
-use crate::tree::{Tree, TreeInternal, TreeResult};
+use crate::tree::{TreeInternal, TreeResult};
 use crate::ui::SubSceneSyncAction;
 use bevy::asset::UntypedAssetId;
 use bevy::ecs::world::CommandQueue;
@@ -11,9 +11,7 @@ use bevy::render::render_resource::Extent3d;
 use bevy_animation_graph::core::animation_graph::{AnimationGraph, NodeId, PinMap};
 use bevy_animation_graph::core::context::SpecContext;
 use bevy_animation_graph::core::state_machine::high_level::StateMachine;
-use bevy_animation_graph::prelude::{
-    AnimatedSceneInstance, AnimationGraphPlayer, DataSpec, GraphContext, GraphContextId,
-};
+use bevy_animation_graph::prelude::{AnimatedSceneInstance, AnimationGraphPlayer, DataSpec};
 use bevy_inspector_egui::bevy_egui::EguiUserTextures;
 use bevy_inspector_egui::egui;
 use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
@@ -33,24 +31,6 @@ pub fn asset_sort_key<T: Asset>(asset_id: AssetId<T>, asset_server: &AssetServer
     )
 }
 
-pub fn tree_asset_selector<T: Asset>(ui: &mut egui::Ui, world: &mut World) -> Option<Handle<T>> {
-    world.resource_scope::<AssetServer, _>(|world, asset_server| {
-        world.resource_scope::<Assets<T>, _>(|_, mut graph_assets| {
-            let mut assets: Vec<_> = graph_assets.ids().collect();
-            assets.sort_by_key(|id| asset_sort_key(*id, &asset_server));
-            let paths = assets
-                .into_iter()
-                .map(|id| (handle_path(id.untyped(), &asset_server), id))
-                .collect();
-            if let TreeResult::Leaf(id, ()) = path_selector(ui, paths) {
-                Some(graph_assets.get_strong_handle(id).unwrap())
-            } else {
-                None
-            }
-        })
-    })
-}
-
 pub(crate) fn get_node_output_data_pins(
     world: &mut World,
     graph_id: AssetId<AnimationGraph>,
@@ -67,21 +47,6 @@ pub(crate) fn get_node_output_data_pins(
             Some(node.inner.data_output_spec(spec_context))
         })
     })
-}
-
-pub(crate) fn path_selector<T>(ui: &mut egui::Ui, paths: Vec<(PathBuf, T)>) -> TreeResult<(), T> {
-    // First, preprocess paths into a tree structure
-    let mut tree = Tree::default();
-    for (path, val) in paths {
-        let parts: Vec<String> = path
-            .components()
-            .map(|c| c.as_os_str().to_string_lossy().into())
-            .collect();
-        tree.insert(parts, val);
-    }
-
-    // Then, display the tree
-    select_from_branches(ui, tree.0)
 }
 
 pub(crate) fn select_from_branches<I, L>(
@@ -123,39 +88,11 @@ pub(crate) fn select_from_tree_internal<I, L>(
     }
 }
 
-pub(crate) fn list_graph_contexts(
-    world: &mut World,
-    filter: impl Fn(&GraphContext) -> bool,
-) -> Option<Vec<GraphContextId>> {
-    let player = get_animation_graph_player(world)?;
-    let arena = player.get_context_arena()?;
-
-    Some(
-        arena
-            .iter_context_ids()
-            .filter(|id| {
-                let context = arena.get_context(*id).unwrap();
-                filter(context)
-            })
-            .collect(),
-    )
-}
-
 pub(crate) fn get_specific_animation_graph_player(
     world: &World,
     entity: Entity,
 ) -> Option<&AnimationGraphPlayer> {
     let mut query = world.try_query::<&AnimationGraphPlayer>()?;
-    query.get(world, entity).ok()
-}
-
-pub(crate) fn get_animation_graph_player(world: &mut World) -> Option<&AnimationGraphPlayer> {
-    let mut query = world.query::<(&AnimatedSceneInstance, &PreviewScene)>();
-    let Ok((instance, _)) = query.single(world) else {
-        return None;
-    };
-    let entity = instance.player_entity();
-    let mut query = world.query::<&AnimationGraphPlayer>();
     query.get(world, entity).ok()
 }
 
@@ -399,28 +336,12 @@ pub fn with_assets_all<A: Asset, T, const N: usize>(
     f: impl FnOnce(&mut World, [&A; N]) -> T,
 ) -> Option<T> {
     with_assets(world, assets, |world, maybe_assets| {
+        #[allow(clippy::needless_range_loop)]
         for i in 0..N {
-            if maybe_assets[i].is_none() {
-                return None;
-            }
+            maybe_assets[i]?;
         }
         let all_assets =
             std::array::from_fn(|i| maybe_assets[i].expect("Already checked it's not None"));
         Some(f(world, all_assets))
     })
-}
-
-pub fn insert_if_missing<T: Component>(
-    world: &mut World,
-    entity: Entity,
-    create: impl FnOnce() -> T,
-) {
-    let mut entity_mut = world.entity_mut(entity);
-    if !entity_mut.contains::<T>() {
-        entity_mut.insert(create());
-    }
-}
-
-pub fn insert_default_if_missing<T: Component + Default>(world: &mut World, entity: Entity) {
-    insert_if_missing(world, entity, || T::default());
 }

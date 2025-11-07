@@ -1,13 +1,9 @@
 pub mod ragdoll_config;
 pub mod reflect_editor;
 
-use std::any::{Any, TypeId};
+use std::any::Any;
 
-use bevy::{
-    app::App,
-    ecs::world::World,
-    reflect::{FromType, Reflect, TypePath},
-};
+use bevy::{app::App, ecs::world::World, reflect::FromType};
 use bevy_animation_graph::{nodes::const_ragdoll_config::ConstRagdollConfig, prelude::NodeLike};
 
 pub trait NodeEditor: 'static {
@@ -71,16 +67,6 @@ where
 fn reflect_get_editor<T: Editable>(value: &dyn Any) -> Box<dyn DynNodeEditor> {
     let static_value = value.downcast_ref::<T>().expect("Reflection type mismatch");
     Box::new(static_value.get_editor())
-}
-
-pub trait RegisterEditableReflectExt {
-    fn register_editable_reflect<T: Editable + Reflect + TypePath>(&mut self) -> &mut Self;
-}
-
-impl RegisterEditableReflectExt for App {
-    fn register_editable_reflect<T: Editable + Reflect + TypePath>(&mut self) -> &mut Self {
-        self.register_type_data::<T, ReflectEditable>()
-    }
 }
 
 pub fn register_node_editables(app: &mut App) {

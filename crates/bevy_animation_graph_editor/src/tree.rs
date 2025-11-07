@@ -100,39 +100,6 @@ impl<I, L> Tree<I, L> {
     }
 }
 
-impl<T> Tree<(), T> {
-    pub fn insert(&mut self, mut parts: Vec<String>, value: T) {
-        let Some(leaf_name) = parts.pop() else {
-            return;
-        };
-
-        let mut branch: &mut Vec<TreeInternal<(), T>> = &mut self.0;
-        for part in parts {
-            if branch.iter().any(|p| match p {
-                TreeInternal::Node(p, _, _) => p == &part,
-                _ => false,
-            }) {
-                let b = branch
-                    .iter_mut()
-                    .find_map(|p| match p {
-                        TreeInternal::Node(p, _, b) => (p == &part).then_some(b),
-                        _ => None,
-                    })
-                    .unwrap();
-                branch = b;
-            } else {
-                branch.push(TreeInternal::Node(part, (), vec![]));
-                branch = match branch.last_mut().unwrap() {
-                    TreeInternal::Node(_, _, b) => b,
-                    _ => unreachable!(),
-                };
-            }
-        }
-
-        branch.push(TreeInternal::Leaf(leaf_name, value));
-    }
-}
-
 impl Tree<(Entity, Vec<Name>), (Entity, Vec<Name>)> {
     /// Returns tree representing the parent/child hierarchy with
     /// the given entity as the root.

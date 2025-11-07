@@ -148,6 +148,8 @@ pub struct Body {
 }
 
 impl Body {
+    // The new function is non-deterministic (random uuid assigned)
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             id: BodyId {
@@ -189,6 +191,8 @@ pub struct Collider {
 }
 
 impl Collider {
+    // The new function is non-deterministic (random uuid assigned)
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             id: ColliderId {
@@ -222,6 +226,8 @@ pub struct Joint {
 }
 
 impl Joint {
+    // The new function is non-deterministic (random uuid assigned)
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             id: JointId {

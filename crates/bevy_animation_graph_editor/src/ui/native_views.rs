@@ -43,7 +43,7 @@ impl EditorView {
 fn ragdoll_view(
     _world: &mut World,
     windows: &mut Windows,
-    view_entity: Entity,
+    _view_entity: Entity,
 ) -> DockState<EguiWindow> {
     let preview_window = windows.open(RagdollEditorWindow::default());
 
@@ -59,11 +59,7 @@ fn test_view(world: &mut World, view_entity: Entity) -> DockState<EguiWindow> {
     state
 }
 
-fn event_track_view(
-    world: &mut World,
-    windows: &mut Windows,
-    view_entity: Entity,
-) -> DockState<EguiWindow> {
+fn event_track_view(world: &mut World, view_entity: Entity) -> DockState<EguiWindow> {
     let event_track_window = NativeEditorWindow::create(world, view_entity, EventTrackEditorWindow);
     let clip_preview_window = NativeEditorWindow::create(world, view_entity, ClipPreviewWindow);
 
@@ -76,11 +72,7 @@ fn event_track_view(
     state
 }
 
-fn main_view(
-    world: &mut World,
-    _windows: &mut Windows,
-    view_entity: Entity,
-) -> DockState<EguiWindow> {
+fn main_view(world: &mut World, view_entity: Entity) -> DockState<EguiWindow> {
     let graph_editor = NativeEditorWindow::create(world, view_entity, GraphEditorWindow);
     let fsm_editor = NativeEditorWindow::create(world, view_entity, FsmEditorWindow);
     let inspector = NativeEditorWindow::create(world, view_entity, InspectorWindow);
@@ -177,19 +169,15 @@ impl EditorViewUiState {
         Self::init(entity, dock_state)
     }
 
-    pub fn event_tracks(world: &mut World, windows: &mut Windows, name: impl Into<String>) -> Self {
+    pub fn event_tracks(world: &mut World, name: impl Into<String>) -> Self {
         let entity = EditorView::init(world, name);
-        let dock_state = event_track_view(world, windows, entity);
+        let dock_state = event_track_view(world, entity);
         Self::init(entity, dock_state)
     }
 
-    pub fn animation_graphs(
-        world: &mut World,
-        windows: &mut Windows,
-        name: impl Into<String>,
-    ) -> Self {
+    pub fn animation_graphs(world: &mut World, name: impl Into<String>) -> Self {
         let entity = EditorView::init(world, name);
-        let dock_state = main_view(world, windows, entity);
+        let dock_state = main_view(world, entity);
         Self::init(entity, dock_state)
     }
 

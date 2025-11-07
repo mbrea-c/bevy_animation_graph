@@ -1,20 +1,14 @@
-use bevy::ecs::world::World;
 use bevy_animation_graph::core::{ragdoll::bone_mapping::BodyMapping, skeleton::Skeleton};
 use egui::Widget;
 
-use crate::ui::{
-    core::LegacyEditorWindowContext,
-    generic_widgets::{bone_id::BoneIdWidget, isometry3d::Isometry3dWidget},
-};
+use crate::ui::generic_widgets::{bone_id::BoneIdWidget, isometry3d::Isometry3dWidget};
 
-pub struct BodyMappingInspector<'a, 'b> {
-    pub world: &'a mut World,
-    pub ctx: &'a mut LegacyEditorWindowContext<'b>,
+pub struct BodyMappingInspector<'a> {
     pub body_mapping: &'a mut BodyMapping,
     pub skeleton: &'a Skeleton,
 }
 
-impl Widget for BodyMappingInspector<'_, '_> {
+impl Widget for BodyMappingInspector<'_> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         let BodyMapping { body_id, bone, .. } = self.body_mapping;
 

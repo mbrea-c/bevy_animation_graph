@@ -4,7 +4,9 @@ use bevy::{ecs::system::Query, math::Isometry3d, transform::components::Transfor
 use crate::{
     core::{
         pose::{BonePose, Pose},
-        ragdoll::{bone_mapping::RagdollBoneMap, spawning::SpawnedRagdoll},
+        ragdoll::{
+            bone_mapping::RagdollBoneMap, configuration::RagdollConfig, spawning::SpawnedRagdoll,
+        },
         skeleton::Skeleton,
         space_conversion::SpaceConversionContext,
     },
@@ -18,6 +20,7 @@ pub fn read_pose(
     query: &Query<(&Position, &Rotation)>,
     pose_fallback_context: PoseFallbackContext,
     base_pose: &Pose,
+    config: &RagdollConfig,
 ) -> Pose {
     let mut pose = base_pose.clone();
 
@@ -29,6 +32,10 @@ pub fn read_pose(
     bones_from_bodies.sort_by_key(|(path, _)| path.parts.len());
 
     for (bone_path, bone_mapping) in bones_from_bodies {
+        let should_readback = config.should_readback(bone_path.id()).unwrap_or(true);
+        if !should_readback {
+            continue;
+        }
         let parent_bone_transform = bone_path
             .parent()
             .map(|parent_bone_path| {
@@ -43,13 +50,8 @@ pub fn read_pose(
             .bodies
             .iter()
             .filter_map(|body_weight| {
-                let Some(body_entity) = spawned_ragdoll.bodies.get(&body_weight.body) else {
-                    return None;
-                };
-
-                let Ok((pos, rot)) = query.get(*body_entity) else {
-                    return None;
-                };
+                let body_entity = spawned_ragdoll.bodies.get(&body_weight.body)?;
+                let (pos, rot) = query.get(*body_entity).ok()?;
 
                 let global_isometry = Isometry3d::new(pos.0, rot.0) * body_weight.offset;
                 let global_transform = Transform::from_isometry(global_isometry);

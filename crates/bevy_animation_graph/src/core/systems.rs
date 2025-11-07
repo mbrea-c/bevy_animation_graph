@@ -137,10 +137,10 @@ pub fn apply_animation_to_targets(
         if let Some(scale) = bone_pose.scale {
             target_transform.scale = scale;
         }
-        if let Some(weights) = &bone_pose.weights {
-            if let Some(mut morphs) = target_morphs {
-                apply_morph_weights(morphs.weights_mut(), weights);
-            }
+        if let Some(weights) = &bone_pose.weights
+            && let Some(mut morphs) = target_morphs
+        {
+            apply_morph_weights(morphs.weights_mut(), weights);
         }
     }
 }

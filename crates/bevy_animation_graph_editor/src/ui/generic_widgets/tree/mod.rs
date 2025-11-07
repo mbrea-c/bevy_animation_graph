@@ -19,7 +19,7 @@ impl<I, L, R> TreeWidget<I, L, R> {
 impl<I, L, R> TreeWidget<I, L, R>
 where
     R: TreeRenderer<I, L>,
-    <R as TreeRenderer<I, L>>::Output: Default + Combinable,
+    <R as TreeRenderer<I, L>>::Output: Default,
 {
     pub fn show(self, ui: &mut egui::Ui, handle_result: impl FnOnce(R::Output)) -> egui::Response {
         ui.push_id(self.id_hash, |ui| {
@@ -55,20 +55,6 @@ pub trait TreeRenderer<I, L> {
     -> egui::Response;
 }
 
-pub trait Combinable: Sized {
-    fn combine(&self, other: &Self) -> Self;
-
-    fn combine_in_place(&mut self, other: &Self) {
-        *self = self.combine(other);
-    }
-}
-
-impl Combinable for () {
-    fn combine(&self, _: &Self) -> Self {
-        ()
-    }
-}
-
 impl<I, L> Tree<I, L> {
     pub fn picker_selector<O, R>(
         &self,
@@ -77,7 +63,6 @@ impl<I, L> Tree<I, L> {
         renderer: &R,
     ) -> egui::Response
     where
-        O: Combinable,
         R: TreeRenderer<I, L, Output = O>,
     {
         self.0
@@ -96,7 +81,6 @@ impl<I, L> TreeInner<I, L> {
         renderer: &R,
     ) -> egui::Response
     where
-        O: Combinable,
         R: TreeRenderer<I, L, Output = O>,
     {
         match self {

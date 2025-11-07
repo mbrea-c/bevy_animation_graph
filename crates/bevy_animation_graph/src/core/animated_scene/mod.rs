@@ -147,7 +147,7 @@ fn is_scene_ready_to_process(
 /// This function finds the [`bevy::animation::AnimationPlayer`] and replaces it with our own.
 ///
 /// It also applies retargeting if necessary.
-#[allow(clippy::result_large_err)]
+#[allow(clippy::result_large_err, clippy::too_many_arguments)]
 fn process_scene_into_animscn(
     mut scene: Scene,
     skeleton_handle: Handle<Skeleton>,
@@ -174,27 +174,27 @@ fn process_scene_into_animscn(
     entity_mut.remove::<bevy::animation::AnimationPlayer>();
     entity_mut.insert(player);
 
-    if let Some(retargeting) = retargeting {
-        if let Some(skeleton) = skeletons.get(&retargeting.source_skeleton) {
-            let player_entity_id = entity_mut.id();
+    if let Some(retargeting) = retargeting
+        && let Some(skeleton) = skeletons.get(&retargeting.source_skeleton)
+    {
+        let player_entity_id = entity_mut.id();
 
-            let mut query = scene.world.query::<&mut AnimationTarget>();
+        let mut query = scene.world.query::<&mut AnimationTarget>();
 
-            for mut target in query.iter_mut(&mut scene.world) {
-                if player_entity_id != target.player {
-                    continue;
-                }
+        for mut target in query.iter_mut(&mut scene.world) {
+            if player_entity_id != target.player {
+                continue;
+            }
 
-                let bone_id = BoneId::from(target.id);
-                let Some(mapped_bone_id) =
-                    apply_bone_path_overrides(bone_id, skeleton, &retargeting.bone_path_overrides)
-                else {
-                    continue;
-                };
-                *target = AnimationTarget {
-                    id: bevy::animation::AnimationTargetId(mapped_bone_id.id()),
-                    player: target.player,
-                }
+            let bone_id = BoneId::from(target.id);
+            let Some(mapped_bone_id) =
+                apply_bone_path_overrides(bone_id, skeleton, &retargeting.bone_path_overrides)
+            else {
+                continue;
+            };
+            *target = AnimationTarget {
+                id: bevy::animation::AnimationTargetId(mapped_bone_id.id()),
+                player: target.player,
             }
         }
     }

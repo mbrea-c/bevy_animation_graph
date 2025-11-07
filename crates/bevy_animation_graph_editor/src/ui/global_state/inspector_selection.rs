@@ -6,8 +6,6 @@ use crate::ui::global_state::{
 
 #[derive(Debug, Component, Default, Clone, Hash)]
 pub enum InspectorSelection {
-    ActiveScene,
-
     ActiveFsm,
     ActiveFsmTransition,
     ActiveFsmState,

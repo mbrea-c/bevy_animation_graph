@@ -80,12 +80,10 @@ impl UiState {
             buffers: Buffers::default(),
         };
 
-        let main_view =
-            EditorViewUiState::animation_graphs(world, &mut ui_state.windows, "Graph editing");
+        let main_view = EditorViewUiState::animation_graphs(world, "Graph editing");
         ui_state.new_native_view(main_view);
 
-        let event_tracks =
-            EditorViewUiState::event_tracks(world, &mut ui_state.windows, "Event tracks");
+        let event_tracks = EditorViewUiState::event_tracks(world, "Event tracks");
         ui_state.new_native_view(event_tracks);
 
         let skeleton_colliders = EditorViewUiState::skeleton_colliders(

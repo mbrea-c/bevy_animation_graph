@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use crate::ui::generic_widgets::tree::{Combinable, Tree, TreeInner, TreeRenderer};
+use crate::ui::generic_widgets::tree::{Tree, TreeInner, TreeRenderer};
 
 impl<T> Tree<PathBuf, (PathBuf, T)> {
     pub fn from_paths(mut paths: Vec<(PathBuf, T)>) -> Self {
@@ -97,14 +97,6 @@ pub struct PathTreeRenderer<T> {
 #[derive(Default, Clone)]
 pub struct PathTreeResult<T> {
     pub clicked: Option<T>,
-}
-
-impl<T: Clone> Combinable for PathTreeResult<T> {
-    fn combine(&self, other: &Self) -> Self {
-        Self {
-            clicked: self.clicked.clone().or(other.clicked.clone()),
-        }
-    }
 }
 
 impl<T: Clone> TreeRenderer<PathBuf, (PathBuf, T)> for PathTreeRenderer<T> {

@@ -19,7 +19,7 @@ pub struct BoneTree<'a, 'b> {
 
 impl BoneTree<'_, '_> {
     pub fn draw(self, ui: &mut egui::Ui) {
-        with_assets_all(self.world, [self.skeleton.id()], |world, [skeleton]| {
+        with_assets_all(self.world, [self.skeleton.id()], |_, [skeleton]| {
             // Tree, assemble!
             let response =
                 Tree::skeleton_tree(skeleton).picker_selector(ui, SkeletonTreeRenderer {});

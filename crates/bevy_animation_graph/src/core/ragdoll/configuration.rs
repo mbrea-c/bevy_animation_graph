@@ -17,3 +17,19 @@ pub struct RagdollConfig {
     pub default_readback: Option<bool>,
     pub readback_overrides: HashMap<BoneId, bool>,
 }
+
+impl RagdollConfig {
+    pub fn body_mode(&self, body: BodyId) -> Option<BodyMode> {
+        self.mode_overrides
+            .get(&body)
+            .copied()
+            .or(self.default_mode)
+    }
+
+    pub fn should_readback(&self, bone: BoneId) -> Option<bool> {
+        self.readback_overrides
+            .get(&bone)
+            .copied()
+            .or(self.default_readback)
+    }
+}

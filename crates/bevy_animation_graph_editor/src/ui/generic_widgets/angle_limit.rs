@@ -4,6 +4,7 @@ use bevy_animation_graph::core::ragdoll::definition::AngleLimit;
 
 pub enum AngleUnit {
     Deg,
+    #[allow(dead_code)]
     Rad,
 }
 
@@ -42,16 +43,19 @@ impl<'a> AngleLimitWidget<'a> {
         }
     }
 
+    #[allow(dead_code)]
     pub fn with_step_size(mut self, step_size: f32) -> Self {
         self.slider_step_size = step_size;
         self
     }
 
+    #[allow(dead_code)]
     pub fn with_width(mut self, width: f32) -> Self {
         self.width = width;
         self
     }
 
+    #[allow(dead_code)]
     pub fn with_angle_unit(mut self, unit: AngleUnit) -> Self {
         self.angle_unit = unit;
         self

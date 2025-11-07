@@ -525,10 +525,6 @@ impl NodesContext {
     pub fn get_node_dimensions(&self, id: usize) -> Option<egui::Vec2> {
         self.nodes.get(&id).map(|n| n.state.rect.size())
     }
-
-    pub fn is_node_just_selected(&self) -> bool {
-        self.frame_state.just_selected_node
-    }
 }
 
 impl NodesContext {
@@ -556,7 +552,7 @@ impl NodesContext {
         let node_size = node.state.size;
         let title_space = node.state.layout_style.padding.y;
 
-        let response = ui.allocate_new_ui(
+        let response = ui.scope_builder(
             egui::UiBuilder::default().max_rect(egui::Rect::from_min_size(
                 self.grid_space_to_screen_space(node_origin),
                 node_size,

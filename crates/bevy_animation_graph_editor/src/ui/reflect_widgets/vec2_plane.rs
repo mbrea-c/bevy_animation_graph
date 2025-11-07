@@ -55,16 +55,16 @@ impl EguiInspectorExtension for Vec2PlaneInspector {
                         egui::Sense::click_and_drag(),
                     );
 
-                    if let Some(interact_pos) = response.interact_pointer_pos() {
-                        if response.clicked() || response.dragged_by(egui::PointerButton::Primary) {
-                            let clipped_pos = area_rect.clamp(interact_pos);
-                            let bevy_vec = Vec2::new(
-                                (clipped_pos.x - area_rect.left()) / area_rect.width() * 2. - 1.,
-                                -((clipped_pos.y - area_rect.top()) / area_rect.height() * 2. - 1.),
-                            );
-                            *value = bevy_vec;
-                            changed = true;
-                        }
+                    if let Some(interact_pos) = response.interact_pointer_pos()
+                        && (response.clicked() || response.dragged_by(egui::PointerButton::Primary))
+                    {
+                        let clipped_pos = area_rect.clamp(interact_pos);
+                        let bevy_vec = Vec2::new(
+                            (clipped_pos.x - area_rect.left()) / area_rect.width() * 2. - 1.,
+                            -((clipped_pos.y - area_rect.top()) / area_rect.height() * 2. - 1.),
+                        );
+                        *value = bevy_vec;
+                        changed = true;
                     }
 
                     let scaled_vec = Vec2::new(

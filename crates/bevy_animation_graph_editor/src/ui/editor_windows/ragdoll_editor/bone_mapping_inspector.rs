@@ -1,20 +1,16 @@
-use bevy::ecs::world::World;
 use bevy_animation_graph::core::ragdoll::{bone_mapping::BoneMapping, definition::Ragdoll};
 use egui::Widget;
 
-use crate::ui::{
-    core::LegacyEditorWindowContext,
-    generic_widgets::{body_id::BodyIdWidget, isometry3d::Isometry3dWidget, list::ListWidget},
+use crate::ui::generic_widgets::{
+    body_id::BodyIdWidget, isometry3d::Isometry3dWidget, list::ListWidget,
 };
 
-pub struct BoneMappingInspector<'a, 'b> {
-    pub world: &'a mut World,
-    pub ctx: &'a mut LegacyEditorWindowContext<'b>,
+pub struct BoneMappingInspector<'a> {
     pub bone: &'a mut BoneMapping,
     pub ragdoll: &'a Ragdoll,
 }
 
-impl Widget for BoneMappingInspector<'_, '_> {
+impl Widget for BoneMappingInspector<'_> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         ui.label(format!("ID: {:?}", self.bone.bone_id.id()));
         ui.label(format!("Path: {}", self.bone.bone_id.to_slashed_string()));

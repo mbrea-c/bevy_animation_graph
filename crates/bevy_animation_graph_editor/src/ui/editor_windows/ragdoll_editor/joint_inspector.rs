@@ -1,22 +1,18 @@
-use bevy::ecs::world::World;
 use bevy_animation_graph::core::ragdoll::definition::{
     AngleLimit, Joint, JointVariant, Ragdoll, RevoluteJoint, SphericalJoint,
 };
 use egui::{ComboBox, Widget};
 
-use crate::ui::{
-    core::LegacyEditorWindowContext,
-    generic_widgets::{angle_limit::AngleLimitWidget, body_id::BodyIdWidget, vec3::Vec3Widget},
+use crate::ui::generic_widgets::{
+    angle_limit::AngleLimitWidget, body_id::BodyIdWidget, vec3::Vec3Widget,
 };
 
-pub struct JointInspector<'a, 'b> {
-    pub world: &'a mut World,
-    pub ctx: &'a mut LegacyEditorWindowContext<'b>,
+pub struct JointInspector<'a> {
     pub joint: &'a mut Joint,
     pub ragdoll: &'a Ragdoll,
 }
 
-impl Widget for JointInspector<'_, '_> {
+impl Widget for JointInspector<'_> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         let response = egui::Grid::new("ragdoll body inspector").show(ui, |ui| {
             let mut response = ui.label("ID:");

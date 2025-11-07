@@ -9,6 +9,7 @@ use bevy::math::{Isometry3d, Vec3};
 use bevy::time::Time;
 use bevy::transform::components::GlobalTransform;
 
+use crate::core::animation_graph::DEFAULT_OUTPUT_RAGDOLL_CONFIG;
 use crate::core::ragdoll::bone_mapping::RagdollBoneMap;
 use crate::core::ragdoll::definition::{BodyMode, Ragdoll};
 use crate::core::ragdoll::read_pose_avian::read_pose;
@@ -69,8 +70,7 @@ pub fn update_relative_kinematic_position_based_body_velocities(
             let cur_global_isometry = Isometry3d::new(pos.0, rot.0);
             let cur_base_isometry = Isometry3d::new(base_pos.0, base_rot.0);
 
-            let local_isometry = cur_base_isometry.inverse() * cur_global_isometry;
-            local_isometry
+            cur_base_isometry.inverse() * cur_global_isometry
         } else {
             Isometry3d::new(pos.0, rot.0)
         };
@@ -133,6 +133,13 @@ pub fn update_ragdoll_rigidbodies(
             && let Some(ragdoll) = ragdoll_assets.get(ragdoll_asset_id)
             && let Some(spawned_ragdoll) = &player.spawned_ragdoll
         {
+            let config = player
+                .get_outputs()
+                .get(DEFAULT_OUTPUT_RAGDOLL_CONFIG)
+                .and_then(|v| v.as_ragdoll_config().ok())
+                .cloned()
+                .unwrap_or_default();
+
             for body in ragdoll.bodies.values() {
                 let Some(body_entity) = spawned_ragdoll.bodies.get(&body.id) else {
                     continue;
@@ -141,13 +148,11 @@ pub fn update_ragdoll_rigidbodies(
                     continue;
                 };
 
-                let target_mode = if player.ragdoll_enabled {
-                    match body.default_mode {
-                        BodyMode::Kinematic => RigidBody::Kinematic,
-                        BodyMode::Dynamic => RigidBody::Dynamic,
-                    }
-                } else {
-                    RigidBody::Kinematic
+                let body_mode = config.body_mode(body.id).unwrap_or(body.default_mode);
+
+                let target_mode = match body_mode {
+                    BodyMode::Kinematic => RigidBody::Kinematic,
+                    BodyMode::Dynamic => RigidBody::Dynamic,
                 };
 
                 if *rigid_body != target_mode {
@@ -220,13 +225,19 @@ pub fn read_back_poses_avian(
     system_resources: SystemResources,
 ) {
     for mut player in &mut animation_players {
-        if player.ragdoll_enabled
-            && let Some(spawned_ragdoll) = &player.spawned_ragdoll
+        if let Some(spawned_ragdoll) = &player.spawned_ragdoll
             && let Some(bone_map_handle) = &player.ragdoll_bone_map
             && let Some(bone_map) = bone_map_assets.get(bone_map_handle)
             && let Some(pose) = player.get_default_output_pose()
             && let Some(skeleton) = system_resources.skeleton_assets.get(&pose.skeleton)
         {
+            let config = player
+                .get_outputs()
+                .get(DEFAULT_OUTPUT_RAGDOLL_CONFIG)
+                .and_then(|v| v.as_ragdoll_config().ok())
+                .cloned()
+                .unwrap_or_default();
+
             let pose_fallback = PoseFallbackContext {
                 entity_map: &player.entity_map,
                 resources: &system_resources,
@@ -240,6 +251,7 @@ pub fn read_back_poses_avian(
                 &pos_query,
                 pose_fallback,
                 pose,
+                &config,
             );
 
             player.set_default_output_pose(updated_pose);

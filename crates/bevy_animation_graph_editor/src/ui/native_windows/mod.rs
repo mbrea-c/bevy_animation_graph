@@ -1,5 +1,3 @@
-use std::any::{Any, TypeId, type_name};
-
 use bevy::ecs::{
     component::Component,
     entity::Entity,
@@ -67,11 +65,13 @@ impl OwnedQueue {
         self.command_queue.push(trigger(event));
     }
 
+    #[allow(dead_code)]
     pub fn trigger_window(&mut self, event: impl Event) {
         self.command_queue
             .push(trigger_targets(event, self.window_entity));
     }
 
+    #[allow(dead_code)]
     pub fn trigger_view(&mut self, event: impl Event) {
         self.command_queue
             .push(trigger_targets(event, self.view_entity));
@@ -119,19 +119,9 @@ pub trait NativeEditorWindowExtension: std::fmt::Debug + Send + Sync + 'static {
 
     #[allow(unused_variables)]
     fn init(&self, world: &mut World, ctx: &EditorWindowRegistrationContext) {}
-    #[allow(unused_variables)]
-    fn register_observers(&self, world: &mut World, ctx: &EditorWindowRegistrationContext) {}
 
     fn closeable(&self) -> bool {
         false
-    }
-
-    fn window_type_id(&self) -> TypeId {
-        self.type_id()
-    }
-
-    fn window_type_name(&self) -> &'static str {
-        type_name::<Self>()
     }
 }
 
@@ -154,20 +144,8 @@ impl NativeEditorWindowExtension for NativeEditorWindow {
         self.window.display_name()
     }
 
-    fn register_observers(&self, world: &mut World, ctx: &EditorWindowRegistrationContext) {
-        self.window.register_observers(world, ctx)
-    }
-
     fn closeable(&self) -> bool {
         self.window.closeable()
-    }
-
-    fn window_type_id(&self) -> TypeId {
-        self.window.window_type_id()
-    }
-
-    fn window_type_name(&self) -> &'static str {
-        self.window.window_type_name()
     }
 }
 
@@ -185,7 +163,6 @@ impl NativeEditorWindow {
         };
 
         ext.init(world, &ctx);
-        ext.register_observers(world, &ctx);
 
         Self {
             window: Box::new(ext),

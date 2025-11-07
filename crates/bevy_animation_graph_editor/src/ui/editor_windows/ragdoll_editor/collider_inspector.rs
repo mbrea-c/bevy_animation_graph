@@ -3,18 +3,16 @@ use bevy_animation_graph::core::ragdoll::definition::Collider;
 use egui::Widget;
 
 use crate::ui::{
-    core::LegacyEditorWindowContext,
     generic_widgets::{isometry3d::Isometry3dWidget, u32_flags::U32Flags},
     utils::using_inspector_env,
 };
 
-pub struct ColliderInspector<'a, 'b> {
+pub struct ColliderInspector<'a> {
     pub world: &'a mut World,
-    pub ctx: &'a mut LegacyEditorWindowContext<'b>,
     pub collider: &'a mut Collider,
 }
 
-impl Widget for ColliderInspector<'_, '_> {
+impl Widget for ColliderInspector<'_> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         let response = egui::Grid::new("ragdoll body inspector").show(ui, |ui| {
             let mut response = ui.label("ID:");

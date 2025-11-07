@@ -1,16 +1,13 @@
-use bevy::ecs::world::World;
 use bevy_animation_graph::core::ragdoll::definition::{Body, BodyMode};
 use egui::Widget;
 
-use crate::ui::{core::LegacyEditorWindowContext, generic_widgets::vec3::Vec3Widget};
+use crate::ui::generic_widgets::vec3::Vec3Widget;
 
-pub struct BodyInspector<'a, 'b> {
-    pub world: &'a mut World,
-    pub ctx: &'a mut LegacyEditorWindowContext<'b>,
+pub struct BodyInspector<'a> {
     pub body: &'a mut Body,
 }
 
-impl Widget for BodyInspector<'_, '_> {
+impl Widget for BodyInspector<'_> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         let response = egui::Grid::new("ragdoll body inspector").show(ui, |ui| {
             let mut response = ui.label("ID");

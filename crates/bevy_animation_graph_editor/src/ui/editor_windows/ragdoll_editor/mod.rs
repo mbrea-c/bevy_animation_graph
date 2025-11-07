@@ -145,8 +145,8 @@ impl EditorWindowExtension for RagdollEditorWindow {
         self.top_panel(ui, world, ctx);
         self.left_panel(ui, world, ctx);
         self.right_panel(ui, world, ctx);
-        self.settings_popup(ui, world, ctx);
-        self.center_panel(ui, world, ctx);
+        self.settings_popup(ui, world);
+        self.center_panel(ui, world);
 
         self.hovered_item = None;
     }
@@ -285,40 +285,32 @@ impl RagdollEditorWindow {
                             if let Some(ragdoll_handle) = &self.ragdoll
                                 && let Some(ragdoll_bone_map_handle) = &self.ragdoll_bone_map
                             {
-                                with_assets_all(
-                                    world,
-                                    [ragdoll_handle.id()],
-                                    |world, [ragdoll]| {
-                                        let buffer = self
-                                            .body_edit_buffers
-                                            .entry(body_id)
-                                            .or_insert_with(|| {
-                                                ragdoll
-                                                    .get_body(body_id)
-                                                    .cloned()
-                                                    .unwrap_or_else(|| Body::new())
-                                            });
-
-                                        let _response = ui.add(BodyInspector {
-                                            world,
-                                            ctx,
-                                            body: buffer,
+                                with_assets_all(world, [ragdoll_handle.id()], |_, [ragdoll]| {
+                                    let buffer = self
+                                        .body_edit_buffers
+                                        .entry(body_id)
+                                        .or_insert_with(|| {
+                                            ragdoll
+                                                .get_body(body_id)
+                                                .cloned()
+                                                .unwrap_or_else(|| Body::new())
                                         });
 
-                                        Self::submit_row(ui, ctx, |ctx| {
-                                            ctx.editor_actions.dynamic(EditRagdollBody {
-                                                ragdoll: ragdoll_handle.clone(),
-                                                body: buffer.clone(),
-                                            });
-                                            ctx.editor_actions.dynamic(RecomputeMappingOffsets {
-                                                ragdoll_bone_map: ragdoll_bone_map_handle.clone(),
-                                            });
-                                            ctx.editor_actions.dynamic(RecomputeRagdollSymmetry {
-                                                ragdoll_bone_map: ragdoll_bone_map_handle.clone(),
-                                            });
+                                    let _response = ui.add(BodyInspector { body: buffer });
+
+                                    Self::submit_row(ui, ctx, |ctx| {
+                                        ctx.editor_actions.dynamic(EditRagdollBody {
+                                            ragdoll: ragdoll_handle.clone(),
+                                            body: buffer.clone(),
                                         });
-                                    },
-                                );
+                                        ctx.editor_actions.dynamic(RecomputeMappingOffsets {
+                                            ragdoll_bone_map: ragdoll_bone_map_handle.clone(),
+                                        });
+                                        ctx.editor_actions.dynamic(RecomputeRagdollSymmetry {
+                                            ragdoll_bone_map: ragdoll_bone_map_handle.clone(),
+                                        });
+                                    });
+                                });
                             }
 
                             if let Some(animscn_handle) = &self.scene
@@ -328,7 +320,7 @@ impl RagdollEditorWindow {
                                     world,
                                     animscn_handle.id(),
                                     bone_map_handle.id(),
-                                    |world, _, skeleton, bone_map| {
+                                    |_, _, skeleton, bone_map| {
                                         ui.separator();
 
                                         let body_mapping = self
@@ -346,8 +338,6 @@ impl RagdollEditorWindow {
                                                     })
                                             });
                                         ui.add(BodyMappingInspector {
-                                            world,
-                                            ctx,
                                             body_mapping,
                                             skeleton,
                                         });
@@ -388,7 +378,6 @@ impl RagdollEditorWindow {
 
                                         let _response = ui.add(ColliderInspector {
                                             world,
-                                            ctx,
                                             collider: buffer,
                                         });
 
@@ -409,38 +398,32 @@ impl RagdollEditorWindow {
                             if let Some(ragdoll_handle) = &self.ragdoll
                                 && let Some(bone_map_handle) = &self.ragdoll_bone_map
                             {
-                                with_assets_all(
-                                    world,
-                                    [ragdoll_handle.id()],
-                                    |world, [ragdoll]| {
-                                        let buffer = self
-                                            .joint_edit_buffers
-                                            .entry(joint_id)
-                                            .or_insert_with(|| {
-                                                ragdoll
-                                                    .get_joint(joint_id)
-                                                    .cloned()
-                                                    .unwrap_or_else(|| Joint::new())
-                                            });
-
-                                        let _response = ui.add(JointInspector {
-                                            world,
-                                            ctx,
-                                            joint: buffer,
-                                            ragdoll,
+                                with_assets_all(world, [ragdoll_handle.id()], |_, [ragdoll]| {
+                                    let buffer = self
+                                        .joint_edit_buffers
+                                        .entry(joint_id)
+                                        .or_insert_with(|| {
+                                            ragdoll
+                                                .get_joint(joint_id)
+                                                .cloned()
+                                                .unwrap_or_else(|| Joint::new())
                                         });
 
-                                        Self::submit_row(ui, ctx, |ctx| {
-                                            ctx.editor_actions.dynamic(EditRagdollJoint {
-                                                ragdoll: ragdoll_handle.clone(),
-                                                joint: buffer.clone(),
-                                            });
-                                            ctx.editor_actions.dynamic(RecomputeRagdollSymmetry {
-                                                ragdoll_bone_map: bone_map_handle.clone(),
-                                            });
+                                    let _response = ui.add(JointInspector {
+                                        joint: buffer,
+                                        ragdoll,
+                                    });
+
+                                    Self::submit_row(ui, ctx, |ctx| {
+                                        ctx.editor_actions.dynamic(EditRagdollJoint {
+                                            ragdoll: ragdoll_handle.clone(),
+                                            joint: buffer.clone(),
                                         });
-                                    },
-                                );
+                                        ctx.editor_actions.dynamic(RecomputeRagdollSymmetry {
+                                            ragdoll_bone_map: bone_map_handle.clone(),
+                                        });
+                                    });
+                                });
                             }
                         }
                         Some(SelectedItem::Bone(bone_id)) => {
@@ -453,7 +436,7 @@ impl RagdollEditorWindow {
                                     animscn_handle.id(),
                                     bone_map_handle.id(),
                                     ragdoll_handle.id(),
-                                    |world, _, skeleton, bone_map, ragdoll| {
+                                    |_, _, skeleton, bone_map, ragdoll| {
                                         if let Some(entity_path) = skeleton.id_to_path(bone_id) {
                                             let bone = self
                                                 .bone_mapping_buffers
@@ -470,12 +453,7 @@ impl RagdollEditorWindow {
                                                         })
                                                 });
 
-                                            ui.add(BoneMappingInspector {
-                                                world,
-                                                ctx,
-                                                bone,
-                                                ragdoll,
-                                            });
+                                            ui.add(BoneMappingInspector { bone, ragdoll });
 
                                             Self::submit_row(ui, ctx, |ctx| {
                                                 ctx.editor_actions.dynamic(
@@ -508,18 +486,12 @@ impl RagdollEditorWindow {
             });
     }
 
-    pub fn center_panel(
-        &mut self,
-        ui: &mut egui::Ui,
-        world: &mut World,
-        ctx: &mut LegacyEditorWindowContext,
-    ) {
+    pub fn center_panel(&mut self, ui: &mut egui::Ui, world: &mut World) {
         if let Some(base_scene) = &self.scene
             && let Some(ragdoll) = &self.ragdoll
         {
             RagdollPreview {
                 world,
-                ctx,
                 ragdoll: ragdoll.clone(),
                 base_scene: base_scene.clone(),
                 body_buffers: self.body_edit_buffers.clone(),
@@ -536,19 +508,13 @@ impl RagdollEditorWindow {
         }
     }
 
-    pub fn settings_popup(
-        &mut self,
-        ui: &mut egui::Ui,
-        world: &mut World,
-        ctx: &mut LegacyEditorWindowContext,
-    ) {
+    pub fn settings_popup(&mut self, ui: &mut egui::Ui, world: &mut World) {
         if self.show_global_settings {
             egui::Window::new("Skeleton collider settings").show(ui.ctx(), |ui| {
                 if let Some(target) = &self.ragdoll {
                     ui.add(SettingsPanel {
                         target: target.clone(),
                         world,
-                        ctx,
                         settings: &mut self.settings,
                     });
                 }

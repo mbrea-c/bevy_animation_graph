@@ -69,7 +69,6 @@ pub struct AnimationGraphPlayer {
     pub(crate) ragdoll: Option<Handle<Ragdoll>>,
     pub(crate) ragdoll_bone_map: Option<Handle<RagdollBoneMap>>,
     pub(crate) spawned_ragdoll: Option<SpawnedRagdoll>,
-    pub ragdoll_enabled: bool,
     pub(crate) context_arena: Option<GraphContextArena>,
     pub(crate) elapsed: f32,
     pub(crate) pending_update: TimeUpdate,

@@ -25,14 +25,12 @@ use bevy_animation_graph::{
 
 use crate::ui::{
     PartOfSubScene, PreviewScene, SubSceneConfig, SubSceneSyncAction,
-    core::LegacyEditorWindowContext,
     editor_windows::ragdoll_editor::SelectedItem,
     utils::{orbit_camera_scene_show, with_assets_all},
 };
 
-pub struct RagdollPreview<'a, 'b> {
+pub struct RagdollPreview<'a> {
     pub world: &'a mut World,
-    pub ctx: &'a mut LegacyEditorWindowContext<'b>,
 
     pub ragdoll: Handle<Ragdoll>,
     pub base_scene: Handle<AnimatedScene>,
@@ -45,7 +43,7 @@ pub struct RagdollPreview<'a, 'b> {
     pub selected_item: Option<SelectedItem>,
 }
 
-impl RagdollPreview<'_, '_> {
+impl RagdollPreview<'_> {
     pub fn draw(self, ui: &mut egui::Ui) {
         let config = RagdollPreviewConfig {
             animated_scene: self.base_scene.clone(),
@@ -151,6 +149,7 @@ pub struct RagdollBodies {
     pub ragdoll: Handle<Ragdoll>,
     pub body_buffers: HashMap<BodyId, Body>,
     pub hover: Option<BodyId>,
+    #[allow(dead_code)]
     pub selected: Option<BodyId>,
 }
 
@@ -289,11 +288,11 @@ impl GizmoOverlay for RagdollJoints {
                     .unwrap_or(ragdoll_joint);
                 match &joint.variant {
                     JointVariant::Spherical(spherical_joint) => {
-                        if let Some(body1) = self
+                        if let Some(_) = self
                             .body_buffers
                             .get(&spherical_joint.body1)
                             .or(ragdoll.get_body(spherical_joint.body1))
-                            && let Some(body2) = self
+                            && let Some(_) = self
                                 .body_buffers
                                 .get(&spherical_joint.body2)
                                 .or(ragdoll.get_body(spherical_joint.body2))
@@ -350,11 +349,11 @@ impl GizmoOverlay for RagdollJoints {
                         }
                     }
                     JointVariant::Revolute(revolute_joint) => {
-                        if let Some(body1) = self
+                        if let Some(_) = self
                             .body_buffers
                             .get(&revolute_joint.body1)
                             .or(ragdoll.get_body(revolute_joint.body1))
-                            && let Some(body2) = self
+                            && let Some(_) = self
                                 .body_buffers
                                 .get(&revolute_joint.body2)
                                 .or(ragdoll.get_body(revolute_joint.body2))

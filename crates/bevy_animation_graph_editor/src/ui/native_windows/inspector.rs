@@ -48,7 +48,6 @@ impl NativeEditorWindowExtension for InspectorWindow {
             .unwrap_or_default();
 
         ui.push_id(&inspector_selection, |ui| match inspector_selection {
-            InspectorSelection::ActiveScene => {}
             InspectorSelection::ActiveFsm => {
                 fsm_inspector(world, ui, ctx);
             }

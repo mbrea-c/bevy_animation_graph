@@ -46,17 +46,6 @@ pub struct EventTrackEditorState {
     target_tracks: Option<TargetTracks>,
 }
 
-#[derive(Event)]
-pub struct MutateEventTrackEditorState {
-    f: Box<dyn Fn(&mut EventTrackEditorState) + Send + Sync + 'static>,
-}
-
-impl MutateEventTrackEditorState {
-    pub fn new(f: impl Fn(&mut EventTrackEditorState) + Send + Sync + 'static) -> Self {
-        Self { f: Box::new(f) }
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ScrollConfig {
     /// The time at the center of the window, in seconds

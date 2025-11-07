@@ -41,21 +41,6 @@ fn main() {
             .chain(),
     );
 
-    let graph = bevy_mod_debugdump::schedule_graph_dot(
-        &mut app,
-        PostUpdate,
-        &bevy_mod_debugdump::schedule_graph::Settings::default(),
-    );
-
-    std::fs::write("post-update.dot", graph);
-
-    let graph = bevy_mod_debugdump::schedule_graph_dot(
-        &mut app,
-        FixedPostUpdate,
-        &bevy_mod_debugdump::schedule_graph::Settings::default(),
-    );
-    std::fs::write("fixed-post-update.dot", graph);
-
     app.run();
 }
 
@@ -231,8 +216,6 @@ fn update_animation_player(
     } else {
         text.0 = "Ragdoll disabled".into();
     }
-
-    player.ragdoll_enabled = params.ragdoll_mode;
 
     if keyboard_input.pressed(KeyCode::ArrowUp) {
         params.speed += 1.5 * time.delta_secs();
