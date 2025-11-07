@@ -382,7 +382,7 @@ fn add_transition_ui(
         ui.label("Transition creation");
         let buffer = ctx
             .buffers
-            .get_mut_or_insert_with(ui.id(), || Transition::default());
+            .get_mut_or_insert_with(ui.id(), Transition::default);
         env.ui_for_reflect_with_options(buffer, ui, egui::Id::new("Transition creation"), &());
         if ui.button("Create transition").clicked() {
             Some(buffer.clone())
@@ -403,7 +403,7 @@ fn add_state_ui(
         ui.label("State creation");
         let buffer = ctx
             .buffers
-            .get_mut_or_insert_with(ui.id(), || State::default());
+            .get_mut_or_insert_with(ui.id(), State::default);
         env.ui_for_reflect_with_options(buffer, ui, egui::Id::new("State creation"), &());
         if ui.button("Create state").clicked() {
             Some(buffer.clone())

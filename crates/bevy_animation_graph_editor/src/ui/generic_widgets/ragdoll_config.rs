@@ -55,8 +55,7 @@ impl<'a> egui::Widget for RagdollConfigWidget<'a> {
                             "default mode editor",
                         )
                         .ui(ui, |ui, val| ui.add(BodyModeWidget::new_salted(val, "")));
-                    })
-                    .inner;
+                    });
 
                     ui.horizontal(|ui| {
                         response |= ui.label("default readback:");
@@ -114,11 +113,10 @@ impl<'a> egui::Widget for RagdollConfigWidget<'a> {
                     response
                 });
 
-            if let Some(popup_response) = popup_response {
-                if popup_response.inner.changed() {
+            if let Some(popup_response) = popup_response
+                && popup_response.inner.changed() {
                     response.mark_changed();
                 }
-            }
 
             response
         })

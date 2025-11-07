@@ -16,7 +16,25 @@ impl<'a> U32Flags<'a> {
 
 impl<'a> egui::Widget for U32Flags<'a> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
-        let response = ui
+        
+
+        // ui.horizontal(|ui| {
+        //     for i in 0..32 {
+        //         let id = ui.id().with(self.id_hash).with(format!("flag bit {i}"));
+        //         let mut checked = (*self.flags | (1 << i)) != 0;
+        //         let bit_response = ui
+        //             .push_id(id, |ui| ui.add(egui::Checkbox::without_text(&mut checked)))
+        //             .inner;
+        //         cumulative_response = Some(if let Some(r) = cumulative_response {
+        //             r | bit_response
+        //         } else {
+        //             bit_response
+        //         });
+        //     }
+        //     cumulative_response.expect("Number of bits is hardcoded")
+        // })
+        // .inner
+        ui
             .push_id(self.id_hash, |ui| {
                 let side = 10.;
 
@@ -42,7 +60,7 @@ impl<'a> egui::Widget for U32Flags<'a> {
 
                     let is_mouse_over_bit = total_response
                         .hover_pos()
-                        .map_or(false, |p| bit_rect.contains(p));
+                        .is_some_and(|p| bit_rect.contains(p));
 
                     let mask = 1 << i;
                     let bit_on = (*self.flags & mask) != 0;
@@ -65,31 +83,13 @@ impl<'a> egui::Widget for U32Flags<'a> {
                     );
 
                     if total_response.clicked() && is_mouse_over_bit {
-                        *self.flags = *self.flags ^ mask;
+                        *self.flags ^= mask;
                         total_response.mark_changed()
                     }
                 }
 
                 total_response
             })
-            .inner;
-
-        // ui.horizontal(|ui| {
-        //     for i in 0..32 {
-        //         let id = ui.id().with(self.id_hash).with(format!("flag bit {i}"));
-        //         let mut checked = (*self.flags | (1 << i)) != 0;
-        //         let bit_response = ui
-        //             .push_id(id, |ui| ui.add(egui::Checkbox::without_text(&mut checked)))
-        //             .inner;
-        //         cumulative_response = Some(if let Some(r) = cumulative_response {
-        //             r | bit_response
-        //         } else {
-        //             bit_response
-        //         });
-        //     }
-        //     cumulative_response.expect("Number of bits is hardcoded")
-        // })
-        // .inner
-        response
+            .inner
     }
 }

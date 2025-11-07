@@ -96,12 +96,12 @@ impl<'a> EditorWindowContext<'a> {
             .push(trigger_targets(event, self.view_entity));
     }
 
-    pub fn get_window_state<'w, 'c, T: Component>(&'c self, world: &'w World) -> Option<&'w T> {
+    pub fn get_window_state<'w, T: Component>(&self, world: &'w World) -> Option<&'w T> {
         let mut query = world.try_query_filtered::<&T, With<WindowState>>()?;
         query.get(world, self.window_entity).ok()
     }
 
-    pub fn get_view_state<'w, 'c, T: Component>(&'c self, world: &'w World) -> Option<&'w T> {
+    pub fn get_view_state<'w, T: Component>(&self, world: &'w World) -> Option<&'w T> {
         let mut query = world.try_query_filtered::<&T, With<EditorViewState>>()?;
         query.get(world, self.view_entity).ok()
     }

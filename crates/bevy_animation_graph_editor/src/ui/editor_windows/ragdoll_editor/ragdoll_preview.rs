@@ -127,8 +127,8 @@ fn draw_gizmo_overlay(id: egui::Id, input: &Arc<dyn GizmoOverlay>, world: &mut W
     // SAFETY: Only safe as long as the overlay does not access anything conflicting with the query
     // we're getting here. Unfortunately I could not think of a safer way to solve this atm.
     // I'm only letting this through because this is not library code, just editor code.
-    let query_world = unsafe { world_cell.clone().world_mut() };
-    let overlay_world = unsafe { world_cell.clone().world_mut() };
+    let query_world = unsafe { world_cell.world_mut() };
+    let overlay_world = unsafe { world_cell.world_mut() };
     let mut query = query_world.query::<(&mut AnimationGraphPlayer, &PartOfSubScene)>();
     for (mut player, PartOfSubScene(target_id)) in query.iter_mut(query_world) {
         if id != *target_id {

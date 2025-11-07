@@ -60,7 +60,7 @@ impl<'a> egui::Widget for Isometry3dWidget<'a> {
         if self.flatten_grid {
             draw(ui)
         } else {
-            egui::Grid::new(self.id_hash).show(ui, |ui| draw(ui)).inner
+            egui::Grid::new(self.id_hash).show(ui, draw).inner
         }
     }
 }

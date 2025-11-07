@@ -297,7 +297,7 @@ impl Tree<RagdollNode, RagdollNode> {
         body_id: BodyId,
     ) -> TreeInternal<RagdollNode, RagdollNode> {
         let body = ragdoll.get_body(body_id).unwrap();
-        let children = body.colliders.iter().copied().collect::<Vec<_>>();
+        let children = body.colliders.to_vec();
 
         let label = if body.label.is_empty() {
             format!("{:?}", body.id)

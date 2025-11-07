@@ -35,10 +35,10 @@ impl<'a, A: Asset> egui::Widget for AssetPicker<'a, A> {
                 .resource_scope::<Assets<A>, _>(|world, mut assets| {
                     let asset_server = world.resource::<AssetServer>();
                     let mut asset_ids: Vec<_> = assets.ids().collect();
-                    asset_ids.sort_by_key(|id| asset_sort_key(*id, &asset_server));
+                    asset_ids.sort_by_key(|id| asset_sort_key(*id, asset_server));
                     let paths = asset_ids
                         .into_iter()
-                        .map(|id| (handle_path(id.untyped(), &asset_server), id))
+                        .map(|id| (handle_path(id.untyped(), asset_server), id))
                         .collect();
                     let path_tree = Tree::from_paths(paths);
                     TreeWidget::new_salted(

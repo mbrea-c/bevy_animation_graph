@@ -249,7 +249,7 @@ impl TreeRenderer<RagdollNode, RagdollNode, RagdollResponse> for RagdollTreeRend
             }
 
             TreeResult::Leaf(
-                data.clone(),
+                *data,
                 RagdollResponse {
                     hovered: response.hovered().then_some(*data),
                     clicked: response

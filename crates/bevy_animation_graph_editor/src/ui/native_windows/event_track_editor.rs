@@ -187,7 +187,7 @@ impl NativeEditorWindowExtension for EventTrackEditorWindow {
             .show_inside(ui, |ui| {
                 state.draw_timeline(
                     ui,
-                    ctx.get_view_state::<ClipPreviewViewState>(&world)
+                    ctx.get_view_state::<ClipPreviewViewState>(world)
                         .map(|s| s.elapsed_time()),
                     ctx,
                 );

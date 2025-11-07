@@ -515,7 +515,7 @@ impl RecomputeRagdollSymmetry {
                 };
 
                 let [Some(original_body), Some(mirrored_body)] =
-                    ragdoll.bodies.get_many_mut([&body_id, &mirrored_body_id])
+                    ragdoll.bodies.get_many_mut([&body_id, mirrored_body_id])
                 else {
                     continue; // should never be reached
                 };
@@ -551,7 +551,7 @@ impl RecomputeRagdollSymmetry {
                 continue;
             };
 
-            if !joint.use_symmetry || !joint.created_from.is_none() {
+            if !joint.use_symmetry || joint.created_from.is_some() {
                 continue;
             }
 
@@ -570,7 +570,7 @@ impl RecomputeRagdollSymmetry {
             let Some(body) = ragdoll.get_body(body_id) else {
                 continue;
             };
-            if !body.use_symmetry || !body.created_from.is_none() {
+            if !body.use_symmetry || body.created_from.is_some() {
                 continue;
             }
 
@@ -683,7 +683,7 @@ fn mirror_body_properties(
     let mirror_offset = mode.apply_position(this.offset);
     target.offset = mirror_offset;
 
-    target.default_mode = this.default_mode.clone();
+    target.default_mode = this.default_mode;
     target.use_symmetry = false;
     target.created_from = Some(this.id);
 }

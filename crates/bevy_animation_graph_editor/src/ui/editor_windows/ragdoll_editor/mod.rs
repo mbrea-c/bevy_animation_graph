@@ -236,18 +236,16 @@ impl RagdollEditorWindow {
                                 .draw(ui);
                             });
                         }
-                    } else {
-                        if let Some(ragdoll) = self.ragdoll.clone()
-                            && let Some(ragdoll_bone_map) = self.ragdoll_bone_map.clone()
-                        {
-                            BodyTree {
-                                ragdoll,
-                                ragdoll_bone_map,
-                                world,
-                                ctx,
-                            }
-                            .draw(ui);
+                    } else if let Some(ragdoll) = self.ragdoll.clone()
+                        && let Some(ragdoll_bone_map) = self.ragdoll_bone_map.clone()
+                    {
+                        BodyTree {
+                            ragdoll,
+                            ragdoll_bone_map,
+                            world,
+                            ctx,
                         }
+                        .draw(ui);
                     }
                 });
             });
@@ -293,7 +291,7 @@ impl RagdollEditorWindow {
                                             ragdoll
                                                 .get_body(body_id)
                                                 .cloned()
-                                                .unwrap_or_else(|| Body::new())
+                                                .unwrap_or_else(Body::new)
                                         });
 
                                     let _response = ui.add(BodyInspector { body: buffer });
@@ -373,7 +371,7 @@ impl RagdollEditorWindow {
                                                 ragdoll
                                                     .get_collider(collider_id)
                                                     .cloned()
-                                                    .unwrap_or_else(|| Collider::new())
+                                                    .unwrap_or_else(Collider::new)
                                             });
 
                                         let _response = ui.add(ColliderInspector {
@@ -406,7 +404,7 @@ impl RagdollEditorWindow {
                                             ragdoll
                                                 .get_joint(joint_id)
                                                 .cloned()
-                                                .unwrap_or_else(|| Joint::new())
+                                                .unwrap_or_else(Joint::new)
                                         });
 
                                     let _response = ui.add(JointInspector {

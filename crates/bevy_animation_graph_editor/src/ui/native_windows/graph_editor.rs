@@ -151,7 +151,7 @@ impl NativeEditorWindowExtension for GraphEditorWindow {
                                 && let Some(InspectorSelection::ActiveNode) =
                                     get_global_state::<InspectorSelection>(world)
                                 && &active_node.node == node_name
-                                && &active_node.handle == &active_graph.handle
+                                && active_node.handle == active_graph.handle
                             {
                                 // pass
                             } else {

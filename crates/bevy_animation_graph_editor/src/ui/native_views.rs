@@ -47,16 +47,16 @@ fn ragdoll_view(
 ) -> DockState<EguiWindow> {
     let preview_window = windows.open(RagdollEditorWindow::default());
 
-    let state = DockState::new(vec![preview_window.into()]);
+    
 
-    state
+    DockState::new(vec![preview_window.into()])
 }
 
 fn test_view(world: &mut World, view_entity: Entity) -> DockState<EguiWindow> {
     let scene_picker = NativeEditorWindow::create(world, view_entity, ScenePickerWindow);
-    let state = DockState::new(vec![scene_picker.into()]);
+    
 
-    state
+    DockState::new(vec![scene_picker.into()])
 }
 
 fn event_track_view(world: &mut World, view_entity: Entity) -> DockState<EguiWindow> {
@@ -116,9 +116,9 @@ fn main_view(world: &mut World, view_entity: Entity) -> DockState<EguiWindow> {
 fn skeleton_colliders_view(windows: &mut Windows) -> DockState<EguiWindow> {
     let preview_window = windows.open(SkeletonCollidersPreviewWindow::default());
 
-    let state = DockState::new(vec![preview_window.into()]);
+    
 
-    state
+    DockState::new(vec![preview_window.into()])
 }
 
 pub struct EditorViewContext<'a> {

@@ -47,7 +47,7 @@ impl<'a> egui::Widget for BoneIdWidget<'a> {
                 if let Some(skeleton) = self.skeleton
                     && let Some(bone_path) = skeleton.id_to_path(*self.bone_id)
                 {
-                    response |= ui.label(&bone_path.to_slashed_string());
+                    response |= ui.label(bone_path.to_slashed_string());
                 } else {
                     response |= ui.label("No label available");
                 }
@@ -114,7 +114,7 @@ impl<'a> egui::Widget for BoneIdReadonlyWidget<'a> {
                 if let Some(skeleton) = self.skeleton
                     && let Some(bone_path) = skeleton.id_to_path(*self.bone_id)
                 {
-                    response |= ui.label(&bone_path.to_slashed_string());
+                    response |= ui.label(bone_path.to_slashed_string());
                 } else {
                     response |= ui.label("No label available");
                 }

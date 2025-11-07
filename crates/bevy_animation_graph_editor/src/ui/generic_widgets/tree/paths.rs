@@ -115,9 +115,7 @@ impl<T: Clone> TreeRenderer<PathBuf, (PathBuf, T)> for PathTreeRenderer<T> {
         ) -> egui::Response,
     ) -> egui::Response {
         let label = data
-            .components()
-            .rev()
-            .next()
+            .components().next_back()
             .map(|s| match s {
                 std::path::Component::RootDir => "/".to_string(),
                 std::path::Component::Prefix(prefix_component) => {
@@ -138,7 +136,7 @@ impl<T: Clone> TreeRenderer<PathBuf, (PathBuf, T)> for PathTreeRenderer<T> {
                     .reduce(|l, r| l | r)
             });
 
-        if response.header_response.clicked() {}
+        response.header_response.clicked();
 
         let mut r = response.header_response;
         if let Some(body_response) = response.body_returned.flatten() {
