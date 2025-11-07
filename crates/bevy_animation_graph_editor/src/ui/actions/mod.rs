@@ -8,49 +8,55 @@ pub mod colliders;
 pub mod event_tracks;
 pub mod fsm;
 pub mod graph;
+pub mod ragdoll;
 pub mod saving;
 pub mod window;
 
-use std::{any::Any, cmp::Ordering, fmt::Display};
+use std::{any::Any, cmp::Ordering, collections::VecDeque, fmt::Display};
 
 use bevy::{
     ecs::{
         resource::Resource,
-        system::{In, IntoSystem, ResMut, SystemInput},
+        system::{Commands, In, IntoSystem, ResMut, SystemInput},
         world::World,
     },
     log::error,
 };
-use egui_dock::DockState;
 use event_tracks::{EventTrackAction, handle_event_track_action};
 use fsm::{FsmAction, handle_fsm_action};
 use graph::{GraphAction, handle_graph_action};
 use saving::{SaveAction, handle_save_action};
 use window::WindowAction;
 
-use super::{
-    UiState,
-    core::{ViewAction, ViewState},
-    windows::WindowId,
-};
+use crate::ui::native_views::EditorViewUiState;
+
+use super::{UiState, core::ViewAction, windows::WindowId};
 
 #[derive(Resource, Default)]
 pub struct PendingActions {
     pub actions: PushQueue<EditorAction>,
 }
 
+#[derive(Default)]
+pub struct ActionContext {
+    /// Queue further actions.
+    ///
+    /// Be careful not to create an inifinite loop
+    actions: PushQueue<EditorAction>,
+}
+
 /// A "push-only" queue
-pub struct PushQueue<T>(Vec<T>);
+pub struct PushQueue<T>(VecDeque<T>);
 
 impl<T> Default for PushQueue<T> {
     fn default() -> Self {
-        Self(Vec::new())
+        Self(VecDeque::new())
     }
 }
 
 impl<T> PushQueue<T> {
     pub fn push(&mut self, item: T) {
-        self.0.push(item);
+        self.0.push_back(item);
     }
 }
 
@@ -64,12 +70,17 @@ pub enum EditorAction {
 }
 
 pub fn handle_editor_action_queue(world: &mut World, actions: impl Iterator<Item = EditorAction>) {
+    let mut ctx = ActionContext::default();
     for action in actions {
-        handle_editor_action(world, action);
+        handle_editor_action(world, action, &mut ctx);
+    }
+
+    while let Some(action) = ctx.actions.0.pop_front() {
+        handle_editor_action(world, action, &mut ctx);
     }
 }
 
-pub fn handle_editor_action(world: &mut World, action: EditorAction) {
+pub fn handle_editor_action(world: &mut World, action: EditorAction, ctx: &mut ActionContext) {
     match action {
         EditorAction::View(action) => {
             if let Err(err) = world.run_system_cached_with(handle_view_action, action) {
@@ -80,14 +91,20 @@ pub fn handle_editor_action(world: &mut World, action: EditorAction) {
         EditorAction::EventTrack(action) => handle_event_track_action(world, action),
         EditorAction::Graph(action) => handle_graph_action(world, action),
         EditorAction::Fsm(action) => handle_fsm_action(world, action),
-        EditorAction::Dynamic(action) => action.handle(world),
+        EditorAction::Dynamic(action) => action.handle(world, ctx),
     }
 }
 
-fn handle_view_action(In(view_action): In<ViewAction>, mut ui_state: ResMut<UiState>) {
+fn handle_view_action(
+    In(view_action): In<ViewAction>,
+    mut ui_state: ResMut<UiState>,
+    mut commands: Commands,
+) {
     match view_action {
         ViewAction::Close(index) => {
-            ui_state.views.remove(index);
+            let view_state = ui_state.views.remove(index);
+            commands.entity(view_state.entity).despawn();
+
             if let Some(idx) = ui_state.active_view {
                 match idx.cmp(&index) {
                     Ordering::Less => {}
@@ -103,15 +120,18 @@ fn handle_view_action(In(view_action): In<ViewAction>, mut ui_state: ResMut<UiSt
         ViewAction::Select(index) => {
             ui_state.active_view = Some(index);
         }
-        ViewAction::New(name) => ui_state.views.push(ViewState {
-            name,
-            dock_state: DockState::new(vec![]),
-        }),
+        ViewAction::New(name) => {
+            commands.queue(|world: &mut World| {
+                let view_state = EditorViewUiState::empty(world, name);
+                let mut ui_state = world.resource_mut::<UiState>();
+                ui_state.new_native_view(view_state);
+            });
+        }
     }
 }
 
 pub fn process_actions_system(world: &mut World) {
-    world.resource_scope::<PendingActions, ()>(|world, mut actions| {
+    world.try_resource_scope::<PendingActions, ()>(|world, mut actions| {
         handle_editor_action_queue(world, actions.actions.0.drain(..));
     });
 }
@@ -146,5 +166,5 @@ where
 }
 
 pub trait DynamicAction: Send + Sync + 'static {
-    fn handle(self: Box<Self>, world: &mut World);
+    fn handle(self: Box<Self>, world: &mut World, ctx: &mut ActionContext);
 }

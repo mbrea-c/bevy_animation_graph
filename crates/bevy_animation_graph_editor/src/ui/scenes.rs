@@ -1,3 +1,4 @@
+use std::ops::BitOr;
 use std::rc::Rc;
 
 use bevy::color::palettes::css::WHITE;
@@ -18,32 +19,8 @@ use bevy_animation_graph::prelude::{
 use bevy_inspector_egui::bevy_egui;
 use egui_dock::egui;
 
-use super::UiState;
-
 #[derive(Component)]
 pub struct PreviewScene;
-
-pub fn graph_debug_draw_bone_system(
-    ui_state: Res<UiState>,
-    scene_instance_query: Query<&AnimatedSceneInstance, With<PreviewScene>>,
-    mut player_query: Query<&mut AnimationGraphPlayer>,
-) {
-    let Some(path) = ui_state.global_state.entity_path.as_ref() else {
-        return;
-    };
-    if ui_state.global_state.scene.is_none() {
-        return;
-    };
-    let Ok(instance) = scene_instance_query.single() else {
-        return;
-    };
-    let entity = instance.player_entity();
-    let Ok(mut player) = player_query.get_mut(entity) else {
-        return;
-    };
-
-    player.gizmo_for_bones(vec![path.clone().id()])
-}
 
 // Pose gizmo rendering
 
@@ -226,6 +203,27 @@ pub enum SubSceneSyncAction {
     Nothing,
     Respawn,
     Update,
+}
+
+impl SubSceneSyncAction {
+    pub fn combine(&self, other: &Self) -> Self {
+        use SubSceneSyncAction::*;
+        match (self, other) {
+            (Respawn, _) => Respawn,
+            (_, Respawn) => Respawn,
+            (Nothing, any) => *any,
+            (any, Nothing) => *any,
+            (Update, Update) => Update,
+        }
+    }
+}
+
+impl BitOr<SubSceneSyncAction> for SubSceneSyncAction {
+    type Output = Self;
+
+    fn bitor(self, rhs: SubSceneSyncAction) -> Self::Output {
+        self.combine(&rhs)
+    }
 }
 
 pub trait SubSceneConfig: Clone + Send + Sync + 'static {

@@ -4,6 +4,7 @@ use crate::{
         UiState,
         core::EguiWindow,
         editor_windows::saving::{SaveWindow, SaveWindowAssetMeta},
+        global_state::{ClearGlobalState, active_fsm::ActiveFsm, active_graph::ActiveGraph},
     },
 };
 use bevy::{asset::UntypedAssetId, platform::collections::HashMap, prelude::*};
@@ -12,6 +13,10 @@ use bevy_animation_graph::{
         animation_clip::loader::GraphClipSerial,
         animation_graph::{AnimationGraph, serial::AnimationGraphSerializer},
         colliders::{core::SkeletonColliders, serial::SkeletonCollidersSerial},
+        ragdoll::{
+            bone_mapping::RagdollBoneMap, bone_mapping_loader::RagdollBoneMapSerial,
+            definition::Ragdoll,
+        },
         skeleton::Skeleton,
         state_machine::high_level::{StateMachine, serial::StateMachineSerial},
     },
@@ -58,6 +63,16 @@ pub struct SaveClip {
     pub virtual_path: PathBuf,
 }
 
+pub struct SaveRagdoll {
+    pub asset_id: AssetId<Ragdoll>,
+    pub virtual_path: PathBuf,
+}
+
+pub struct SaveRagdollBoneMap {
+    pub asset_id: AssetId<RagdollBoneMap>,
+    pub virtual_path: PathBuf,
+}
+
 pub struct SaveMultiple {
     /// Map from asset ids to the path where they should be saved (relative to asset source root)
     pub assets: HashMap<UntypedAssetId, PathBuf>,
@@ -82,9 +97,9 @@ pub fn handle_save_graph(
     In(save_graph): In<SaveGraph>,
     asset_server: Res<AssetServer>,
     graph_assets: Res<Assets<AnimationGraph>>,
-    mut ui_state: ResMut<UiState>,
     cli: Res<Cli>,
     registry: Res<AppTypeRegistry>,
+    mut commands: Commands,
 ) {
     let type_registry = registry.0.read();
     let graph = graph_assets.get(save_graph.asset_id).unwrap();
@@ -107,7 +122,7 @@ pub fn handle_save_graph(
     // editor selection.
     // Also delete the temporary asset
     if asset_server.get_path(save_graph.asset_id).is_none() {
-        ui_state.global_state.graph_editor = None;
+        commands.trigger(ClearGlobalState::<ActiveGraph>::default());
     }
 }
 
@@ -115,8 +130,8 @@ pub fn handle_save_fsm(
     In(save_fsm): In<SaveFsm>,
     asset_server: Res<AssetServer>,
     graph_assets: Res<Assets<StateMachine>>,
-    mut ui_state: ResMut<UiState>,
     cli: Res<Cli>,
+    mut commands: Commands,
 ) {
     let fsm = graph_assets.get(save_fsm.asset_id).unwrap();
     let graph_serial = StateMachineSerial::from(fsm);
@@ -138,15 +153,13 @@ pub fn handle_save_fsm(
     // editor selection.
     // Also delete the temporary asset
     if asset_server.get_path(save_fsm.asset_id).is_none() {
-        ui_state.global_state.fsm_editor = None;
+        commands.trigger(ClearGlobalState::<ActiveFsm>::default());
     }
 }
 
 pub fn handle_save_animation_clip(
     In(save_fsm): In<SaveClip>,
-    asset_server: Res<AssetServer>,
     clip_assets: Res<Assets<GraphClip>>,
-    mut ui_state: ResMut<UiState>,
     cli: Res<Cli>,
 ) {
     let clip = clip_assets.get(save_fsm.asset_id).unwrap();
@@ -167,13 +180,6 @@ pub fn handle_save_animation_clip(
             ron::ser::PrettyConfig::default(),
         )
         .unwrap();
-
-    // If we just saved a newly created graph, unload the in-memory asset from the
-    // editor selection.
-    // Also delete the temporary asset
-    if asset_server.get_path(save_fsm.asset_id).is_none() {
-        ui_state.global_state.fsm_editor = None;
-    }
 }
 
 pub fn handle_save_colliders(
@@ -201,6 +207,57 @@ pub fn handle_save_colliders(
         .to_io_writer_pretty(
             std::fs::File::create(final_path).unwrap(),
             &colliders_serial,
+            ron::ser::PrettyConfig::default(),
+        )
+        .unwrap();
+}
+
+pub fn handle_save_ragdoll(
+    In(input): In<SaveRagdoll>,
+    ragdoll_assets: Res<Assets<Ragdoll>>,
+    cli: Res<Cli>,
+) {
+    let ragdoll = ragdoll_assets.get(input.asset_id).unwrap();
+    let mut final_path = cli.asset_source.clone();
+    final_path.push(&input.virtual_path);
+    info!(
+        "Saving Ragdoll with id {:?} to {:?}",
+        input.asset_id, final_path
+    );
+    ron::Options::default()
+        .to_io_writer_pretty(
+            std::fs::File::create(final_path).unwrap(),
+            &ragdoll,
+            ron::ser::PrettyConfig::default(),
+        )
+        .unwrap();
+}
+
+pub fn handle_save_ragdoll_bone_map(
+    In(input): In<SaveRagdollBoneMap>,
+    ragdoll_bone_map_assets: Res<Assets<RagdollBoneMap>>,
+    cli: Res<Cli>,
+) {
+    let ragdoll_bone_map = ragdoll_bone_map_assets.get(input.asset_id).unwrap();
+    let mut final_path = cli.asset_source.clone();
+    final_path.push(&input.virtual_path);
+    info!(
+        "Saving Ragdoll bone mapping with id {:?} to {:?}",
+        input.asset_id, final_path
+    );
+
+    let Some(ragdoll_bone_map_serial) = RagdollBoneMapSerial::from_value(ragdoll_bone_map) else {
+        error!(
+            "Could not serialize ragdoll bone mapping with id {:?}",
+            input.asset_id
+        );
+        return;
+    };
+
+    ron::Options::default()
+        .to_io_writer_pretty(
+            std::fs::File::create(final_path).unwrap(),
+            &ragdoll_bone_map_serial,
             ron::ser::PrettyConfig::default(),
         )
         .unwrap();
@@ -247,6 +304,22 @@ pub fn handle_save_multiple(
                     virtual_path,
                 },
             );
+        } else if let Ok(asset_id) = asset_id.try_typed::<Ragdoll>() {
+            commands.run_system_cached_with(
+                handle_save_ragdoll,
+                SaveRagdoll {
+                    asset_id,
+                    virtual_path,
+                },
+            );
+        } else if let Ok(asset_id) = asset_id.try_typed::<RagdollBoneMap>() {
+            commands.run_system_cached_with(
+                handle_save_ragdoll_bone_map,
+                SaveRagdollBoneMap {
+                    asset_id,
+                    virtual_path,
+                },
+            );
         }
     }
 }
@@ -283,8 +356,9 @@ pub fn handle_request_save_multiple(
 
         let window_id = ui_state.windows.open(SaveWindow::new(metas));
         let window = EguiWindow::DynWindow(window_id);
-        ui_state.views[active_view_idx]
-            .dock_state
-            .add_window(vec![window]);
+
+        let UiState { views, .. } = ui_state.into_inner();
+
+        views[active_view_idx].dock_state.add_window(vec![window]);
     }
 }

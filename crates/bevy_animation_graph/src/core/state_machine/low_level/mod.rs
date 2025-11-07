@@ -179,31 +179,29 @@ impl LowLevelStateMachine {
         for event in event_queue.events {
             match event.event {
                 AnimationEvent::TransitionToState(hl_target_state_id) => {
-                    if let LowLevelStateId::HlState(hl_curr_state_id) = fsm_state.state.clone() {
-                        if let Some(transition) = self
+                    if let LowLevelStateId::HlState(hl_curr_state_id) = fsm_state.state.clone()
+                        && let Some(transition) = self
                             .transitions_by_hl_state_pair
                             .get(&(hl_curr_state_id, hl_target_state_id))
                             .and_then(|ids| ids.iter().next())
                             .and_then(|id| self.transitions.get(id))
-                        {
-                            fsm_state = FSMState {
-                                state: transition.target.clone(),
-                                state_entered_time: time,
-                            };
-                        }
+                    {
+                        fsm_state = FSMState {
+                            state: transition.target.clone(),
+                            state_entered_time: time,
+                        };
                     }
                 }
                 AnimationEvent::Transition(transition_id) => {
                     if let Some(transition) = self
                         .transitions
                         .get(&LowLevelTransitionId::Start(transition_id))
+                        && fsm_state.state == transition.source
                     {
-                        if fsm_state.state == transition.source {
-                            fsm_state = FSMState {
-                                state: transition.target.clone(),
-                                state_entered_time: time,
-                            };
-                        }
+                        fsm_state = FSMState {
+                            state: transition.target.clone(),
+                            state_entered_time: time,
+                        };
                     }
                 }
                 AnimationEvent::EndTransition => {
@@ -211,15 +209,14 @@ impl LowLevelStateMachine {
                         .states
                         .get(&fsm_state.state)
                         .and_then(|s| s.hl_transition.as_ref())
-                    {
-                        if let Some(transition) = self.transitions.get(&LowLevelTransitionId::End(
+                        && let Some(transition) = self.transitions.get(&LowLevelTransitionId::End(
                             hl_transition_data.hl_transition_id.clone(),
-                        )) {
-                            fsm_state = FSMState {
-                                state: transition.target.clone(),
-                                state_entered_time: time,
-                            };
-                        }
+                        ))
+                    {
+                        fsm_state = FSMState {
+                            state: transition.target.clone(),
+                            state_entered_time: time,
+                        };
                     }
                 }
                 AnimationEvent::StringId(_) => {}

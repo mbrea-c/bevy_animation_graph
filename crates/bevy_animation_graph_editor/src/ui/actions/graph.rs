@@ -19,7 +19,7 @@ use bevy_animation_graph::{
 
 use crate::{
     graph_show::{GraphIndicesMap, make_graph_indices},
-    ui::egui_inspector_impls::OrderedMap,
+    ui::{actions::ActionContext, egui_inspector_impls::OrderedMap},
 };
 
 use super::{DynamicAction, run_handler, saving::DirtyAssets};
@@ -398,7 +398,7 @@ impl GraphAndContext<'_> {
 pub struct CreateGraphAction;
 
 impl DynamicAction for CreateGraphAction {
-    fn handle(self: Box<Self>, world: &mut World) {
+    fn handle(self: Box<Self>, world: &mut World, _: &mut ActionContext) {
         run_handler(world, "Could not create clip preview")(
             |In(_),
              mut graph_assets: ResMut<Assets<AnimationGraph>>,

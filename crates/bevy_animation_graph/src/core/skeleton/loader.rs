@@ -64,11 +64,11 @@ fn build_skeleton(world: &World) -> Result<Skeleton, AssetLoaderError> {
     let mut pending_children: Vec<(Entity, EntityPath, Transform)> =
         vec![(root, EntityPath::default(), Transform::IDENTITY)];
 
-    while let Some((cur_entity, parent_path, parent_global_transform)) = pending_children.pop() {
+    while let Some((cur_entity, parent_path, parent_character_transform)) = pending_children.pop() {
         let (maybe_children, cur_name, cur_transform) = query.get(world, cur_entity).unwrap();
         let cur_path = parent_path.child(cur_name.clone());
 
-        let cur_global_transform = parent_global_transform * *cur_transform;
+        let cur_global_transform = parent_character_transform * *cur_transform;
 
         skeleton.add_bone(cur_path.clone(), *cur_transform, cur_global_transform);
 

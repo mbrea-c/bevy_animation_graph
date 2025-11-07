@@ -74,8 +74,13 @@ impl DeferredGizmos {
     }
 }
 
+pub enum CustomRelativeDrawCommandReference {
+    Root,
+    Bone(BoneId),
+}
+
 pub struct CustomRelativeDrawCommand {
-    pub bone_id: BoneId,
+    pub reference: CustomRelativeDrawCommandReference,
     #[allow(clippy::type_complexity)]
     pub f: Arc<dyn Fn(Transform, &mut Gizmos) + Send + Sync + 'static>,
 }
@@ -150,7 +155,7 @@ impl DeferredGizmosContext<'_> {
         };
 
         for bone_id in pose.paths.keys() {
-            self.bone_gizmo(*bone_id, color, skeleton, Some(pose));
+            self.bone_gizmo(*bone_id, color, false, skeleton, Some(pose));
         }
     }
 
@@ -158,6 +163,7 @@ impl DeferredGizmosContext<'_> {
         &mut self,
         bone_id: BoneId,
         color: LinearRgba,
+        draw_children: bool,
         skeleton: &Skeleton,
         pose: Option<&Pose>,
     ) {
@@ -182,15 +188,17 @@ impl DeferredGizmosContext<'_> {
             color,
         ));
 
-        for child_bone_id in children {
-            let child_bone_transform =
-                self.space_conversion
-                    .global_transform_of_bone(pose, skeleton, child_bone_id);
-            self.gizmos.queue(DeferredGizmoCommand::Bone(
-                global_bone_transform.translation,
-                child_bone_transform.translation,
-                color.with_alpha(0.5 * color.alpha),
-            ));
+        if draw_children {
+            for child_bone_id in children {
+                let child_bone_transform =
+                    self.space_conversion
+                        .global_transform_of_bone(pose, skeleton, child_bone_id);
+                self.gizmos.queue(DeferredGizmoCommand::Bone(
+                    global_bone_transform.translation,
+                    child_bone_transform.translation,
+                    color.with_alpha(0.5 * color.alpha),
+                ));
+            }
         }
     }
 
@@ -203,9 +211,17 @@ impl DeferredGizmosContext<'_> {
         let default_pose = Pose::default();
         let pose = pose.unwrap_or(&default_pose);
 
-        let global_bone_transform =
-            self.space_conversion
-                .global_transform_of_bone(pose, skeleton, command.bone_id);
+        let global_bone_transform = match command.reference {
+            CustomRelativeDrawCommandReference::Root => self
+                .space_conversion
+                .pose_fallback
+                .root_global_transform(skeleton)
+                .unwrap()
+                .compute_transform(),
+            CustomRelativeDrawCommandReference::Bone(bone_id) => self
+                .space_conversion
+                .global_transform_of_bone(pose, skeleton, bone_id),
+        };
 
         self.gizmos
             .queue(DeferredGizmoCommand::Custom(Arc::new(move |gizmos| {

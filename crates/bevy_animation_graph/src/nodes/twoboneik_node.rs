@@ -56,10 +56,10 @@ impl NodeLike for TwoBoneIKNode {
         ) {
             // Debug render (if enabled)
             ctx.with_debug_gizmos(|mut gizmos| {
-                gizmos.bone_gizmo(target, LinearRgba::RED, skeleton, Some(&pose))
+                gizmos.bone_gizmo(target, LinearRgba::RED, false, skeleton, Some(&pose))
             });
             ctx.with_debug_gizmos(|mut gizmos| {
-                gizmos.bone_gizmo(parent_path, LinearRgba::RED, skeleton, Some(&pose))
+                gizmos.bone_gizmo(parent_path, LinearRgba::RED, false, skeleton, Some(&pose))
             });
 
             let bone = pose.bones[*bone_id].clone();
@@ -107,10 +107,10 @@ impl NodeLike for TwoBoneIKNode {
 
             // Debug render (if enabled)
             ctx.with_debug_gizmos(|mut gizmos| {
-                gizmos.bone_gizmo(target, LinearRgba::BLUE, skeleton, Some(&pose))
+                gizmos.bone_gizmo(target, LinearRgba::BLUE, false, skeleton, Some(&pose))
             });
             ctx.with_debug_gizmos(|mut gizmos| {
-                gizmos.bone_gizmo(parent_path, LinearRgba::BLUE, skeleton, Some(&pose))
+                gizmos.bone_gizmo(parent_path, LinearRgba::BLUE, false, skeleton, Some(&pose))
             });
         }
         ctx.set_time(pose.timestamp);

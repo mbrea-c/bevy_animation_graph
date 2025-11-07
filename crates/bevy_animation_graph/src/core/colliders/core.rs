@@ -40,6 +40,24 @@ pub enum ColliderShape {
     Cuboid(Cuboid),
 }
 
+impl ColliderShape {
+    #[cfg(feature = "physics_avian")]
+    pub fn avian_collider(&self) -> avian3d::prelude::Collider {
+        use avian3d::prelude::Collider;
+        match self {
+            ColliderShape::Sphere(sphere) => Collider::sphere(sphere.radius),
+            ColliderShape::Capsule(capsule3d) => {
+                Collider::capsule(capsule3d.radius, 2. * capsule3d.half_length)
+            }
+            ColliderShape::Cuboid(cuboid) => Collider::cuboid(
+                2. * cuboid.half_size.x,
+                2. * cuboid.half_size.y,
+                2. * cuboid.half_size.z,
+            ),
+        }
+    }
+}
+
 #[derive(Debug, Default, Clone, Copy, Reflect, PartialEq, Serialize, Deserialize, Hash)]
 pub enum ColliderOffsetMode {
     #[default]
@@ -76,9 +94,9 @@ impl ColliderConfig {
         match self.offset_mode {
             ColliderOffsetMode::Local => Transform::from_isometry(self.offset),
             ColliderOffsetMode::Global => Transform {
-                translation: default_transforms.global.rotation.inverse()
+                translation: default_transforms.character.rotation.inverse()
                     * Vec3::from(self.offset.translation),
-                rotation: default_transforms.global.rotation.inverse() * self.offset.rotation,
+                rotation: default_transforms.character.rotation.inverse() * self.offset.rotation,
                 scale: Vec3::ONE,
             },
         }

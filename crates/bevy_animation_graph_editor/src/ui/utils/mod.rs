@@ -1,24 +1,24 @@
 use std::f32::consts::{FRAC_PI_2, PI};
 use std::path::PathBuf;
 
-use crate::tree::{Tree, TreeInternal, TreeResult};
+use crate::tree::{TreeInternal, TreeResult};
+use crate::ui::SubSceneSyncAction;
 use bevy::asset::UntypedAssetId;
 use bevy::ecs::world::CommandQueue;
 use bevy::prelude::*;
+use bevy::render::camera::RenderTarget;
 use bevy::render::render_resource::Extent3d;
 use bevy_animation_graph::core::animation_graph::{AnimationGraph, NodeId, PinMap};
 use bevy_animation_graph::core::context::SpecContext;
 use bevy_animation_graph::core::state_machine::high_level::StateMachine;
-use bevy_animation_graph::prelude::{
-    AnimatedSceneInstance, AnimationGraphPlayer, DataSpec, GraphContext, GraphContextId,
-};
+use bevy_animation_graph::prelude::{AnimatedSceneInstance, AnimationGraphPlayer, DataSpec};
 use bevy_inspector_egui::bevy_egui::EguiUserTextures;
 use bevy_inspector_egui::egui;
 use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
 
-use super::core::GlobalState;
 use super::{PartOfSubScene, PreviewScene, SubSceneConfig, provide_texture_for_scene};
 
+pub mod collapsing;
 pub mod popup;
 
 pub fn asset_sort_key<T: Asset>(asset_id: AssetId<T>, asset_server: &AssetServer) -> String {
@@ -29,24 +29,6 @@ pub fn asset_sort_key<T: Asset>(asset_id: AssetId<T>, asset_server: &AssetServer
             .map_or("zzzzz".to_string(), |p| p.path().to_string_lossy().into()),
         asset_id
     )
-}
-
-pub fn tree_asset_selector<T: Asset>(ui: &mut egui::Ui, world: &mut World) -> Option<Handle<T>> {
-    world.resource_scope::<AssetServer, _>(|world, asset_server| {
-        world.resource_scope::<Assets<T>, _>(|_, mut graph_assets| {
-            let mut assets: Vec<_> = graph_assets.ids().collect();
-            assets.sort_by_key(|id| asset_sort_key(*id, &asset_server));
-            let paths = assets
-                .into_iter()
-                .map(|id| (handle_path(id.untyped(), &asset_server), id))
-                .collect();
-            if let TreeResult::Leaf(id, ()) = path_selector(ui, paths) {
-                Some(graph_assets.get_strong_handle(id).unwrap())
-            } else {
-                None
-            }
-        })
-    })
 }
 
 pub(crate) fn get_node_output_data_pins(
@@ -65,21 +47,6 @@ pub(crate) fn get_node_output_data_pins(
             Some(node.inner.data_output_spec(spec_context))
         })
     })
-}
-
-pub(crate) fn path_selector<T>(ui: &mut egui::Ui, paths: Vec<(PathBuf, T)>) -> TreeResult<(), T> {
-    // First, preprocess paths into a tree structure
-    let mut tree = Tree::default();
-    for (path, val) in paths {
-        let parts: Vec<String> = path
-            .components()
-            .map(|c| c.as_os_str().to_string_lossy().into())
-            .collect();
-        tree.insert(parts, val);
-    }
-
-    // Then, display the tree
-    select_from_branches(ui, tree.0)
 }
 
 pub(crate) fn select_from_branches<I, L>(
@@ -121,118 +88,29 @@ pub(crate) fn select_from_tree_internal<I, L>(
     }
 }
 
-pub(crate) fn select_graph_context(
-    world: &mut World,
-    ui: &mut egui::Ui,
-    selection: &mut GlobalState,
-) {
-    let Some(graph) = &selection.graph_editor else {
-        return;
-    };
-
-    let Some(available) = list_graph_contexts(world, |ctx| ctx.get_graph_id() == graph.graph.id())
-    else {
-        return;
-    };
-
-    let Some(scene) = &mut selection.scene else {
-        return;
-    };
-
-    let mut selected = scene
-        .active_context
-        .get(&graph.graph.id().untyped())
-        .copied();
-    egui::ComboBox::from_label("Active context")
-        .selected_text(format!("{selected:?}"))
-        .show_ui(ui, |ui| {
-            ui.selectable_value(&mut selected, None, format!("{:?}", None::<GraphContextId>));
-            for id in available {
-                ui.selectable_value(&mut selected, Some(id), format!("{:?}", Some(id)));
-            }
-        });
-
-    if let Some(selected) = selected {
-        scene
-            .active_context
-            .insert(graph.graph.id().untyped(), selected);
-    } else {
-        scene.active_context.remove(&graph.graph.id().untyped());
-    }
-}
-
-pub(crate) fn list_graph_contexts(
-    world: &mut World,
-    filter: impl Fn(&GraphContext) -> bool,
-) -> Option<Vec<GraphContextId>> {
-    let player = get_animation_graph_player(world)?;
-    let arena = player.get_context_arena()?;
-
-    Some(
-        arena
-            .iter_context_ids()
-            .filter(|id| {
-                let context = arena.get_context(*id).unwrap();
-                filter(context)
-            })
-            .collect(),
-    )
-}
-
-pub(crate) fn select_graph_context_fsm(
-    world: &mut World,
-    ui: &mut egui::Ui,
-    selection: &mut GlobalState,
-) {
-    let Some(fsm) = &selection.fsm_editor else {
-        return;
-    };
-
-    let Some(available) =
-        world.resource_scope::<Assets<AnimationGraph>, _>(|world, graph_assets| {
-            list_graph_contexts(world, |ctx| {
-                let graph_id = ctx.get_graph_id();
-                let Some(graph) = graph_assets.get(graph_id) else {
-                    return false;
-                };
-                graph.contains_state_machine(fsm.fsm.id()).is_some()
-            })
-        })
-    else {
-        return;
-    };
-
-    let Some(scene) = &mut selection.scene else {
-        return;
-    };
-
-    let mut selected = scene.active_context.get(&fsm.fsm.id().untyped()).copied();
-    egui::ComboBox::from_label("Active context")
-        .selected_text(format!("{selected:?}"))
-        .show_ui(ui, |ui| {
-            ui.selectable_value(&mut selected, None, format!("{:?}", None::<GraphContextId>));
-            for id in available {
-                ui.selectable_value(&mut selected, Some(id), format!("{:?}", Some(id)));
-            }
-        });
-
-    if let Some(selected) = selected {
-        scene
-            .active_context
-            .insert(fsm.fsm.id().untyped(), selected);
-    } else {
-        scene.active_context.remove(&fsm.fsm.id().untyped());
-    }
-}
-
-pub(crate) fn get_animation_graph_player(world: &mut World) -> Option<&AnimationGraphPlayer> {
-    let mut query = world.query::<(&AnimatedSceneInstance, &PreviewScene)>();
-    let Ok((instance, _)) = query.single(world) else {
-        return None;
-    };
-    let entity = instance.player_entity();
-    let mut query = world.query::<&AnimationGraphPlayer>();
+pub(crate) fn get_specific_animation_graph_player(
+    world: &World,
+    entity: Entity,
+) -> Option<&AnimationGraphPlayer> {
+    let mut query = world.try_query::<&AnimationGraphPlayer>()?;
     query.get(world, entity).ok()
+}
+
+pub(crate) fn iter_animation_graph_players(world: &World) -> Vec<(Entity, &AnimationGraphPlayer)> {
+    let mut scene_query = world
+        .try_query::<(&AnimatedSceneInstance, &PreviewScene)>()
+        .unwrap();
+    let mut player_query = world
+        .try_query::<(Entity, &AnimationGraphPlayer)>()
+        .unwrap();
+
+    scene_query
+        .iter(world)
+        .filter_map(|(instance, _)| {
+            let entity = instance.player_entity();
+            player_query.get(world, entity).ok()
+        })
+        .collect()
 }
 
 pub(crate) fn get_animation_graph_player_mut(
@@ -323,17 +201,68 @@ impl Default for OrbitView {
     }
 }
 
+#[derive(Clone)]
+pub struct OrbitCameraSceneConfig<T> {
+    pub view: OrbitView,
+    pub inner: T,
+}
+
+impl<T: SubSceneConfig> SubSceneConfig for OrbitCameraSceneConfig<T> {
+    fn spawn(&self, builder: &mut ChildSpawnerCommands, render_target: Handle<Image>) {
+        builder.spawn((
+            Camera3d::default(),
+            Camera {
+                // render before the "main pass" camera
+                order: -1,
+                clear_color: ClearColorConfig::Custom(LinearRgba::new(1.0, 1.0, 1.0, 0.0).into()),
+                target: RenderTarget::Image(render_target.clone().into()),
+                ..default()
+            },
+            // Position based on orbit camera parameters
+            orbit_camera_transform(&self.view),
+        ));
+
+        self.inner.spawn(builder, render_target);
+    }
+
+    fn sync_action(&self, new_config: &Self) -> SubSceneSyncAction {
+        let outer = if self.view == new_config.view {
+            SubSceneSyncAction::Nothing
+        } else {
+            SubSceneSyncAction::Update
+        };
+
+        outer | self.inner.sync_action(&new_config.inner)
+    }
+
+    fn update(&self, id: egui::Id, world: &mut World) {
+        world
+            .run_system_cached_with(orbit_camera_update, (id, self.view.clone()))
+            .unwrap();
+        self.inner.update(id, world);
+    }
+}
+
 pub fn orbit_camera_scene_show<T: SubSceneConfig>(
     config: &T,
-    orbit: &mut OrbitView,
     ui: &mut egui::Ui,
     world: &mut World,
     id: egui::Id,
 ) {
+    let orbit_id = ui.id().with("orbit");
+    let mut orbit =
+        ui.memory_mut(|mem| mem.data.get_temp::<OrbitView>(orbit_id).unwrap_or_default());
+
+    let orbit_config = OrbitCameraSceneConfig {
+        view: orbit.clone(),
+        inner: config.clone(),
+    };
+
     // First we need to make sure the subscene is created and get the camera image handle
-    let texture = provide_texture_for_scene(world, id, config.clone());
+    let texture = provide_texture_for_scene(world, id, orbit_config.clone());
     let response = render_image(ui, world, &texture);
     let motion = response.drag_motion() * 0.01;
+
     orbit.angles = Vec2::new(
         (orbit.angles.x + motion.x).rem_euclid(2. * PI),
         (orbit.angles.y + motion.y).clamp(-FRAC_PI_2, FRAC_PI_2),
@@ -355,6 +284,8 @@ pub fn orbit_camera_scene_show<T: SubSceneConfig>(
         });
         orbit.distance = (orbit.distance - zoom).max(0.001);
     }
+
+    ui.memory_mut(|mem| mem.data.insert_temp::<OrbitView>(orbit_id, orbit));
 }
 
 pub fn orbit_camera_transform(view: &OrbitView) -> Transform {
@@ -382,4 +313,35 @@ pub fn orbit_camera_update(
             break;
         }
     }
+}
+
+pub fn with_assets<A: Asset, T, const N: usize>(
+    world: &mut World,
+    assets: [AssetId<A>; N],
+    f: impl FnOnce(&mut World, [Option<&A>; N]) -> T,
+) -> T {
+    world.resource_scope::<Assets<A>, T>(move |world, a_assets| {
+        let mut asset_array = [None; N];
+        for i in 0..N {
+            let a = a_assets.get(assets[i]);
+            asset_array[i] = a;
+        }
+        f(world, asset_array)
+    })
+}
+
+pub fn with_assets_all<A: Asset, T, const N: usize>(
+    world: &mut World,
+    assets: [AssetId<A>; N],
+    f: impl FnOnce(&mut World, [&A; N]) -> T,
+) -> Option<T> {
+    with_assets(world, assets, |world, maybe_assets| {
+        #[allow(clippy::needless_range_loop)]
+        for i in 0..N {
+            maybe_assets[i]?;
+        }
+        let all_assets =
+            std::array::from_fn(|i| maybe_assets[i].expect("Already checked it's not None"));
+        Some(f(world, all_assets))
+    })
 }

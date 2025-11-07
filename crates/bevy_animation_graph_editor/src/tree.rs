@@ -1,6 +1,12 @@
 use bevy::ecs::{entity::Entity, hierarchy::Children, name::Name, world::World};
-use bevy_animation_graph::core::{id::BoneId, skeleton::Skeleton};
+use bevy_animation_graph::core::{
+    id::BoneId,
+    ragdoll::definition::{BodyId, ColliderId, JointId, Ragdoll},
+    skeleton::Skeleton,
+};
 use egui::Sense;
+
+use crate::{icons, ui::utils::collapsing::Collapser};
 
 pub struct Tree<I, L>(pub Vec<TreeInternal<I, L>>);
 impl<I, T> Default for Tree<I, T> {
@@ -94,39 +100,6 @@ impl<I, L> Tree<I, L> {
     }
 }
 
-impl<T> Tree<(), T> {
-    pub fn insert(&mut self, mut parts: Vec<String>, value: T) {
-        let Some(leaf_name) = parts.pop() else {
-            return;
-        };
-
-        let mut branch: &mut Vec<TreeInternal<(), T>> = &mut self.0;
-        for part in parts {
-            if branch.iter().any(|p| match p {
-                TreeInternal::Node(p, _, _) => p == &part,
-                _ => false,
-            }) {
-                let b = branch
-                    .iter_mut()
-                    .find_map(|p| match p {
-                        TreeInternal::Node(p, _, b) => (p == &part).then_some(b),
-                        _ => None,
-                    })
-                    .unwrap();
-                branch = b;
-            } else {
-                branch.push(TreeInternal::Node(part, (), vec![]));
-                branch = match branch.last_mut().unwrap() {
-                    TreeInternal::Node(_, _, b) => b,
-                    _ => unreachable!(),
-                };
-            }
-        }
-
-        branch.push(TreeInternal::Leaf(leaf_name, value));
-    }
-}
-
 impl Tree<(Entity, Vec<Name>), (Entity, Vec<Name>)> {
     /// Returns tree representing the parent/child hierarchy with
     /// the given entity as the root.
@@ -169,7 +142,7 @@ impl Tree<(Entity, Vec<Name>), (Entity, Vec<Name>)> {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Hash, PartialEq)]
 pub struct SkeletonNode {
     pub bone_id: BoneId,
 }
@@ -237,32 +210,24 @@ impl TreeRenderer<SkeletonNode, SkeletonNode, SkeletonResponse> for SkeletonTree
             &mut egui::Ui,
         ) -> TreeResult<SkeletonNode, SkeletonNode, SkeletonResponse>,
     ) -> TreeResult<SkeletonNode, SkeletonNode, SkeletonResponse> {
-        let collapsing_response =
-            egui::CollapsingHeader::new(label)
-                .default_open(true)
-                .show(ui, |ui| {
+        let collapsing_response = Collapser::new()
+            .with_default_open(true)
+            .with_id_salt(data)
+            .show(
+                ui,
+                |ui| self.render_leaf(label, data, ui),
+                |ui| {
                     children
                         .iter()
                         .map(|c| render_child(c, ui))
                         .reduce(|l, r| l.or(r))
                         .unwrap_or_default()
-                });
+                },
+            );
 
-        let response = TreeResult::Node(
-            data.clone(),
-            SkeletonResponse {
-                hovered: collapsing_response
-                    .header_response
-                    .hovered()
-                    .then_some(data.bone_id),
-                clicked: collapsing_response
-                    .header_response
-                    .clicked()
-                    .then_some(data.bone_id),
-            },
-        );
-
-        response.or(collapsing_response.body_returned.unwrap_or_default())
+        collapsing_response
+            .head
+            .or(collapsing_response.body.unwrap_or_default())
     }
 
     fn render_leaf(
@@ -271,13 +236,131 @@ impl TreeRenderer<SkeletonNode, SkeletonNode, SkeletonResponse> for SkeletonTree
         data: &SkeletonNode,
         ui: &mut egui::Ui,
     ) -> TreeResult<SkeletonNode, SkeletonNode, SkeletonResponse> {
-        let response = ui.add(egui::Label::new(label).sense(Sense::click()));
+        let response = ui
+            .horizontal(|ui| {
+                let image = icons::BONE;
+                let color = ui.visuals().text_color();
+
+                ui.add(egui::Image::new(image).tint(color).sense(Sense::click()))
+                    | ui.add(egui::Label::new(label).sense(Sense::click()))
+            })
+            .inner;
 
         TreeResult::Leaf(
             data.clone(),
             SkeletonResponse {
                 hovered: response.hovered().then_some(data.bone_id),
                 clicked: response.clicked().then_some(data.bone_id),
+            },
+        )
+    }
+}
+
+#[derive(Clone, Copy, Debug, Hash)]
+pub struct RagdollNode {
+    pub variant: RagdollNodeVariant,
+    pub enabled: bool,
+}
+
+#[derive(Clone, Copy, Debug, Hash)]
+pub enum RagdollNodeVariant {
+    Body(BodyId),
+    Collider(ColliderId),
+    Joint(JointId),
+}
+
+impl Tree<RagdollNode, RagdollNode> {
+    pub fn ragdoll_tree(ragdoll: &Ragdoll) -> Self {
+        let mut body_nodes = ragdoll
+            .bodies
+            .values()
+            .map(|b| Self::ragdoll_body_subtree(ragdoll, b.id))
+            .collect::<Vec<_>>();
+        body_nodes.sort_by_key(|node| match node {
+            TreeInternal::Leaf(l, _) | TreeInternal::Node(l, _, _) => l.clone(),
+        });
+        let mut joint_nodes = ragdoll
+            .joints
+            .values()
+            .map(|j| Self::ragdoll_joint_subtree(ragdoll, j.id))
+            .collect::<Vec<_>>();
+        joint_nodes.sort_by_key(|node| match node {
+            TreeInternal::Leaf(l, _) | TreeInternal::Node(l, _, _) => l.clone(),
+        });
+
+        body_nodes.extend(joint_nodes);
+        Tree(body_nodes)
+    }
+
+    fn ragdoll_body_subtree(
+        ragdoll: &Ragdoll,
+        body_id: BodyId,
+    ) -> TreeInternal<RagdollNode, RagdollNode> {
+        let body = ragdoll.get_body(body_id).unwrap();
+        let children = body.colliders.to_vec();
+
+        let label = if body.label.is_empty() {
+            format!("{:?}", body.id)
+        } else {
+            body.label.clone()
+        };
+
+        if children.is_empty() {
+            TreeInternal::Leaf(
+                label,
+                RagdollNode {
+                    variant: RagdollNodeVariant::Body(body_id),
+                    enabled: body.created_from.is_none(),
+                },
+            )
+        } else {
+            TreeInternal::Node(
+                label,
+                RagdollNode {
+                    variant: RagdollNodeVariant::Body(body_id),
+                    enabled: body.created_from.is_none(),
+                },
+                children
+                    .into_iter()
+                    .map(|c| Self::ragdoll_collider_subtree(ragdoll, c))
+                    .collect(),
+            )
+        }
+    }
+
+    fn ragdoll_collider_subtree(
+        ragdoll: &Ragdoll,
+        collider_id: ColliderId,
+    ) -> TreeInternal<RagdollNode, RagdollNode> {
+        let collider = ragdoll.get_collider(collider_id).unwrap();
+        TreeInternal::Leaf(
+            if collider.label.is_empty() {
+                format!("{:?}", collider.id)
+            } else {
+                collider.label.clone()
+            },
+            RagdollNode {
+                variant: RagdollNodeVariant::Collider(collider_id),
+                enabled: collider.created_from.is_none(),
+            },
+        )
+    }
+
+    fn ragdoll_joint_subtree(
+        ragdoll: &Ragdoll,
+        joint_id: JointId,
+    ) -> TreeInternal<RagdollNode, RagdollNode> {
+        let joint = ragdoll.get_joint(joint_id).unwrap();
+        let label = if joint.label.is_empty() {
+            format!("{:?}", joint.id)
+        } else {
+            joint.label.clone()
+        };
+        TreeInternal::Leaf(
+            label,
+            RagdollNode {
+                variant: RagdollNodeVariant::Joint(joint_id),
+                enabled: joint.created_from.is_none(),
             },
         )
     }

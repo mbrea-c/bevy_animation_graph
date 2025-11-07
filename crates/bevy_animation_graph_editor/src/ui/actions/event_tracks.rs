@@ -16,7 +16,7 @@ use bevy_animation_graph::{
 };
 use uuid::Uuid;
 
-use crate::ui::editor_windows::event_track_editor::TargetTracks;
+use crate::ui::native_windows::event_track_editor::TargetTracks;
 
 use super::saving::DirtyAssets;
 

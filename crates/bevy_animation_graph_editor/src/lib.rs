@@ -2,24 +2,28 @@ mod egui_fsm;
 mod egui_nodes;
 mod fsm_show;
 mod graph_show;
+mod icons;
 mod scanner;
 mod tree;
 mod ui;
 
 use bevy::prelude::*;
+use bevy::render::view::RenderLayers;
 use bevy_animation_graph::core::plugin::AnimationGraphPlugin;
-use bevy_egui::EguiPlugin;
+use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 use bevy_inspector_egui::{DefaultInspectorConfigPlugin, bevy_egui};
 use clap::Parser;
 use fsm_show::FsmIndicesMap;
 use graph_show::GraphIndicesMap;
 use scanner::ScannerPlugin;
 use std::path::PathBuf;
+use ui::UiState;
 use ui::actions::PendingActions;
 use ui::actions::clip_preview::ClipPreviewScenes;
 use ui::actions::saving::DirtyAssets;
 use ui::egui_inspector_impls::BetterInspectorPlugin;
-use ui::{UiState, graph_debug_draw_bone_system};
+
+use crate::ui::node_editors::register_node_editables;
 
 #[derive(Parser, Resource)]
 struct Cli {
@@ -51,36 +55,51 @@ impl Plugin for AnimationGraphEditorPlugin {
                     ..Default::default()
                 }),
             )
-            .add_plugins(EguiPlugin {
-                enable_multipass_for_primary_context: false,
-            })
-            .add_plugins(AnimationGraphPlugin)
+            .add_plugins(EguiPlugin::default())
+            .add_plugins(AnimationGraphPlugin::from_physics_schedule(FixedPostUpdate))
             .add_plugins(DefaultInspectorConfigPlugin)
             .add_plugins(BetterInspectorPlugin)
-            // .add_plugins(WorldInspectorPlugin::new())
+            .add_plugins(bevy_inspector_egui::quick::WorldInspectorPlugin::new())
             .add_plugins(ScannerPlugin);
 
         #[cfg(feature = "physics_avian")]
-        app.add_plugins(avian3d::prelude::PhysicsPlugins::default());
+        app.add_plugins(avian3d::prelude::PhysicsPlugins::new(FixedPostUpdate));
 
-        app.insert_resource(UiState::new())
-            .insert_resource(PendingActions::default())
+        UiState::init(app.world_mut());
+
+        app.insert_resource(PendingActions::default())
             .insert_resource(DirtyAssets::default())
             .insert_resource(GraphIndicesMap::default())
             .insert_resource(FsmIndicesMap::default())
             .insert_resource(ClipPreviewScenes::default())
-            .insert_resource(cli)
-            .add_systems(
-                Update,
-                (
-                    ui::show_ui_system,
-                    ui::actions::process_actions_system,
-                    ui::override_scene_animations,
-                    ui::render_pose_gizmos,
-                    ui::propagate_layers,
-                    graph_debug_draw_bone_system,
-                )
-                    .chain(),
-            );
+            .insert_resource(cli);
+
+        register_node_editables(app);
+
+        app.add_systems(Startup, setup);
+
+        app.add_systems(
+            EguiPrimaryContextPass,
+            (
+                ui::setup_ui,
+                ui::show_ui_system,
+                ui::actions::process_actions_system,
+                ui::override_scene_animations,
+                ui::render_pose_gizmos,
+                ui::propagate_layers,
+            )
+                .chain(),
+        );
     }
+}
+
+#[derive(Component)]
+struct UiCamera;
+pub fn setup(mut commands: Commands) {
+    commands.spawn((
+        Camera2d,
+        UiCamera,
+        bevy_egui::PrimaryEguiContext,
+        RenderLayers::none(),
+    ));
 }

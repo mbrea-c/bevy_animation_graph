@@ -24,6 +24,10 @@ impl Hash for BoneId {
 }
 
 impl BoneId {
+    pub fn from_uuid(uuid: Uuid) -> Self {
+        Self { id: uuid }
+    }
+
     pub fn id(&self) -> Uuid {
         self.id
     }

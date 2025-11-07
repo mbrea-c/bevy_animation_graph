@@ -396,7 +396,7 @@ impl FsmUiContext {
         let node_size = node.state.size;
         let title_space = node.state.layout_style.padding.y;
 
-        let response = ui.allocate_new_ui(
+        let response = ui.scope_builder(
             egui::UiBuilder::default().max_rect(egui::Rect::from_min_size(
                 self.grid_space_to_screen_space(node_origin),
                 node_size,

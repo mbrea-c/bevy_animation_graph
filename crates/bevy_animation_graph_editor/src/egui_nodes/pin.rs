@@ -12,34 +12,26 @@ pub struct PinStyleArgs {
     pub shape: Option<PinShape>,
 }
 
-#[derive(PartialEq, Clone, Copy, Debug)]
+#[derive(PartialEq, Clone, Copy, Debug, Default)]
 pub(crate) enum PinType {
+    #[default]
     None,
     Input,
     Output,
 }
-impl Default for PinType {
-    fn default() -> Self {
-        Self::None
-    }
-}
 
 /// Controls the shape of an attribut pin.
 /// Triangle and TriangleFilled are not currently implemented and will not be drawn
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, Default)]
 #[allow(dead_code)]
 pub enum PinShape {
     Circle,
+    #[default]
     CircleFilled,
     Triangle,
     TriangleFilled,
     Quad,
     QuadFilled,
-}
-impl Default for PinShape {
-    fn default() -> Self {
-        Self::CircleFilled
-    }
 }
 
 /// Controls the way that attribute pins behave

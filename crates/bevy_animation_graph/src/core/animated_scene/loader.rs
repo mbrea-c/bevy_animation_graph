@@ -22,6 +22,10 @@ struct AnimatedSceneSerial {
 
     #[serde(default)]
     colliders: Option<AssetPath<'static>>,
+    #[serde(default)]
+    ragdoll: Option<AssetPath<'static>>,
+    #[serde(default)]
+    ragdoll_bone_map: Option<AssetPath<'static>>,
 }
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -63,6 +67,8 @@ impl AssetLoader for AnimatedSceneLoader {
             skeleton,
             retargeting,
             colliders: serial.colliders.map(|c| load_context.load(c)),
+            ragdoll: serial.ragdoll.map(|c| load_context.load(c)),
+            ragdoll_bone_map: serial.ragdoll_bone_map.map(|c| load_context.load(c)),
         })
     }
 

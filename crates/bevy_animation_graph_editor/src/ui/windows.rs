@@ -1,38 +1,19 @@
-use std::any::{Any, TypeId, type_name};
-
 use bevy::{ecs::world::World, platform::collections::HashMap};
 use egui_dock::egui;
 use uuid::Uuid;
 
 use super::{
     actions::window::{DynWindowAction, WindowAction},
-    core::EditorWindowContext,
+    core::LegacyEditorWindowContext,
 };
 
-pub trait AsAny {
-    fn as_any(&self) -> &dyn Any;
-}
-
-impl<T: 'static> AsAny for T {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-}
-
-pub trait EditorWindowExtension: AsAny + std::fmt::Debug + Send + Sync + 'static {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext);
+pub trait EditorWindowExtension: std::fmt::Debug + Send + Sync + 'static {
+    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut LegacyEditorWindowContext);
     fn display_name(&self) -> String;
     #[allow(unused_variables)]
     fn handle_action(&mut self, action: DynWindowAction) {}
     fn closeable(&self) -> bool {
         false
-    }
-
-    fn window_type_id(&self) -> TypeId {
-        self.type_id()
-    }
-    fn window_type_name(&self) -> &'static str {
-        type_name::<Self>()
     }
 }
 
@@ -44,7 +25,7 @@ pub struct EditorWindow {
 }
 
 impl EditorWindowExtension for EditorWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
+    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut LegacyEditorWindowContext) {
         self.window.ui(ui, world, ctx);
     }
 
@@ -58,20 +39,6 @@ impl EditorWindowExtension for EditorWindow {
 
     fn closeable(&self) -> bool {
         self.window.closeable()
-    }
-
-    fn window_type_id(&self) -> TypeId {
-        self.window.window_type_id()
-    }
-
-    fn window_type_name(&self) -> &'static str {
-        self.window.window_type_name()
-    }
-}
-
-impl EditorWindow {
-    pub fn as_inner<T: 'static>(&self) -> Option<&T> {
-        self.window.as_ref().as_any().downcast_ref::<T>()
     }
 }
 
@@ -117,21 +84,6 @@ impl Windows {
         self.get_window(id)
             .map(|w| w.display_name())
             .unwrap_or_else(|| "<WINDOW ERROR>".into())
-    }
-
-    pub fn find_window_with_type<T: 'static>(&self) -> Option<WindowId> {
-        let type_id = TypeId::of::<T>();
-        self.find_window_with_type_dyn(type_id)
-    }
-
-    pub fn find_window_with_type_dyn(&self, type_id: TypeId) -> Option<WindowId> {
-        for (id, win) in &self.windows {
-            if win.window_type_id() == type_id {
-                return Some(*id);
-            }
-        }
-
-        None
     }
 
     pub fn handle_action(&mut self, event: WindowAction) {

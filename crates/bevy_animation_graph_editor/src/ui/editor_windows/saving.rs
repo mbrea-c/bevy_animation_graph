@@ -5,7 +5,11 @@ use bevy::{
     prelude::World,
 };
 use bevy_animation_graph::{
-    core::{colliders::core::SkeletonColliders, state_machine::high_level::StateMachine},
+    core::{
+        colliders::core::SkeletonColliders,
+        ragdoll::{bone_mapping::RagdollBoneMap, definition::Ragdoll},
+        state_machine::high_level::StateMachine,
+    },
     prelude::{AnimationGraph, GraphClip},
 };
 use egui_dock::egui;
@@ -16,7 +20,7 @@ use crate::ui::{
         saving::{SaveAction, SaveMultiple},
         window::CloseWindowAction,
     },
-    core::{EditorWindowContext, EditorWindowExtension},
+    core::{EditorWindowExtension, LegacyEditorWindowContext},
     reflect_widgets::wrap_ui::using_wrap_ui,
 };
 
@@ -42,7 +46,7 @@ impl SaveWindow {
 }
 
 impl EditorWindowExtension for SaveWindow {
-    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
+    fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, ctx: &mut LegacyEditorWindowContext) {
         for meta in &mut self.assets {
             ui.label(Self::displays_type_name(meta.id.type_id()));
             ui.horizontal(|ui| {
@@ -118,6 +122,10 @@ impl SaveWindow {
             "Animation Clip".into()
         } else if type_id == TypeId::of::<SkeletonColliders>() {
             "Skeleton Colliders".into()
+        } else if type_id == TypeId::of::<Ragdoll>() {
+            "Ragdoll".into()
+        } else if type_id == TypeId::of::<RagdollBoneMap>() {
+            "Ragdoll Bone Map".into()
         } else {
             "Unknown type (?)".into()
         }

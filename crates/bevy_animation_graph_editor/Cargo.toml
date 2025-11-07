@@ -14,17 +14,19 @@ ron = { workspace = true }
 derivative = "2.2.0"
 bevy_animation_graph = { workspace = true }
 clap = { version = "4.4.18", features = ["derive"] }
+serde = { workspace = true }
 
-egui_dock = "0.16"
-egui-notify = { version = "0.19" }
-egui = { version = "0.31" }
-bevy_egui = { version = "0.34" }
-bevy-inspector-egui = { version = "0.31" }
+egui_dock = "0.17"
+egui-notify = { version = "0.20" }
+egui = { version = "0.32" }
+egui_extras = { version = "0.32", features = ["all_loaders"] }
+bevy_egui = { version = "0.36" }
+bevy-inspector-egui = { version = "0.33" }
 avian3d = { workspace = true, optional = true }
 
 rand = "0.9.0"
 uuid = { version = "1.16.0", features = ["v4"] }
 
 [features]
-default = []
+default = ["physics_avian"]
 physics_avian = ["dep:avian3d", "bevy_animation_graph/physics_avian"]

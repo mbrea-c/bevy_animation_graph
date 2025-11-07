@@ -1,15 +1,12 @@
-use std::any::{Any, TypeId};
+use std::any::Any;
 
-use bevy::{
-    ecs::{
-        system::{In, ResMut},
-        world::World,
-    },
-    log::warn,
+use bevy::ecs::{
+    system::{In, ResMut},
+    world::World,
 };
 
 use super::{DynamicAction, run_handler};
-use crate::ui::{UiState, windows::WindowId};
+use crate::ui::{UiState, actions::ActionContext, windows::WindowId};
 
 pub type DynWindowAction = Box<dyn Any + Send + Sync>;
 
@@ -21,7 +18,7 @@ pub struct WindowAction {
 }
 
 impl DynamicAction for WindowAction {
-    fn handle(self: Box<Self>, world: &mut World) {
+    fn handle(self: Box<Self>, world: &mut World, _: &mut ActionContext) {
         run_handler(world, "Failed to handle window action")(Self::system, *self);
     }
 }
@@ -32,41 +29,12 @@ impl WindowAction {
     }
 }
 
-/// An editor update event aimed at any window satisfying the type criteria
-/// How they're handled is up to the window.
-pub struct TypeTargetedWindowAction {
-    pub target_window_type: TypeId,
-    pub action: DynWindowAction,
-}
-
-impl DynamicAction for TypeTargetedWindowAction {
-    fn handle(self: Box<Self>, world: &mut World) {
-        run_handler(world, "Failed to handle window action")(Self::system, *self);
-    }
-}
-
-impl TypeTargetedWindowAction {
-    pub fn system(In(action): In<TypeTargetedWindowAction>, mut ui_state: ResMut<UiState>) {
-        if let Some(window_id) = ui_state
-            .windows
-            .find_window_with_type_dyn(action.target_window_type)
-        {
-            ui_state.windows.handle_action(WindowAction {
-                target: window_id,
-                action: action.action,
-            });
-        } else {
-            warn!("Type-targeted window action did not reach any windows");
-        }
-    }
-}
-
 pub struct CloseWindowAction {
     pub id: WindowId,
 }
 
 impl DynamicAction for CloseWindowAction {
-    fn handle(self: Box<Self>, world: &mut World) {
+    fn handle(self: Box<Self>, world: &mut World, _: &mut ActionContext) {
         run_handler(world, "Failed to close window")(Self::system, *self)
     }
 }

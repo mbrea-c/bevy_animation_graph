@@ -1,7 +1,7 @@
 use std::hash::Hash;
 
 use bevy::{
-    math::{Quat, Vec3},
+    math::{Isometry3d, Quat, Vec3},
     reflect::{Reflect, std_traits::ReflectDefault},
 };
 use regex::Regex;
@@ -140,5 +140,11 @@ impl SymmertryMode {
         input = -input;
         debug_assert!(input.is_normalized());
         input
+    }
+
+    pub fn apply_isometry_3d(&self, mut isometry: Isometry3d) -> Isometry3d {
+        isometry.translation = self.apply_position(isometry.translation.into()).into();
+        isometry.rotation = self.apply_quat(isometry.rotation);
+        isometry
     }
 }

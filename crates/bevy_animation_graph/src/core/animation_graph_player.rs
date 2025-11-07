@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use super::{
     animation_graph::{AnimationGraph, DEFAULT_OUTPUT_POSE, InputOverlay, PinId, TimeUpdate},
     context::{DeferredGizmos, PassContext},
@@ -7,13 +9,18 @@ use super::{
     prelude::GraphContextArena,
     skeleton::Skeleton,
 };
-use crate::prelude::{CustomRelativeDrawCommand, SystemResources};
+use crate::{
+    core::ragdoll::{bone_mapping::RagdollBoneMap, definition::Ragdoll, spawning::SpawnedRagdoll},
+    prelude::{CustomRelativeDrawCommand, CustomRelativeDrawCommandReference, SystemResources},
+};
 use bevy::{
     asset::prelude::*,
     color::{Color, palettes::css::WHITE},
     ecs::prelude::*,
+    gizmos::gizmos::Gizmos,
     platform::collections::HashMap,
     reflect::prelude::*,
+    transform::components::Transform,
 };
 
 #[derive(Default, Reflect, Clone, Copy)]
@@ -59,11 +66,14 @@ pub struct AnimationGraphPlayer {
     pub(crate) playback_state: PlaybackState,
     pub(crate) animation: AnimationSource,
     pub(crate) skeleton: Handle<Skeleton>,
+    pub(crate) ragdoll: Option<Handle<Ragdoll>>,
+    pub(crate) ragdoll_bone_map: Option<Handle<RagdollBoneMap>>,
+    pub(crate) spawned_ragdoll: Option<SpawnedRagdoll>,
     pub(crate) context_arena: Option<GraphContextArena>,
     pub(crate) elapsed: f32,
     pub(crate) pending_update: TimeUpdate,
     pub(crate) deferred_gizmos: DeferredGizmos,
-    pub(crate) debug_draw_bones: Vec<(BoneId, Color)>,
+    pub(crate) debug_draw_bones: Vec<(BoneId, Color, bool)>,
     #[reflect(ignore)]
     pub(crate) debug_draw_custom: Vec<CustomRelativeDrawCommand>,
     pub(crate) entity_map: HashMap<BoneId, Entity>,
@@ -209,15 +219,28 @@ impl AnimationGraphPlayer {
 
     pub fn gizmo_for_bones(&mut self, bones: impl IntoIterator<Item = BoneId>) {
         self.debug_draw_bones
-            .extend(bones.into_iter().map(|b| (b, WHITE.into())));
+            .extend(bones.into_iter().map(|b| (b, WHITE.into(), false)));
     }
 
-    pub fn gizmo_for_bones_with_color(&mut self, bones: impl IntoIterator<Item = (BoneId, Color)>) {
+    pub fn gizmo_for_bones_with_color(
+        &mut self,
+        bones: impl IntoIterator<Item = (BoneId, Color, bool)>,
+    ) {
         self.debug_draw_bones.extend(bones);
     }
 
     pub fn custom_relative_gizmo(&mut self, gizmo: CustomRelativeDrawCommand) {
         self.debug_draw_custom.push(gizmo);
+    }
+
+    pub fn gizmo_relative_to_root(
+        &mut self,
+        f: impl Fn(Transform, &mut Gizmos) + Send + Sync + 'static,
+    ) {
+        self.debug_draw_custom.push(CustomRelativeDrawCommand {
+            reference: CustomRelativeDrawCommandReference::Root,
+            f: Arc::new(f),
+        });
     }
 
     pub(crate) fn debug_draw_bones(
@@ -242,9 +265,9 @@ impl AnimationGraphPlayer {
             return;
         };
 
-        for (bone_id, color) in bones.drain(..) {
+        for (bone_id, color, draw_children) in bones.drain(..) {
             ctx.gizmos()
-                .bone_gizmo(bone_id, color.into(), skeleton, None);
+                .bone_gizmo(bone_id, color.into(), draw_children, skeleton, None);
         }
 
         for custom_cmd in custom_gizmos.drain(..) {
@@ -306,5 +329,9 @@ impl AnimationGraphPlayer {
             AnimationSource::Pose(pose) => Some(pose),
             AnimationSource::None => None,
         }
+    }
+
+    pub fn set_default_output_pose(&mut self, pose: Pose) {
+        self.outputs.insert(DEFAULT_OUTPUT_POSE.into(), pose.into());
     }
 }

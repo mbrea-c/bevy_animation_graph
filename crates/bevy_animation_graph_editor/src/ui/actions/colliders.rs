@@ -13,7 +13,7 @@ use bevy_animation_graph::{
     prelude::config::SymmetryConfig,
 };
 
-use crate::ui::actions::{DynamicAction, run_handler, saving::DirtyAssets};
+use crate::ui::actions::{ActionContext, DynamicAction, run_handler, saving::DirtyAssets};
 
 pub struct CreateOrEditCollider {
     pub colliders: Handle<SkeletonColliders>,
@@ -21,7 +21,7 @@ pub struct CreateOrEditCollider {
 }
 
 impl DynamicAction for CreateOrEditCollider {
-    fn handle(self: Box<Self>, world: &mut World) {
+    fn handle(self: Box<Self>, world: &mut World, _: &mut ActionContext) {
         run_handler(world, "Could not create collider")(Self::system, *self)
     }
 }
@@ -56,7 +56,7 @@ pub struct DeleteCollider {
 }
 
 impl DynamicAction for DeleteCollider {
-    fn handle(self: Box<Self>, world: &mut World) {
+    fn handle(self: Box<Self>, world: &mut World, _: &mut ActionContext) {
         run_handler(world, "Could not create collider")(Self::system, *self)
     }
 }
@@ -83,7 +83,7 @@ pub struct UpdateSymmetryConfig {
 }
 
 impl DynamicAction for UpdateSymmetryConfig {
-    fn handle(self: Box<Self>, world: &mut World) {
+    fn handle(self: Box<Self>, world: &mut World, _: &mut ActionContext) {
         run_handler(world, "Could not update symmetry config")(Self::system, *self)
     }
 }
@@ -109,7 +109,7 @@ pub struct UpdateSymmetryEnabled {
 }
 
 impl DynamicAction for UpdateSymmetryEnabled {
-    fn handle(self: Box<Self>, world: &mut World) {
+    fn handle(self: Box<Self>, world: &mut World, _: &mut ActionContext) {
         run_handler(world, "Could not update symmetry config")(Self::system, *self)
     }
 }
@@ -136,7 +136,7 @@ pub struct UpdateDefaultLayers {
 }
 
 impl DynamicAction for UpdateDefaultLayers {
-    fn handle(self: Box<Self>, world: &mut World) {
+    fn handle(self: Box<Self>, world: &mut World, _: &mut ActionContext) {
         run_handler(world, "Could not update default physics layers config")(Self::system, *self)
     }
 }
@@ -164,7 +164,7 @@ pub struct UpdateSuffixes {
 }
 
 impl DynamicAction for UpdateSuffixes {
-    fn handle(self: Box<Self>, world: &mut World) {
+    fn handle(self: Box<Self>, world: &mut World, _: &mut ActionContext) {
         run_handler(world, "Could not update suffixes config")(Self::system, *self)
     }
 }

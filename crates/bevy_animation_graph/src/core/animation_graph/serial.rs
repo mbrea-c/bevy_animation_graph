@@ -367,7 +367,7 @@ const _: () = {
         fn deserialize<__D>(
             self,
             __deserializer: __D,
-        ) -> _serde::__private::Result<Self::Value, __D::Error>
+        ) -> ::core::result::Result<Self::Value, __D::Error>
         where
             __D: _serde::Deserializer<'de>,
         {
@@ -432,69 +432,61 @@ const _: () = {
 
             impl _serde::de::Visitor<'_> for __FieldVisitor {
                 type Value = __Field;
-                fn expecting(
-                    &self,
-                    __formatter: &mut _serde::__private::Formatter,
-                ) -> _serde::__private::fmt::Result {
-                    _serde::__private::Formatter::write_str(__formatter, "field identifier")
+                fn expecting(&self, __formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    std::fmt::Formatter::write_str(__formatter, "field identifier")
                 }
-                fn visit_u64<__E>(self, __value: u64) -> _serde::__private::Result<Self::Value, __E>
+                fn visit_u64<__E>(self, __value: u64) -> ::core::result::Result<Self::Value, __E>
                 where
                     __E: _serde::de::Error,
                 {
                     match __value {
-                        0u64 => _serde::__private::Ok(__Field::__field0),
-                        1u64 => _serde::__private::Ok(__Field::__field1),
-                        2u64 => _serde::__private::Ok(__Field::__field2),
-                        3u64 => _serde::__private::Ok(__Field::__field3),
-                        4u64 => _serde::__private::Ok(__Field::__field4),
-                        5u64 => _serde::__private::Ok(__Field::__field5),
-                        6u64 => _serde::__private::Ok(__Field::__field6),
-                        _ => _serde::__private::Ok(__Field::__ignore),
+                        0u64 => ::core::result::Result::Ok(__Field::__field0),
+                        1u64 => ::core::result::Result::Ok(__Field::__field1),
+                        2u64 => ::core::result::Result::Ok(__Field::__field2),
+                        3u64 => ::core::result::Result::Ok(__Field::__field3),
+                        4u64 => ::core::result::Result::Ok(__Field::__field4),
+                        5u64 => ::core::result::Result::Ok(__Field::__field5),
+                        6u64 => ::core::result::Result::Ok(__Field::__field6),
+                        _ => ::core::result::Result::Ok(__Field::__ignore),
                     }
                 }
-                fn visit_str<__E>(
-                    self,
-                    __value: &str,
-                ) -> _serde::__private::Result<Self::Value, __E>
+                fn visit_str<__E>(self, __value: &str) -> ::core::result::Result<Self::Value, __E>
                 where
                     __E: _serde::de::Error,
                 {
                     match __value {
-                        "nodes" => _serde::__private::Ok(__Field::__field0),
-                        "edges_inverted" => _serde::__private::Ok(__Field::__field1),
-                        "default_parameters" => _serde::__private::Ok(__Field::__field2),
-                        "input_times" => _serde::__private::Ok(__Field::__field3),
-                        "output_parameters" => _serde::__private::Ok(__Field::__field4),
-                        "output_time" => _serde::__private::Ok(__Field::__field5),
-                        "extra" => _serde::__private::Ok(__Field::__field6),
-                        _ => _serde::__private::Ok(__Field::__ignore),
+                        "nodes" => ::core::result::Result::Ok(__Field::__field0),
+                        "edges_inverted" => ::core::result::Result::Ok(__Field::__field1),
+                        "default_parameters" => ::core::result::Result::Ok(__Field::__field2),
+                        "input_times" => ::core::result::Result::Ok(__Field::__field3),
+                        "output_parameters" => ::core::result::Result::Ok(__Field::__field4),
+                        "output_time" => ::core::result::Result::Ok(__Field::__field5),
+                        "extra" => ::core::result::Result::Ok(__Field::__field6),
+                        _ => ::core::result::Result::Ok(__Field::__ignore),
                     }
                 }
                 fn visit_bytes<__E>(
                     self,
                     __value: &[u8],
-                ) -> _serde::__private::Result<Self::Value, __E>
+                ) -> ::core::result::Result<Self::Value, __E>
                 where
                     __E: _serde::de::Error,
                 {
                     match __value {
-                        b"nodes" => _serde::__private::Ok(__Field::__field0),
-                        b"edges_inverted" => _serde::__private::Ok(__Field::__field1),
-                        b"default_parameters" => _serde::__private::Ok(__Field::__field2),
-                        b"input_times" => _serde::__private::Ok(__Field::__field3),
-                        b"output_parameters" => _serde::__private::Ok(__Field::__field4),
-                        b"output_time" => _serde::__private::Ok(__Field::__field5),
-                        b"extra" => _serde::__private::Ok(__Field::__field6),
-                        _ => _serde::__private::Ok(__Field::__ignore),
+                        b"nodes" => ::core::result::Result::Ok(__Field::__field0),
+                        b"edges_inverted" => ::core::result::Result::Ok(__Field::__field1),
+                        b"default_parameters" => ::core::result::Result::Ok(__Field::__field2),
+                        b"input_times" => ::core::result::Result::Ok(__Field::__field3),
+                        b"output_parameters" => ::core::result::Result::Ok(__Field::__field4),
+                        b"output_time" => ::core::result::Result::Ok(__Field::__field5),
+                        b"extra" => ::core::result::Result::Ok(__Field::__field6),
+                        _ => ::core::result::Result::Ok(__Field::__ignore),
                     }
                 }
             }
             impl<'de> _serde::Deserialize<'de> for __Field {
                 #[inline]
-                fn deserialize<__D>(
-                    __deserializer: __D,
-                ) -> _serde::__private::Result<Self, __D::Error>
+                fn deserialize<__D>(__deserializer: __D) -> ::core::result::Result<Self, __D::Error>
                 where
                     __D: _serde::Deserializer<'de>,
                 {
@@ -504,28 +496,22 @@ const _: () = {
             // manual impl start - add seed fields
             #[doc(hidden)]
             struct __Visitor<'de, 'a, 'b> {
-                marker: _serde::__private::PhantomData<AnimationGraphSerial>,
-                lifetime: _serde::__private::PhantomData<&'de ()>,
+                marker: std::marker::PhantomData<AnimationGraphSerial>,
+                lifetime: std::marker::PhantomData<&'de ()>,
                 type_registry: &'a TypeRegistry,
                 load_context: &'a mut LoadContext<'b>,
             }
             impl<'de> _serde::de::Visitor<'de> for __Visitor<'de, '_, '_> {
                 // manual impl end
                 type Value = AnimationGraphSerial;
-                fn expecting(
-                    &self,
-                    __formatter: &mut _serde::__private::Formatter,
-                ) -> _serde::__private::fmt::Result {
-                    _serde::__private::Formatter::write_str(
-                        __formatter,
-                        "struct AnimationGraphSerial",
-                    )
+                fn expecting(&self, __formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                    std::fmt::Formatter::write_str(__formatter, "struct AnimationGraphSerial")
                 }
                 #[inline]
                 fn visit_seq<__A>(
                     self,
                     mut __seq: __A,
-                ) -> _serde::__private::Result<Self::Value, __A::Error>
+                ) -> core::result::Result<Self::Value, __A::Error>
                 where
                     __A: _serde::de::SeqAccess<'de>,
                 {
@@ -538,9 +524,9 @@ const _: () = {
                         },
                     )? {
                         // manual impl end
-                        _serde::__private::Some(__value) => __value,
-                        _serde::__private::None => {
-                            return _serde::__private::Err(_serde::de::Error::invalid_length(
+                        Some(__value) => __value,
+                        None => {
+                            return core::result::Result::Err(_serde::de::Error::invalid_length(
                                 0usize,
                                 &"struct AnimationGraphSerial with 7 elements",
                             ));
@@ -550,9 +536,9 @@ const _: () = {
                         HashMap<TargetPinSerial, SourcePinSerial>,
                     >(&mut __seq)?
                     {
-                        _serde::__private::Some(__value) => __value,
-                        _serde::__private::None => {
-                            return _serde::__private::Err(_serde::de::Error::invalid_length(
+                        Some(__value) => __value,
+                        None => {
+                            return core::result::Result::Err(_serde::de::Error::invalid_length(
                                 1usize,
                                 &"struct AnimationGraphSerial with 7 elements",
                             ));
@@ -562,9 +548,9 @@ const _: () = {
                         HashMap<PinIdSerial, DataValue>,
                     >(&mut __seq)?
                     {
-                        _serde::__private::Some(__value) => __value,
-                        _serde::__private::None => {
-                            return _serde::__private::Err(_serde::de::Error::invalid_length(
+                        Some(__value) => __value,
+                        None => {
+                            return core::result::Result::Err(_serde::de::Error::invalid_length(
                                 2usize,
                                 &"struct AnimationGraphSerial with 7 elements",
                             ));
@@ -574,9 +560,9 @@ const _: () = {
                         HashMap<PinIdSerial, ()>,
                     >(&mut __seq)?
                     {
-                        _serde::__private::Some(__value) => __value,
-                        _serde::__private::None => {
-                            return _serde::__private::Err(_serde::de::Error::invalid_length(
+                        Some(__value) => __value,
+                        None => {
+                            return core::result::Result::Err(_serde::de::Error::invalid_length(
                                 3usize,
                                 &"struct AnimationGraphSerial with 7 elements",
                             ));
@@ -586,9 +572,9 @@ const _: () = {
                         HashMap<PinIdSerial, DataSpec>,
                     >(&mut __seq)?
                     {
-                        _serde::__private::Some(__value) => __value,
-                        _serde::__private::None => {
-                            return _serde::__private::Err(_serde::de::Error::invalid_length(
+                        Some(__value) => __value,
+                        None => {
+                            return core::result::Result::Err(_serde::de::Error::invalid_length(
                                 4usize,
                                 &"struct AnimationGraphSerial with 7 elements",
                             ));
@@ -596,24 +582,26 @@ const _: () = {
                     };
                     let __field5 =
                         match _serde::de::SeqAccess::next_element::<Option<()>>(&mut __seq)? {
-                            _serde::__private::Some(__value) => __value,
-                            _serde::__private::None => {
-                                return _serde::__private::Err(_serde::de::Error::invalid_length(
-                                    5usize,
-                                    &"struct AnimationGraphSerial with 7 elements",
-                                ));
+                            Some(__value) => __value,
+                            None => {
+                                return core::result::Result::Err(
+                                    _serde::de::Error::invalid_length(
+                                        5usize,
+                                        &"struct AnimationGraphSerial with 7 elements",
+                                    ),
+                                );
                             }
                         };
                     let __field6 = match _serde::de::SeqAccess::next_element::<Extra>(&mut __seq)? {
-                        _serde::__private::Some(__value) => __value,
-                        _serde::__private::None => {
-                            return _serde::__private::Err(_serde::de::Error::invalid_length(
+                        Some(__value) => __value,
+                        None => {
+                            return core::result::Result::Err(_serde::de::Error::invalid_length(
                                 6usize,
                                 &"struct AnimationGraphSerial with 7 elements",
                             ));
                         }
                     };
-                    _serde::__private::Ok(AnimationGraphSerial {
+                    ::core::result::Result::Ok(AnimationGraphSerial {
                         nodes: __field0,
                         edges_inverted: __field1,
                         default_parameters: __field2,
@@ -627,37 +615,29 @@ const _: () = {
                 fn visit_map<__A>(
                     self,
                     mut __map: __A,
-                ) -> _serde::__private::Result<Self::Value, __A::Error>
+                ) -> core::result::Result<Self::Value, __A::Error>
                 where
                     __A: _serde::de::MapAccess<'de>,
                 {
-                    let mut __field0: _serde::__private::Option<Vec<AnimationNode>> =
-                        _serde::__private::None;
-                    let mut __field1: _serde::__private::Option<
-                        HashMap<TargetPinSerial, SourcePinSerial>,
-                    > = _serde::__private::None;
-                    let mut __field2: _serde::__private::Option<HashMap<PinIdSerial, DataValue>> =
-                        _serde::__private::None;
-                    let mut __field3: _serde::__private::Option<HashMap<PinIdSerial, ()>> =
-                        _serde::__private::None;
-                    let mut __field4: _serde::__private::Option<HashMap<PinIdSerial, DataSpec>> =
-                        _serde::__private::None;
-                    let mut __field5: _serde::__private::Option<Option<()>> =
-                        _serde::__private::None;
-                    let mut __field6: _serde::__private::Option<Extra> = _serde::__private::None;
-                    while let _serde::__private::Some(__key) =
-                        _serde::de::MapAccess::next_key::<__Field>(&mut __map)?
+                    let mut __field0: Option<Vec<AnimationNode>> = None;
+                    let mut __field1: Option<HashMap<TargetPinSerial, SourcePinSerial>> = None;
+                    let mut __field2: Option<HashMap<PinIdSerial, DataValue>> = None;
+                    let mut __field3: Option<HashMap<PinIdSerial, ()>> = None;
+                    let mut __field4: Option<HashMap<PinIdSerial, DataSpec>> = None;
+                    let mut __field5: Option<Option<()>> = None;
+                    let mut __field6: Option<Extra> = None;
+                    while let Some(__key) = _serde::de::MapAccess::next_key::<__Field>(&mut __map)?
                     {
                         match __key {
                             __Field::__field0 => {
-                                if _serde::__private::Option::is_some(&__field0) {
-                                    return _serde::__private::Err(
+                                if Option::is_some(&__field0) {
+                                    return core::result::Result::Err(
                                         <__A::Error as _serde::de::Error>::duplicate_field("nodes"),
                                     );
                                 }
                                 __field0 =
                                     // manual impl start - use seed
-                                     _serde::__private::Some(_serde::de::MapAccess::next_value_seed(
+                                     Some(_serde::de::MapAccess::next_value_seed(
                                          &mut __map,
                                          NodesDeserializer {
                                              type_registry: self.type_registry,
@@ -667,92 +647,73 @@ const _: () = {
                                 // manual impl end
                             }
                             __Field::__field1 => {
-                                if _serde::__private::Option::is_some(&__field1) {
-                                    return _serde::__private::Err(
+                                if Option::is_some(&__field1) {
+                                    return core::result::Result::Err(
                                         <__A::Error as _serde::de::Error>::duplicate_field(
                                             "edges_inverted",
                                         ),
                                     );
                                 }
-                                __field1 =
-                                    _serde::__private::Some(_serde::de::MapAccess::next_value::<
-                                        HashMap<TargetPinSerial, SourcePinSerial>,
-                                    >(
-                                        &mut __map
-                                    )?);
+                                __field1 = Some(_serde::de::MapAccess::next_value::<
+                                    HashMap<TargetPinSerial, SourcePinSerial>,
+                                >(&mut __map)?);
                             }
                             __Field::__field2 => {
-                                if _serde::__private::Option::is_some(&__field2) {
-                                    return _serde::__private::Err(
+                                if Option::is_some(&__field2) {
+                                    return core::result::Result::Err(
                                         <__A::Error as _serde::de::Error>::duplicate_field(
                                             "default_parameters",
                                         ),
                                     );
                                 }
-                                __field2 =
-                                    _serde::__private::Some(_serde::de::MapAccess::next_value::<
-                                        HashMap<PinIdSerial, DataValue>,
-                                    >(
-                                        &mut __map
-                                    )?);
+                                __field2 = Some(_serde::de::MapAccess::next_value::<
+                                    HashMap<PinIdSerial, DataValue>,
+                                >(&mut __map)?);
                             }
                             __Field::__field3 => {
-                                if _serde::__private::Option::is_some(&__field3) {
-                                    return _serde::__private::Err(
+                                if Option::is_some(&__field3) {
+                                    return core::result::Result::Err(
                                         <__A::Error as _serde::de::Error>::duplicate_field(
                                             "input_times",
                                         ),
                                     );
                                 }
-                                __field3 =
-                                    _serde::__private::Some(_serde::de::MapAccess::next_value::<
-                                        HashMap<PinIdSerial, ()>,
-                                    >(
-                                        &mut __map
-                                    )?);
+                                __field3 = Some(_serde::de::MapAccess::next_value::<
+                                    HashMap<PinIdSerial, ()>,
+                                >(&mut __map)?);
                             }
                             __Field::__field4 => {
-                                if _serde::__private::Option::is_some(&__field4) {
-                                    return _serde::__private::Err(
+                                if Option::is_some(&__field4) {
+                                    return core::result::Result::Err(
                                         <__A::Error as _serde::de::Error>::duplicate_field(
                                             "output_parameters",
                                         ),
                                     );
                                 }
-                                __field4 =
-                                    _serde::__private::Some(_serde::de::MapAccess::next_value::<
-                                        HashMap<PinIdSerial, DataSpec>,
-                                    >(
-                                        &mut __map
-                                    )?);
+                                __field4 = Some(_serde::de::MapAccess::next_value::<
+                                    HashMap<PinIdSerial, DataSpec>,
+                                >(&mut __map)?);
                             }
                             __Field::__field5 => {
-                                if _serde::__private::Option::is_some(&__field5) {
-                                    return _serde::__private::Err(
+                                if Option::is_some(&__field5) {
+                                    return core::result::Result::Err(
                                         <__A::Error as _serde::de::Error>::duplicate_field(
                                             "output_time",
                                         ),
                                     );
                                 }
-                                __field5 =
-                                    _serde::__private::Some(_serde::de::MapAccess::next_value::<
-                                        Option<()>,
-                                    >(
-                                        &mut __map
-                                    )?);
+                                __field5 = Some(_serde::de::MapAccess::next_value::<Option<()>>(
+                                    &mut __map,
+                                )?);
                             }
                             __Field::__field6 => {
-                                if _serde::__private::Option::is_some(&__field6) {
-                                    return _serde::__private::Err(
+                                if Option::is_some(&__field6) {
+                                    return core::result::Result::Err(
                                         <__A::Error as _serde::de::Error>::duplicate_field("extra"),
                                     );
                                 }
                                 __field6 =
-                                    _serde::__private::Some(_serde::de::MapAccess::next_value::<
-                                        Extra,
-                                    >(
-                                        &mut __map
-                                    )?);
+                                    Some(_serde::de::MapAccess::next_value::<Extra>(&mut __map)?);
                             }
                             _ => {
                                 let _ = _serde::de::MapAccess::next_value::<_serde::de::IgnoredAny>(
@@ -762,46 +723,36 @@ const _: () = {
                         }
                     }
                     let __field0 = match __field0 {
-                        _serde::__private::Some(__field0) => __field0,
+                        Some(__field0) => __field0,
                         // manual impl start
-                        _serde::__private::None => Default::default(),
+                        None => Default::default(),
                         // manual impl end
                     };
                     let __field1 = match __field1 {
-                        _serde::__private::Some(__field1) => __field1,
-                        _serde::__private::None => {
-                            _serde::__private::de::missing_field("edges_inverted")?
-                        }
+                        Some(__field1) => __field1,
+                        None => Default::default(),
                     };
                     let __field2 = match __field2 {
-                        _serde::__private::Some(__field2) => __field2,
-                        _serde::__private::None => {
-                            _serde::__private::de::missing_field("default_parameters")?
-                        }
+                        Some(__field2) => __field2,
+                        None => Default::default(),
                     };
                     let __field3 = match __field3 {
-                        _serde::__private::Some(__field3) => __field3,
-                        _serde::__private::None => {
-                            _serde::__private::de::missing_field("input_times")?
-                        }
+                        Some(__field3) => __field3,
+                        None => Default::default(),
                     };
                     let __field4 = match __field4 {
-                        _serde::__private::Some(__field4) => __field4,
-                        _serde::__private::None => {
-                            _serde::__private::de::missing_field("output_parameters")?
-                        }
+                        Some(__field4) => __field4,
+                        None => Default::default(),
                     };
                     let __field5 = match __field5 {
-                        _serde::__private::Some(__field5) => __field5,
-                        _serde::__private::None => {
-                            _serde::__private::de::missing_field("output_time")?
-                        }
+                        Some(__field5) => __field5,
+                        None => Default::default(),
                     };
                     let __field6 = match __field6 {
-                        _serde::__private::Some(__field6) => __field6,
-                        _serde::__private::None => _serde::__private::de::missing_field("extra")?,
+                        Some(__field6) => __field6,
+                        None => Default::default(),
                     };
-                    _serde::__private::Ok(AnimationGraphSerial {
+                    ::core::result::Result::Ok(AnimationGraphSerial {
                         nodes: __field0,
                         edges_inverted: __field1,
                         default_parameters: __field2,
@@ -827,8 +778,8 @@ const _: () = {
                 "AnimationGraphSerial",
                 FIELDS,
                 __Visitor {
-                    marker: _serde::__private::PhantomData::<AnimationGraphSerial>,
-                    lifetime: _serde::__private::PhantomData,
+                    marker: std::marker::PhantomData::<AnimationGraphSerial>,
+                    lifetime: std::marker::PhantomData,
                     // manual impl start - add seed fields
                     load_context: self.load_context,
                     type_registry: self.type_registry,
