@@ -28,7 +28,7 @@ impl Widget for BodyMappingInspector<'_, '_> {
                 let mut bone_id = bone.bone.id();
                 response |= ui.add(
                     BoneIdWidget::new_salted(&mut bone_id, "bone id picker")
-                        .with_skeleton(self.skeleton),
+                        .with_skeleton(Some(self.skeleton)),
                 );
                 if let Some(path) = self.skeleton.id_to_path(bone_id) {
                     bone.bone = path;

@@ -290,9 +290,9 @@ impl<T: SubSceneConfig> SubSceneConfig for OrbitCameraSceneConfig<T> {
 
     fn sync_action(&self, new_config: &Self) -> SubSceneSyncAction {
         let outer = if self.view == new_config.view {
-            SubSceneSyncAction::Update
-        } else {
             SubSceneSyncAction::Nothing
+        } else {
+            SubSceneSyncAction::Update
         };
 
         outer | self.inner.sync_action(&new_config.inner)
@@ -312,11 +312,9 @@ pub fn orbit_camera_scene_show<T: SubSceneConfig>(
     world: &mut World,
     id: egui::Id,
 ) {
-    let mut orbit = ui.memory_mut(|mem| {
-        mem.data
-            .get_temp_mut_or_default::<OrbitView>(ui.id().with("orbit"))
-            .clone()
-    });
+    let orbit_id = ui.id().with("orbit");
+    let mut orbit =
+        ui.memory_mut(|mem| mem.data.get_temp::<OrbitView>(orbit_id).unwrap_or_default());
 
     let orbit_config = OrbitCameraSceneConfig {
         view: orbit.clone(),
@@ -350,10 +348,7 @@ pub fn orbit_camera_scene_show<T: SubSceneConfig>(
         orbit.distance = (orbit.distance - zoom).max(0.001);
     }
 
-    ui.memory_mut(|mem| {
-        mem.data
-            .insert_temp::<OrbitView>(ui.id().with("orbit"), orbit)
-    });
+    ui.memory_mut(|mem| mem.data.insert_temp::<OrbitView>(orbit_id, orbit));
 }
 
 pub fn orbit_camera_transform(view: &OrbitView) -> Transform {

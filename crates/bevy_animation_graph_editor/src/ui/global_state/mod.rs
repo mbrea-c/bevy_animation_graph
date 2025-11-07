@@ -1,3 +1,14 @@
+pub mod active_fsm;
+pub mod active_fsm_state;
+pub mod active_fsm_transition;
+pub mod active_graph;
+pub mod active_graph_context;
+pub mod active_graph_node;
+pub mod active_ragdoll;
+pub mod active_scene;
+pub mod active_skeleton;
+pub mod inspector_selection;
+
 use std::marker::PhantomData;
 
 use bevy::ecs::{
@@ -15,17 +26,9 @@ use crate::ui::global_state::{
     active_fsm::ActiveFsm, active_fsm_state::ActiveFsmState,
     active_fsm_transition::ActiveFsmTransition, active_graph::ActiveGraph,
     active_graph_context::ActiveContexts, active_graph_node::ActiveGraphNode,
-    active_scene::ActiveScene, inspector_selection::InspectorSelection,
+    active_ragdoll::ActiveRagdoll, active_scene::ActiveScene, active_skeleton::ActiveSkeleton,
+    inspector_selection::InspectorSelection,
 };
-
-pub mod active_fsm;
-pub mod active_fsm_state;
-pub mod active_fsm_transition;
-pub mod active_graph;
-pub mod active_graph_context;
-pub mod active_graph_node;
-pub mod active_scene;
-pub mod inspector_selection;
 
 #[derive(Component)]
 pub struct GlobalState;
@@ -40,7 +43,9 @@ impl GlobalState {
         ActiveFsmTransition::register(world, entity);
         ActiveGraph::register(world, entity);
         ActiveGraphNode::register(world, entity);
+        ActiveRagdoll::register(world, entity);
         ActiveScene::register(world, entity);
+        ActiveSkeleton::register(world, entity);
         InspectorSelection::register(world, entity);
     }
 }
@@ -50,7 +55,7 @@ pub trait RegisterStateComponent: Component {
 }
 
 pub fn register_if_missing<T: RegisterStateComponent>(world: &mut World, state_entity: Entity) {
-    if world.entity(state_entity).contains::<T>() {
+    if !world.entity(state_entity).contains::<T>() {
         T::register(world, state_entity);
     }
 }

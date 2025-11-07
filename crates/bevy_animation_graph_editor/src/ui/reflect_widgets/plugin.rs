@@ -9,8 +9,6 @@ use bevy_animation_graph::{
     prelude::{AnimatedScene, AnimationGraph, GraphClip},
 };
 
-use crate::ui::reflect_widgets::ragdoll_config::RagdollConfigInspector;
-
 use super::{
     EguiInspectorExtensionRegistration, asset_picker::AssetPickerInspector,
     checkbox::CheckboxInspector, entity_path::EntityPathInspector,
@@ -33,7 +31,6 @@ impl Plugin for BetterInspectorPlugin {
         TargetTracksInspector.register(app);
         SubmittableInspector::<String>::default().register(app);
         SubmittableInspector::<TrackItemValue>::default().register(app);
-        RagdollConfigInspector::default().register(app);
         Vec2PlaneInspector.register(app);
     }
 }

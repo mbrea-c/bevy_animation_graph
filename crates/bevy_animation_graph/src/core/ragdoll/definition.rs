@@ -164,8 +164,9 @@ impl Body {
     }
 }
 
-#[derive(Reflect, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Reflect, Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub enum BodyMode {
+    #[default]
     Kinematic,
     Dynamic,
 }
@@ -284,7 +285,9 @@ pub struct AngleLimit {
     pub max: f32,
 }
 
-#[derive(Default, Reflect, Clone, Copy, Serialize, Deserialize, Hash, PartialEq, Eq)]
+#[derive(
+    Default, Reflect, Clone, Copy, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord,
+)]
 pub struct BodyId {
     uuid: Uuid,
 }

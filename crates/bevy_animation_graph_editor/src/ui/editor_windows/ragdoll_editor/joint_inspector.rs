@@ -57,14 +57,14 @@ impl Widget for JointInspector<'_, '_> {
                     response |= ui.label("body 1:");
                     response |= ui.add(
                         BodyIdWidget::new_salted(&mut spherical_joint.body1, "joint body 1")
-                            .with_ragdoll(self.ragdoll),
+                            .with_ragdoll(Some(self.ragdoll)),
                     );
                     ui.end_row();
 
                     response |= ui.label("body 2:");
                     response |= ui.add(
                         BodyIdWidget::new_salted(&mut spherical_joint.body2, "joint body 2")
-                            .with_ragdoll(self.ragdoll),
+                            .with_ragdoll(Some(self.ragdoll)),
                     );
                     ui.end_row();
 
@@ -175,14 +175,14 @@ impl Widget for JointInspector<'_, '_> {
                     response |= ui.label("body 1:");
                     response |= ui.add(
                         BodyIdWidget::new_salted(&mut revolute_joint.body1, "joint body 1")
-                            .with_ragdoll(self.ragdoll),
+                            .with_ragdoll(Some(self.ragdoll)),
                     );
                     ui.end_row();
 
                     response |= ui.label("body 2:");
                     response |= ui.add(
                         BodyIdWidget::new_salted(&mut revolute_joint.body2, "joint body 2")
-                            .with_ragdoll(self.ragdoll),
+                            .with_ragdoll(Some(self.ragdoll)),
                     );
                     ui.end_row();
 

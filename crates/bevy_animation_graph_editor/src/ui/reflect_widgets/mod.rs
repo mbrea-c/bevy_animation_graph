@@ -36,7 +36,6 @@ pub mod checkbox;
 pub mod entity_path;
 pub mod pattern_mapper;
 pub mod plugin;
-pub mod ragdoll_config;
 pub mod submittable;
 pub mod target_tracks;
 pub mod vec2_plane;

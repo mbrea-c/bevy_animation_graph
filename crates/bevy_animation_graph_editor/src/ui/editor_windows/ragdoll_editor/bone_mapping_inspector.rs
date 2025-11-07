@@ -26,7 +26,7 @@ impl Widget for BoneMappingInspector<'_, '_> {
                         let mut response = ui.label("body ID:");
                         response |= ui.add(
                             BodyIdWidget::new_salted(&mut body_weight.body, "body id picker")
-                                .with_ragdoll(self.ragdoll),
+                                .with_ragdoll(Some(self.ragdoll)),
                         );
                         ui.end_row();
 

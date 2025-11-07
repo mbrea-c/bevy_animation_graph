@@ -23,6 +23,8 @@ use ui::actions::clip_preview::ClipPreviewScenes;
 use ui::actions::saving::DirtyAssets;
 use ui::egui_inspector_impls::BetterInspectorPlugin;
 
+use crate::ui::node_editors::register_node_editables;
+
 #[derive(Parser, Resource)]
 struct Cli {
     #[arg(short, long)]
@@ -57,7 +59,7 @@ impl Plugin for AnimationGraphEditorPlugin {
             .add_plugins(AnimationGraphPlugin::from_physics_schedule(FixedPostUpdate))
             .add_plugins(DefaultInspectorConfigPlugin)
             .add_plugins(BetterInspectorPlugin)
-            // .add_plugins(WorldInspectorPlugin::new())
+            .add_plugins(bevy_inspector_egui::quick::WorldInspectorPlugin::new())
             .add_plugins(ScannerPlugin);
 
         #[cfg(feature = "physics_avian")]
@@ -71,6 +73,8 @@ impl Plugin for AnimationGraphEditorPlugin {
             .insert_resource(FsmIndicesMap::default())
             .insert_resource(ClipPreviewScenes::default())
             .insert_resource(cli);
+
+        register_node_editables(app);
 
         app.add_systems(Startup, setup);
 

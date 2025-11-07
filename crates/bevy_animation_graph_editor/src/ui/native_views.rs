@@ -8,7 +8,7 @@ use egui_notify::Toasts;
 
 use crate::ui::{
     actions::{EditorAction, PushQueue},
-    core::{Buffers, EditorWindowExtension, EguiWindow, GlobalState, LegacyEditorWindowContext},
+    core::{Buffers, EditorWindowExtension, EguiWindow, LegacyEditorWindowContext},
     editor_windows::{
         ragdoll_editor::RagdollEditorWindow, skeleton_preview::SkeletonCollidersPreviewWindow,
     },
@@ -136,7 +136,6 @@ pub struct EditorViewContext<'a> {
     pub buffers: &'a mut Buffers,
 
     // For legacy windows
-    pub global_state: &'a mut GlobalState,
     pub windows: &'a mut Windows,
     pub editor_actions: &'a mut PushQueue<EditorAction>,
 }
@@ -218,13 +217,11 @@ impl egui_dock::TabViewer for TabViewer<'_> {
             EguiWindow::DynWindow(editor_window) => {
                 self.context
                     .windows
-                    .with_window_mut(*editor_window, |window, windows| {
+                    .with_window_mut(*editor_window, |window, _windows| {
                         let mut ctx = LegacyEditorWindowContext {
                             window_id: *editor_window,
-                            global_state: self.context.global_state,
                             notifications: self.context.notifications,
                             editor_actions: self.context.editor_actions,
-                            windows,
                         };
 
                         ui.push_id(ui.id().with(*editor_window), |ui| {

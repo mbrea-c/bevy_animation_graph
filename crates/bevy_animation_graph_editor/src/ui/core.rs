@@ -1,25 +1,13 @@
 use core::any::TypeId;
 use std::any::Any;
 
-use crate::egui_fsm::lib::FsmUiContext;
-use crate::egui_nodes::lib::NodesContext;
 use crate::ui::ecs_utils::get_view_state;
 use crate::ui::global_state;
 use crate::ui::native_views::{EditorView, EditorViewContext, EditorViewUiState};
 use crate::ui::native_windows::{NativeEditorWindow, NativeEditorWindowExtension};
-use bevy::asset::UntypedAssetId;
 use bevy::ecs::world::CommandQueue;
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
-use bevy_animation_graph::core::animated_scene::AnimatedScene;
-use bevy_animation_graph::core::animation_clip::EntityPath;
-use bevy_animation_graph::core::animation_graph::{AnimationGraph, NodeId, PinId};
-use bevy_animation_graph::core::animation_node::AnimationNode;
-use bevy_animation_graph::core::context::GraphContextId;
-use bevy_animation_graph::core::edge_data::AnimationEvent;
-use bevy_animation_graph::core::state_machine::high_level::{
-    State, StateId, StateMachine, Transition, TransitionId,
-};
 use bevy_egui::{EguiContext, PrimaryEguiContext};
 use bevy_inspector_egui::{bevy_egui, egui};
 use egui_dock::egui::Color32;
@@ -68,71 +56,8 @@ pub fn show_ui_system(world: &mut World) {
     command_queue.apply(world);
 }
 
-pub struct GraphSelection {
-    pub graph: Handle<AnimationGraph>,
-    pub nodes_context: NodesContext,
-}
-
-pub struct FsmSelection {
-    pub fsm: Handle<StateMachine>,
-    pub nodes_context: FsmUiContext,
-    pub state_creation: State,
-    pub transition_creation: Transition,
-}
-
-#[derive(Default)]
-pub enum InspectorSelection {
-    FsmTransition(FsmTransitionSelection),
-    FsmState(FsmStateSelection),
-    Node(NodeSelection),
-    /// The selection data is contained in the GraphSelection, not here. This is because the graph
-    /// should not become unselected whenever the inspector window shows something else.
-    Graph,
-    /// The selection data is contained in the FsmSelection, not here. This is because the FSM
-    /// should not become unselected whenever the inspector window shows something else.
-    Fsm,
-    #[default]
-    Nothing,
-}
-
-pub struct FsmTransitionSelection {
-    pub(crate) fsm: Handle<StateMachine>,
-    pub(crate) state: TransitionId,
-}
-
-pub struct FsmStateSelection {
-    pub(crate) fsm: Handle<StateMachine>,
-    pub(crate) state: StateId,
-}
-
-pub struct NodeSelection {
-    pub(crate) graph: Handle<AnimationGraph>,
-    pub(crate) node: NodeId,
-    pub(crate) name_buf: String,
-    pub(crate) selected_pin_id: Option<PinId>,
-}
-
-pub struct SceneSelection {
-    pub(crate) scene: Handle<AnimatedScene>,
-    pub(crate) active_context: HashMap<UntypedAssetId, GraphContextId>,
-    pub(crate) event_table: Vec<AnimationEvent>,
-    /// Just here as a buffer for the editor
-    pub(crate) event_editor: AnimationEvent,
-}
-
-#[derive(Default)]
-pub struct NodeCreation {
-    pub(crate) node_type_search: String,
-    pub(crate) node: AnimationNode,
-}
-
-#[derive(Default)]
-pub struct GlobalState {}
-
 #[derive(Resource)]
 pub struct UiState {
-    pub global_state: GlobalState,
-
     pub(crate) windows: Windows,
 
     pub(crate) notifications: Toasts,
@@ -145,7 +70,6 @@ pub struct UiState {
 impl UiState {
     pub fn init(world: &mut World) {
         let mut ui_state = Self {
-            global_state: GlobalState::default(),
             notifications: Toasts::new()
                 .with_anchor(Anchor::BottomRight)
                 .with_default_font(egui::FontId::proportional(12.)),
@@ -205,7 +129,6 @@ impl UiState {
         if let Some(active_view_idx) = self.active_view {
             let view_state = &mut self.views[active_view_idx];
             let view_context = EditorViewContext {
-                global_state: &mut self.global_state,
                 windows: &mut self.windows,
                 notifications: &mut self.notifications,
                 buffers: &mut self.buffers,
@@ -223,9 +146,6 @@ impl UiState {
 
 pub struct LegacyEditorWindowContext<'a> {
     pub window_id: WindowId,
-    /// Read-only view on windows other than the current one
-    pub windows: &'a Windows,
-    pub global_state: &'a mut GlobalState,
     #[allow(dead_code)] // Temporary while I migrate to extension pattern
     pub notifications: &'a mut Toasts,
     pub editor_actions: &'a mut PushQueue<EditorAction>,

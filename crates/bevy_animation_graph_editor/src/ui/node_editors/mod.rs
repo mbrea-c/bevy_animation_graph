@@ -1,3 +1,4 @@
+pub mod ragdoll_config;
 pub mod reflect_editor;
 
 use std::any::{Any, TypeId};
@@ -7,7 +8,7 @@ use bevy::{
     ecs::world::World,
     reflect::{FromType, Reflect, TypePath},
 };
-use bevy_animation_graph::prelude::NodeLike;
+use bevy_animation_graph::{nodes::const_ragdoll_config::ConstRagdollConfig, prelude::NodeLike};
 
 pub trait NodeEditor: 'static {
     type Target: 'static;
@@ -52,7 +53,7 @@ pub trait Editable: 'static {
 
 #[derive(Clone)]
 pub struct ReflectEditable {
-    pub editor_type_id: TypeId,
+    // If needed, we can also store the type ID of the editor in this struct
     pub get_editor: fn(&dyn Any) -> Box<dyn DynNodeEditor>,
 }
 
@@ -62,7 +63,6 @@ where
 {
     fn from_type() -> Self {
         Self {
-            editor_type_id: TypeId::of::<T::Editor>(),
             get_editor: reflect_get_editor::<T>,
         }
     }
@@ -83,4 +83,6 @@ impl RegisterEditableReflectExt for App {
     }
 }
 
-pub fn register_node_editables(app: &mut App) {}
+pub fn register_node_editables(app: &mut App) {
+    app.register_type_data::<ConstRagdollConfig, ReflectEditable>();
+}
