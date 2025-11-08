@@ -1,7 +1,8 @@
 extern crate bevy;
 extern crate bevy_animation_graph;
 
-use bevy::{pbr::CascadeShadowConfigBuilder, prelude::*};
+use bevy::light::CascadeShadowConfigBuilder;
+use bevy::prelude::*;
 use bevy_animation_graph::core::animated_scene::AnimatedSceneInstance;
 use bevy_animation_graph::core::edge_data::AnimationEvent;
 use bevy_animation_graph::prelude::*;

@@ -8,7 +8,7 @@ use std::f32::consts::PI;
 use argh::FromArgs;
 use bevy::{
     diagnostic::{FrameTimeDiagnosticsPlugin, LogDiagnosticsPlugin},
-    pbr::CascadeShadowConfigBuilder,
+    light::CascadeShadowConfigBuilder,
     prelude::*,
     window::{PresentMode, WindowResolution},
     winit::{UpdateMode, WinitSettings},
@@ -49,7 +49,7 @@ fn main() {
                     primary_window: Some(Window {
                         title: "🦊🦊🦊 Many Foxes! 🦊🦊🦊".into(),
                         present_mode: PresentMode::AutoNoVsync,
-                        resolution: WindowResolution::new(1920.0, 1080.0)
+                        resolution: WindowResolution::new(1920, 1080)
                             .with_scale_factor_override(1.0),
                         ..default()
                     }),
