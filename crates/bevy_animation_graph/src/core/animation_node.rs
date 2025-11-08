@@ -369,22 +369,6 @@ const _: () = {
         fn iter_fields(&'_ self) -> bevy::reflect::FieldIter<'_> {
             bevy::reflect::FieldIter::new(self)
         }
-        fn clone_dynamic(&self) -> bevy::reflect::DynamicStruct {
-            let mut dynamic: bevy::reflect::DynamicStruct = ::core::default::Default::default();
-            dynamic.set_represented_type(bevy::reflect::PartialReflect::get_represented_type_info(
-                self,
-            ));
-            dynamic.insert_boxed(
-                "name",
-                bevy::reflect::PartialReflect::to_dynamic(&self.name),
-            );
-            dynamic.insert_boxed(
-                "inner",
-                // manual reflect impl
-                bevy::reflect::PartialReflect::to_dynamic(&*self.inner),
-            );
-            dynamic
-        }
     }
     impl bevy::reflect::PartialReflect for AnimationNode
     where
@@ -405,10 +389,6 @@ const _: () = {
             &self,
         ) -> ::core::option::Option<&'static bevy::reflect::TypeInfo> {
             ::core::option::Option::Some(<Self as bevy::reflect::Typed>::type_info())
-        }
-        #[inline]
-        fn clone_value(&self) -> ::std::boxed::Box<dyn bevy::reflect::PartialReflect> {
-            ::std::boxed::Box::new(bevy::reflect::Struct::to_dynamic_struct(self))
         }
         #[inline]
         fn try_apply(

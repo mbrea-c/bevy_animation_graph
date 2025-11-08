@@ -2,8 +2,8 @@ use bevy::{
     asset::Handle,
     ecs::hierarchy::ChildSpawnerCommands,
     image::Image,
+    light::PointLight,
     math::Vec3,
-    pbr::PointLight,
     prelude::{Transform, World},
 };
 use bevy_animation_graph::prelude::{

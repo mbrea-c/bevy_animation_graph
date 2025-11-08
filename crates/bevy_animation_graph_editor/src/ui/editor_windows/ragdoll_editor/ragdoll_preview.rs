@@ -6,8 +6,8 @@ use bevy::{
     ecs::{hierarchy::ChildSpawnerCommands, world::World},
     gizmos::primitives::dim3::GizmoPrimitive3d,
     image::Image,
+    light::PointLight,
     math::{Isometry3d, Quat, Vec3},
-    pbr::PointLight,
     platform::collections::HashMap,
     transform::components::Transform,
 };
@@ -297,7 +297,6 @@ impl GizmoOverlay for RagdollJoints {
                                 .get(&spherical_joint.body2)
                                 .or(ragdoll.get_body(spherical_joint.body2))
                         {
-                            let swing_axis = spherical_joint.swing_axis;
                             let twist_axis = spherical_joint.twist_axis;
                             let jointpos = spherical_joint.position;
 
@@ -331,12 +330,6 @@ impl GizmoOverlay for RagdollJoints {
                                         + twist_axis.normalize_or_zero() * 0.1,
                                     color,
                                 );
-                                gizmos.arrow(
-                                    root_transform * jointpos,
-                                    root_transform * jointpos
-                                        + swing_axis.normalize_or_zero() * 0.1,
-                                    color,
-                                );
                                 gizmos.circle(
                                     Isometry3d {
                                         rotation: Quat::from_rotation_arc(Vec3::Z, twist_axis),
@@ -358,7 +351,7 @@ impl GizmoOverlay for RagdollJoints {
                                 .get(&revolute_joint.body2)
                                 .or(ragdoll.get_body(revolute_joint.body2))
                         {
-                            let align_axis = revolute_joint.aligned_axis;
+                            let hinge_axis = revolute_joint.hinge_axis;
                             let jointpos = revolute_joint.position;
 
                             let is_hovered = self.hovered.is_some_and(|h| h == joint.id);
@@ -388,12 +381,12 @@ impl GizmoOverlay for RagdollJoints {
                                 gizmos.arrow(
                                     root_transform * jointpos,
                                     root_transform * jointpos
-                                        + align_axis.normalize_or_zero() * 0.1,
+                                        + hinge_axis.normalize_or_zero() * 0.1,
                                     color,
                                 );
                                 gizmos.circle(
                                     Isometry3d {
-                                        rotation: Quat::from_rotation_arc(Vec3::Z, align_axis),
+                                        rotation: Quat::from_rotation_arc(Vec3::Z, hinge_axis),
                                         translation: (root_transform * jointpos).into(),
                                     },
                                     0.05,

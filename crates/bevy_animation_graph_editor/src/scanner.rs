@@ -11,7 +11,7 @@ impl Plugin for ScannerPlugin {
         app.insert_resource(PersistedAssetHandles {
             loaded_paths: HashSet::default(),
         })
-        .add_event::<RescanAssets>()
+        .add_message::<RescanAssets>()
         .add_systems(Startup, core_setup)
         .add_systems(Update, asset_reload);
     }
@@ -24,11 +24,11 @@ pub struct PersistedAssetHandles {
     pub loaded_paths: HashSet<Handle<LoadedUntypedAsset>>,
 }
 
-#[derive(Event)]
+#[derive(Message)]
 pub struct RescanAssets;
 
 pub fn core_setup(
-    mut evw_rescan_events: EventWriter<RescanAssets>,
+    mut evw_rescan_events: MessageWriter<RescanAssets>,
     mut gizmo_config: ResMut<GizmoConfigStore>,
 ) {
     evw_rescan_events.write(RescanAssets);
@@ -38,7 +38,7 @@ pub fn core_setup(
 }
 
 pub fn asset_reload(
-    mut reload_events: EventReader<RescanAssets>,
+    mut reload_events: MessageReader<RescanAssets>,
     asset_server: Res<AssetServer>,
     mut persisted_asset_handles: ResMut<PersistedAssetHandles>,
     cli: Res<Cli>,

@@ -20,8 +20,8 @@ egui_dock = "0.17"
 egui-notify = { version = "0.20" }
 egui = { version = "0.32" }
 egui_extras = { version = "0.32", features = ["all_loaders"] }
-bevy_egui = { version = "0.36" }
-bevy-inspector-egui = { version = "0.33" }
+bevy_egui = { version = "0.37" }
+bevy-inspector-egui = { version = "0.34" }
 avian3d = { workspace = true, optional = true }
 
 rand = "0.9.0"

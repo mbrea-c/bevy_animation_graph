@@ -71,13 +71,6 @@ impl Widget for JointInspector<'_> {
                     ));
                     ui.end_row();
 
-                    response |= ui.label("swing axis:");
-                    response |= ui.add(Vec3Widget::new_salted(
-                        &mut spherical_joint.swing_axis,
-                        "joint swing axis",
-                    ));
-                    ui.end_row();
-
                     response |= ui.label("twist axis:");
                     response |= ui.add(Vec3Widget::new_salted(
                         &mut spherical_joint.twist_axis,
@@ -121,50 +114,16 @@ impl Widget for JointInspector<'_> {
                         ui.end_row();
                     }
 
-                    response |= ui.label("linear damping:");
-                    response |= ui.add(egui::DragValue::new(&mut spherical_joint.damping_linear));
+                    response |= ui.label("point compliance:");
+                    response |= ui.add(egui::DragValue::new(&mut spherical_joint.point_compliance));
                     ui.end_row();
 
-                    response |= ui.label("angular damping:");
-                    response |= ui.add(egui::DragValue::new(&mut spherical_joint.damping_angular));
+                    response |= ui.label("swing compliance:");
+                    response |= ui.add(egui::DragValue::new(&mut spherical_joint.swing_compliance));
                     ui.end_row();
 
-                    response |= ui.label("position lagrange:");
-                    response |=
-                        ui.add(egui::DragValue::new(&mut spherical_joint.position_lagrange));
-                    ui.end_row();
-
-                    response |= ui.label("swing lagrange:");
-                    response |= ui.add(egui::DragValue::new(&mut spherical_joint.swing_lagrange));
-                    ui.end_row();
-
-                    response |= ui.label("twist lagrange:");
-                    response |= ui.add(egui::DragValue::new(&mut spherical_joint.twist_lagrange));
-                    ui.end_row();
-
-                    response |= ui.label("compliance:");
-                    response |= ui.add(egui::DragValue::new(&mut spherical_joint.compliance));
-                    ui.end_row();
-
-                    response |= ui.label("force:");
-                    response |= ui.add(Vec3Widget::new_salted(
-                        &mut spherical_joint.force,
-                        "joint force",
-                    ));
-                    ui.end_row();
-
-                    response |= ui.label("swing torque:");
-                    response |= ui.add(Vec3Widget::new_salted(
-                        &mut spherical_joint.swing_torque,
-                        "joint swing torque",
-                    ));
-                    ui.end_row();
-
-                    response |= ui.label("twist torque:");
-                    response |= ui.add(Vec3Widget::new_salted(
-                        &mut spherical_joint.twist_torque,
-                        "joint twist torque",
-                    ));
+                    response |= ui.label("swing compliance:");
+                    response |= ui.add(egui::DragValue::new(&mut spherical_joint.twist_compliance));
                     ui.end_row();
                 }
                 JointVariant::Revolute(revolute_joint) => {
@@ -189,10 +148,10 @@ impl Widget for JointInspector<'_> {
                     ));
                     ui.end_row();
 
-                    response |= ui.label("aligned axis:");
+                    response |= ui.label("hinge axis:");
                     response |= ui.add(Vec3Widget::new_salted(
-                        &mut revolute_joint.aligned_axis,
-                        "joint swing axis",
+                        &mut revolute_joint.hinge_axis,
+                        "joint hinge axis",
                     ));
                     ui.end_row();
 
@@ -213,51 +172,14 @@ impl Widget for JointInspector<'_> {
                         ui.end_row();
                     }
 
-                    response |= ui.label("linear damping:");
-                    response |= ui.add(egui::DragValue::new(&mut revolute_joint.damping_linear));
+                    response |= ui.label("point compliance:");
+                    response |= ui.add(egui::DragValue::new(&mut revolute_joint.point_compliance));
                     ui.end_row();
-
-                    response |= ui.label("angular damping:");
-                    response |= ui.add(egui::DragValue::new(&mut revolute_joint.damping_angular));
+                    response |= ui.label("align compliance:");
+                    response |= ui.add(egui::DragValue::new(&mut revolute_joint.align_compliance));
                     ui.end_row();
-
-                    response |= ui.label("position lagrange:");
-                    response |= ui.add(egui::DragValue::new(&mut revolute_joint.position_lagrange));
-                    ui.end_row();
-
-                    response |= ui.label("align lagrange:");
-                    response |= ui.add(egui::DragValue::new(&mut revolute_joint.align_lagrange));
-                    ui.end_row();
-
-                    response |= ui.label("angle limit lagrange:");
-                    response |= ui.add(egui::DragValue::new(
-                        &mut revolute_joint.angle_limit_lagrange,
-                    ));
-                    ui.end_row();
-
-                    response |= ui.label("compliance:");
-                    response |= ui.add(egui::DragValue::new(&mut revolute_joint.compliance));
-                    ui.end_row();
-
-                    response |= ui.label("force:");
-                    response |= ui.add(Vec3Widget::new_salted(
-                        &mut revolute_joint.force,
-                        "joint force",
-                    ));
-                    ui.end_row();
-
-                    response |= ui.label("align torque:");
-                    response |= ui.add(Vec3Widget::new_salted(
-                        &mut revolute_joint.align_torque,
-                        "joint align torque",
-                    ));
-                    ui.end_row();
-
-                    response |= ui.label("angle limit torque:");
-                    response |= ui.add(Vec3Widget::new_salted(
-                        &mut revolute_joint.angle_limit_torque,
-                        "joint angle limit torque",
-                    ));
+                    response |= ui.label("limit compliance:");
+                    response |= ui.add(egui::DragValue::new(&mut revolute_joint.limit_compliance));
                     ui.end_row();
                 }
             }
