@@ -95,11 +95,10 @@ impl NodeLike for TwoBoneIKNode {
             );
 
             let parent_transform =
-                Transform::from_matrix(grandparent_transform.compute_matrix().inverse())
+                Transform::from_matrix(grandparent_transform.to_matrix().inverse())
                     * parent_gp_transform;
-            let bone_transform =
-                Transform::from_matrix(parent_gp_transform.compute_matrix().inverse())
-                    * bone_gp_transform;
+            let bone_transform = Transform::from_matrix(parent_gp_transform.to_matrix().inverse())
+                * bone_gp_transform;
 
             pose.bones[*grandparent_id].rotation = Some(grandparent_transform.rotation);
             pose.bones[*parent_id].rotation = Some(parent_transform.rotation);

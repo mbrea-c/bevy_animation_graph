@@ -2,7 +2,7 @@ use std::hash::Hash;
 
 use bevy::{
     asset::{Assets, Handle},
-    ecs::{component::Component, event::Event, observer::Trigger, system::Query},
+    ecs::{component::Component, entity::Entity, event::EntityEvent, observer::On, system::Query},
     platform::collections::HashMap,
     prelude::World,
     reflect::Reflect,
@@ -71,20 +71,26 @@ struct ActiveTracks<'a> {
     tracks: &'a HashMap<String, EventTrack>,
 }
 
-#[derive(Event, Clone)]
+#[derive(Clone)]
 pub enum EventTrackEditorAction {
     SelectEvent { track_name: String, event_id: Uuid },
     SetScrollConfig(ScrollConfig),
     SetTrackSource(Option<TargetTracks>),
 }
 
+#[derive(EntityEvent, Clone)]
+pub struct EventTrackEditorEvent {
+    entity: Entity,
+    action: EventTrackEditorAction,
+}
+
 impl EventTrackEditorAction {
     pub fn observe(
-        action: Trigger<EventTrackEditorAction>,
+        action: On<EventTrackEditorEvent>,
         mut query: Query<&mut EventTrackEditorState>,
     ) {
-        if let Ok(mut state) = query.get_mut(action.target()) {
-            match action.event().clone() {
+        if let Ok(mut state) = query.get_mut(action.entity) {
+            match action.action.clone() {
                 EventTrackEditorAction::SelectEvent {
                     track_name,
                     event_id,
@@ -255,9 +261,12 @@ impl EventTrackEditorState {
             for event in track.events.iter() {
                 let response = self.draw_event(ui, rect, &event.value, track_number);
                 if response.clicked() {
-                    ctx.trigger_window(EventTrackEditorAction::SelectEvent {
-                        track_name: track.name.clone(),
-                        event_id: event.id,
+                    ctx.trigger(EventTrackEditorEvent {
+                        entity: ctx.window_entity,
+                        action: EventTrackEditorAction::SelectEvent {
+                            track_name: track.name.clone(),
+                            event_id: event.id,
+                        },
                     });
                 }
             }
@@ -287,7 +296,10 @@ impl EventTrackEditorState {
                 }
 
                 if current_config != self.scroll_config {
-                    ctx.trigger_window(EventTrackEditorAction::SetScrollConfig(current_config));
+                    ctx.trigger(EventTrackEditorEvent {
+                        entity: ctx.window_entity,
+                        action: EventTrackEditorAction::SetScrollConfig(current_config),
+                    });
                 }
             });
         }
@@ -524,7 +536,10 @@ impl EventTrackEditorState {
             }
         }) {
             let time = self.pixel_to_time(click_pos.x, area_rect);
-            ctx.trigger_view(SetOrder(ClipPreviewTimingOrder::Seek { time }));
+            ctx.trigger(SetOrder {
+                entity: ctx.view_entity,
+                order: ClipPreviewTimingOrder::Seek { time },
+            });
         }
     }
 
@@ -543,10 +558,12 @@ impl EventTrackEditorState {
                     &(),
                 )
             }) {
-                ctx.trigger_window(EventTrackEditorAction::SetTrackSource(
-                    new_selection.clone(),
-                ));
-                ctx.trigger_view(SetTargetTracks {
+                ctx.trigger(EventTrackEditorEvent {
+                    entity: ctx.window_entity,
+                    action: EventTrackEditorAction::SetTrackSource(new_selection.clone()),
+                });
+                ctx.trigger(SetTargetTracks {
+                    entity: ctx.view_entity,
                     tracks: new_selection,
                 });
             }

@@ -15,7 +15,6 @@ use bevy::{
     platform::collections::HashMap,
     prelude::*,
     reflect::Reflect,
-    render::view::Visibility,
     scene::{Scene, SceneInstanceReady},
     transform::components::Transform,
 };
@@ -352,13 +351,13 @@ fn apply_bone_path_overrides(
 /// Adds an `AnimatedSceneInstance` pointing to the animation graph player when the scene is
 /// spawned
 pub(crate) fn locate_animated_scene_player(
-    trigger: Trigger<SceneInstanceReady>,
+    trigger: On<SceneInstanceReady>,
     handle_query: Query<&AnimatedSceneHandle>,
     mut player_query: Query<&mut AnimationGraphPlayer>,
     children_query: Query<&Children>,
     mut commands: Commands,
 ) {
-    let root_entity = trigger.target();
+    let root_entity = trigger.entity;
 
     let Ok(animscn_handle) = handle_query.get(root_entity) else {
         return;

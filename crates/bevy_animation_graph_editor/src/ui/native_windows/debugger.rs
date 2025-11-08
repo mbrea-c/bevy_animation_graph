@@ -1,7 +1,7 @@
 use bevy::{
     ecs::hierarchy::ChildSpawnerCommands,
+    light::PointLight,
     math::Vec3,
-    pbr::PointLight,
     prelude::{Handle, Image, In, Query, Transform, World},
 };
 use bevy_animation_graph::{

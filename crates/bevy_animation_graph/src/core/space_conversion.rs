@@ -37,7 +37,7 @@ impl SpaceConversionContext<'_> {
             curr_bone_id = skeleton.parent(&curr_bone_id).unwrap();
         }
 
-        Transform::from_matrix(curr_transform.compute_matrix().inverse()) * transform
+        Transform::from_matrix(curr_transform.to_matrix().inverse()) * transform
     }
 
     pub fn change_bone_space_up(
@@ -96,7 +96,7 @@ impl SpaceConversionContext<'_> {
     ) -> Transform {
         let root_global_transform = self.pose_fallback.root_global_transform(skeleton).unwrap();
         let inverse_global_transform =
-            Transform::from_matrix(root_global_transform.compute_matrix().inverse());
+            Transform::from_matrix(root_global_transform.to_matrix().inverse());
         inverse_global_transform * transform
     }
 

@@ -16,7 +16,7 @@ use bevy::ecs::{
     entity::Entity,
     error::BevyError,
     event::Event,
-    observer::Trigger,
+    observer::On,
     query::With,
     system::{Commands, Query, Single},
     world::World,
@@ -73,7 +73,7 @@ pub trait SetOrInsertEvent: Event {
 }
 
 fn observe_set_or_insert_event<T, E>(
-    new_state: Trigger<E>,
+    new_state: On<E>,
     global_state: Single<(Entity, Option<&mut T>), With<GlobalState>>,
     mut commands: Commands,
 ) where
@@ -95,7 +95,7 @@ fn observe_set_or_insert_event<T, E>(
 pub struct ClearGlobalState<T>(PhantomData<T>);
 
 pub fn observe_clear_global_state<T: Component>(
-    _: Trigger<ClearGlobalState<T>>,
+    _: On<ClearGlobalState<T>>,
     global_state: Query<Entity, With<GlobalState>>,
     mut commands: Commands,
 ) -> Result<(), BevyError> {

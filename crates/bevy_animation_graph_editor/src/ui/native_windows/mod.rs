@@ -3,7 +3,7 @@ use bevy::ecs::{
     entity::Entity,
     event::Event,
     query::With,
-    system::command::{trigger, trigger_targets},
+    system::command::trigger,
     world::{CommandQueue, World},
 };
 use egui_dock::egui;
@@ -43,8 +43,6 @@ pub struct EditorWindowContext<'a> {
 impl EditorWindowContext<'_> {
     pub fn make_queue(&self) -> OwnedQueue {
         OwnedQueue {
-            window_entity: self.window_entity,
-            view_entity: self.view_entity,
             command_queue: CommandQueue::default(),
         }
     }
@@ -55,26 +53,12 @@ impl EditorWindowContext<'_> {
 }
 
 pub struct OwnedQueue {
-    pub window_entity: Entity,
-    pub view_entity: Entity,
     pub command_queue: CommandQueue,
 }
 
 impl OwnedQueue {
-    pub fn trigger(&mut self, event: impl Event) {
+    pub fn trigger<'b>(&mut self, event: impl Event<Trigger<'b>: Default>) {
         self.command_queue.push(trigger(event));
-    }
-
-    #[allow(dead_code)]
-    pub fn trigger_window(&mut self, event: impl Event) {
-        self.command_queue
-            .push(trigger_targets(event, self.window_entity));
-    }
-
-    #[allow(dead_code)]
-    pub fn trigger_view(&mut self, event: impl Event) {
-        self.command_queue
-            .push(trigger_targets(event, self.view_entity));
     }
 }
 
@@ -82,18 +66,8 @@ impl OwnedQueue {
 pub struct WindowState;
 
 impl<'a> EditorWindowContext<'a> {
-    pub fn trigger(&mut self, event: impl Event) {
+    pub fn trigger<'b>(&mut self, event: impl Event<Trigger<'b>: Default>) {
         self.command_queue.push(trigger(event));
-    }
-
-    pub fn trigger_window(&mut self, event: impl Event) {
-        self.command_queue
-            .push(trigger_targets(event, self.window_entity));
-    }
-
-    pub fn trigger_view(&mut self, event: impl Event) {
-        self.command_queue
-            .push(trigger_targets(event, self.view_entity));
     }
 
     pub fn get_window_state<'w, T: Component>(&self, world: &'w World) -> Option<&'w T> {

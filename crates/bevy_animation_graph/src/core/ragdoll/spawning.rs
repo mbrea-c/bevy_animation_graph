@@ -107,32 +107,22 @@ pub fn spawn_ragdoll_avian(
 
         let joint_entity = match &joint.variant {
             JointVariant::Spherical(spherical_joint) => {
-                let Some(body1) = ragdoll.get_body(spherical_joint.body1) else {
-                    continue;
-                };
-
-                let Some(body2) = ragdoll.get_body(spherical_joint.body2) else {
-                    continue;
-                };
-
-                let local_anchor1 = spherical_joint.position - body1.offset;
-                let local_anchor2 = spherical_joint.position - body2.offset;
+                use avian3d::prelude::JointFrame;
 
                 commands
                     .spawn((
                         Name::new("Ragdoll joint - spherical"),
                         SphericalJoint {
-                            entity1: *spawned
+                            body1: *spawned
                                 .bodies
                                 .get(&spherical_joint.body1)
                                 .expect("Validation should have caught this"),
-                            entity2: *spawned
+                            body2: *spawned
                                 .bodies
                                 .get(&spherical_joint.body2)
                                 .expect("Validation should have caught this"),
-                            local_anchor1,
-                            local_anchor2,
-                            swing_axis: spherical_joint.swing_axis,
+                            frame1: JointFrame::global(spherical_joint.position),
+                            frame2: JointFrame::global(spherical_joint.position),
                             twist_axis: spherical_joint.twist_axis,
                             swing_limit: spherical_joint.swing_limit.as_ref().map(|limit| {
                                 AngleLimit {
@@ -146,61 +136,40 @@ pub fn spawn_ragdoll_avian(
                                     max: limit.max,
                                 }
                             }),
-                            damping_linear: spherical_joint.damping_linear,
-                            damping_angular: spherical_joint.damping_angular,
-                            position_lagrange: spherical_joint.position_lagrange,
-                            swing_lagrange: spherical_joint.swing_lagrange,
-                            twist_lagrange: spherical_joint.twist_lagrange,
-                            compliance: spherical_joint.compliance,
-                            force: spherical_joint.force,
-                            swing_torque: spherical_joint.swing_torque,
-                            twist_torque: spherical_joint.twist_torque,
+                            point_compliance: spherical_joint.point_compliance,
+                            swing_compliance: spherical_joint.swing_compliance,
+                            twist_compliance: spherical_joint.twist_compliance,
                         },
                     ))
                     .id()
             }
             JointVariant::Revolute(revolute_joint) => {
-                let Some(body1) = ragdoll.get_body(revolute_joint.body1) else {
-                    continue;
-                };
-
-                let Some(body2) = ragdoll.get_body(revolute_joint.body2) else {
-                    continue;
-                };
-
-                let local_anchor1 = revolute_joint.position - body1.offset;
-                let local_anchor2 = revolute_joint.position - body2.offset;
+                use avian3d::prelude::JointFrame;
 
                 commands
                     .spawn((
                         Name::new("Ragdoll joint - revolute"),
                         RevoluteJoint {
-                            entity1: *spawned
+                            body1: *spawned
                                 .bodies
                                 .get(&revolute_joint.body1)
                                 .expect("Validation should have caught this"),
-                            entity2: *spawned
+                            body2: *spawned
                                 .bodies
                                 .get(&revolute_joint.body2)
                                 .expect("Validation should have caught this"),
-                            local_anchor1,
-                            local_anchor2,
-                            aligned_axis: revolute_joint.aligned_axis,
+                            frame1: JointFrame::global(revolute_joint.position),
+                            frame2: JointFrame::global(revolute_joint.position),
+                            hinge_axis: revolute_joint.hinge_axis,
                             angle_limit: revolute_joint.angle_limit.as_ref().map(|limit| {
                                 AngleLimit {
                                     min: limit.min,
                                     max: limit.max,
                                 }
                             }),
-                            align_lagrange: revolute_joint.align_lagrange,
-                            angle_limit_lagrange: revolute_joint.angle_limit_lagrange,
-                            align_torque: revolute_joint.align_torque,
-                            angle_limit_torque: revolute_joint.angle_limit_torque,
-                            damping_linear: revolute_joint.damping_linear,
-                            damping_angular: revolute_joint.damping_angular,
-                            position_lagrange: revolute_joint.position_lagrange,
-                            compliance: revolute_joint.compliance,
-                            force: revolute_joint.force,
+                            point_compliance: revolute_joint.point_compliance,
+                            align_compliance: revolute_joint.align_compliance,
+                            limit_compliance: revolute_joint.limit_compliance,
                         },
                     ))
                     .id()

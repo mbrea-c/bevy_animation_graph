@@ -1,6 +1,7 @@
 use std::ops::BitOr;
 use std::rc::Rc;
 
+use bevy::camera::visibility::RenderLayers;
 use bevy::color::palettes::css::WHITE;
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
@@ -8,7 +9,6 @@ use bevy::render::render_resource::{
     Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
 };
 
-use bevy::render::view::RenderLayers;
 use bevy_animation_graph::core::animated_scene::AnimatedSceneInstance;
 use bevy_animation_graph::core::animation_graph_player::AnimationGraphPlayer;
 use bevy_animation_graph::core::pose::Pose;
@@ -268,7 +268,7 @@ pub fn setup_textured_render<T: SubSceneConfig>(
 
     let image_handle = images.add(image);
 
-    egui_user_textures.add_image(image_handle.clone());
+    egui_user_textures.add_image(bevy_egui::EguiTextureHandle::Strong(image_handle.clone()));
 
     let root = commands
         .spawn((

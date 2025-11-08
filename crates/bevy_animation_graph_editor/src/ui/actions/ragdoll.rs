@@ -391,7 +391,7 @@ impl RecomputeMappingOffsets {
             // bone.inverse() * bone * x = bone.inverse() * body
             // x = bone.inverse() * body
             let offset =
-                Transform::from_matrix(bone_default_transform.character.compute_matrix().inverse())
+                Transform::from_matrix(bone_default_transform.character.to_matrix().inverse())
                     * Transform::from_translation(body.offset);
 
             body_mapping.bone.offset = offset.to_isometry();
@@ -783,8 +783,6 @@ fn mirror_joint(
             mirror_spherical_joint.position =
                 SymmertryMode::MirrorX.apply_position(inner_joint.position);
 
-            mirror_spherical_joint.swing_axis =
-                SymmertryMode::MirrorX.apply_position(inner_joint.swing_axis);
             mirror_spherical_joint.twist_axis =
                 SymmertryMode::MirrorX.apply_position(inner_joint.twist_axis);
 
@@ -813,8 +811,8 @@ fn mirror_joint(
             mirror_inner_joint.position =
                 SymmertryMode::MirrorX.apply_position(inner_joint.position);
 
-            mirror_inner_joint.aligned_axis =
-                SymmertryMode::MirrorX.apply_position(inner_joint.aligned_axis);
+            mirror_inner_joint.hinge_axis =
+                SymmertryMode::MirrorX.apply_position(inner_joint.hinge_axis);
 
             mirrored_joint.variant = JointVariant::Revolute(mirror_inner_joint);
         }

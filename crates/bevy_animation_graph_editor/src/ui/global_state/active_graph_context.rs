@@ -1,7 +1,7 @@
 use bevy::{
     asset::UntypedAssetId,
     ecs::{
-        component::Component, entity::Entity, event::Event, observer::Trigger, query::With,
+        component::Component, entity::Entity, event::Event, observer::On, query::With,
         system::Single, world::World,
     },
     platform::collections::HashMap,
@@ -34,7 +34,7 @@ pub struct SetActiveContext {
 
 impl SetActiveContext {
     pub fn observe(
-        event: Trigger<SetActiveContext>,
+        event: On<SetActiveContext>,
         mut global_state: Single<&mut ActiveContexts, With<GlobalState>>,
     ) {
         let event = event.event();

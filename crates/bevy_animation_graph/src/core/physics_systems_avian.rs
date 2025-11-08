@@ -126,7 +126,8 @@ pub fn spawn_missing_ragdolls_avian(
 pub fn update_ragdoll_rigidbodies(
     animation_players: Query<&AnimationGraphPlayer>,
     ragdoll_assets: Res<Assets<Ragdoll>>,
-    mut rigid_body_query: Query<&mut RigidBody>,
+    rigid_body_query: Query<&RigidBody>,
+    mut commands: Commands,
 ) {
     for player in &animation_players {
         if let Some(ragdoll_asset_id) = player.ragdoll.as_ref().map(|h| h.id())
@@ -144,7 +145,7 @@ pub fn update_ragdoll_rigidbodies(
                 let Some(body_entity) = spawned_ragdoll.bodies.get(&body.id) else {
                     continue;
                 };
-                let Ok(mut rigid_body) = rigid_body_query.get_mut(*body_entity) else {
+                let Ok(rigid_body) = rigid_body_query.get(*body_entity) else {
                     continue;
                 };
 
@@ -156,7 +157,7 @@ pub fn update_ragdoll_rigidbodies(
                 };
 
                 if *rigid_body != target_mode {
-                    *rigid_body = target_mode;
+                    commands.entity(*body_entity).insert(target_mode);
                 }
             }
         }

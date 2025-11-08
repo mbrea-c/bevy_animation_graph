@@ -38,7 +38,7 @@ use crate::prelude::{AnimationGraph, AnimationGraphPlayer, config::SymmetryConfi
 use crate::{core::animation_clip::EntityPath, prelude::AnimationNode};
 use bevy::ecs::intern::Interned;
 use bevy::ecs::schedule::ScheduleLabel;
-use bevy::{prelude::*, transform::TransformSystem};
+use bevy::prelude::*;
 
 use super::colliders::{core::SkeletonColliders, loader::SkeletonCollidersLoader};
 
@@ -95,7 +95,7 @@ impl Plugin for AnimationGraphPlugin {
 
         app.configure_sets(
             self.physics_schedule,
-            AnimationGraphSet::Final.before(TransformSystem::TransformPropagate),
+            AnimationGraphSet::Final.before(TransformSystems::Propagate),
         );
 
         #[cfg(feature = "physics_avian")]
@@ -105,30 +105,32 @@ impl Plugin for AnimationGraphPlugin {
                 update_relative_kinematic_position_based_body_velocities,
             };
             use avian3d::{
-                dynamics::{integrator::IntegrationSet, solver::schedule::SubstepSolverSet},
-                prelude::{PhysicsSchedule, PhysicsSet, SolverSet, SubstepSchedule},
+                dynamics::{
+                    integrator::IntegrationSystems, solver::schedule::SubstepSolverSystems,
+                },
+                prelude::{PhysicsSchedule, PhysicsSystems, SolverSystems, SubstepSchedule},
             };
 
             app.configure_sets(
                 self.physics_schedule,
                 (
-                    AnimationGraphSet::PrePhysics.before(PhysicsSet::Prepare),
-                    AnimationGraphSet::PostPhysics.after(PhysicsSet::Sync),
+                    AnimationGraphSet::PrePhysics.before(PhysicsSystems::First),
+                    AnimationGraphSet::PostPhysics.after(PhysicsSystems::Last),
                 ),
             );
 
             app.add_systems(
                 PhysicsSchedule,
                 update_relative_kinematic_position_based_body_velocities
-                    .after(SolverSet::PreSubstep)
-                    .before(SolverSet::Substep),
+                    .after(SolverSystems::PreSubstep)
+                    .before(SolverSystems::Substep),
             );
 
             app.add_systems(
                 SubstepSchedule,
                 update_relative_kinematic_body_velocities
-                    .after(SubstepSolverSet::SolveConstraints)
-                    .before(IntegrationSet::Position),
+                    .after(SubstepSolverSystems::SolveConstraints)
+                    .before(IntegrationSystems::Position),
             );
 
             self.register_physics_types(app);

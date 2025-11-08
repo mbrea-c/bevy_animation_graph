@@ -45,6 +45,7 @@ impl Edge {
         Self { p, q }
     }
 
+    #[allow(dead_code)]
     pub fn compare_value(&self, other: &Self) -> bool {
         (self.p.val == other.p.val && self.q.val == other.q.val)
             || (self.p.val == other.q.val && self.q.val == other.p.val)
@@ -122,6 +123,7 @@ impl Triangle {
         pq_bisector.intersection(&qr_bisector)
     }
 
+    #[allow(dead_code)]
     pub fn circumradius(&self) -> Option<f32> {
         let circumcenter = self.circumcenter()?;
         Some(self.p.val.distance(circumcenter))
@@ -139,6 +141,7 @@ impl Triangle {
         ]
     }
 
+    #[allow(dead_code)]
     pub fn has_vertices_in_common(&self, other: &Triangle) -> bool {
         self.p == other.p
             || self.p == other.q
@@ -206,6 +209,7 @@ impl CachedTriangle {
         &self.triangle
     }
 
+    #[allow(dead_code)]
     pub fn into_inner(self) -> Triangle {
         self.triangle
     }

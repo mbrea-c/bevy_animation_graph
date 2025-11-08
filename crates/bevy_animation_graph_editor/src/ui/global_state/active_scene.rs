@@ -4,7 +4,7 @@ use bevy::{
         component::Component,
         entity::Entity,
         event::Event,
-        observer::Trigger,
+        observer::On,
         system::{Commands, Res},
         world::World,
     },
@@ -45,7 +45,7 @@ impl SetOrInsertEvent for SetActiveScene {
 }
 
 fn set_skeleton_from_scene(
-    event: Trigger<SetActiveScene>,
+    event: On<SetActiveScene>,
     mut commands: Commands,
     animated_scene_asset: Res<Assets<AnimatedScene>>,
 ) {

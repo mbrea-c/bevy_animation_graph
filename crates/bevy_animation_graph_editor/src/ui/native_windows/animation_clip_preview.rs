@@ -133,7 +133,10 @@ impl NativeEditorWindowExtension for ClipPreviewWindow {
                     }
                 }
             }
-            ctx.trigger_view(SetElapsedTime(player.elapsed()));
+            ctx.trigger(SetElapsedTime {
+                entity: ctx.view_entity,
+                time: player.elapsed(),
+            });
         }
 
         orbit_camera_scene_show(&config, ui, world, ui_texture_id);
@@ -161,7 +164,10 @@ impl ClipPreviewWindow {
                 ui.id().with("clip preview base scene selector"),
                 &(),
             ) {
-                ctx.trigger_view(SetClipPreviewBaseScene(new_handle));
+                ctx.trigger(SetClipPreviewBaseScene {
+                    entity: ctx.view_entity,
+                    scene: new_handle,
+                });
             }
         });
     }

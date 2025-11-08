@@ -3,8 +3,9 @@ extern crate bevy_animation_graph;
 
 use avian3d::PhysicsPlugins;
 use avian3d::prelude::{PhysicsDebugPlugin, SpatialQuery, SpatialQueryFilter};
+use bevy::light::CascadeShadowConfigBuilder;
+use bevy::prelude::*;
 use bevy::window::PrimaryWindow;
-use bevy::{pbr::CascadeShadowConfigBuilder, prelude::*};
 use bevy_animation_graph::core::animated_scene::AnimatedSceneInstance;
 use bevy_animation_graph::core::colliders::core::ColliderLabel;
 use bevy_animation_graph::prelude::*;
