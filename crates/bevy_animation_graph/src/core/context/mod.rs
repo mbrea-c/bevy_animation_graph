@@ -1,6 +1,9 @@
 mod deferred_gizmos;
 mod graph_context;
 mod graph_context_arena;
+pub mod node_caches;
+pub mod node_state_box;
+pub mod node_states;
 mod pass_context;
 mod pose_fallback;
 mod spec_context;

@@ -5,7 +5,7 @@ use crate::{
         prelude::AnimationGraph,
         state_machine::low_level::FSMState,
     },
-    prelude::DataValue,
+    prelude::{DataValue, node_caches::NodeCaches, node_states::NodeStates},
 };
 use bevy::{
     asset::AssetId,
@@ -204,20 +204,25 @@ impl GraphStateStack {
 
 #[derive(Debug, Reflect)]
 pub struct GraphContext {
-    pub caches: GraphStateStack,
+    pub node_states: NodeStates,
+    pub node_caches: NodeCaches,
+    pub query_output_time: Option<TimeUpdate>,
     graph_id: AssetId<AnimationGraph>,
 }
 
 impl GraphContext {
     pub fn new(graph_id: AssetId<AnimationGraph>) -> Self {
         Self {
-            caches: GraphStateStack::default(),
             graph_id,
+            node_states: NodeStates::default(),
+            node_caches: NodeCaches::default(),
+            query_output_time: None,
         }
     }
 
     pub fn next_frame(&mut self) {
-        self.caches.next_frame();
+        self.node_states.next_frame();
+        self.node_caches.next_frame();
     }
 
     pub fn get_graph_id(&self) -> AssetId<AnimationGraph> {

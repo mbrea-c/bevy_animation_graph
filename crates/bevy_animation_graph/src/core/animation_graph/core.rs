@@ -2,7 +2,6 @@ use super::pin;
 use crate::{
     core::{
         animation_node::AnimationNode,
-        context::{CacheReadFilter, CacheWriteFilter},
         duration_data::DurationData,
         edge_data::AnimationEvent,
         errors::{GraphError, GraphValidationError},
@@ -669,15 +668,10 @@ impl AnimationGraph {
         };
 
         let source_value = match source_pin {
-            SourcePin::NodeData(node_id, _) => {
-                if ctx
-                    .caches()
-                    .get(
-                        |c| c.is_updated(node_id).then_some(()),
-                        CacheReadFilter::for_temp(ctx.temp_cache),
-                    )
-                    .is_none()
-                {
+            SourcePin::NodeData(node_id, node_pin) => {
+                let key = ctx.state_key;
+
+                if !ctx.node_caches().is_updated(node_id.to_owned(), key) {
                     let node = &self.nodes[node_id];
                     let should_debug = node.should_debug;
 
@@ -687,22 +681,11 @@ impl AnimationGraph {
                         node.update(ctx.with_node(node_id, self).with_debugging(should_debug))?;
                     }
 
-                    let is_temp = ctx.temp_cache;
-
-                    ctx.caches_mut().set(
-                        |c| c.set_updated(node_id.clone()),
-                        CacheWriteFilter::for_temp(is_temp),
-                    );
+                    ctx.node_caches_mut().mark_updated(node_id.to_owned(), key);
                 }
 
-                let Some(value) = ctx.caches().get(
-                    |c| c.get_data(source_pin).cloned(),
-                    CacheReadFilter::for_temp(ctx.temp_cache),
-                ) else {
-                    return Err(GraphError::OutputMissing(source_pin.clone()));
-                };
-
-                value
+                ctx.node_caches()
+                    .get_output_data(node_id.clone(), key, node_pin.clone())?
             }
             SourcePin::InputData(pin_id) => ctx
                 .parent_data_back(pin_id)
@@ -740,23 +723,15 @@ impl AnimationGraph {
                 panic!("Incompatible pins connected: {source_pin:?} --> {target_pin:?}")
             }
             SourcePin::NodeTime(node_id) => {
-                if let Some(dur) = ctx.caches().get(
-                    |c| c.get_duration(source_pin),
-                    CacheReadFilter::for_temp(ctx.temp_cache),
-                ) {
+                let key = ctx.state_key;
+
+                if let Ok(dur) = ctx.node_caches().get_duration(node_id.clone(), key) {
                     dur
                 } else {
                     let node = &self.nodes[node_id];
                     let should_debug = node.should_debug;
                     node.duration(ctx.with_node(node_id, self).with_debugging(should_debug))?;
-                    let Some(dur) = ctx.caches().get(
-                        |c| c.get_duration(source_pin),
-                        CacheReadFilter::for_temp(ctx.temp_cache),
-                    ) else {
-                        // TODO: Make a graph error for duration missing
-                        return Err(GraphError::OutputMissing(source_pin.clone()));
-                    };
-                    dur
+                    ctx.node_caches().get_duration(node_id.clone(), key)?
                 }
             }
             SourcePin::InputTime(pin_id) => {
@@ -780,6 +755,8 @@ impl AnimationGraph {
             return Err(GraphError::MissingEdgeToSource(source_pin));
         };
 
+        let key = ctx.state_key;
+
         match target_pin {
             TargetPin::NodeData(_, _) => {
                 panic!("Incompatible pins connected: {source_pin:?} --> {target_pin:?}")
@@ -787,30 +764,13 @@ impl AnimationGraph {
             TargetPin::OutputData(_) => {
                 panic!("Incompatible pins connected: {source_pin:?} --> {target_pin:?}")
             }
-            TargetPin::NodeTime(_, _) => {
-                let Some(time_update) = ctx.caches().get(
-                    |c| c.get_time_update_back(target_pin).cloned(),
-                    CacheReadFilter::for_temp(ctx.temp_cache),
-                ) else {
-                    return Err(GraphError::TimeUpdateMissing(target_pin.clone()));
-                };
-
-                Ok(time_update)
-            }
-            TargetPin::OutputTime => {
-                let Some(time_update) = ctx
-                    .caches()
-                    .get(
-                        |c| c.get_time_update_back(target_pin).cloned(),
-                        CacheReadFilter::for_temp(ctx.temp_cache),
-                    )
-                    .or_else(|| ctx.parent_time_update_fwd().ok())
-                else {
-                    return Err(GraphError::TimeUpdateMissing(target_pin.clone()));
-                };
-
-                Ok(time_update)
-            }
+            TargetPin::NodeTime(target_node, target_pin) => ctx
+                .node_caches()
+                .get_input_time_update(target_node.clone(), key, target_pin.clone()),
+            TargetPin::OutputTime => match ctx.context().query_output_time.clone() {
+                Some(update) => Ok(update),
+                None => ctx.parent_time_update_fwd(),
+            },
         }
     }
 
@@ -855,10 +815,7 @@ impl AnimationGraph {
             entity_map,
             deferred_gizmos,
         );
-        ctx.caches_mut().set(
-            |c| c.set_time_update_back(TargetPin::OutputTime, time_update),
-            CacheWriteFilter::Primary,
-        );
+        ctx.context_mut().query_output_time = Some(time_update);
         let mut outputs = HashMap::new();
         for k in self.output_parameters.keys() {
             let out = self.get_data(TargetPin::OutputData(k.clone()), ctx.clone())?;

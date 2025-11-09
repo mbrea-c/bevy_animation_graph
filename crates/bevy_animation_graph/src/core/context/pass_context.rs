@@ -1,7 +1,6 @@
 use super::{
     DeferredGizmosContext, GraphContext, PoseFallbackContext, SpecContext, SystemResources,
     deferred_gizmos::DeferredGizmoRef,
-    graph_context::{CacheReadFilter, CacheWriteFilter, GraphStateStack},
     graph_context_arena::{GraphContextArena, GraphContextId, SubContextId},
 };
 use crate::{
@@ -14,7 +13,11 @@ use crate::{
         state_machine::low_level::{LowLevelStateId, LowLevelStateMachine},
     },
     nodes::{FSMNode, GraphNode},
-    prelude::{AnimationGraph, DataValue},
+    prelude::{
+        AnimationGraph, DataValue,
+        node_caches::NodeCaches,
+        node_states::{NodeStates, StateKey},
+    },
 };
 use bevy::{ecs::entity::Entity, platform::collections::HashMap};
 
@@ -70,6 +73,7 @@ pub struct PassContext<'a> {
     /// Whether this query should mutate the *permanent* or *temporary* chache. Useful when getting
     /// a pose back but not wanting to use the time query to update the times
     pub temp_cache: bool,
+    pub state_key: StateKey,
     pub should_debug: bool,
 }
 
@@ -97,6 +101,7 @@ impl<'a> PassContext<'a> {
             temp_cache: false,
             should_debug: false,
             fsm_context: None,
+            state_key: StateKey::default(),
         }
     }
 
@@ -116,6 +121,7 @@ impl<'a> PassContext<'a> {
             temp_cache: self.temp_cache,
             should_debug: self.should_debug,
             fsm_context: self.fsm_context.clone(),
+            state_key: self.state_key,
         }
     }
 
@@ -135,6 +141,7 @@ impl<'a> PassContext<'a> {
             temp_cache: self.temp_cache,
             should_debug: self.should_debug,
             fsm_context: self.fsm_context.clone(),
+            state_key: self.state_key,
         }
     }
 
@@ -153,6 +160,7 @@ impl<'a> PassContext<'a> {
             temp_cache: self.temp_cache,
             fsm_context: self.fsm_context.clone(),
             should_debug,
+            state_key: self.state_key,
         }
     }
 
@@ -213,6 +221,7 @@ impl<'a> PassContext<'a> {
             temp_cache: self.temp_cache,
             should_debug: self.should_debug,
             fsm_context: fsm_ctx,
+            state_key: self.state_key,
         }
     }
 
@@ -237,6 +246,7 @@ impl<'a> PassContext<'a> {
             should_debug: self.should_debug,
             temp_cache,
             fsm_context: self.fsm_context.clone(),
+            state_key: self.state_key,
         }
     }
 
@@ -272,14 +282,6 @@ impl<'a> PassContext<'a> {
             graph_assets: &self.resources.animation_graph_assets,
             fsm_assets: &self.resources.state_machine_assets,
         }
-    }
-
-    pub fn caches(&self) -> &GraphStateStack {
-        &self.context().caches
-    }
-
-    pub fn caches_mut(&mut self) -> &mut GraphStateStack {
-        &mut self.context_mut().caches
     }
 
     pub fn str_ctx_stack(&self) -> String {
@@ -339,6 +341,18 @@ impl<'a> PassContext<'a> {
 }
 
 impl PassContext<'_> {
+    pub fn node_caches_mut(&mut self) -> &mut NodeCaches {
+        &mut self.context_mut().node_caches
+    }
+
+    pub fn node_caches(&self) -> &NodeCaches {
+        &self.context().node_caches
+    }
+
+    pub fn node_states_mut(&mut self) -> &mut NodeStates {
+        &mut self.context_mut().node_states
+    }
+
     /// Request an input parameter from the graph
     pub fn data_back(&mut self, pin_id: impl Into<PinId>) -> Result<DataValue, GraphError> {
         let node_ctx = self.node_context.unwrap();
@@ -367,15 +381,12 @@ impl PassContext<'_> {
     /// verify the types are correct, or suffer the consequences.
     pub fn set_data_fwd(&mut self, pin_id: impl Into<PinId>, data: impl Into<DataValue>) {
         let node_ctx = self.node_context.unwrap();
-        let temp_cache = self.temp_cache;
-        self.caches_mut().set(
-            move |c| {
-                c.set_data(
-                    SourcePin::NodeData(node_ctx.node_id.clone(), pin_id.into()),
-                    data.into(),
-                )
-            },
-            CacheWriteFilter::for_temp(temp_cache),
+        let key = self.state_key;
+        self.context_mut().node_caches.set_output_data(
+            node_ctx.node_id.clone(),
+            key,
+            pin_id.into(),
+            data.into(),
         );
     }
 
@@ -389,36 +400,31 @@ impl PassContext<'_> {
     /// Sets the duration of the current node with current settings.
     pub fn set_duration_fwd(&mut self, duration: DurationData) {
         let node_ctx = self.node_context.unwrap();
-        let temp_cache = self.temp_cache;
-        self.caches_mut().set(
-            move |c| c.set_duration(SourcePin::NodeTime(node_ctx.node_id.clone()), duration),
-            CacheWriteFilter::for_temp(temp_cache),
-        );
+        let key = self.state_key;
+        self.context_mut()
+            .node_caches
+            .set_duration(node_ctx.node_id.clone(), key, duration);
     }
 
     /// Sets the duration of the current node with current settings.
     pub fn set_time_update_back(&mut self, pin_id: impl Into<PinId>, time_update: TimeUpdate) {
         let node_ctx = self.node_context.unwrap();
-        let temp_cache = self.temp_cache;
-        self.caches_mut().set(
-            move |c| {
-                c.set_time_update_back(
-                    TargetPin::NodeTime(node_ctx.node_id.clone(), pin_id.into()),
-                    time_update,
-                )
-            },
-            CacheWriteFilter::for_temp(temp_cache),
+        let key = self.state_key;
+        self.context_mut().node_caches.set_input_time_update(
+            node_ctx.node_id.clone(),
+            key,
+            pin_id.into(),
+            time_update,
         );
     }
 
     /// Sets the time state of the current node.
     pub fn set_time(&mut self, time: f32) {
         let node_ctx = self.node_context.unwrap();
-        let temp_cache = self.temp_cache;
-        self.caches_mut().set(
-            |c| c.set_time(SourcePin::NodeTime(node_ctx.node_id.clone()), time),
-            CacheWriteFilter::for_temp(temp_cache),
-        );
+        let key = self.state_key;
+        self.context_mut()
+            .node_states
+            .set_time(node_ctx.node_id.clone(), key, time);
     }
 
     /// Request the cached time update query from the current frame
@@ -447,19 +453,18 @@ impl PassContext<'_> {
     /// Request the cached timestamp of the output animation in the last frame
     pub fn prev_time(&self) -> f32 {
         let node_ctx = self.node_context.unwrap();
-        let source_pin = SourcePin::NodeTime(node_ctx.node_id.clone());
-        self.caches()
-            .get(|c| c.get_prev_time(&source_pin), CacheReadFilter::PRIMARY)
-            .unwrap_or(0.)
+        self.context()
+            .node_states
+            .get_last_time(node_ctx.node_id.clone())
     }
 
     /// Request the cached timestamp of the output animation in the last frame
-    pub fn time(&self) -> f32 {
+    pub fn time(&mut self) -> f32 {
         let node_ctx = self.node_context.unwrap();
-        let source_pin = SourcePin::NodeTime(node_ctx.node_id.clone());
-        self.caches()
-            .get(|c| c.get_time(&source_pin), CacheReadFilter::PRIMARY)
-            .unwrap_or(0.)
+        let key = self.state_key;
+        self.context_mut()
+            .node_states
+            .get_time(node_ctx.node_id.clone(), key)
     }
 }
 
