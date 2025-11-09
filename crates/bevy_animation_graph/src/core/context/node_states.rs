@@ -56,6 +56,17 @@ impl NodeState {
         self.upcoming_time.clear();
     }
 
+    pub fn get_state<T: GraphStateType>(&self, key: StateKey) -> Result<&T, GraphError> {
+        self.upcoming_state
+            .get(&key)
+            .or(self.last_state.as_ref())
+            .ok_or(GraphError::MissingStateValue)
+            .and_then(|v| {
+                let v: &dyn Any = v.value.as_ref();
+                v.downcast_ref::<T>().ok_or(GraphError::MismatchedStateType)
+            })
+    }
+
     pub fn get_mut_or_insert_with<T: GraphStateType>(
         &mut self,
         key: StateKey,
@@ -102,7 +113,7 @@ impl NodeState {
 
 #[derive(Debug, Reflect, Default)]
 pub struct NodeStates {
-    pub states: HashMap<NodeId, NodeState>,
+    states: HashMap<NodeId, NodeState>,
 }
 
 impl NodeStates {
@@ -110,6 +121,13 @@ impl NodeStates {
         for node_state in self.states.values_mut() {
             node_state.next_frame();
         }
+    }
+
+    pub fn get<T: GraphStateType>(&self, node_id: NodeId, key: StateKey) -> Result<&T, GraphError> {
+        self.states
+            .get(&node_id)
+            .ok_or(GraphError::MissingStateValue)
+            .and_then(|n| n.get_state(key))
     }
 
     pub fn get_mut_or_insert_with<T: GraphStateType>(

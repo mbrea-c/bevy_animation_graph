@@ -1,5 +1,5 @@
 mod deferred_gizmos;
-mod graph_context;
+pub mod graph_context;
 mod graph_context_arena;
 pub mod node_caches;
 pub mod node_state_box;
@@ -13,7 +13,6 @@ pub use deferred_gizmos::{
     CustomRelativeDrawCommand, CustomRelativeDrawCommandReference, DeferredGizmos,
     DeferredGizmosContext,
 };
-pub use graph_context::{CacheReadFilter, CacheWriteFilter, GraphContext};
 pub use graph_context_arena::{GraphContextArena, GraphContextId};
 pub use pass_context::{FsmContext, PassContext, StateRole, StateStack};
 pub use pose_fallback::{PoseFallbackContext, RootOffsetResult};

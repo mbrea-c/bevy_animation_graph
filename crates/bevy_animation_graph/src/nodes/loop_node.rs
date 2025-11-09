@@ -74,7 +74,7 @@ impl NodeLike for LoopNode {
         let mut pose = ctx.data_back(Self::IN_POSE)?.into_pose()?;
 
         if t > duration && t < full_duration {
-            let mut ctx_temp = ctx.with_temp(true);
+            let mut ctx_temp = ctx.with_temp_state();
             ctx_temp.set_time_update_back(Self::IN_TIME, TimeUpdate::Absolute(0.));
             let start_pose = ctx_temp.data_back(Self::IN_POSE)?.into_pose()?;
             // TODO: How to clear cache? time? pose?

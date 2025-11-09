@@ -42,6 +42,8 @@ pub enum GraphError {
     MismatchedDataType(String, String),
     #[error("Tried to get node state of the wrong type")]
     MismatchedStateType,
+    #[error("State value not found for the given parameters")]
+    MissingStateValue,
 }
 
 pub type GraphResult<T> = Result<T, GraphError>;

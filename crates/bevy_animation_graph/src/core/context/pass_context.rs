@@ -1,5 +1,5 @@
 use super::{
-    DeferredGizmosContext, GraphContext, PoseFallbackContext, SpecContext, SystemResources,
+    DeferredGizmosContext, PoseFallbackContext, SpecContext, SystemResources,
     deferred_gizmos::DeferredGizmoRef,
     graph_context_arena::{GraphContextArena, GraphContextId, SubContextId},
 };
@@ -15,11 +15,13 @@ use crate::{
     nodes::{FSMNode, GraphNode},
     prelude::{
         AnimationGraph, DataValue,
+        graph_context::GraphContext,
         node_caches::NodeCaches,
-        node_states::{NodeStates, StateKey},
+        node_states::{GraphStateType, NodeStates, StateKey},
     },
 };
 use bevy::{ecs::entity::Entity, platform::collections::HashMap};
+use uuid::Uuid;
 
 #[derive(Clone, Copy)]
 pub struct NodeContext<'a> {
@@ -70,9 +72,6 @@ pub struct PassContext<'a> {
     pub root_entity: Entity,
     pub entity_map: &'a HashMap<BoneId, Entity>,
     pub deferred_gizmos: DeferredGizmoRef,
-    /// Whether this query should mutate the *permanent* or *temporary* chache. Useful when getting
-    /// a pose back but not wanting to use the time query to update the times
-    pub temp_cache: bool,
     pub state_key: StateKey,
     pub should_debug: bool,
 }
@@ -98,7 +97,6 @@ impl<'a> PassContext<'a> {
             root_entity,
             entity_map,
             deferred_gizmos: deferred_gizmos.into(),
-            temp_cache: false,
             should_debug: false,
             fsm_context: None,
             state_key: StateKey::default(),
@@ -118,7 +116,6 @@ impl<'a> PassContext<'a> {
             root_entity: self.root_entity,
             entity_map: self.entity_map,
             deferred_gizmos: self.deferred_gizmos.clone(),
-            temp_cache: self.temp_cache,
             should_debug: self.should_debug,
             fsm_context: self.fsm_context.clone(),
             state_key: self.state_key,
@@ -138,7 +135,6 @@ impl<'a> PassContext<'a> {
             root_entity: self.root_entity,
             entity_map: self.entity_map,
             deferred_gizmos: self.deferred_gizmos.clone(),
-            temp_cache: self.temp_cache,
             should_debug: self.should_debug,
             fsm_context: self.fsm_context.clone(),
             state_key: self.state_key,
@@ -157,7 +153,6 @@ impl<'a> PassContext<'a> {
             root_entity: self.root_entity,
             entity_map: self.entity_map,
             deferred_gizmos: self.deferred_gizmos.clone(),
-            temp_cache: self.temp_cache,
             fsm_context: self.fsm_context.clone(),
             should_debug,
             state_key: self.state_key,
@@ -218,7 +213,6 @@ impl<'a> PassContext<'a> {
             root_entity: self.root_entity,
             entity_map: self.entity_map,
             deferred_gizmos: self.deferred_gizmos.clone(),
-            temp_cache: self.temp_cache,
             should_debug: self.should_debug,
             fsm_context: fsm_ctx,
             state_key: self.state_key,
@@ -232,7 +226,8 @@ impl<'a> PassContext<'a> {
     }
 
     /// Returns a new pass context with the given temp cache value.
-    pub fn with_temp(&self, temp_cache: bool) -> Self {
+    pub fn with_temp_state(&self) -> Self {
+        let new_state_key = StateKey::Temporary(Uuid::new_v4());
         Self {
             context_id: self.context_id,
             context_arena: self.context_arena.clone(),
@@ -244,9 +239,8 @@ impl<'a> PassContext<'a> {
             entity_map: self.entity_map,
             deferred_gizmos: self.deferred_gizmos.clone(),
             should_debug: self.should_debug,
-            temp_cache,
             fsm_context: self.fsm_context.clone(),
-            state_key: self.state_key,
+            state_key: new_state_key,
         }
     }
 
@@ -351,6 +345,10 @@ impl PassContext<'_> {
 
     pub fn node_states_mut(&mut self) -> &mut NodeStates {
         &mut self.context_mut().node_states
+    }
+
+    pub fn node_states(&self) -> &NodeStates {
+        &self.context().node_states
     }
 
     /// Request an input parameter from the graph
@@ -465,6 +463,26 @@ impl PassContext<'_> {
         self.context_mut()
             .node_states
             .get_time(node_ctx.node_id.clone(), key)
+    }
+
+    pub fn state<T: GraphStateType>(&self) -> Result<&T, GraphError> {
+        let node_ctx = self.node_context.unwrap();
+        let key = self.state_key;
+        self.node_states().get::<T>(node_ctx.node_id.clone(), key)
+    }
+
+    pub fn state_mut<T: GraphStateType + Default>(&mut self) -> Result<&mut T, GraphError> {
+        self.state_mut_or_else(T::default)
+    }
+
+    pub fn state_mut_or_else<T: GraphStateType>(
+        &mut self,
+        default: impl FnOnce() -> T,
+    ) -> Result<&mut T, GraphError> {
+        let node_ctx = self.node_context.unwrap();
+        let key = self.state_key;
+        self.node_states_mut()
+            .get_mut_or_insert_with(node_ctx.node_id.clone(), key, default)
     }
 }
 

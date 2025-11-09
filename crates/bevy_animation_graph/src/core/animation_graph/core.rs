@@ -12,7 +12,8 @@ use crate::{
     },
     nodes::FSMNode,
     prelude::{
-        DataSpec, DataValue, DeferredGizmos, OptDataSpec, PassContext, SpecContext, SystemResources,
+        DataSpec, DataValue, DeferredGizmos, OptDataSpec, PassContext, SpecContext,
+        SystemResources, graph_context::QueryOutputTime,
     },
 };
 use bevy::{
@@ -767,7 +768,7 @@ impl AnimationGraph {
             TargetPin::NodeTime(target_node, target_pin) => ctx
                 .node_caches()
                 .get_input_time_update(target_node.clone(), key, target_pin.clone()),
-            TargetPin::OutputTime => match ctx.context().query_output_time.clone() {
+            TargetPin::OutputTime => match ctx.context().query_output_time.get(key) {
                 Some(update) => Ok(update),
                 None => ctx.parent_time_update_fwd(),
             },
@@ -815,7 +816,7 @@ impl AnimationGraph {
             entity_map,
             deferred_gizmos,
         );
-        ctx.context_mut().query_output_time = Some(time_update);
+        ctx.context_mut().query_output_time = QueryOutputTime::Forced(time_update);
         let mut outputs = HashMap::new();
         for k in self.output_parameters.keys() {
             let out = self.get_data(TargetPin::OutputData(k.clone()), ctx.clone())?;
