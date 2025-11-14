@@ -10,7 +10,7 @@ use crate::{
 use bevy::{
     platform::collections::HashMap,
     prelude::{Deref, DerefMut},
-    reflect::{prelude::*, FromType},
+    reflect::{FromType, prelude::*},
 };
 use std::{any::TypeId, fmt::Debug};
 
@@ -267,15 +267,15 @@ const _: () = {
         */
     {
         #[inline]
-        fn into_any(self: ::std::boxed::Box<Self>) -> ::std::boxed::Box<dyn::core::any::Any> {
+        fn into_any(self: ::std::boxed::Box<Self>) -> ::std::boxed::Box<dyn ::core::any::Any> {
             self
         }
         #[inline]
-        fn as_any(&self) -> &dyn::core::any::Any {
+        fn as_any(&self) -> &dyn ::core::any::Any {
             self
         }
         #[inline]
-        fn as_any_mut(&mut self) -> &mut dyn::core::any::Any {
+        fn as_any_mut(&mut self) -> &mut dyn ::core::any::Any {
             self
         }
         #[inline]
