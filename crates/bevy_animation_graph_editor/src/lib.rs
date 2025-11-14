@@ -59,7 +59,7 @@ impl Plugin for AnimationGraphEditorPlugin {
             .add_plugins(AnimationGraphPlugin::from_physics_schedule(FixedPostUpdate))
             .add_plugins(DefaultInspectorConfigPlugin)
             .add_plugins(BetterInspectorPlugin)
-            .add_plugins(bevy_inspector_egui::quick::WorldInspectorPlugin::new())
+            // .add_plugins(bevy_inspector_egui::quick::WorldInspectorPlugin::new())
             .add_plugins(ScannerPlugin);
 
         #[cfg(feature = "physics_avian")]

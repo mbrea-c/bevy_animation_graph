@@ -3,7 +3,6 @@ pub mod animation_clip;
 pub mod animation_graph;
 pub mod animation_graph_player;
 pub mod animation_node;
-pub mod colliders;
 pub mod context;
 pub mod duration_data;
 pub mod edge_data;

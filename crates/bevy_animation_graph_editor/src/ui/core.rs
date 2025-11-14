@@ -86,18 +86,8 @@ impl UiState {
         let event_tracks = EditorViewUiState::event_tracks(world, "Event tracks");
         ui_state.new_native_view(event_tracks);
 
-        let skeleton_colliders = EditorViewUiState::skeleton_colliders(
-            world,
-            &mut ui_state.windows,
-            "Skeleton colliders",
-        );
-        ui_state.new_native_view(skeleton_colliders);
-
         let ragdoll_view = EditorViewUiState::ragdoll(world, &mut ui_state.windows, "Ragdoll");
         ui_state.new_native_view(ragdoll_view);
-
-        let test_view = EditorViewUiState::test(world, &mut ui_state.windows, "!!! Test");
-        ui_state.new_native_view(test_view);
 
         world.insert_resource(ui_state);
         global_state::GlobalState::init(world);

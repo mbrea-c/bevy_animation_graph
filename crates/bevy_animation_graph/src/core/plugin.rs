@@ -15,7 +15,6 @@ use super::{
     state_machine::high_level::{StateMachine, loader::StateMachineLoader},
     systems::{animation_player, animation_player_deferred_gizmos},
 };
-use crate::core::colliders::core::ColliderLabel;
 
 #[cfg(feature = "physics_avian")]
 use crate::core::physics_systems_avian::{
@@ -39,8 +38,6 @@ use crate::{core::animation_clip::EntityPath, prelude::AnimationNode};
 use bevy::ecs::intern::Interned;
 use bevy::ecs::schedule::ScheduleLabel;
 use bevy::prelude::*;
-
-use super::colliders::{core::SkeletonColliders, loader::SkeletonCollidersLoader};
 
 /// Adds animation support to an app
 pub struct AnimationGraphPlugin {
@@ -153,12 +150,10 @@ impl Plugin for AnimationGraphPlugin {
                 .in_set(AnimationGraphSet::PrePhysics),
         );
 
+        #[cfg(feature = "physics_avian")]
         app.add_systems(
             self.physics_schedule,
-            (
-                #[cfg(feature = "physics_avian")]
-                read_back_poses_avian,
-            )
+            read_back_poses_avian
                 .chain()
                 .in_set(AnimationGraphSet::PostPhysics),
         );
@@ -192,9 +187,6 @@ impl AnimationGraphPlugin {
         app.init_asset::<Skeleton>()
             .init_asset_loader::<SkeletonLoader>()
             .register_asset_reflect::<Skeleton>();
-        app.init_asset::<SkeletonColliders>()
-            .init_asset_loader::<SkeletonCollidersLoader>()
-            .register_asset_reflect::<SkeletonColliders>();
         app.init_asset::<Ragdoll>()
             .init_asset_loader::<RagdollLoader>()
             .register_asset_reflect::<Ragdoll>();
@@ -252,7 +244,6 @@ impl AnimationGraphPlugin {
             .register_type::<BlendMode>()
             .register_type::<BlendSyncMode>()
             .register_type::<GlobalTransition>()
-            .register_type::<ColliderLabel>()
             .register_type::<()>()
             .register_type_data::<(), ReflectDefault>();
     }

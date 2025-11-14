@@ -66,7 +66,6 @@ impl AssetLoader for AnimatedSceneLoader {
             animation_graph,
             skeleton,
             retargeting,
-            colliders: serial.colliders.map(|c| load_context.load(c)),
             ragdoll: serial.ragdoll.map(|c| load_context.load(c)),
             ragdoll_bone_map: serial.ragdoll_bone_map.map(|c| load_context.load(c)),
         })

@@ -9,9 +9,7 @@ use egui_notify::Toasts;
 use crate::ui::{
     actions::{EditorAction, PushQueue},
     core::{Buffers, EditorWindowExtension, EguiWindow, LegacyEditorWindowContext},
-    editor_windows::{
-        ragdoll_editor::RagdollEditorWindow, skeleton_preview::SkeletonCollidersPreviewWindow,
-    },
+    editor_windows::ragdoll_editor::RagdollEditorWindow,
     native_windows::{
         EditorWindowContext, NativeEditorWindow, NativeEditorWindowExtension,
         animation_clip_preview::ClipPreviewWindow, debugger::DebuggerWindow,
@@ -48,12 +46,6 @@ fn ragdoll_view(
     let preview_window = windows.open(RagdollEditorWindow::default());
 
     DockState::new(vec![preview_window.into()])
-}
-
-fn test_view(world: &mut World, view_entity: Entity) -> DockState<EguiWindow> {
-    let scene_picker = NativeEditorWindow::create(world, view_entity, ScenePickerWindow);
-
-    DockState::new(vec![scene_picker.into()])
 }
 
 fn event_track_view(world: &mut World, view_entity: Entity) -> DockState<EguiWindow> {
@@ -110,12 +102,6 @@ fn main_view(world: &mut World, view_entity: Entity) -> DockState<EguiWindow> {
     state
 }
 
-fn skeleton_colliders_view(windows: &mut Windows) -> DockState<EguiWindow> {
-    let preview_window = windows.open(SkeletonCollidersPreviewWindow::default());
-
-    DockState::new(vec![preview_window.into()])
-}
-
 pub struct EditorViewContext<'a> {
     pub view_entity: Entity,
     pub notifications: &'a mut Toasts,
@@ -158,12 +144,6 @@ impl EditorViewUiState {
         Self::init(entity, dock_state)
     }
 
-    pub fn test(world: &mut World, _windows: &mut Windows, name: impl Into<String>) -> Self {
-        let entity = EditorView::init(world, name);
-        let dock_state = test_view(world, entity);
-        Self::init(entity, dock_state)
-    }
-
     pub fn event_tracks(world: &mut World, name: impl Into<String>) -> Self {
         let entity = EditorView::init(world, name);
         let dock_state = event_track_view(world, entity);
@@ -173,16 +153,6 @@ impl EditorViewUiState {
     pub fn animation_graphs(world: &mut World, name: impl Into<String>) -> Self {
         let entity = EditorView::init(world, name);
         let dock_state = main_view(world, entity);
-        Self::init(entity, dock_state)
-    }
-
-    pub fn skeleton_colliders(
-        world: &mut World,
-        windows: &mut Windows,
-        name: impl Into<String>,
-    ) -> Self {
-        let entity = EditorView::init(world, name);
-        let dock_state = skeleton_colliders_view(windows);
         Self::init(entity, dock_state)
     }
 }
