@@ -1,7 +1,9 @@
-_Library crate:_ [![Crates.io](https://img.shields.io/crates/v/bevy_animation_graph)](https://crates.io/crates/bevy_animation_graph)
+_Library crate:_
+[![Crates.io](https://img.shields.io/crates/v/bevy_animation_graph)](https://crates.io/crates/bevy_animation_graph)
 [![Crates.io](https://img.shields.io/crates/d/bevy_animation_graph)](https://crates.io/crates/bevy_animation_graph)
 
-_Editor crate:_ [![Crates.io](https://img.shields.io/crates/v/bevy_animation_graph_editor)](https://crates.io/crates/bevy_animation_graph_editor)
+_Editor crate:_
+[![Crates.io](https://img.shields.io/crates/v/bevy_animation_graph_editor)](https://crates.io/crates/bevy_animation_graph_editor)
 [![Crates.io](https://img.shields.io/crates/d/bevy_animation_graph_editor)](https://crates.io/crates/bevy_animation_graph_editor)
 
 [![CI](https://github.com/mbrea-c/bevy_animation_graph/actions/workflows/ci.yaml/badge.svg)](https://github.com/mbrea-c/bevy_animation_graph/actions/workflows/ci.yaml)
@@ -16,7 +18,7 @@ animations with complex blends and transitions, or you want to generate your
 animations procedurally from very few keyframes, simple animation clip playback
 is not enough.
 
-This crate works as a replacement to most of `bevy_animation`, and aims to
+This crate works as an alternative to most of `bevy_animation`, and aims to
 provide a complete animation system and development workflow including animation
 graphs, animation state machines (i.e. animation controllers) and a graphical
 editor to create your animation graphs and state machines.
@@ -34,7 +36,11 @@ _NOTE: This project is separate from the animation graphs introduced in
   - Each state in a state machines plays back its own animation graph on demand.
   - Transitions also have their own animation graph, and they can query source
     and target states' animation graphs.
-- Available nodes:
+- Ragdoll support:
+  - Visual ragdoll editing in the editor.
+  - Support for _partial ragdolls_, where some bones are simulated and others
+    kinematically driven by a target animation pose.
+- Available nodes include:
   - Animation chaining (i.e. play one node after another).
   - Two-bone inverse kinematics.
   - Looping.
@@ -43,10 +49,10 @@ _NOTE: This project is separate from the animation graphs introduced in
   - Mirror animation about the YZ plane.
   - Animation clip playback.
   - Apply a given rotation to some bones in a pose using a bone mask.
-  - Arithmetic nodes: a variety of common operations on f32, Vec3, Quat, etc.
   - Speed up or slow down animation playback.
   - Animation graph node.
   - Animation state machine node.
+  - Arithmetic nodes: a variety of common operations on f32, Vec3, Quat, etc.
 - Nesting animation graphs as nodes within other graphs.
 - Animation synchronization using event tracks.
 - Output from graph nodes is cached to avoid unnecessary computations.
@@ -57,15 +63,14 @@ _NOTE: This project is separate from the animation graphs introduced in
 
 ## Planned Features
 
-Wishlist:
-
-1. Ragdoll and physics integration (inititally `bevy_xpbd`, possibly rapier
-   later):
-   1. Using a bone mask to specify which bones are kinematically driven, and
-      which bones are simulated (i.e. _ragdolled_)
-   1. Pose matching with joint motors (pending on joint motors being implemented
-      in `bevy_xpbd`, currently WIP)
-1. FABRIK node (?).
+1. Ragdoll "pose following" modes, where a simulated ragdoll bones try to match
+   a target pose using physical forces:
+   - _Absolute_ matching mode, where the world space position/rotation of the
+     target bone is tracked and use as an anchor for a spring force on the
+     ragdoll bone.
+   - _Relative_ matching mode, where the ragdoll bone tries to match the
+     target's position/rotation relative to its parent bone. We may need joint
+     motors support on Avian to implement this mode properly.
 
 ## Installation
 
@@ -108,16 +113,16 @@ This project is divided in two crates:
 
 ## Version table
 
-| `bevy` | `bevy_animation_graph` |
-| ------ | ---------------------- |
-| 0.17   | master                 |
-| 0.17   | 0.8                    |
-| 0.16   | 0.7                    |
-| 0.15   | 0.6                    |
-| 0.14   | 0.5                    |
-| 0.13   | 0.4                    |
-| 0.13   | 0.3                    |
-| 0.12   | 0.2                    |
+| `bevy` | `bevy_animation_graph` | 
+| ------ | ---------------------- | 
+| 0.17 | master | 
+| 0.17 | 0.8 | 
+| 0.16 | 0.7 |
+| 0.15 | 0.6 |
+| 0.14 | 0.5 |
+| 0.13 | 0.4 |
+| 0.13 | 0.3 |
+| 0.12 | 0.2 |
 
 ## Usage and examples
 
