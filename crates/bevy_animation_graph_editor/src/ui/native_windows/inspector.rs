@@ -5,7 +5,7 @@ use bevy::{
 };
 use bevy_animation_graph::{
     core::state_machine::high_level::{State, StateMachine, Transition},
-    prelude::{AnimationGraph, AnimationNode, GraphContext, GraphContextId},
+    prelude::{AnimationGraph, AnimationNode, GraphContextId, graph_context::GraphContext},
 };
 use bevy_inspector_egui::reflect_inspector::InspectorUi;
 use egui_dock::egui;

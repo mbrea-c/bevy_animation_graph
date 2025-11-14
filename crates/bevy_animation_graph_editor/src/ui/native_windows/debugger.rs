@@ -5,8 +5,10 @@ use bevy::{
     prelude::{Handle, Image, In, Query, Transform, World},
 };
 use bevy_animation_graph::{
-    core::{animation_graph::SourcePin, pose::Pose},
-    prelude::{AnimatedScene, AnimatedSceneHandle, AnimationGraphPlayer, DataValue},
+    core::pose::Pose,
+    prelude::{
+        AnimatedScene, AnimatedSceneHandle, AnimationGraphPlayer, DataValue, node_states::StateKey,
+    },
 };
 use egui_dock::egui;
 
@@ -94,11 +96,10 @@ impl NativeEditorWindowExtension for DebuggerWindow {
         // Now get the selected value and display it!
 
         let Some(val) = new_pin_id.and_then(|pin_id| {
-            graph_context.caches.get_primary(|c| {
-                let node_id = active_node.node.clone();
-                let pin_id = pin_id.clone();
-                c.get_data(&SourcePin::NodeData(node_id, pin_id)).cloned()
-            })
+            graph_context
+                .node_caches
+                .get_output_data(active_node.node.clone(), StateKey::Default, pin_id.clone())
+                .ok()
         }) else {
             return;
         };
