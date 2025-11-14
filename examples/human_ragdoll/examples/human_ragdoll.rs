@@ -18,12 +18,7 @@ fn main() {
         ..default()
     }))
     .add_plugins(PhysicsPlugins::new(FixedPostUpdate))
-    // .add_plugins(avian3d::prelude::PhysicsDebugPlugin::default())
     .add_plugins(AnimationGraphPlugin::from_physics_schedule(FixedPostUpdate))
-    // .add_plugins((
-    //     bevy_inspector_egui::bevy_egui::EguiPlugin::default(),
-    //     bevy_inspector_egui::quick::WorldInspectorPlugin::default(),
-    // ))
     .insert_resource(AmbientLight {
         color: Color::WHITE,
         brightness: 0.1,
