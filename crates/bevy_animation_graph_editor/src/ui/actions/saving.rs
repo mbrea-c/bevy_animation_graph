@@ -12,12 +12,10 @@ use bevy_animation_graph::{
     core::{
         animation_clip::loader::GraphClipSerial,
         animation_graph::{AnimationGraph, serial::AnimationGraphSerializer},
-        colliders::{core::SkeletonColliders, serial::SkeletonCollidersSerial},
         ragdoll::{
             bone_mapping::RagdollBoneMap, bone_mapping_loader::RagdollBoneMapSerial,
             definition::Ragdoll,
         },
-        skeleton::Skeleton,
         state_machine::high_level::{StateMachine, serial::StateMachineSerial},
     },
     prelude::GraphClip,
@@ -50,11 +48,6 @@ pub struct SaveGraph {
 
 pub struct SaveFsm {
     pub asset_id: AssetId<StateMachine>,
-    pub virtual_path: PathBuf,
-}
-
-pub struct SaveColliders {
-    pub asset_id: AssetId<SkeletonColliders>,
     pub virtual_path: PathBuf,
 }
 
@@ -182,36 +175,6 @@ pub fn handle_save_animation_clip(
         .unwrap();
 }
 
-pub fn handle_save_colliders(
-    In(save_colliders): In<SaveColliders>,
-    skeleton_colliders_assets: Res<Assets<SkeletonColliders>>,
-    skeleton_assets: Res<Assets<Skeleton>>,
-    cli: Res<Cli>,
-) {
-    let skeleton_colliders = skeleton_colliders_assets
-        .get(save_colliders.asset_id)
-        .unwrap();
-    let Some(colliders_serial) =
-        SkeletonCollidersSerial::from_value(skeleton_colliders, &skeleton_assets)
-    else {
-        error!("Could not save skeleton colliders asset");
-        return;
-    };
-    let mut final_path = cli.asset_source.clone();
-    final_path.push(&save_colliders.virtual_path);
-    info!(
-        "Saving Skeleton Colliders with id {:?} to {:?}",
-        save_colliders.asset_id, final_path
-    );
-    ron::Options::default()
-        .to_io_writer_pretty(
-            std::fs::File::create(final_path).unwrap(),
-            &colliders_serial,
-            ron::ser::PrettyConfig::default(),
-        )
-        .unwrap();
-}
-
 pub fn handle_save_ragdoll(
     In(input): In<SaveRagdoll>,
     ragdoll_assets: Res<Assets<Ragdoll>>,
@@ -292,14 +255,6 @@ pub fn handle_save_multiple(
             commands.run_system_cached_with(
                 handle_save_animation_clip,
                 SaveClip {
-                    asset_id,
-                    virtual_path,
-                },
-            );
-        } else if let Ok(asset_id) = asset_id.try_typed::<SkeletonColliders>() {
-            commands.run_system_cached_with(
-                handle_save_colliders,
-                SaveColliders {
                     asset_id,
                     virtual_path,
                 },

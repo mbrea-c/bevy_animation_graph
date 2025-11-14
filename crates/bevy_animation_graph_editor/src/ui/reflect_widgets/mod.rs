@@ -15,10 +15,11 @@ use bevy::{
 use bevy_animation_graph::{
     core::{
         animation_clip::EntityPath,
-        colliders::core::{ColliderOffsetMode, ColliderShape, SkeletonColliders},
         event_track::TrackItemValue,
         ragdoll::{
-            bone_mapping::RagdollBoneMap, configuration::RagdollConfig, definition::Ragdoll,
+            bone_mapping::RagdollBoneMap,
+            configuration::RagdollConfig,
+            definition::{ColliderShape, Ragdoll},
         },
         state_machine::high_level::StateMachine,
     },
@@ -304,11 +305,9 @@ impl_widget_hash_from_hash! {
     Handle<GraphClip>,
     Handle<StateMachine>,
     Handle<AnimatedScene>,
-    Handle<SkeletonColliders>,
     Handle<Ragdoll>,
     Handle<RagdollBoneMap>,
     String,
-    ColliderOffsetMode,
     PathBuf
 }
 

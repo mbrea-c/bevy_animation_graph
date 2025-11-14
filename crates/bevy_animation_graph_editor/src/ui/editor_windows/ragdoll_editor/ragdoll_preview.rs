@@ -13,10 +13,10 @@ use bevy::{
 };
 use bevy_animation_graph::{
     core::{
-        colliders::core::ColliderShape,
         id::BoneId,
         ragdoll::definition::{
-            Body, BodyId, Collider, ColliderId, Joint, JointId, JointVariant, Ragdoll,
+            Body, BodyId, Collider, ColliderId, ColliderShape, Joint, JointId, JointVariant,
+            Ragdoll,
         },
         skeleton::Skeleton,
     },

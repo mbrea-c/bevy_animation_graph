@@ -1,15 +1,16 @@
 use bevy::{
     asset::Asset,
     ecs::component::Component,
-    math::{Isometry3d, Vec3, primitives::Cuboid},
+    math::{
+        Isometry3d, Vec3,
+        primitives::{Capsule3d, Cuboid, Sphere},
+    },
     platform::collections::HashMap,
     reflect::Reflect,
     utils::default,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-
-use crate::core::colliders::core::ColliderShape;
 
 #[derive(Asset, Debug, Clone, Reflect, Serialize, Deserialize)]
 pub struct Ragdoll {
@@ -331,3 +332,28 @@ pub struct JointLabel(pub String);
 
 #[derive(Component, Reflect)]
 pub struct ColliderLabel(pub String);
+
+#[derive(Debug, Clone, Reflect, PartialEq, Serialize, Deserialize)]
+pub enum ColliderShape {
+    Sphere(Sphere),
+    Capsule(Capsule3d),
+    Cuboid(Cuboid),
+}
+
+impl ColliderShape {
+    #[cfg(feature = "physics_avian")]
+    pub fn avian_collider(&self) -> avian3d::prelude::Collider {
+        use avian3d::prelude::Collider;
+        match self {
+            ColliderShape::Sphere(sphere) => Collider::sphere(sphere.radius),
+            ColliderShape::Capsule(capsule3d) => {
+                Collider::capsule(capsule3d.radius, 2. * capsule3d.half_length)
+            }
+            ColliderShape::Cuboid(cuboid) => Collider::cuboid(
+                2. * cuboid.half_size.x,
+                2. * cuboid.half_size.y,
+                2. * cuboid.half_size.z,
+            ),
+        }
+    }
+}
