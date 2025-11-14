@@ -4399,15 +4399,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "human_colliders"
-version = "0.0.0"
-dependencies = [
- "avian3d",
- "bevy",
- "bevy_animation_graph",
-]
-
-[[package]]
 name = "human_fsm"
 version = "0.0.0"
 dependencies = [
