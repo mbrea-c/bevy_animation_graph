@@ -1,13 +1,10 @@
-use bevy::{
-    ecs::{entity::Entity, system::Commands},
-    math::Isometry3d,
-    platform::collections::HashMap,
-    prelude::default,
-    reflect::Reflect,
-    transform::components::Transform,
-};
+use bevy::{ecs::entity::Entity, platform::collections::HashMap, reflect::Reflect};
+#[cfg(feature = "physics_avian")]
+use bevy::{ecs::system::Commands, math::Isometry3d};
 
-use crate::core::ragdoll::definition::{BodyId, ColliderId, JointId, JointVariant, Ragdoll};
+#[cfg(feature = "physics_avian")]
+use crate::core::ragdoll::definition::Ragdoll;
+use crate::core::ragdoll::definition::{BodyId, ColliderId, JointId};
 
 #[derive(Reflect)]
 pub struct SpawnedRagdoll {
@@ -36,7 +33,7 @@ pub fn spawn_ragdoll_avian(
     commands: &mut Commands,
 ) -> SpawnedRagdoll {
     use avian3d::prelude::{AngleLimit, CollisionLayers, RevoluteJoint, RigidBody, SphericalJoint};
-    use bevy::ecs::name::Name;
+    use bevy::{ecs::name::Name, transform::components::Transform, utils::default};
 
     let root = commands
         .spawn((
@@ -103,7 +100,7 @@ pub fn spawn_ragdoll_avian(
     }
 
     for joint in ragdoll.joints.values() {
-        use crate::core::ragdoll::definition::JointLabel;
+        use crate::core::ragdoll::definition::{JointLabel, JointVariant};
 
         let joint_entity = match &joint.variant {
             JointVariant::Spherical(spherical_joint) => {

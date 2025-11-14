@@ -81,7 +81,6 @@ impl PoseFallbackContext<'_> {
     }
 }
 
-#[cfg(feature = "physics_avian")]
 pub enum RootOffsetResult {
     FromRigidbody(Entity, Transform),
     FromRoot(Transform),

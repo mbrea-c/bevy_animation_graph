@@ -150,12 +150,10 @@ impl Plugin for AnimationGraphPlugin {
                 .in_set(AnimationGraphSet::PrePhysics),
         );
 
+        #[cfg(feature = "physics_avian")]
         app.add_systems(
             self.physics_schedule,
-            (
-                #[cfg(feature = "physics_avian")]
-                read_back_poses_avian,
-            )
+            read_back_poses_avian
                 .chain()
                 .in_set(AnimationGraphSet::PostPhysics),
         );
