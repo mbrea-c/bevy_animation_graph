@@ -12,8 +12,12 @@ pub enum GraphError {
     MissingEdgeToSource(SourcePin),
     #[error("Node update did not produce output for {0:?}")]
     OutputMissing(SourcePin),
+    #[error("Node update did not produce output for {0:?}")]
+    DurationMissing(SourcePin),
     #[error("Time update requested is not cached: {0:?}")]
-    TimeUpdateMissing(TargetPin),
+    TimeUpdateMissingBack(TargetPin),
+    #[error("Time update requested is not cached: {0:?}")]
+    TimeUpdateMissingFwd(SourcePin),
     #[error("A parent graph was requested but none is present")]
     MissingParentGraph,
     #[error("Graph requested data from FSM transition, but it is assigned to a state")]
@@ -36,6 +40,10 @@ pub enum GraphError {
     TimeUpdateFailed,
     #[error("Tried to convert to incorrect data type: expected {0}, got {1}")]
     MismatchedDataType(String, String),
+    #[error("Tried to get node state of the wrong type")]
+    MismatchedStateType,
+    #[error("State value not found for the given parameters")]
+    MissingStateValue,
 }
 
 pub type GraphResult<T> = Result<T, GraphError>;

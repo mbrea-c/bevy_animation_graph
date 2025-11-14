@@ -5,11 +5,14 @@ use crate::egui_nodes::{
     pin::{PinSpec, PinType},
 };
 use bevy::{asset::AssetId, ecs::resource::Resource, platform::collections::HashMap};
-use bevy_animation_graph::core::{
-    animation_graph::{AnimationGraph, PinId, SourcePin, TargetPin},
-    animation_node::AnimationNode,
-    context::{GraphContext, SpecContext},
-    edge_data::DataSpec,
+use bevy_animation_graph::{
+    core::{
+        animation_graph::{AnimationGraph, PinId, SourcePin, TargetPin},
+        animation_node::AnimationNode,
+        context::SpecContext,
+        edge_data::DataSpec,
+    },
+    prelude::{graph_context::GraphContext, node_states::StateKey},
 };
 use bevy_inspector_egui::egui::Color32;
 
@@ -453,18 +456,18 @@ impl GraphReprSpec {
             return (None, None, false);
         };
 
-        let source_pin = SourcePin::NodeTime(node.name.clone());
         let time = graph_context
-            .caches
-            .get_primary(|c| c.get_time(&source_pin));
+            .node_states
+            .get_time(node.name.clone(), StateKey::Default);
         let duration = graph_context
-            .caches
-            .get_primary(|c| c.get_duration(&source_pin));
+            .node_caches
+            .get_duration(node.name.clone(), StateKey::Default)
+            .ok();
         let active = graph_context
-            .caches
-            .get_primary(|c| Some(c.is_updated(&node.name)));
+            .node_caches
+            .is_updated(node.name.clone(), StateKey::Default);
 
-        (time, duration.flatten(), active.unwrap_or(false))
+        (Some(time), duration.flatten(), active)
     }
 
     fn add_nodes(

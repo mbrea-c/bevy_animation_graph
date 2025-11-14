@@ -1,13 +1,17 @@
 use std::cmp::Ordering;
 
-use crate::core::{
-    animation_graph::{
-        AnimationGraph, DEFAULT_OUTPUT_POSE, InputOverlay, PinMap, SourcePin, TargetPin, TimeUpdate,
+use crate::{
+    core::{
+        animation_graph::{
+            AnimationGraph, DEFAULT_OUTPUT_POSE, InputOverlay, PinMap, SourcePin, TargetPin,
+            TimeUpdate,
+        },
+        context::{FsmContext, PassContext, StateRole, StateStack},
+        duration_data::DurationData,
+        edge_data::{AnimationEvent, DataValue, EventQueue},
+        errors::GraphError,
     },
-    context::{CacheReadFilter, CacheWriteFilter, FsmContext, PassContext, StateRole, StateStack},
-    duration_data::DurationData,
-    edge_data::{AnimationEvent, DataValue, EventQueue},
-    errors::GraphError,
+    prelude::graph_context::QueryOutputTime,
 };
 use bevy::{
     asset::{Asset, Handle},
@@ -156,25 +160,14 @@ impl LowLevelStateMachine {
 
     fn handle_event_queue(
         &self,
-        fsm_state: Option<FSMState>,
         event_queue: EventQueue,
         mut ctx: PassContext,
-    ) -> Result<FSMState, GraphError> {
+    ) -> Result<(), GraphError> {
         let time = ctx.time();
-        let mut fsm_state = fsm_state.unwrap_or_else(|| {
-            ctx.caches()
-                .get(
-                    |c| {
-                        c.get_fsm_state(ctx.node_context.as_ref().unwrap().node_id)
-                            .cloned()
-                    },
-                    CacheReadFilter::FULL,
-                )
-                .unwrap_or(FSMState {
-                    state: self.start_state.clone().unwrap(),
-                    state_entered_time: time,
-                })
-        });
+        let fsm_state = ctx.state_mut_or_else(|| FSMState {
+            state: self.start_state.clone().unwrap(),
+            state_entered_time: time,
+        })?;
 
         for event in event_queue.events {
             match event.event {
@@ -186,7 +179,7 @@ impl LowLevelStateMachine {
                             .and_then(|ids| ids.iter().next())
                             .and_then(|id| self.transitions.get(id))
                     {
-                        fsm_state = FSMState {
+                        *fsm_state = FSMState {
                             state: transition.target.clone(),
                             state_entered_time: time,
                         };
@@ -198,7 +191,7 @@ impl LowLevelStateMachine {
                         .get(&LowLevelTransitionId::Start(transition_id))
                         && fsm_state.state == transition.source
                     {
-                        fsm_state = FSMState {
+                        *fsm_state = FSMState {
                             state: transition.target.clone(),
                             state_entered_time: time,
                         };
@@ -213,7 +206,7 @@ impl LowLevelStateMachine {
                             hl_transition_data.hl_transition_id.clone(),
                         ))
                     {
-                        fsm_state = FSMState {
+                        *fsm_state = FSMState {
                             state: transition.target.clone(),
                             state_entered_time: time,
                         };
@@ -223,15 +216,7 @@ impl LowLevelStateMachine {
             }
         }
 
-        let is_temp = ctx.temp_cache;
-        let node_id = ctx.node_context.as_ref().unwrap().node_id.clone();
-
-        ctx.caches_mut().set(
-            |c| c.set_fsm_state(node_id, fsm_state.clone()),
-            CacheWriteFilter::for_temp(is_temp),
-        );
-
-        Ok(fsm_state)
+        Ok(())
     }
 
     /// Performs a node update
@@ -254,19 +239,17 @@ impl LowLevelStateMachine {
             .into_event_queue()
             .unwrap();
 
-        let fsm_state = self.handle_event_queue(None, event_queue, ctx.clone())?;
-        let inner_eq = self.update_graph(&fsm_state, ctx.clone())?;
-        self.handle_event_queue(Some(fsm_state), inner_eq, ctx)?;
+        self.handle_event_queue(event_queue, ctx.clone())?;
+        let inner_eq = self.update_graph(ctx.clone())?;
+        self.handle_event_queue(inner_eq, ctx)?;
 
         Ok(())
     }
 
     /// Updates underlying animation graphs for active states.
-    pub fn update_graph(
-        &self,
-        fsm_state: &FSMState,
-        mut ctx: PassContext,
-    ) -> Result<EventQueue, GraphError> {
+    pub fn update_graph(&self, mut ctx: PassContext) -> Result<EventQueue, GraphError> {
+        let time = ctx.time();
+        let fsm_state = ctx.state::<FSMState>()?;
         // TODO: Replace panic with `GraphError`
         let state = self.states.get(&fsm_state.state).unwrap();
         let graph = ctx
@@ -277,7 +260,6 @@ impl LowLevelStateMachine {
 
         let mut input_overlay = InputOverlay::default();
 
-        let time = ctx.time();
         let elapsed_time = time - fsm_state.state_entered_time;
         let percent_through_duration = state
             .hl_transition
@@ -300,15 +282,10 @@ impl LowLevelStateMachine {
         if graph.output_time.is_some() {
             let input = ctx.time_update_fwd();
             if let Ok(time_update) = input {
-                let target_pin = TargetPin::OutputTime;
-
                 let mut ctx = ctx.child_with_state(Some(fsm_ctx.clone()), &input_overlay);
-                let is_temp = ctx.temp_cache;
+                let key = ctx.state_key;
 
-                ctx.caches_mut().set(
-                    |c| c.set_time_update_back(target_pin, time_update),
-                    CacheWriteFilter::for_temp(is_temp),
-                );
+                ctx.context_mut().query_output_time = QueryOutputTime::from_key(key, time_update)
             }
         }
 

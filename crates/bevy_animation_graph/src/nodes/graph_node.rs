@@ -1,8 +1,8 @@
 use crate::core::animation_graph::{AnimationGraph, InputOverlay, PinMap, TargetPin};
 use crate::core::animation_node::{NodeLike, ReflectNodeLike};
-use crate::core::context::CacheWriteFilter;
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
+use crate::prelude::graph_context::QueryOutputTime;
 use crate::prelude::{PassContext, SpecContext};
 use bevy::prelude::*;
 
@@ -47,14 +47,11 @@ impl NodeLike for GraphNode {
         if graph.output_time.is_some() {
             let input = ctx.time_update_fwd();
             if let Ok(time_update) = input {
-                let target_pin = TargetPin::OutputTime;
                 let mut ctx = ctx.child(&input_overlay);
-                let is_temp = ctx.temp_cache;
 
-                ctx.caches_mut().set(
-                    |c| c.set_time_update_back(target_pin, time_update),
-                    CacheWriteFilter::for_temp(is_temp),
-                );
+                let key = ctx.state_key;
+                // TODO: query output time should properly handle non-default state keys
+                ctx.context_mut().query_output_time = QueryOutputTime::from_key(key, time_update);
             }
         }
 
