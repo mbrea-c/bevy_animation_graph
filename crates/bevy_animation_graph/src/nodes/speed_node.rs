@@ -2,7 +2,8 @@ use crate::core::animation_graph::{PinMap, TimeUpdate};
 use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
-use crate::prelude::{PassContext, SpecContext};
+use crate::prelude::SpecContext;
+use crate::prelude::new_context::NodeContext;
 use bevy::reflect::Reflect;
 use bevy::reflect::std_traits::ReflectDefault;
 
@@ -22,7 +23,7 @@ impl SpeedNode {
 }
 
 impl NodeLike for SpeedNode {
-    fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+    fn duration(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
         let speed = ctx.data_back(Self::SPEED)?.as_f32()?;
         let out_duration = if speed == 0. {
             None
@@ -34,7 +35,7 @@ impl NodeLike for SpeedNode {
         Ok(())
     }
 
-    fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+    fn update(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
         let speed = ctx.data_back(Self::SPEED)?.as_f32()?;
         let input = ctx.time_update_fwd()?;
 

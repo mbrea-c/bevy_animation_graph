@@ -2,7 +2,8 @@ use crate::core::animation_graph::PinMap;
 use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
-use crate::prelude::{PassContext, SpecContext};
+use crate::prelude::SpecContext;
+use crate::prelude::new_context::NodeContext;
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
@@ -19,7 +20,7 @@ impl NormalizeVec3Node {
 }
 
 impl NodeLike for NormalizeVec3Node {
-    fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+    fn update(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
         let input: Vec3 = ctx.data_back(Self::INPUT)?.as_vec3()?;
         let output = input.normalize_or_zero();
 

@@ -1,9 +1,12 @@
-use crate::core::animation_graph::{AnimationGraph, InputOverlay, PinMap, TargetPin};
+use crate::core::animation_graph::{AnimationGraph, PinId, PinMap, TargetPin, TimeUpdate};
 use crate::core::animation_node::{NodeLike, ReflectNodeLike};
+use crate::core::duration_data::DurationData;
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
 use crate::prelude::graph_context::QueryOutputTime;
-use crate::prelude::{PassContext, SpecContext};
+use crate::prelude::io_env::GraphIoEnv;
+use crate::prelude::new_context::{GraphContext, NodeContext};
+use crate::prelude::{DataValue, SpecContext};
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
@@ -19,16 +22,27 @@ impl GraphNode {
 }
 
 impl NodeLike for GraphNode {
-    fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let Some(graph) = ctx.resources.animation_graph_assets.get(&self.graph) else {
+    fn duration(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
+        let Some(graph) = ctx
+            .graph_context
+            .resources
+            .animation_graph_assets
+            .get(&self.graph)
+        else {
             return Ok(());
         };
 
-        let input_overlay = InputOverlay::default();
+        let sub_ctx_io = NestedGraphIoEnv {
+            parent_ctx: ctx.clone(),
+        };
+
+        let sub_ctx = ctx
+            .create_child_context(self.graph.id(), None)
+            .with_io(&sub_ctx_io);
 
         if graph.output_time.is_some() {
             let target_pin = TargetPin::OutputTime;
-            let duration = graph.get_duration(target_pin, ctx.child(&input_overlay))?;
+            let duration = graph.get_duration(target_pin, sub_ctx)?;
             ctx.set_duration_fwd(duration);
         } else {
             ctx.set_duration_fwd(None);
@@ -37,27 +51,36 @@ impl NodeLike for GraphNode {
         Ok(())
     }
 
-    fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
-        let Some(graph) = ctx.resources.animation_graph_assets.get(&self.graph) else {
+    fn update(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
+        let Some(graph) = ctx
+            .graph_context
+            .resources
+            .animation_graph_assets
+            .get(&self.graph)
+        else {
             return Ok(());
         };
 
-        let input_overlay = InputOverlay::default();
+        let sub_ctx_io = NestedGraphIoEnv {
+            parent_ctx: ctx.clone(),
+        };
+
+        let mut sub_ctx = ctx
+            .create_child_context(self.graph.id(), None)
+            .with_io(&sub_ctx_io);
 
         if graph.output_time.is_some() {
             let input = ctx.time_update_fwd();
             if let Ok(time_update) = input {
-                let mut ctx = ctx.child(&input_overlay);
-
-                let key = ctx.state_key;
-                // TODO: query output time should properly handle non-default state keys
-                ctx.context_mut().query_output_time = QueryOutputTime::from_key(key, time_update);
+                let key = sub_ctx.state_key;
+                sub_ctx.context_mut().query_output_time =
+                    QueryOutputTime::from_key(key, time_update);
             }
         }
 
         for id in graph.output_parameters.keys() {
             let target_pin = TargetPin::OutputData(id.clone());
-            let value = graph.get_data(target_pin, ctx.child(&input_overlay))?;
+            let value = graph.get_data(target_pin, sub_ctx.clone())?;
             ctx.set_data_fwd(id, value);
         }
 
@@ -98,5 +121,36 @@ impl NodeLike for GraphNode {
 
     fn display_name(&self) -> String {
         "📈 Graph".into()
+    }
+}
+
+pub struct NestedGraphIoEnv<'a> {
+    pub parent_ctx: NodeContext<'a>,
+}
+
+impl<'a> GraphIoEnv for NestedGraphIoEnv<'a> {
+    fn get_data_back(&self, pin_id: PinId, ctx: GraphContext) -> Result<DataValue, GraphError> {
+        self.parent_ctx
+            .clone()
+            .with_state_key(ctx.state_key)
+            .data_back(pin_id)
+    }
+
+    fn get_duration_back(
+        &self,
+        pin_id: PinId,
+        ctx: GraphContext,
+    ) -> Result<DurationData, GraphError> {
+        self.parent_ctx
+            .clone()
+            .with_state_key(ctx.state_key)
+            .duration_back(pin_id)
+    }
+
+    fn get_time_fwd(&self, ctx: GraphContext) -> Result<TimeUpdate, GraphError> {
+        self.parent_ctx
+            .clone()
+            .with_state_key(ctx.state_key)
+            .time_update_fwd()
     }
 }

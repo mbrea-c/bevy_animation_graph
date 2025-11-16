@@ -3,7 +3,8 @@ use crate::core::animation_graph::PinMap;
 use crate::core::animation_node::NodeLike;
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
-use crate::prelude::{DataValue, PassContext, SpecContext};
+use crate::prelude::new_context::NodeContext;
+use crate::prelude::{DataValue, SpecContext};
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
@@ -25,7 +26,7 @@ impl NodeLike for ConstEntityPath {
         "Entity Path".into()
     }
 
-    fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+    fn update(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
         ctx.set_data_fwd(Self::OUTPUT, DataValue::EntityPath(self.path.clone()));
         Ok(())
     }

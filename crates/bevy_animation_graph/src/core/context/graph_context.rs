@@ -8,14 +8,14 @@ use crate::{
 use bevy::{asset::AssetId, platform::collections::HashMap, reflect::prelude::*};
 
 #[derive(Debug, Reflect)]
-pub struct GraphContext {
+pub struct GraphState {
     pub node_states: NodeStates,
     pub node_caches: NodeCaches,
     pub query_output_time: QueryOutputTime,
     graph_id: AssetId<AnimationGraph>,
 }
 
-impl GraphContext {
+impl GraphState {
     pub fn new(graph_id: AssetId<AnimationGraph>) -> Self {
         Self {
             graph_id,

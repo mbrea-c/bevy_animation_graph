@@ -3,7 +3,8 @@ use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
 use crate::interpolation::prelude::InterpolateLinear;
-use crate::prelude::{PassContext, SpecContext};
+use crate::prelude::SpecContext;
+use crate::prelude::new_context::NodeContext;
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
@@ -25,12 +26,12 @@ impl LoopNode {
 }
 
 impl NodeLike for LoopNode {
-    fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+    fn duration(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
         ctx.set_duration_fwd(None);
         Ok(())
     }
 
-    fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+    fn update(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
         let input = ctx.time_update_fwd()?;
         let duration = ctx.duration_back(Self::IN_TIME)?;
 
@@ -74,7 +75,7 @@ impl NodeLike for LoopNode {
         let mut pose = ctx.data_back(Self::IN_POSE)?.into_pose()?;
 
         if t > duration && t < full_duration {
-            let mut ctx_temp = ctx.with_temp_state();
+            let mut ctx_temp = ctx.clone().with_temp_state_key();
             ctx_temp.set_time_update_back(Self::IN_TIME, TimeUpdate::Absolute(0.));
             let start_pose = ctx_temp.data_back(Self::IN_POSE)?.into_pose()?;
             // TODO: How to clear cache? time? pose?

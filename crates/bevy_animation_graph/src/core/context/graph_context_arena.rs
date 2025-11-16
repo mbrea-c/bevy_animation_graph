@@ -2,7 +2,7 @@ use crate::{
     core::{
         animation_graph::NodeId, prelude::AnimationGraph, state_machine::low_level::LowLevelStateId,
     },
-    prelude::graph_context::GraphContext,
+    prelude::graph_context::GraphState,
 };
 use bevy::{asset::AssetId, platform::collections::HashMap, reflect::Reflect};
 
@@ -18,7 +18,7 @@ pub struct SubContextId {
 
 #[derive(Reflect, Debug)]
 pub struct GraphContextArena {
-    contexts: Vec<GraphContext>,
+    contexts: Vec<GraphState>,
     hierarchy: HashMap<SubContextId, GraphContextId>,
     top_level_context: GraphContextId,
 }
@@ -26,7 +26,7 @@ pub struct GraphContextArena {
 impl GraphContextArena {
     pub fn new(graph_id: AssetId<AnimationGraph>) -> Self {
         Self {
-            contexts: vec![GraphContext::new(graph_id)],
+            contexts: vec![GraphState::new(graph_id)],
             hierarchy: HashMap::default(),
             top_level_context: GraphContextId(0),
         }
@@ -37,12 +37,12 @@ impl GraphContextArena {
     }
 
     fn new_context(&mut self, graph_id: AssetId<AnimationGraph>) -> GraphContextId {
-        self.contexts.push(GraphContext::new(graph_id));
+        self.contexts.push(GraphState::new(graph_id));
 
         GraphContextId(self.contexts.len() - 1)
     }
 
-    pub fn get_context(&self, id: GraphContextId) -> Option<&GraphContext> {
+    pub fn get_context(&self, id: GraphContextId) -> Option<&GraphState> {
         self.contexts.get(id.0)
     }
 
@@ -52,15 +52,15 @@ impl GraphContextArena {
         }
     }
 
-    pub fn get_context_mut(&mut self, id: GraphContextId) -> Option<&mut GraphContext> {
+    pub fn get_context_mut(&mut self, id: GraphContextId) -> Option<&mut GraphState> {
         self.contexts.get_mut(id.0)
     }
 
-    pub fn get_toplevel(&self) -> &GraphContext {
+    pub fn get_toplevel(&self) -> &GraphState {
         self.get_context(self.get_toplevel_id()).unwrap()
     }
 
-    pub fn get_toplevel_mut(&mut self) -> &mut GraphContext {
+    pub fn get_toplevel_mut(&mut self) -> &mut GraphState {
         self.get_context_mut(self.get_toplevel_id()).unwrap()
     }
 
@@ -87,5 +87,28 @@ impl GraphContextArena {
         }
 
         *self.hierarchy.get(&subctx_id).unwrap()
+    }
+}
+
+#[derive(Clone)]
+pub struct GraphContextArenaRef {
+    context: *mut GraphContextArena,
+}
+
+impl From<&mut GraphContextArena> for GraphContextArenaRef {
+    fn from(value: &mut GraphContextArena) -> Self {
+        Self { context: value }
+    }
+}
+
+impl GraphContextArenaRef {
+    #[allow(clippy::mut_from_ref)]
+    pub fn as_mut(&self) -> &mut GraphContextArena {
+        unsafe { self.context.as_mut().unwrap() }
+    }
+
+    #[allow(clippy::mut_from_ref)]
+    pub fn as_ref(&self) -> &GraphContextArena {
+        unsafe { self.context.as_ref().unwrap() }
     }
 }

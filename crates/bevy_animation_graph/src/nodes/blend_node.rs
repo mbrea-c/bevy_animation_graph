@@ -3,7 +3,8 @@ use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::pose::Pose;
 use crate::core::prelude::DataSpec;
-use crate::prelude::{InterpolateLinear, PassContext, SpecContext};
+use crate::prelude::new_context::NodeContext;
+use crate::prelude::{InterpolateLinear, SpecContext};
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -51,7 +52,7 @@ impl BlendNode {
 }
 
 impl NodeLike for BlendNode {
-    fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+    fn duration(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
         let duration_1 = ctx.duration_back(Self::IN_TIME_A)?;
         let duration_2 = ctx.duration_back(Self::IN_TIME_B)?;
 
@@ -66,7 +67,7 @@ impl NodeLike for BlendNode {
         Ok(())
     }
 
-    fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+    fn update(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
         let input = ctx.time_update_fwd()?;
 
         ctx.set_time_update_back(Self::IN_TIME_A, input.clone());

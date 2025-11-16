@@ -2,7 +2,8 @@ use crate::core::animation_graph::PinMap;
 use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
-use crate::prelude::{PassContext, SpecContext};
+use crate::prelude::SpecContext;
+use crate::prelude::new_context::NodeContext;
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
@@ -23,7 +24,7 @@ impl NodeLike for AbsF32 {
         "|_| Absolute val".into()
     }
 
-    fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+    fn update(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
         let input = ctx.data_back(Self::INPUT)?.as_f32()?;
         ctx.set_data_fwd(Self::OUTPUT, input.abs());
         Ok(())

@@ -3,7 +3,8 @@ use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
 use crate::core::ragdoll::configuration::RagdollConfig;
-use crate::prelude::{DataValue, PassContext, SpecContext};
+use crate::prelude::new_context::NodeContext;
+use crate::prelude::{DataValue, SpecContext};
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
@@ -25,7 +26,7 @@ impl NodeLike for ConstRagdollConfig {
         "Ragdoll Config".into()
     }
 
-    fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+    fn update(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
         ctx.set_data_fwd(Self::OUTPUT, DataValue::RagdollConfig(self.value.clone()));
         Ok(())
     }

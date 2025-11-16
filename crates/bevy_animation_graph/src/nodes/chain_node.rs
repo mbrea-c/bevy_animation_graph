@@ -2,7 +2,8 @@ use crate::core::animation_graph::{PinMap, TimeUpdate};
 use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
-use crate::prelude::{InterpolateLinear, PassContext, SpecContext};
+use crate::prelude::new_context::NodeContext;
+use crate::prelude::{InterpolateLinear, SpecContext};
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
@@ -28,7 +29,7 @@ impl ChainNode {
 }
 
 impl NodeLike for ChainNode {
-    fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+    fn duration(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
         let source_duration_1 = ctx.duration_back(Self::IN_TIME_A)?;
         let source_duration_2 = ctx.duration_back(Self::IN_TIME_B)?;
 
@@ -45,7 +46,7 @@ impl NodeLike for ChainNode {
         Ok(())
     }
 
-    fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+    fn update(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
         let input = ctx.time_update_fwd()?;
         let duration_1 = ctx.duration_back(Self::IN_TIME_A)?;
         let Some(duration_1) = duration_1 else {

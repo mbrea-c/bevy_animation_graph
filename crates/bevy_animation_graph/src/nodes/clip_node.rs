@@ -9,7 +9,8 @@ use crate::core::event_track::sample_tracks;
 use crate::core::id::BoneId;
 use crate::core::pose::{BonePose, Pose};
 use crate::core::prelude::{DataSpec, DataValue};
-use crate::prelude::{PassContext, SpecContext};
+use crate::prelude::SpecContext;
+use crate::prelude::new_context::NodeContext;
 use bevy::asset::Handle;
 use bevy::math::{Quat, Vec3};
 use bevy::platform::hash::Hashed;
@@ -43,11 +44,12 @@ impl ClipNode {
     }
 
     #[inline]
-    pub fn clip_duration(&self, ctx: &PassContext) -> Result<f32, GraphError> {
+    pub fn clip_duration(&self, ctx: &NodeContext) -> Result<f32, GraphError> {
         if let Some(duration) = self.override_duration {
             Ok(duration)
         } else {
-            ctx.resources
+            ctx.graph_context
+                .resources
                 .graph_clip_assets
                 .get(&self.clip)
                 .ok_or(GraphError::ClipMissing)
@@ -55,10 +57,11 @@ impl ClipNode {
         }
     }
 
-    pub fn update_time(&self, ctx: &PassContext, input: &TimeUpdate) -> Result<f32, GraphError> {
+    pub fn update_time(&self, ctx: &NodeContext, input: &TimeUpdate) -> Result<f32, GraphError> {
         let prev_time = ctx.prev_time();
 
-        ctx.resources
+        ctx.graph_context
+            .resources
             .graph_clip_assets
             .get(&self.clip)
             .ok_or(GraphError::ClipMissing)
@@ -71,15 +74,20 @@ impl ClipNode {
 }
 
 impl NodeLike for ClipNode {
-    fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+    fn duration(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
         ctx.set_duration_fwd(Some(self.clip_duration(&ctx)?));
         Ok(())
     }
 
-    fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+    fn update(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
         let clip_duration = self.clip_duration(&ctx)?;
 
-        let Some(clip) = ctx.resources.graph_clip_assets.get(&self.clip) else {
+        let Some(clip) = ctx
+            .graph_context
+            .resources
+            .graph_clip_assets
+            .get(&self.clip)
+        else {
             // TODO: Should we propagate a GraphError instead?
             ctx.set_data_fwd(Self::OUT_POSE, DataValue::Pose(Pose::default()));
             return Ok(());

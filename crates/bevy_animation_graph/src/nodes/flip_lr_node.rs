@@ -3,8 +3,9 @@ use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
 use crate::prelude::config::SymmetryConfig;
+use crate::prelude::new_context::NodeContext;
 use crate::prelude::serial::SymmetryConfigSerial;
-use crate::prelude::{EditProxy, PassContext, SpecContext};
+use crate::prelude::{EditProxy, SpecContext};
 use crate::symmetry::flip_pose;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -32,19 +33,24 @@ impl FlipLRNode {
 }
 
 impl NodeLike for FlipLRNode {
-    fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+    fn duration(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
         let duration = ctx.duration_back(Self::IN_TIME)?;
         ctx.set_duration_fwd(duration);
         Ok(())
     }
 
-    fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+    fn update(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
         let input = ctx.time_update_fwd()?;
         ctx.set_time_update_back(Self::IN_TIME, input);
         let in_pose = ctx.data_back(Self::IN_POSE)?.into_pose()?;
         ctx.set_time(in_pose.timestamp);
-        let Some(skeleton) = ctx.resources.skeleton_assets.get(&in_pose.skeleton) else {
-            return Err(GraphError::SkeletonMissing(ctx.node_id()));
+        let Some(skeleton) = ctx
+            .graph_context
+            .resources
+            .skeleton_assets
+            .get(&in_pose.skeleton)
+        else {
+            return Err(GraphError::SkeletonMissing(ctx.node_id.clone()));
         };
         let flipped_pose = flip_pose(&in_pose, &self.config, skeleton);
         ctx.set_data_fwd(Self::OUT_POSE, flipped_pose);

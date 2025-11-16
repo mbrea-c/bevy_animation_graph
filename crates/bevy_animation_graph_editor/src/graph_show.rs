@@ -12,7 +12,7 @@ use bevy_animation_graph::{
         context::SpecContext,
         edge_data::DataSpec,
     },
-    prelude::{graph_context::GraphContext, node_states::StateKey},
+    prelude::{graph_context::GraphState, node_states::StateKey},
 };
 use bevy_inspector_egui::egui::Color32;
 
@@ -437,7 +437,7 @@ impl GraphReprSpec {
         graph: &AnimationGraph,
         indices: &GraphIndices,
         ctx: SpecContext,
-        graph_context: Option<&GraphContext>,
+        graph_context: Option<&GraphState>,
     ) -> Self {
         let mut repr_spec = GraphReprSpec::default();
 
@@ -450,7 +450,7 @@ impl GraphReprSpec {
 
     fn node_debug_info(
         node: &AnimationNode,
-        graph_context: Option<&GraphContext>,
+        graph_context: Option<&GraphState>,
     ) -> (Option<f32>, Option<f32>, bool) {
         let Some(graph_context) = graph_context else {
             return (None, None, false);
@@ -475,7 +475,7 @@ impl GraphReprSpec {
         graph: &AnimationGraph,
         indices: &GraphIndices,
         ctx: SpecContext,
-        graph_context: Option<&GraphContext>,
+        graph_context: Option<&GraphState>,
     ) {
         for node in graph.nodes.values() {
             let (time, duration, active) = Self::node_debug_info(node, graph_context);

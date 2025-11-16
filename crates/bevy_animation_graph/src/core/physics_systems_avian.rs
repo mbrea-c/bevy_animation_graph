@@ -18,9 +18,8 @@ use crate::core::ragdoll::relative_kinematic_body::{
 };
 use crate::core::ragdoll::spawning::spawn_ragdoll_avian;
 use crate::core::ragdoll::write_pose::write_pose_to_ragdoll;
-use crate::prelude::{AnimationGraphPlayer, PoseFallbackContext, SystemResources};
-
-use super::context::RootOffsetResult;
+use crate::prelude::pose_fallback::{PoseFallbackContext, RootOffsetResult};
+use crate::prelude::{AnimationGraphPlayer, SystemResources};
 
 pub fn update_relative_kinematic_body_velocities(
     mut relative_kinematic_query: Query<(

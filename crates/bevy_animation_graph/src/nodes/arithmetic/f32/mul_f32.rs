@@ -2,7 +2,8 @@ use crate::core::animation_graph::PinMap;
 use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
-use crate::prelude::{PassContext, SpecContext};
+use crate::prelude::SpecContext;
+use crate::prelude::new_context::NodeContext;
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
@@ -24,11 +25,7 @@ impl NodeLike for MulF32 {
         "× Multiply F32".into()
     }
 
-    fn duration(&self, _ctx: PassContext) -> Result<(), GraphError> {
-        Ok(())
-    }
-
-    fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+    fn update(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
         let input_1 = ctx.data_back(Self::INPUT_1)?.as_f32()?;
         let input_2 = ctx.data_back(Self::INPUT_2)?.as_f32()?;
 

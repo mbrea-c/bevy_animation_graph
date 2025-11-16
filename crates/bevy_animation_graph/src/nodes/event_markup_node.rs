@@ -4,7 +4,8 @@ use crate::core::edge_data::EventQueue;
 use crate::core::errors::GraphError;
 use crate::core::event_track::EventTrack;
 use crate::core::prelude::DataSpec;
-use crate::prelude::{PassContext, SpecContext};
+use crate::prelude::SpecContext;
+use crate::prelude::new_context::NodeContext;
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -42,13 +43,13 @@ impl EventMarkupNode {
 }
 
 impl NodeLike for EventMarkupNode {
-    fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+    fn duration(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
         let duration = ctx.duration_back(Self::IN_TIME)?;
         ctx.set_duration_fwd(duration);
         Ok(())
     }
 
-    fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+    fn update(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
         let input = ctx.time_update_fwd()?;
 
         let processed_update = match &input {

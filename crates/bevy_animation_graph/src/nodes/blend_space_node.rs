@@ -2,7 +2,8 @@ use crate::core::animation_graph::{PinMap, TimeUpdate};
 use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::prelude::DataSpec;
-use crate::prelude::{EditProxy, PassContext, ReflectEditProxy, SpecContext};
+use crate::prelude::new_context::NodeContext;
+use crate::prelude::{EditProxy, ReflectEditProxy, SpecContext};
 use crate::utils::delaunay::Triangulation;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -74,7 +75,7 @@ impl BlendSpaceNode {
 }
 
 impl NodeLike for BlendSpaceNode {
-    fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+    fn duration(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
         let position = ctx.data_back(Self::POSITION)?.as_vec2()?;
         let (v0, _) = self
             .triangulation
@@ -91,7 +92,7 @@ impl NodeLike for BlendSpaceNode {
         Ok(())
     }
 
-    fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+    fn update(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
         let input = ctx.time_update_fwd()?;
 
         let position = ctx.data_back(Self::POSITION)?.as_vec2()?;

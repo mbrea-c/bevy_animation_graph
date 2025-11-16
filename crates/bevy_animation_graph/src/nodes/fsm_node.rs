@@ -1,10 +1,13 @@
-use crate::core::{
-    animation_graph::PinMap,
-    animation_node::{NodeLike, ReflectNodeLike},
-    context::{PassContext, SpecContext},
-    edge_data::DataSpec,
-    errors::GraphError,
-    state_machine::{high_level::StateMachine, low_level::LowLevelStateMachine},
+use crate::{
+    core::{
+        animation_graph::PinMap,
+        animation_node::{NodeLike, ReflectNodeLike},
+        context::SpecContext,
+        edge_data::DataSpec,
+        errors::GraphError,
+        state_machine::{high_level::StateMachine, low_level::LowLevelStateMachine},
+    },
+    prelude::new_context::NodeContext,
 };
 use bevy::prelude::*;
 
@@ -23,12 +26,17 @@ impl FSMNode {
 }
 
 impl NodeLike for FSMNode {
-    fn duration(&self, _ctx: PassContext) -> Result<(), GraphError> {
+    fn duration(&self, _ctx: NodeContext) -> Result<(), GraphError> {
         todo!()
     }
 
-    fn update(&self, ctx: PassContext) -> Result<(), GraphError> {
-        let fsm = ctx.resources.state_machine_assets.get(&self.fsm).unwrap();
+    fn update(&self, ctx: NodeContext) -> Result<(), GraphError> {
+        let fsm = ctx
+            .graph_context
+            .resources
+            .state_machine_assets
+            .get(&self.fsm)
+            .unwrap();
         fsm.get_low_level_fsm().update(ctx)?;
 
         Ok(())

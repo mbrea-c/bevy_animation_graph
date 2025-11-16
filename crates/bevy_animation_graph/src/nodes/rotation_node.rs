@@ -3,7 +3,8 @@ use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::errors::GraphError;
 use crate::core::pose::BonePose;
 use crate::core::prelude::DataSpec;
-use crate::prelude::{PassContext, SpecContext};
+use crate::prelude::SpecContext;
+use crate::prelude::new_context::NodeContext;
 use bevy::math::Quat;
 use bevy::reflect::Reflect;
 use bevy::reflect::std_traits::ReflectDefault;
@@ -79,13 +80,13 @@ impl RotationNode {
 }
 
 impl NodeLike for RotationNode {
-    fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+    fn duration(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
         let duration = ctx.duration_back(Self::IN_TIME)?;
         ctx.set_duration_fwd(duration);
         Ok(())
     }
 
-    fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+    fn update(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
         // Pull incoming time update
         let input = ctx.time_update_fwd()?;
         // Push unchanged time update backwards.
@@ -96,8 +97,13 @@ impl NodeLike for RotationNode {
         let mut target = target.id();
         let rotation = ctx.data_back(Self::ROTATION)?.as_quat()?;
         let mut pose = ctx.data_back(Self::IN_POSE)?.into_pose()?;
-        let Some(skeleton) = ctx.resources.skeleton_assets.get(&pose.skeleton) else {
-            return Err(GraphError::SkeletonMissing(ctx.node_id()));
+        let Some(skeleton) = ctx
+            .graph_context
+            .resources
+            .skeleton_assets
+            .get(&pose.skeleton)
+        else {
+            return Err(GraphError::SkeletonMissing(ctx.node_id.clone()));
         };
 
         if !pose.paths.contains_key(&target) {
@@ -121,7 +127,8 @@ impl NodeLike for RotationNode {
                 RotationSpace::Local => rotation,
                 RotationSpace::Character => {
                     if let Some(parent) = skeleton.parent(&target) {
-                        ctx.space_conversion()
+                        ctx.graph_context
+                            .space_conversion()
                             .root_to_bone_space(
                                 Transform::from_rotation(rotation),
                                 &pose,
@@ -135,7 +142,8 @@ impl NodeLike for RotationNode {
                 }
                 RotationSpace::Global => {
                     if let Some(parent) = skeleton.parent(&target) {
-                        ctx.space_conversion()
+                        ctx.graph_context
+                            .space_conversion()
                             .global_to_bone_space(
                                 Transform::from_rotation(rotation),
                                 &pose,
@@ -144,7 +152,8 @@ impl NodeLike for RotationNode {
                             )
                             .rotation
                     } else {
-                        ctx.space_conversion()
+                        ctx.graph_context
+                            .space_conversion()
                             .transform_global_to_character(
                                 Transform::from_rotation(rotation),
                                 skeleton,

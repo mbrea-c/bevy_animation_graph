@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use super::pin;
 use crate::{
     core::{
@@ -12,8 +14,10 @@ use crate::{
     },
     nodes::FSMNode,
     prelude::{
-        DataSpec, DataValue, DeferredGizmos, OptDataSpec, PassContext, SpecContext,
-        SystemResources, graph_context::QueryOutputTime,
+        DataSpec, DataValue, DeferredGizmos, OptDataSpec, SpecContext, SystemResources,
+        graph_context::QueryOutputTime,
+        io_env::{EmptyIoEnv, GraphIoEnv, IoOverrides, OverrideIoEnv},
+        new_context::GraphContext,
     },
 };
 use bevy::{
@@ -661,7 +665,7 @@ impl AnimationGraph {
     pub fn get_data(
         &self,
         target_pin: TargetPin,
-        mut ctx: PassContext,
+        mut ctx: GraphContext,
     ) -> Result<DataValue, GraphError> {
         // Get source pin
         let Some(source_pin) = self.edges.get(&target_pin) else {
@@ -679,7 +683,10 @@ impl AnimationGraph {
                     {
                         let _node_update_span =
                             info_span!("anim_node_update", name = node_id).entered();
-                        node.update(ctx.with_node(node_id, self).with_debugging(should_debug))?;
+                        node.update(
+                            ctx.create_node_context(node_id, self)
+                                .with_debugging(should_debug),
+                        )?;
                     }
 
                     ctx.node_caches_mut().mark_updated(node_id.to_owned(), key);
@@ -689,11 +696,13 @@ impl AnimationGraph {
                     .get_output_data(node_id.clone(), key, node_pin.clone())?
             }
             SourcePin::InputData(pin_id) => ctx
-                .parent_data_back(pin_id)
-                .ok()
-                .or_else(|| ctx.overlay.parameters.get(pin_id).cloned())
-                .or_else(|| self.default_parameters.get(pin_id).cloned())
-                .unwrap(),
+                .io
+                .get_data_back(pin_id.clone(), ctx.clone())
+                .or_else(|_| {
+                    self.default_parameters.get(pin_id).cloned().ok_or_else(|| {
+                        GraphError::OutputMissing(SourcePin::InputData(pin_id.clone()))
+                    })
+                })?,
             SourcePin::NodeTime(_) => {
                 // TODO: Make a graph error
                 panic!("Incompatible pins connected: {source_pin:?} --> {target_pin:?}")
@@ -710,7 +719,7 @@ impl AnimationGraph {
     pub fn get_duration(
         &self,
         target_pin: TargetPin,
-        ctx: PassContext,
+        ctx: GraphContext,
     ) -> Result<DurationData, GraphError> {
         let Some(source_pin) = self.edges.get(&target_pin) else {
             return Err(GraphError::MissingEdgeToTarget(target_pin));
@@ -731,17 +740,14 @@ impl AnimationGraph {
                 } else {
                     let node = &self.nodes[node_id];
                     let should_debug = node.should_debug;
-                    node.duration(ctx.with_node(node_id, self).with_debugging(should_debug))?;
+                    node.duration(
+                        ctx.create_node_context(node_id, self)
+                            .with_debugging(should_debug),
+                    )?;
                     ctx.node_caches().get_duration(node_id.clone(), key)?
                 }
             }
-            SourcePin::InputTime(pin_id) => {
-                if let Some(v) = ctx.overlay.durations.get(pin_id) {
-                    *v
-                } else {
-                    ctx.parent().duration_back(pin_id)?
-                }
-            }
+            SourcePin::InputTime(pin_id) => ctx.io.get_duration_back(pin_id.into(), ctx.clone())?,
         };
 
         Ok(source_value)
@@ -750,7 +756,7 @@ impl AnimationGraph {
     pub fn get_time_update(
         &self,
         source_pin: SourcePin,
-        ctx: PassContext,
+        ctx: GraphContext,
     ) -> Result<TimeUpdate, GraphError> {
         let Some(target_pin) = self.edges_inverted.get(&source_pin) else {
             return Err(GraphError::MissingEdgeToSource(source_pin));
@@ -770,7 +776,7 @@ impl AnimationGraph {
                 .get_input_time_update(target_node.clone(), key, target_pin.clone()),
             TargetPin::OutputTime => match ctx.context().query_output_time.get(key) {
                 Some(update) => Ok(update),
-                None => ctx.parent_time_update_fwd(),
+                None => ctx.io.get_time_fwd(ctx.clone()),
             },
         }
     }
@@ -784,11 +790,36 @@ impl AnimationGraph {
         entity_map: &HashMap<BoneId, Entity>,
         deferred_gizmos: &mut DeferredGizmos,
     ) -> Result<HashMap<PinId, DataValue>, GraphError> {
-        self.query_with_overlay(
+        self.query_with_env(
             time_update,
             context_arena,
             resources,
-            &InputOverlay::default(),
+            &EmptyIoEnv,
+            root_entity,
+            entity_map,
+            deferred_gizmos,
+        )
+    }
+
+    pub fn query_with_overlay(
+        &self,
+        time_update: TimeUpdate,
+        context_arena: &mut GraphContextArena,
+        resources: &SystemResources,
+        io_overrides: &IoOverrides,
+        root_entity: Entity,
+        entity_map: &HashMap<BoneId, Entity>,
+        deferred_gizmos: &mut DeferredGizmos,
+    ) -> Result<HashMap<PinId, DataValue>, GraphError> {
+        let overlay_env = OverrideIoEnv {
+            overrides: Cow::Borrowed(io_overrides),
+            inner: Cow::<EmptyIoEnv>::Owned(EmptyIoEnv),
+        };
+        self.query_with_env(
+            time_update,
+            context_arena,
+            resources,
+            &overlay_env,
             root_entity,
             entity_map,
             deferred_gizmos,
@@ -796,22 +827,23 @@ impl AnimationGraph {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub fn query_with_overlay(
+    pub fn query_with_env(
         &self,
         time_update: TimeUpdate,
         context_arena: &mut GraphContextArena,
         resources: &SystemResources,
-        overlay: &InputOverlay,
+        io_env: &dyn GraphIoEnv,
         root_entity: Entity,
         entity_map: &HashMap<BoneId, Entity>,
         deferred_gizmos: &mut DeferredGizmos,
     ) -> Result<HashMap<PinId, DataValue>, GraphError> {
         context_arena.next_frame();
-        let mut ctx = PassContext::new(
+
+        let mut ctx = GraphContext::new(
             context_arena.get_toplevel_id(),
             context_arena,
             resources,
-            overlay,
+            io_env,
             root_entity,
             entity_map,
             deferred_gizmos,

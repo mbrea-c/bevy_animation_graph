@@ -1,17 +1,18 @@
-use std::cmp::Ordering;
+use std::{borrow::Cow, cmp::Ordering, collections::VecDeque};
 
 use crate::{
     core::{
         animation_graph::{
-            AnimationGraph, DEFAULT_OUTPUT_POSE, InputOverlay, PinMap, SourcePin, TargetPin,
-            TimeUpdate,
+            AnimationGraph, DEFAULT_OUTPUT_POSE, PinId, PinMap, SourcePin, TargetPin, TimeUpdate,
         },
-        context::{FsmContext, PassContext, StateRole, StateStack},
         duration_data::DurationData,
         edge_data::{AnimationEvent, DataValue, EventQueue},
         errors::GraphError,
     },
-    prelude::graph_context::QueryOutputTime,
+    prelude::{
+        io_env::{GraphIoEnv, IoOverrides, OverrideIoEnv},
+        new_context::{GraphContext, NodeContext},
+    },
 };
 use bevy::{
     asset::{Asset, Handle},
@@ -161,7 +162,7 @@ impl LowLevelStateMachine {
     fn handle_event_queue(
         &self,
         event_queue: EventQueue,
-        mut ctx: PassContext,
+        mut ctx: NodeContext,
     ) -> Result<(), GraphError> {
         let time = ctx.time();
         let fsm_state = ctx.state_mut_or_else(|| FSMState {
@@ -220,7 +221,7 @@ impl LowLevelStateMachine {
     }
 
     /// Performs a node update
-    pub fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+    pub fn update(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
         let input = ctx.time_update_fwd()?;
 
         let prev_time = ctx.prev_time();
@@ -247,18 +248,19 @@ impl LowLevelStateMachine {
     }
 
     /// Updates underlying animation graphs for active states.
-    pub fn update_graph(&self, mut ctx: PassContext) -> Result<EventQueue, GraphError> {
+    pub fn update_graph(&self, mut ctx: NodeContext) -> Result<EventQueue, GraphError> {
         let time = ctx.time();
         let fsm_state = ctx.state::<FSMState>()?;
         // TODO: Replace panic with `GraphError`
         let state = self.states.get(&fsm_state.state).unwrap();
         let graph = ctx
+            .graph_context
             .resources
             .animation_graph_assets
             .get(&state.graph)
             .unwrap();
 
-        let mut input_overlay = InputOverlay::default();
+        let mut io_overrides = IoOverrides::default();
 
         let elapsed_time = time - fsm_state.state_entered_time;
         let percent_through_duration = state
@@ -267,36 +269,31 @@ impl LowLevelStateMachine {
             .map(|t| elapsed_time / t.duration)
             .unwrap_or(0.);
 
-        input_overlay.parameters.insert(
+        io_overrides.data.insert(
             Self::PERCENT_THROUGH_DURATION.into(),
             percent_through_duration.into(),
         );
 
-        let fsm_ctx = FsmContext {
-            state_stack: StateStack {
-                stack: vec![(fsm_state.state.clone(), StateRole::Root)],
-            },
-            fsm: self,
+        let sub_io_env = OverrideIoEnv {
+            overrides: Cow::Owned(io_overrides),
+            inner: Cow::<FsmIoEnv>::Owned(FsmIoEnv {
+                node_context: ctx.clone(),
+                state_machine: self,
+                current_state: state.id.clone(),
+                current_state_role: StateRole::Root,
+                state_stack: [].into(),
+            }),
         };
 
-        if graph.output_time.is_some() {
-            let input = ctx.time_update_fwd();
-            if let Ok(time_update) = input {
-                let mut ctx = ctx.child_with_state(Some(fsm_ctx.clone()), &input_overlay);
-                let key = ctx.state_key;
-
-                ctx.context_mut().query_output_time = QueryOutputTime::from_key(key, time_update)
-            }
-        }
+        let sub_ctx = ctx
+            .create_child_context(state.graph.id(), Some(state.id.clone()))
+            .with_io(&sub_io_env);
 
         let mut driver_event_queue = EventQueue::default();
 
         for id in graph.output_parameters.keys() {
             let target_pin = TargetPin::OutputData(id.clone());
-            let value = graph.get_data(
-                target_pin,
-                ctx.child_with_state(Some(fsm_ctx.clone()), &input_overlay),
-            )?;
+            let value = graph.get_data(target_pin, sub_ctx.clone())?;
             if id == Self::DRIVER_EVENT_QUEUE {
                 driver_event_queue = value.into_event_queue().unwrap();
             } else {
@@ -307,207 +304,254 @@ impl LowLevelStateMachine {
         Ok(driver_event_queue)
     }
 
-    pub fn get_data(
+    fn get_source(&self, state: &LowLevelStateId) -> Result<LowLevelStateId, GraphError> {
+        self.states
+            .get(state)
+            .and_then(|s| s.hl_transition.as_ref())
+            .map(|t| LowLevelStateId::HlState(t.source.clone()))
+            .ok_or_else(|| GraphError::FSMCurrentStateMissing)
+    }
+
+    fn get_target(&self, state: &LowLevelStateId) -> Result<LowLevelStateId, GraphError> {
+        self.states
+            .get(state)
+            .and_then(|s| s.hl_transition.as_ref())
+            .map(|t| LowLevelStateId::HlState(t.target.clone()))
+            .ok_or_else(|| GraphError::FSMCurrentStateMissing)
+    }
+}
+
+#[derive(Clone)]
+pub struct FsmIoEnv<'a> {
+    /// The context at the FSM node
+    node_context: NodeContext<'a>,
+    state_machine: &'a LowLevelStateMachine,
+
+    current_state: LowLevelStateId,
+    current_state_role: StateRole,
+    state_stack: VecDeque<(LowLevelStateId, StateRole)>,
+}
+
+impl<'a> FsmIoEnv<'a> {
+    const MISSING_STATE_ERROR_MESSAGE: &'static str =
+        "Queried state does not exist. This is an internal error, please submit a GitHub issue.";
+    fn parent_graph_data_back(
         &self,
-        mut state_stack: StateStack,
-        target_pin: TargetPin,
-        mut ctx: PassContext,
+        pin_id: &PinId,
+        ctx: &GraphContext,
     ) -> Result<DataValue, GraphError> {
-        let state_id = state_stack.last_state();
-        let state = self
+        self.node_context
+            .clone()
+            .with_state_key(ctx.state_key)
+            .data_back(pin_id)
+            .or_else(|_| {
+                self.state_machine
+                    .input_data
+                    .get(pin_id)
+                    .cloned()
+                    .ok_or(GraphError::FSMRequestedMissingData)
+            })
+    }
+
+    fn state_data_back(
+        &self,
+        forward_pin_id: PinId,
+        ctx: &GraphContext,
+        next_state: LowLevelStateId,
+        next_state_role: StateRole,
+    ) -> Result<DataValue, GraphError> {
+        let graph_handle = &self
+            .state_machine
             .states
-            .get(&state_id)
-            .ok_or(GraphError::FSMCurrentStateMissing)?;
-        match &target_pin {
-            TargetPin::OutputData(s) => {
-                if let Some(default) = self.input_data.get(s) {
-                    ctx.data_back(s).or_else(|_| Ok(default.clone()))
-                } else {
-                    let (queried_state, queried_role) = if s == Self::SOURCE_POSE {
-                        (
-                            LowLevelStateId::HlState(
-                                state
-                                    .hl_transition
-                                    .as_ref()
-                                    .ok_or(GraphError::FSMExpectedTransitionFoundState)?
-                                    .source
-                                    .clone(),
-                            ),
-                            StateRole::Source,
-                        )
-                    } else if s == Self::TARGET_POSE {
-                        (
-                            LowLevelStateId::HlState(
-                                state
-                                    .hl_transition
-                                    .as_ref()
-                                    .ok_or(GraphError::FSMExpectedTransitionFoundState)?
-                                    .target
-                                    .clone(),
-                            ),
-                            StateRole::Target,
-                        )
-                    } else {
-                        return Err(GraphError::FSMRequestedMissingData);
-                    };
+            .get(&next_state)
+            .expect(Self::MISSING_STATE_ERROR_MESSAGE)
+            .graph;
 
-                    let queried_graph = &self
-                        .states
-                        .get(&queried_state)
-                        .expect("Queried state does not exist. This is an internal error, please submit a GitHub issue.")
-                        .graph;
+        let graph = self
+            .node_context
+            .graph_context
+            .resources
+            .animation_graph_assets
+            .get(graph_handle)
+            .ok_or(GraphError::FSMGraphAssetMissing)?;
 
-                    let graph = ctx
-                        .resources
-                        .animation_graph_assets
-                        .get(queried_graph)
-                        .ok_or(GraphError::FSMGraphAssetMissing)?;
+        let mut next_state_stack = self.state_stack.clone();
+        next_state_stack.push_back((self.current_state.clone(), self.current_state_role));
 
-                    let target_pin = TargetPin::OutputData(DEFAULT_OUTPUT_POSE.to_string());
+        let sub_graph_io = FsmIoEnv {
+            node_context: self.node_context.clone(),
+            state_machine: self.state_machine,
+            current_state: next_state.clone(),
+            state_stack: next_state_stack,
+            current_state_role: next_state_role,
+        };
 
-                    let i = InputOverlay::default();
-                    state_stack.stack.push((queried_state, queried_role));
-                    graph.get_data(
-                        target_pin,
-                        ctx.child_with_state(
-                            Some(FsmContext {
-                                state_stack,
-                                fsm: self,
-                            }),
-                            &i,
-                        ),
-                    )
-                }
-            }
-            _ => panic!("State machine received data query without `OutputData` target"),
-        }
+        let sub_ctx = self
+            .node_context
+            .create_child_context(graph_handle.id(), Some(next_state))
+            .with_state_key(ctx.state_key)
+            .with_io(&sub_graph_io);
+
+        graph.get_data(TargetPin::OutputData(forward_pin_id), sub_ctx)
     }
 
-    pub fn get_time_update(
+    fn parent_graph_duration_back(
         &self,
-        mut state_stack: StateStack,
-        target_pin: TargetPin,
-        ctx: PassContext,
-    ) -> Result<TimeUpdate, GraphError> {
-        match target_pin {
-            TargetPin::OutputTime => match state_stack.last_role() {
-                StateRole::Source => {
-                    state_stack.stack.pop();
-                    let state = self.states.get(&state_stack.last_state()).unwrap();
-                    let graph = ctx
-                        .resources
-                        .animation_graph_assets
-                        .get(&state.graph)
-                        .unwrap();
-                    let overlay = InputOverlay::default();
-                    graph.get_time_update(
-                        SourcePin::InputTime(Self::SOURCE_TIME.to_string()),
-                        ctx.child_with_state(
-                            Some(FsmContext {
-                                state_stack,
-                                fsm: self,
-                            }),
-                            &overlay,
-                        ),
-                    )
-                }
-                StateRole::Target => {
-                    state_stack.stack.pop();
-                    let state = self.states.get(&state_stack.last_state()).unwrap();
-                    let graph = ctx
-                        .resources
-                        .animation_graph_assets
-                        .get(&state.graph)
-                        .unwrap();
-                    let overlay = InputOverlay::default();
-                    graph.get_time_update(
-                        SourcePin::InputTime(Self::TARGET_TIME.to_string()),
-                        ctx.child_with_state(
-                            Some(FsmContext {
-                                state_stack,
-                                fsm: self,
-                            }),
-                            &overlay,
-                        ),
-                    )
-                }
-                StateRole::Root => ctx.time_update_fwd(),
-            },
-            _ => panic!("State machine received time query without `OutputTime` target"),
-        }
-    }
-
-    pub fn get_duration(
-        &self,
-        mut state_stack: StateStack,
-        source_pin: SourcePin,
-        ctx: PassContext,
+        pin_id: &PinId,
+        ctx: &GraphContext,
     ) -> Result<DurationData, GraphError> {
-        let state_id = state_stack.last_state();
-        let state = self
+        self.node_context
+            .clone()
+            .with_state_key(ctx.state_key)
+            .duration_back(pin_id)
+    }
+
+    fn state_duration_back(
+        &self,
+        ctx: &GraphContext,
+        state: LowLevelStateId,
+        next_state_role: StateRole,
+    ) -> Result<DurationData, GraphError> {
+        let graph_handle = &self
+            .state_machine
             .states
-            .get(&state_id)
-            .ok_or(GraphError::FSMCurrentStateMissing)?;
+            .get(&state)
+            .expect(Self::MISSING_STATE_ERROR_MESSAGE)
+            .graph;
 
-        match &source_pin {
-            SourcePin::InputTime(p) => {
-                let (queried_state, queried_role) = if p == Self::SOURCE_TIME {
-                    (
-                        LowLevelStateId::HlState(
-                            state
-                                .hl_transition
-                                .as_ref()
-                                .ok_or(GraphError::FSMExpectedTransitionFoundState)?
-                                .source
-                                .clone(),
-                        ),
-                        StateRole::Source,
-                    )
-                } else if p == Self::TARGET_TIME {
-                    (
-                        LowLevelStateId::HlState(
-                            state
-                                .hl_transition
-                                .as_ref()
-                                .ok_or(GraphError::FSMExpectedTransitionFoundState)?
-                                .target
-                                .clone(),
-                        ),
-                        StateRole::Source,
-                    )
-                } else {
-                    return Err(GraphError::FSMRequestedMissingData);
-                };
+        let graph = self
+            .node_context
+            .graph_context
+            .resources
+            .animation_graph_assets
+            .get(graph_handle)
+            .ok_or(GraphError::FSMGraphAssetMissing)?;
 
-                let queried_graph = &self
-                    .states
-                    .get(&queried_state)
-                    .expect("Queried state does not exist. This is an internal error, please submit a GitHub issue.")
-                    .graph;
+        let mut next_state_stack = self.state_stack.clone();
+        next_state_stack.push_back((self.current_state.clone(), self.current_state_role));
 
-                let graph = ctx
-                    .resources
-                    .animation_graph_assets
-                    .get(queried_graph)
-                    .ok_or(GraphError::FSMGraphAssetMissing)?;
+        let sub_graph_io = FsmIoEnv {
+            node_context: self.node_context.clone(),
+            state_machine: self.state_machine,
+            current_state: state.clone(),
+            state_stack: next_state_stack,
+            current_state_role: next_state_role,
+        };
 
-                let i = InputOverlay::default();
-                let target_pin = TargetPin::OutputTime;
+        let sub_ctx = self
+            .node_context
+            .create_child_context(graph_handle.id(), Some(state))
+            .with_state_key(ctx.state_key)
+            .with_io(&sub_graph_io);
 
-                state_stack.stack.push((queried_state, queried_role));
+        graph.get_duration(TargetPin::OutputTime, sub_ctx)
+    }
 
-                graph.get_duration(
-                    target_pin,
-                    ctx.child_with_state(
-                        Some(FsmContext {
-                            state_stack,
-                            fsm: self,
-                        }),
-                        &i,
-                    ),
-                )
-            }
-            _ => panic!("State machine received data query without `OutputData` target"),
+    fn parent_graph_time_update_fwd(&self, ctx: &GraphContext) -> Result<TimeUpdate, GraphError> {
+        self.node_context
+            .clone()
+            .with_state_key(ctx.state_key)
+            .time_update_fwd()
+    }
+
+    fn state_time_update_fwd(&self, ctx: &GraphContext) -> Result<TimeUpdate, GraphError> {
+        let mut next_state_stack = self.state_stack.clone();
+        if let Some((next_state, next_state_role)) = next_state_stack.pop_back() {
+            let graph_handle = &self
+                .state_machine
+                .states
+                .get(&next_state)
+                .expect(Self::MISSING_STATE_ERROR_MESSAGE)
+                .graph;
+
+            let graph = self
+                .node_context
+                .graph_context
+                .resources
+                .animation_graph_assets
+                .get(graph_handle)
+                .ok_or(GraphError::FSMGraphAssetMissing)?;
+
+            let sub_graph_io = FsmIoEnv {
+                node_context: self.node_context.clone(),
+                state_machine: self.state_machine,
+                current_state: next_state.clone(),
+                state_stack: next_state_stack,
+                current_state_role: next_state_role,
+            };
+
+            let sub_ctx = self
+                .node_context
+                .create_child_context(graph_handle.id(), Some(next_state))
+                .with_state_key(ctx.state_key)
+                .with_io(&sub_graph_io);
+
+            graph.get_time_update(
+                SourcePin::InputTime(match self.current_state_role {
+                    StateRole::Source => LowLevelStateMachine::SOURCE_TIME.to_owned(),
+                    StateRole::Target => LowLevelStateMachine::TARGET_TIME.to_owned(),
+                    StateRole::Root => unreachable!(),
+                }),
+                sub_ctx,
+            )
+        } else {
+            Err(GraphError::FSMRequestedMissingData)
         }
     }
+}
+
+impl<'a> GraphIoEnv for FsmIoEnv<'a> {
+    fn get_data_back(&self, pin_id: PinId, ctx: GraphContext) -> Result<DataValue, GraphError> {
+        match pin_id.as_str() {
+            LowLevelStateMachine::SOURCE_POSE => self
+                .state_machine
+                .get_source(&self.current_state)
+                .and_then(|state| {
+                    self.state_data_back(DEFAULT_OUTPUT_POSE.into(), &ctx, state, StateRole::Source)
+                })
+                .or_else(|_| self.parent_graph_data_back(&pin_id, &ctx)),
+            LowLevelStateMachine::TARGET_POSE => self
+                .state_machine
+                .get_target(&self.current_state)
+                .and_then(|state| {
+                    self.state_data_back(DEFAULT_OUTPUT_POSE.into(), &ctx, state, StateRole::Target)
+                })
+                .or_else(|_| self.parent_graph_data_back(&pin_id, &ctx)),
+            _ => self.parent_graph_data_back(&pin_id, &ctx),
+        }
+    }
+
+    // TODO: We can forward duration queries to the parent graph, but there will never be anything
+    // connected there! We need to allow arbitrary time inputs to the FSM as well
+    fn get_duration_back(
+        &self,
+        pin_id: PinId,
+        ctx: GraphContext,
+    ) -> Result<DurationData, GraphError> {
+        match pin_id.as_str() {
+            LowLevelStateMachine::SOURCE_TIME => self
+                .state_machine
+                .get_source(&self.current_state)
+                .and_then(|state| self.state_duration_back(&ctx, state, StateRole::Source))
+                .or_else(|_| self.parent_graph_duration_back(&pin_id, &ctx)),
+            LowLevelStateMachine::TARGET_TIME => self
+                .state_machine
+                .get_target(&self.current_state)
+                .and_then(|state| self.state_duration_back(&ctx, state, StateRole::Target))
+                .or_else(|_| self.parent_graph_duration_back(&pin_id, &ctx)),
+            _ => self.parent_graph_duration_back(&pin_id, &ctx),
+        }
+    }
+
+    fn get_time_fwd(&self, ctx: GraphContext) -> Result<TimeUpdate, GraphError> {
+        self.state_time_update_fwd(&ctx)
+            .or_else(|_| self.parent_graph_time_update_fwd(&ctx))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub enum StateRole {
+    Source,
+    Target,
+    Root,
 }

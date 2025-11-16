@@ -1,8 +1,8 @@
-use std::sync::Arc;
+use std::{borrow::Cow, sync::Arc};
 
 use super::{
-    animation_graph::{AnimationGraph, DEFAULT_OUTPUT_POSE, InputOverlay, PinId, TimeUpdate},
-    context::{DeferredGizmos, PassContext},
+    animation_graph::{AnimationGraph, DEFAULT_OUTPUT_POSE, PinId, TimeUpdate},
+    context::DeferredGizmos,
     edge_data::{AnimationEvent, DataValue, EventQueue, SampledEvent},
     errors::GraphError,
     pose::{BoneId, Pose},
@@ -11,7 +11,11 @@ use super::{
 };
 use crate::{
     core::ragdoll::{bone_mapping::RagdollBoneMap, definition::Ragdoll, spawning::SpawnedRagdoll},
-    prelude::{CustomRelativeDrawCommand, CustomRelativeDrawCommandReference, SystemResources},
+    prelude::{
+        CustomRelativeDrawCommand, CustomRelativeDrawCommandReference, SystemResources,
+        io_env::{EmptyIoEnv, IoOverrides, OverrideIoEnv},
+        new_context::GraphContext,
+    },
 };
 use bevy::{
     asset::prelude::*,
@@ -80,7 +84,7 @@ pub struct AnimationGraphPlayer {
     pub(crate) queued_events: EventQueue,
     pub(crate) outputs: HashMap<PinId, DataValue>,
 
-    input_overlay: InputOverlay,
+    io_overrides: IoOverrides,
     /// Error that ocurred during graph evaluation in the last frame
     #[reflect(ignore)]
     error: Option<GraphError>,
@@ -118,19 +122,17 @@ impl AnimationGraphPlayer {
 
     /// Clear all input parameters for the animation graph
     pub fn clear_input_parameters(&mut self) {
-        self.input_overlay.clear();
+        self.io_overrides.clear();
     }
 
     /// Configure an input parameter for the animation graph
     pub fn set_input_parameter(&mut self, parameter_name: impl Into<String>, value: DataValue) {
-        self.input_overlay
-            .parameters
-            .insert(parameter_name.into(), value);
+        self.io_overrides.data.insert(parameter_name.into(), value);
     }
 
     /// Return an input parameter for the animation graph
     pub fn get_input_parameter(&self, parameter_name: &str) -> Option<DataValue> {
-        self.input_overlay.parameters.get(parameter_name).cloned()
+        self.io_overrides.data.get(parameter_name).cloned()
     }
 
     /// Start playing an animation, resetting state of the player.
@@ -161,7 +163,7 @@ impl AnimationGraphPlayer {
     /// Query the animation graph with the latest time update and inputs
     pub(crate) fn update(&mut self, system_resources: &SystemResources, root_entity: Entity) {
         self.outputs.clear();
-        self.input_overlay.parameters.insert(
+        self.io_overrides.data.insert(
             Self::USER_EVENTS.into(),
             std::mem::take(&mut self.queued_events).into(),
         );
@@ -178,7 +180,7 @@ impl AnimationGraphPlayer {
             self.pending_update.clone(),
             self.context_arena.as_mut().unwrap(),
             system_resources,
-            &self.input_overlay,
+            &self.io_overrides,
             root_entity,
             &self.entity_map,
             &mut self.deferred_gizmos,
@@ -197,24 +199,6 @@ impl AnimationGraphPlayer {
         }
 
         self.pending_update = TimeUpdate::Delta(0.);
-    }
-
-    pub fn get_pass_context<'a>(
-        &'a mut self,
-        system_resources: &'a SystemResources,
-        root_entity: Entity,
-    ) -> PassContext<'a> {
-        let context_arena = self.context_arena.as_mut().unwrap();
-
-        PassContext::new(
-            context_arena.get_toplevel_id(),
-            context_arena,
-            system_resources,
-            &self.input_overlay,
-            root_entity,
-            &self.entity_map,
-            &mut self.deferred_gizmos,
-        )
     }
 
     pub fn gizmo_for_bones(&mut self, bones: impl IntoIterator<Item = BoneId>) {
@@ -257,9 +241,22 @@ impl AnimationGraphPlayer {
 
         let skeleton_handle = self.skeleton.clone();
 
-        let ctx = self
-            .get_pass_context(system_resources, root_entity)
-            .with_debugging(true);
+        let overlay_env = OverrideIoEnv {
+            overrides: Cow::Borrowed(&self.io_overrides),
+            inner: Cow::<EmptyIoEnv>::Owned(EmptyIoEnv),
+        };
+        let context_arena = self.context_arena.as_mut().unwrap();
+
+        let ctx = GraphContext::new(
+            context_arena.get_toplevel_id(),
+            context_arena,
+            system_resources,
+            &overlay_env,
+            root_entity,
+            &self.entity_map,
+            &mut self.deferred_gizmos,
+        )
+        .with_debugging(true);
 
         let Some(skeleton) = ctx.resources.skeleton_assets.get(&skeleton_handle) else {
             return;

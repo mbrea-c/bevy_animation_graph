@@ -5,7 +5,7 @@ use super::{
 };
 use crate::{
     nodes::DummyNode,
-    prelude::{PassContext, SpecContext},
+    prelude::{SpecContext, new_context::NodeContext},
 };
 use bevy::{
     platform::collections::HashMap,
@@ -16,11 +16,11 @@ use std::{any::TypeId, fmt::Debug};
 
 #[reflect_trait]
 pub trait NodeLike: NodeLikeClone + Send + Sync + Debug + Reflect + 'static {
-    fn duration(&self, _ctx: PassContext) -> Result<(), GraphError> {
+    fn duration(&self, _ctx: NodeContext) -> Result<(), GraphError> {
         Ok(())
     }
 
-    fn update(&self, _ctx: PassContext) -> Result<(), GraphError> {
+    fn update(&self, _ctx: NodeContext) -> Result<(), GraphError> {
         Ok(())
     }
 

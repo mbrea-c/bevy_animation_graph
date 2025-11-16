@@ -5,7 +5,7 @@ use bevy::{
 };
 use bevy_animation_graph::{
     core::state_machine::high_level::{State, StateMachine, Transition},
-    prelude::{AnimationGraph, AnimationNode, GraphContextId, graph_context::GraphContext},
+    prelude::{AnimationGraph, AnimationNode, GraphContextId, graph_context::GraphState},
 };
 use bevy_inspector_egui::reflect_inspector::InspectorUi;
 use egui_dock::egui;
@@ -514,7 +514,7 @@ fn select_graph_context_fsm(
 
 fn list_graph_contexts(
     world: &World,
-    filter: impl Fn(&GraphContext) -> bool,
+    filter: impl Fn(&GraphState) -> bool,
 ) -> Vec<(Entity, GraphContextId)> {
     let players = utils::iter_animation_graph_players(world);
     players

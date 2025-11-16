@@ -12,7 +12,7 @@ use crate::{
         skeleton::Skeleton,
         space_conversion::SpaceConversionContext,
     },
-    prelude::PoseFallbackContext,
+    prelude::pose_fallback::PoseFallbackContext,
 };
 
 pub struct BodyTarget {
