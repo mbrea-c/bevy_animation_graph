@@ -13,9 +13,9 @@ use bevy_animation_graph::core::animated_scene::AnimatedSceneInstance;
 use bevy_animation_graph::core::animation_graph_player::AnimationGraphPlayer;
 use bevy_animation_graph::core::pose::Pose;
 use bevy_animation_graph::core::space_conversion::SpaceConversionContext;
-use bevy_animation_graph::prelude::{
-    AnimationSource, DeferredGizmos, DeferredGizmosContext, PoseFallbackContext, SystemResources,
-};
+use bevy_animation_graph::prelude::deferred_gizmos::DeferredGizmosContext;
+use bevy_animation_graph::prelude::pose_fallback::PoseFallbackContext;
+use bevy_animation_graph::prelude::{AnimationSource, DeferredGizmos, SystemResources};
 use bevy_inspector_egui::bevy_egui;
 use egui_dock::egui;
 

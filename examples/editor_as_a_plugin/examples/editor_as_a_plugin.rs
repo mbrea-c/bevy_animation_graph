@@ -4,7 +4,7 @@ extern crate bevy_animation_graph;
 use bevy::prelude::*;
 use bevy_animation_graph::{
     core::{animation_graph::PinMap, errors::GraphError},
-    prelude::{DataSpec, NodeLike, PassContext, ReflectNodeLike, SpecContext},
+    prelude::{DataSpec, NodeLike, ReflectNodeLike, SpecContext, new_context::NodeContext},
 };
 use bevy_animation_graph_editor::AnimationGraphEditorPlugin;
 
@@ -28,7 +28,7 @@ impl MyCustomNode {
 }
 
 impl NodeLike for MyCustomNode {
-    fn duration(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+    fn duration(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
         // Nodes need to "announce" their duration. Here, we just read the duration for our
         // dependency node and forward that, since this node does not change the length of the
         // clip. This won't always be the case; for example a node that applies a playback speed multiplier
@@ -38,7 +38,7 @@ impl NodeLike for MyCustomNode {
         Ok(())
     }
 
-    fn update(&self, mut ctx: PassContext) -> Result<(), GraphError> {
+    fn update(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
         // Get time incoming time delta (or absolute time signal).
         let input = ctx.time_update_fwd()?;
         // Forward the time signal to dependency nodes
