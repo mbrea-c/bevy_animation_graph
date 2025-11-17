@@ -148,11 +148,11 @@ impl NativeEditorWindowExtension for GraphEditorWindow {
                         {
                             let node_name =
                                 graph_indices.node_indices.name(*selected_node).unwrap();
-                            graph.nodes.get_mut(node_name).unwrap().should_debug = true;
+                            graph.nodes.get_mut(&node_name).unwrap().should_debug = true;
                             if let Some(active_node) = get_global_state::<ActiveGraphNode>(world)
                                 && let Some(InspectorSelection::ActiveNode) =
                                     get_global_state::<InspectorSelection>(world)
-                                && &active_node.node == node_name
+                                && active_node.node == node_name
                                 && active_node.handle == active_graph.handle
                             {
                                 // pass

@@ -61,19 +61,18 @@ impl CreateClipPreview {
         }
 
         let mut new_graph = AnimationGraph::new();
-        new_graph.add_node(AnimationNode::new(
-            "clip",
-            Box::new(ClipNode::new(action.clip.clone(), None, None)),
-        ));
+        let clip_node = AnimationNode::new("clip", ClipNode::new(action.clip.clone(), None, None));
+        let clip_node_id = clip_node.id;
+        new_graph.add_node(clip_node);
 
         new_graph.add_output_parameter("pose", DataSpec::Pose);
         new_graph.add_output_time();
 
         new_graph.add_edge(
-            SourcePin::NodeData("clip".into(), ClipNode::OUT_POSE.into()),
+            SourcePin::NodeData(clip_node_id, ClipNode::OUT_POSE.into()),
             TargetPin::OutputData("pose".into()),
         );
-        new_graph.add_edge(SourcePin::NodeTime("clip".into()), TargetPin::OutputTime);
+        new_graph.add_edge(SourcePin::NodeTime(clip_node_id), TargetPin::OutputTime);
 
         let graph_handle = graph_assets.add(new_graph);
 

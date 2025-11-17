@@ -124,7 +124,7 @@ fn node_inspector(
                 ctx.editor_actions
                     .push(EditorAction::Graph(GraphAction::EditNode(EditNode {
                         graph: active_node.handle.clone(),
-                        node: node.name.clone(),
+                        node: node.id,
                         new_inner: node_buffer.inner.clone(),
                     })));
                 clear = true;

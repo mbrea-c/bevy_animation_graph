@@ -134,15 +134,15 @@ fn combo_box_nodes(ui: &mut egui::Ui, current: &mut NodeId, graph: &AnimationGra
         .nodes
         .values()
         .filter(|n| n.inner.as_any().downcast_ref::<EventMarkupNode>().is_some())
-        .map(|n| n.name.clone())
+        .map(|n| (n.id, n.name.clone()))
         .collect::<Vec<_>>();
 
-    valid_node_ids.sort();
+    valid_node_ids.sort_by_key(|(_, n)| n.clone());
 
     egui::ComboBox::from_id_salt("Select node id for event markup")
         .show_ui(ui, |ui| {
-            for n in valid_node_ids {
-                ui.selectable_value(current, n.clone(), n);
+            for (node_id, node_name) in valid_node_ids {
+                ui.selectable_value(current, node_id, node_name);
             }
         })
         .response

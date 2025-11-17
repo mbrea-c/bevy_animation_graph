@@ -82,7 +82,7 @@ impl AssetLoader for AnimationGraphLoader {
         // --- Set up edges
         // ------------------------------------------------------------------------------------
         for (target_pin, source_pin) in serial.edges_inverted.clone().into_iter() {
-            graph.add_edge(source_pin.map_into(), target_pin.map_into());
+            graph.add_edge(source_pin, target_pin);
         }
         // ------------------------------------------------------------------------------------
 

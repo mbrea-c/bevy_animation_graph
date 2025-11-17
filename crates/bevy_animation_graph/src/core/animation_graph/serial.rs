@@ -1,8 +1,11 @@
 use std::fmt;
 
-use super::{AnimationGraph, Extra, pin};
-use crate::prelude::{
-    AnimationNode, DataSpec, DataValue, NodeLike, ReflectNodeLike, dyn_node_like::DynNodeLike,
+use super::{AnimationGraph, Extra};
+use crate::{
+    core::animation_graph::{NodeId, PinId, SourcePin, TargetPin},
+    prelude::{
+        AnimationNode, DataSpec, DataValue, NodeLike, ReflectNodeLike, dyn_node_like::DynNodeLike,
+    },
 };
 use bevy::{
     asset::{AssetPath, LoadContext, ReflectHandle},
@@ -197,10 +200,12 @@ impl<'de> DeserializeSeed<'de> for AnimationNodeLoadDeserializer<'_, '_> {
             }
         }
 
+        const ID: &str = "id";
         const NAME: &str = "name";
         const INNER: &str = "inner";
 
         enum Field {
+            Id,
             Name,
             Inner,
             _Ignore,
@@ -220,8 +225,9 @@ impl<'de> DeserializeSeed<'de> for AnimationNodeLoadDeserializer<'_, '_> {
                 E: serde::de::Error,
             {
                 match v {
-                    0 => Ok(Field::Name),
-                    1 => Ok(Field::Inner),
+                    0 => Ok(Field::Id),
+                    1 => Ok(Field::Name),
+                    2 => Ok(Field::Inner),
                     _ => Ok(Field::_Ignore),
                 }
             }
@@ -231,6 +237,7 @@ impl<'de> DeserializeSeed<'de> for AnimationNodeLoadDeserializer<'_, '_> {
                 E: serde::de::Error,
             {
                 match v {
+                    ID => Ok(Field::Id),
                     NAME => Ok(Field::Name),
                     INNER => Ok(Field::Inner),
                     _ => Ok(Field::_Ignore),
@@ -265,17 +272,21 @@ impl<'de> DeserializeSeed<'de> for AnimationNodeLoadDeserializer<'_, '_> {
             {
                 const INVALID_LENGTH: &str = "struct AnimationNode with 3 elements";
 
+                let id = seq
+                    .next_element::<NodeId>()?
+                    .ok_or(de::Error::invalid_length(0, &INVALID_LENGTH))?;
                 let name = seq
                     .next_element::<String>()?
-                    .ok_or(de::Error::invalid_length(0, &INVALID_LENGTH))?;
+                    .ok_or(de::Error::invalid_length(1, &INVALID_LENGTH))?;
                 let inner = seq
                     .next_element_seed(NodeInnerDeserializer {
                         type_registry: self.type_registry,
                         load_context: self.load_context,
                     })?
-                    .ok_or(de::Error::invalid_length(1, &INVALID_LENGTH))?;
+                    .ok_or(de::Error::invalid_length(2, &INVALID_LENGTH))?;
 
                 Ok(AnimationNode {
+                    id,
                     name,
                     inner: DynNodeLike(inner),
                     should_debug: false,
@@ -286,10 +297,17 @@ impl<'de> DeserializeSeed<'de> for AnimationNodeLoadDeserializer<'_, '_> {
             where
                 A: de::MapAccess<'de>,
             {
+                let mut id = None::<NodeId>;
                 let mut name = None::<String>;
                 let mut inner = None::<Box<dyn NodeLike>>;
                 while let Some(key) = map.next_key::<Field>()? {
                     match key {
+                        Field::Id => {
+                            if id.is_some() {
+                                return Err(de::Error::duplicate_field(ID));
+                            }
+                            id = Some(map.next_value::<NodeId>()?);
+                        }
                         Field::Name => {
                             if name.is_some() {
                                 return Err(de::Error::duplicate_field(NAME));
@@ -312,6 +330,7 @@ impl<'de> DeserializeSeed<'de> for AnimationNodeLoadDeserializer<'_, '_> {
                 }
 
                 Ok(AnimationNode {
+                    id: id.ok_or(de::Error::missing_field(ID))?,
                     name: name.ok_or(de::Error::missing_field(NAME))?,
                     inner: DynNodeLike(inner.ok_or(de::Error::missing_field(INNER))?),
                     should_debug: false,
@@ -327,19 +346,14 @@ impl<'de> DeserializeSeed<'de> for AnimationNodeLoadDeserializer<'_, '_> {
     }
 }
 
-pub type NodeIdSerial = String;
-pub type PinIdSerial = String;
-pub type TargetPinSerial = pin::TargetPin<NodeIdSerial, PinIdSerial>;
-pub type SourcePinSerial = pin::SourcePin<NodeIdSerial, PinIdSerial>;
-
 // #[derive(Deserialize)]
 pub struct AnimationGraphSerial {
     pub nodes: Vec<AnimationNode>,
-    pub edges_inverted: HashMap<TargetPinSerial, SourcePinSerial>,
+    pub edges_inverted: HashMap<TargetPin, SourcePin>,
 
-    pub default_parameters: HashMap<PinIdSerial, DataValue>,
-    pub input_times: HashMap<PinIdSerial, ()>,
-    pub output_parameters: HashMap<PinIdSerial, DataSpec>,
+    pub default_parameters: HashMap<PinId, DataValue>,
+    pub input_times: HashMap<PinId, ()>,
+    pub output_parameters: HashMap<PinId, DataSpec>,
     pub output_time: Option<()>,
 
     pub extra: Extra,
@@ -535,7 +549,7 @@ const _: () = {
                         }
                     };
                     let __field1 = match _serde::de::SeqAccess::next_element::<
-                        HashMap<TargetPinSerial, SourcePinSerial>,
+                        HashMap<TargetPin, SourcePin>,
                     >(&mut __seq)?
                     {
                         Some(__value) => __value,
@@ -547,7 +561,7 @@ const _: () = {
                         }
                     };
                     let __field2 = match _serde::de::SeqAccess::next_element::<
-                        HashMap<PinIdSerial, DataValue>,
+                        HashMap<PinId, DataValue>,
                     >(&mut __seq)?
                     {
                         Some(__value) => __value,
@@ -558,10 +572,9 @@ const _: () = {
                             ));
                         }
                     };
-                    let __field3 = match _serde::de::SeqAccess::next_element::<
-                        HashMap<PinIdSerial, ()>,
-                    >(&mut __seq)?
-                    {
+                    let __field3 = match _serde::de::SeqAccess::next_element::<HashMap<PinId, ()>>(
+                        &mut __seq,
+                    )? {
                         Some(__value) => __value,
                         None => {
                             return core::result::Result::Err(_serde::de::Error::invalid_length(
@@ -571,7 +584,7 @@ const _: () = {
                         }
                     };
                     let __field4 = match _serde::de::SeqAccess::next_element::<
-                        HashMap<PinIdSerial, DataSpec>,
+                        HashMap<PinId, DataSpec>,
                     >(&mut __seq)?
                     {
                         Some(__value) => __value,
@@ -622,10 +635,10 @@ const _: () = {
                     __A: _serde::de::MapAccess<'de>,
                 {
                     let mut __field0: Option<Vec<AnimationNode>> = None;
-                    let mut __field1: Option<HashMap<TargetPinSerial, SourcePinSerial>> = None;
-                    let mut __field2: Option<HashMap<PinIdSerial, DataValue>> = None;
-                    let mut __field3: Option<HashMap<PinIdSerial, ()>> = None;
-                    let mut __field4: Option<HashMap<PinIdSerial, DataSpec>> = None;
+                    let mut __field1: Option<HashMap<TargetPin, SourcePin>> = None;
+                    let mut __field2: Option<HashMap<PinId, DataValue>> = None;
+                    let mut __field3: Option<HashMap<PinId, ()>> = None;
+                    let mut __field4: Option<HashMap<PinId, DataSpec>> = None;
                     let mut __field5: Option<Option<()>> = None;
                     let mut __field6: Option<Extra> = None;
                     while let Some(__key) = _serde::de::MapAccess::next_key::<__Field>(&mut __map)?
@@ -657,7 +670,7 @@ const _: () = {
                                     );
                                 }
                                 __field1 = Some(_serde::de::MapAccess::next_value::<
-                                    HashMap<TargetPinSerial, SourcePinSerial>,
+                                    HashMap<TargetPin, SourcePin>,
                                 >(&mut __map)?);
                             }
                             __Field::__field2 => {
@@ -669,7 +682,7 @@ const _: () = {
                                     );
                                 }
                                 __field2 = Some(_serde::de::MapAccess::next_value::<
-                                    HashMap<PinIdSerial, DataValue>,
+                                    HashMap<PinId, DataValue>,
                                 >(&mut __map)?);
                             }
                             __Field::__field3 => {
@@ -681,7 +694,7 @@ const _: () = {
                                     );
                                 }
                                 __field3 = Some(_serde::de::MapAccess::next_value::<
-                                    HashMap<PinIdSerial, ()>,
+                                    HashMap<PinId, ()>,
                                 >(&mut __map)?);
                             }
                             __Field::__field4 => {
@@ -693,7 +706,7 @@ const _: () = {
                                     );
                                 }
                                 __field4 = Some(_serde::de::MapAccess::next_value::<
-                                    HashMap<PinIdSerial, DataSpec>,
+                                    HashMap<PinId, DataSpec>,
                                 >(&mut __map)?);
                             }
                             __Field::__field5 => {
@@ -800,6 +813,7 @@ const _: () = {
 
 pub struct AnimationNodeSerializer<'a> {
     pub type_registry: &'a TypeRegistry,
+    pub id: NodeId,
     pub name: String,
     pub inner: Box<dyn NodeLike>,
 }
@@ -811,6 +825,7 @@ impl AnimationNodeSerializer<'_> {
     ) -> AnimationNodeSerializer<'a> {
         AnimationNodeSerializer {
             type_registry,
+            id: node.id,
             name: node.name.clone(),
             inner: node.inner.0.clone(),
         }
@@ -820,11 +835,11 @@ impl AnimationNodeSerializer<'_> {
 #[derive(Serialize)]
 pub struct AnimationGraphSerializer<'a> {
     pub nodes: Vec<AnimationNodeSerializer<'a>>,
-    pub edges_inverted: HashMap<TargetPinSerial, SourcePinSerial>,
+    pub edges_inverted: HashMap<TargetPin, SourcePin>,
 
-    pub default_parameters: HashMap<PinIdSerial, DataValue>,
-    pub input_times: HashMap<PinIdSerial, ()>,
-    pub output_parameters: HashMap<PinIdSerial, DataSpec>,
+    pub default_parameters: HashMap<PinId, DataValue>,
+    pub input_times: HashMap<PinId, ()>,
+    pub output_parameters: HashMap<PinId, DataSpec>,
     pub output_time: Option<()>,
 
     pub extra: Extra,
@@ -901,8 +916,9 @@ impl Serialize for AnimationNodeSerializer<'_> {
             }
         }
 
-        let mut state = serializer.serialize_struct("AnimationNodeSerializer", 3)?;
+        let mut state = serializer.serialize_struct("AnimationNodeSerializer", 4)?;
 
+        state.serialize_field("id", &self.id)?;
         state.serialize_field("name", &self.name)?;
 
         let type_path = self

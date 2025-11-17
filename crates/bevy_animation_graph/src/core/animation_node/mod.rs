@@ -6,6 +6,7 @@ use super::{
     errors::GraphError,
 };
 use crate::{
+    core::animation_graph::NodeId,
     nodes::DummyNode,
     prelude::{SpecContext, dyn_node_like::DynNodeLike, new_context::NodeContext},
 };
@@ -15,6 +16,7 @@ use bevy::{
     reflect::{FromType, prelude::*},
 };
 use std::{any::TypeId, fmt::Debug};
+use uuid::Uuid;
 
 #[reflect_trait]
 pub trait NodeLike: NodeLikeClone + Send + Sync + Debug + Reflect + 'static {
@@ -138,6 +140,7 @@ impl PinOrdering {
 
 #[derive(Debug, Clone, Deref, DerefMut, Reflect)]
 pub struct AnimationNode {
+    pub id: NodeId,
     pub name: String,
     #[deref]
     pub inner: DynNodeLike,
@@ -147,17 +150,18 @@ pub struct AnimationNode {
 
 impl AnimationNode {
     #[must_use]
-    pub fn new(name: impl Into<String>, inner: Box<dyn NodeLike>) -> Self {
+    pub fn new(name: impl Into<String>, inner: impl NodeLike) -> Self {
         Self {
             name: name.into(),
-            inner: DynNodeLike(inner),
+            inner: DynNodeLike::new(inner),
             should_debug: false,
+            id: NodeId(Uuid::new_v4()),
         }
     }
 }
 
 impl Default for AnimationNode {
     fn default() -> Self {
-        Self::new("", Box::new(DummyNode))
+        Self::new("", DummyNode)
     }
 }

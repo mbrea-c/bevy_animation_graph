@@ -243,8 +243,12 @@ pub fn move_output_system(In(action): In<MoveOutput>, mut provider: GraphAndCont
 
 pub fn rename_node_system(In(action): In<RenameNode>, mut provider: GraphAndContext) {
     provider.provide_mut(&action.graph, |graph, _| {
-        info!("Renaming node {:?} to {:?}", action.node, action.new_name);
-        let _ = graph.rename_node(action.node, action.new_name);
+        if let Some(node_mut) = graph.nodes.get_mut(&action.node) {
+            info!("Renaming node node {:?}", action.node);
+            node_mut.name = action.new_name;
+        } else {
+            warn!("Cannot rename node {:?}: It does not exist!", action.node);
+        }
     });
     provider.validate(&action.graph);
     provider.generate_indices(&action.graph);
@@ -252,7 +256,7 @@ pub fn rename_node_system(In(action): In<RenameNode>, mut provider: GraphAndCont
 
 pub fn create_node_system(In(action): In<CreateNode>, mut provider: GraphAndContext) {
     provider.provide_mut(&action.graph, |graph, _| {
-        if !graph.nodes.contains_key(&action.node.name) {
+        if !graph.nodes.contains_key(&action.node.id) {
             info!("Adding node {:?}", action.node.name);
             graph.add_node(action.node);
         } else {

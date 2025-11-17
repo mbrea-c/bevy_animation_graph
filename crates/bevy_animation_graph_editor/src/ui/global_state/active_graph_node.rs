@@ -11,7 +11,7 @@ use crate::ui::global_state::{
     RegisterStateComponent, SetOrInsertEvent, observe_set_or_insert_event,
 };
 
-#[derive(Debug, Component, Default, Clone)]
+#[derive(Debug, Component, Clone)]
 pub struct ActiveGraphNode {
     pub handle: Handle<AnimationGraph>,
     pub node: NodeId,
