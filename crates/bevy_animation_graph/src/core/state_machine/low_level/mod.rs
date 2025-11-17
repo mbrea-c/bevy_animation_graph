@@ -10,7 +10,7 @@ use crate::{
         errors::GraphError,
     },
     prelude::{
-        io_env::{GraphIoEnv, IoOverrides, OverrideIoEnv},
+        io_env::{GraphIoEnv, IoOverrides, LayeredIoEnv},
         new_context::{GraphContext, NodeContext},
     },
 };
@@ -274,16 +274,16 @@ impl LowLevelStateMachine {
             percent_through_duration.into(),
         );
 
-        let sub_io_env = OverrideIoEnv {
-            overrides: Cow::Owned(io_overrides),
-            inner: Cow::<FsmIoEnv>::Owned(FsmIoEnv {
+        let sub_io_env = LayeredIoEnv(
+            Cow::<IoOverrides>::Owned(io_overrides),
+            Cow::<FsmIoEnv>::Owned(FsmIoEnv {
                 node_context: ctx.clone(),
                 state_machine: self,
                 current_state: state.id.clone(),
                 current_state_role: StateRole::Root,
                 state_stack: [].into(),
             }),
-        };
+        );
 
         let sub_ctx = ctx
             .create_child_context(state.graph.id(), Some(state.id.clone()))

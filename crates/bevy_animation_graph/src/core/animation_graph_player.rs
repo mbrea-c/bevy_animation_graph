@@ -1,4 +1,4 @@
-use std::{borrow::Cow, sync::Arc};
+use std::sync::Arc;
 
 use super::{
     animation_graph::{AnimationGraph, DEFAULT_OUTPUT_POSE, PinId, TimeUpdate},
@@ -13,8 +13,7 @@ use crate::{
     core::ragdoll::{bone_mapping::RagdollBoneMap, definition::Ragdoll, spawning::SpawnedRagdoll},
     prelude::{
         CustomRelativeDrawCommand, CustomRelativeDrawCommandReference, SystemResources,
-        io_env::{EmptyIoEnv, IoOverrides, OverrideIoEnv},
-        new_context::GraphContext,
+        io_env::IoOverrides, new_context::GraphContext,
     },
 };
 use bevy::{
@@ -176,7 +175,7 @@ impl AnimationGraphPlayer {
             return;
         };
 
-        match graph.query_with_overlay(
+        match graph.query_with_env(
             self.pending_update.clone(),
             self.context_arena.as_mut().unwrap(),
             system_resources,
@@ -241,17 +240,13 @@ impl AnimationGraphPlayer {
 
         let skeleton_handle = self.skeleton.clone();
 
-        let overlay_env = OverrideIoEnv {
-            overrides: Cow::Borrowed(&self.io_overrides),
-            inner: Cow::<EmptyIoEnv>::Owned(EmptyIoEnv),
-        };
         let context_arena = self.context_arena.as_mut().unwrap();
 
         let ctx = GraphContext::new(
             context_arena.get_toplevel_id(),
             context_arena,
             system_resources,
-            &overlay_env,
+            &self.io_overrides,
             root_entity,
             &self.entity_map,
             &mut self.deferred_gizmos,

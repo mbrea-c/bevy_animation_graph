@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use super::pin;
 use crate::{
     core::{
@@ -16,7 +14,7 @@ use crate::{
     prelude::{
         DataSpec, DataValue, DeferredGizmos, OptDataSpec, SpecContext, SystemResources,
         graph_context::QueryOutputTime,
-        io_env::{EmptyIoEnv, GraphIoEnv, IoOverrides, OverrideIoEnv},
+        io_env::{EmptyIoEnv, GraphIoEnv},
         new_context::GraphContext,
     },
 };
@@ -795,31 +793,6 @@ impl AnimationGraph {
             context_arena,
             resources,
             &EmptyIoEnv,
-            root_entity,
-            entity_map,
-            deferred_gizmos,
-        )
-    }
-
-    pub fn query_with_overlay(
-        &self,
-        time_update: TimeUpdate,
-        context_arena: &mut GraphContextArena,
-        resources: &SystemResources,
-        io_overrides: &IoOverrides,
-        root_entity: Entity,
-        entity_map: &HashMap<BoneId, Entity>,
-        deferred_gizmos: &mut DeferredGizmos,
-    ) -> Result<HashMap<PinId, DataValue>, GraphError> {
-        let overlay_env = OverrideIoEnv {
-            overrides: Cow::Borrowed(io_overrides),
-            inner: Cow::<EmptyIoEnv>::Owned(EmptyIoEnv),
-        };
-        self.query_with_env(
-            time_update,
-            context_arena,
-            resources,
-            &overlay_env,
             root_entity,
             entity_map,
             deferred_gizmos,

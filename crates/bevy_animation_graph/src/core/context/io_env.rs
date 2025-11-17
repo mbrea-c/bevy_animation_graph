@@ -90,20 +90,41 @@ impl IoOverrides {
     }
 }
 
-#[derive(Clone)]
-pub struct OverrideIoEnv<'a, T: ToOwned> {
-    pub overrides: Cow<'a, IoOverrides>,
-    pub inner: Cow<'a, T>,
-}
-
-impl<'a, T: GraphIoEnv + Clone> GraphIoEnv for OverrideIoEnv<'a, T> {
-    fn get_data_back(&self, pin_id: PinId, ctx: GraphContext) -> Result<DataValue, GraphError> {
-        self.overrides
-            .data
+impl GraphIoEnv for IoOverrides {
+    fn get_data_back(&self, pin_id: PinId, _: GraphContext) -> Result<DataValue, GraphError> {
+        self.data
             .get(&pin_id)
             .cloned()
             .ok_or_else(|| GraphError::OutputMissing(SourcePin::InputData(pin_id.clone())))
-            .or(self.inner.get_data_back(pin_id, ctx))
+    }
+
+    fn get_duration_back(
+        &self,
+        pin_id: PinId,
+        _: GraphContext,
+    ) -> Result<DurationData, GraphError> {
+        self.duration
+            .get(&pin_id)
+            .cloned()
+            .ok_or_else(|| GraphError::DurationMissing(SourcePin::InputTime(pin_id.clone())))
+    }
+
+    fn get_time_fwd(&self, _: GraphContext) -> Result<TimeUpdate, GraphError> {
+        self.time
+            .clone()
+            .ok_or_else(|| GraphError::TimeUpdateMissingBack(TargetPin::OutputTime))
+    }
+}
+
+/// Tries to get the value from T1 first, if that fails gets it from T2
+#[derive(Clone)]
+pub struct LayeredIoEnv<'a, T1: ToOwned, T2: ToOwned>(pub Cow<'a, T1>, pub Cow<'a, T2>);
+
+impl<'a, T1: GraphIoEnv + Clone, T2: GraphIoEnv + Clone> GraphIoEnv for LayeredIoEnv<'a, T1, T2> {
+    fn get_data_back(&self, pin_id: PinId, ctx: GraphContext) -> Result<DataValue, GraphError> {
+        self.0
+            .get_data_back(pin_id.clone(), ctx.clone())
+            .or_else(|_| self.1.get_data_back(pin_id, ctx))
     }
 
     fn get_duration_back(
@@ -111,19 +132,14 @@ impl<'a, T: GraphIoEnv + Clone> GraphIoEnv for OverrideIoEnv<'a, T> {
         pin_id: PinId,
         ctx: GraphContext,
     ) -> Result<DurationData, GraphError> {
-        self.overrides
-            .duration
-            .get(&pin_id)
-            .cloned()
-            .ok_or_else(|| GraphError::DurationMissing(SourcePin::InputTime(pin_id.clone())))
-            .or(self.inner.get_duration_back(pin_id, ctx))
+        self.0
+            .get_duration_back(pin_id.clone(), ctx.clone())
+            .or_else(|_| self.1.get_duration_back(pin_id, ctx))
     }
 
     fn get_time_fwd(&self, ctx: GraphContext) -> Result<TimeUpdate, GraphError> {
-        self.overrides
-            .time
-            .clone()
-            .ok_or_else(|| GraphError::TimeUpdateMissingBack(TargetPin::OutputTime))
-            .or(self.inner.get_time_fwd(ctx))
+        self.0
+            .get_time_fwd(ctx.clone())
+            .or_else(|_| self.1.get_time_fwd(ctx))
     }
 }
