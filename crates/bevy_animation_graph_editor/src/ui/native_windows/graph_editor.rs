@@ -9,7 +9,9 @@ use bevy::{
 };
 use bevy_animation_graph::{
     core::state_machine::high_level::StateMachine,
-    prelude::{AnimationGraph, AnimationNode, ReflectNodeLike, SpecContext},
+    prelude::{
+        AnimationGraph, AnimationNode, ReflectNodeLike, SpecContext, dyn_node_like::DynNodeLike,
+    },
 };
 use egui_dock::egui;
 
@@ -280,7 +282,7 @@ impl GraphEditorWindow {
                     let inner = node_like
                         .get_boxed(reflect_default.default())
                         .map_err(|_| "default-created value is not a `NodeLike`")?;
-                    buffer.node.inner = inner;
+                    buffer.node.inner = DynNodeLike::new_boxed(inner);
                     Ok::<_, &str>(())
                 })();
             }

@@ -1,7 +1,9 @@
 use std::fmt;
 
 use super::{AnimationGraph, Extra, pin};
-use crate::prelude::{AnimationNode, DataSpec, DataValue, NodeLike, ReflectNodeLike};
+use crate::prelude::{
+    AnimationNode, DataSpec, DataValue, NodeLike, ReflectNodeLike, dyn_node_like::DynNodeLike,
+};
 use bevy::{
     asset::{AssetPath, LoadContext, ReflectHandle},
     platform::collections::HashMap,
@@ -275,7 +277,7 @@ impl<'de> DeserializeSeed<'de> for AnimationNodeLoadDeserializer<'_, '_> {
 
                 Ok(AnimationNode {
                     name,
-                    inner,
+                    inner: DynNodeLike(inner),
                     should_debug: false,
                 })
             }
@@ -311,7 +313,7 @@ impl<'de> DeserializeSeed<'de> for AnimationNodeLoadDeserializer<'_, '_> {
 
                 Ok(AnimationNode {
                     name: name.ok_or(de::Error::missing_field(NAME))?,
-                    inner: inner.ok_or(de::Error::missing_field(INNER))?,
+                    inner: DynNodeLike(inner.ok_or(de::Error::missing_field(INNER))?),
                     should_debug: false,
                 })
             }
@@ -810,7 +812,7 @@ impl AnimationNodeSerializer<'_> {
         AnimationNodeSerializer {
             type_registry,
             name: node.name.clone(),
-            inner: node.inner.clone(),
+            inner: node.inner.0.clone(),
         }
     }
 }

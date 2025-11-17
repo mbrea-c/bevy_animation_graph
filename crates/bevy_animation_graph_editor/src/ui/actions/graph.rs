@@ -14,7 +14,9 @@ use bevy_animation_graph::{
         animation_graph::{Edge, NodeId, PinId, SourcePin, TargetPin},
         state_machine::high_level::StateMachine,
     },
-    prelude::{AnimationGraph, AnimationNode, DataSpec, DataValue, NodeLike, SpecContext},
+    prelude::{
+        AnimationGraph, AnimationNode, DataSpec, DataValue, SpecContext, dyn_node_like::DynNodeLike,
+    },
 };
 
 use crate::{
@@ -83,7 +85,7 @@ pub struct CreateNode {
 pub struct EditNode {
     pub graph: Handle<AnimationGraph>,
     pub node: NodeId,
-    pub new_inner: Box<dyn NodeLike>,
+    pub new_inner: DynNodeLike,
 }
 
 pub struct RemoveNode {
