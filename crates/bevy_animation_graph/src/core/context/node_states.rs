@@ -6,9 +6,8 @@ use bevy::{
 };
 use uuid::Uuid;
 
-use crate::{
-    core::{animation_graph::NodeId, errors::GraphError},
-    prelude::node_state_box::NodeStateBox,
+use crate::core::{
+    animation_graph::NodeId, context::node_state_box::NodeStateBox, errors::GraphError,
 };
 
 pub trait GraphStateType: Reflect + Any + std::fmt::Debug + Send + Sync + 'static {

@@ -1,4 +1,4 @@
-use crate::core::animation_graph::{NodeId, SourcePin, TargetPin};
+use crate::core::animation_graph::{GraphInputPin, NodeId, SourcePin, TargetPin};
 use bevy::prelude::*;
 use thiserror::Error;
 
@@ -6,6 +6,11 @@ use thiserror::Error;
 #[non_exhaustive]
 #[derive(Debug, Error, Reflect, Clone)]
 pub enum GraphError {
+    #[error("Graph input data could not be retrieved {0:?}")]
+    MissingGraphInputData(GraphInputPin),
+    #[error("Graph input duration could not be retrieved {0:?}")]
+    MissingGraphInputDuration(GraphInputPin),
+
     #[error("Expected an edge connected to the target {0:?}")]
     MissingEdgeToTarget(TargetPin),
     #[error("Expected an edge connected to the source {0:?}")]

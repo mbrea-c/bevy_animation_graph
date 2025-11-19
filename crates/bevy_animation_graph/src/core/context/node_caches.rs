@@ -3,13 +3,12 @@ use bevy::{
     reflect::Reflect,
 };
 
-use crate::{
-    core::{
-        animation_graph::{NodeId, PinId, SourcePin, TargetPin, TimeUpdate},
-        duration_data::DurationData,
-        errors::GraphError,
-    },
-    prelude::{DataValue, node_states::StateKey},
+use crate::core::{
+    animation_graph::{NodeId, PinId, SourcePin, TargetPin, TimeUpdate},
+    context::node_states::StateKey,
+    duration_data::DurationData,
+    edge_data::DataValue,
+    errors::GraphError,
 };
 
 #[derive(Reflect, Default, Debug)]

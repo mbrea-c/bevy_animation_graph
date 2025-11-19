@@ -1,13 +1,10 @@
-use crate::{
-    core::{
-        animation_graph::PinMap,
-        animation_node::{NodeLike, ReflectNodeLike},
-        context::SpecContext,
-        edge_data::DataSpec,
-        errors::GraphError,
-        state_machine::{high_level::StateMachine, low_level::LowLevelStateMachine},
-    },
-    prelude::new_context::NodeContext,
+use crate::core::{
+    animation_graph::PinMap,
+    animation_node::{NodeLike, ReflectNodeLike},
+    context::{SpecContext, new_context::NodeContext},
+    edge_data::DataSpec,
+    errors::GraphError,
+    state_machine::{high_level::StateMachine, low_level::LowLevelStateMachine},
 };
 use bevy::prelude::*;
 

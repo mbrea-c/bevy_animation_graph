@@ -1,26 +1,25 @@
 use bevy::{asset::AssetId, ecs::entity::Entity, platform::collections::HashMap};
 use uuid::Uuid;
 
-use crate::{
-    core::{
-        animation_graph::{NodeId, PinId, SourcePin, TargetPin, TimeUpdate},
-        context::{deferred_gizmos::DeferredGizmoRef, graph_context_arena::SubContextId},
-        duration_data::DurationData,
-        errors::GraphError,
-        id::BoneId,
-        space_conversion::SpaceConversionContext,
-        state_machine::low_level::LowLevelStateId,
-    },
-    prelude::{
-        AnimationGraph, DataValue, GraphContextArena, GraphContextId, SystemResources,
-        deferred_gizmos::DeferredGizmosContext,
+use crate::core::{
+    animation_graph::{AnimationGraph, NodeId, PinId, SourcePin, TargetPin, TimeUpdate},
+    context::{
+        GraphContextId, SystemResources,
+        deferred_gizmos::{DeferredGizmoRef, DeferredGizmosContext},
         graph_context::GraphState,
-        graph_context_arena::GraphContextArenaRef,
-        io_env::{GraphIoEnv, GraphIoEnvBox},
+        graph_context_arena::{GraphContextArena, GraphContextArenaRef, SubContextId},
+        io_env::GraphIoEnv,
+        io_env::GraphIoEnvBox,
         node_caches::NodeCaches,
         node_states::{GraphStateType, NodeStates, StateKey},
         pose_fallback::PoseFallbackContext,
     },
+    duration_data::DurationData,
+    edge_data::DataValue,
+    errors::GraphError,
+    id::BoneId,
+    space_conversion::SpaceConversionContext,
+    state_machine::low_level::LowLevelStateId,
 };
 
 #[derive(Clone)]

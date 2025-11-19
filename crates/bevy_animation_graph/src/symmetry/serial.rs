@@ -2,7 +2,7 @@ use bevy::reflect::{Reflect, std_traits::ReflectDefault};
 use regex::{Regex, escape};
 use serde::{Deserialize, Serialize};
 
-use crate::prelude::config::{FlipNameMapper, PatternMapper, SymmertryMode, SymmetryConfig};
+use crate::symmetry::config::{FlipNameMapper, PatternMapper, SymmertryMode, SymmetryConfig};
 
 #[derive(Debug, Default, Reflect, Clone, Serialize, Deserialize)]
 #[reflect(Default)]

@@ -4,21 +4,20 @@ pub mod serial;
 use crate::{
     core::{
         animation_node::AnimationNode,
+        context::{
+            DeferredGizmos, GraphContextArena, SpecContext, SystemResources,
+            graph_context::QueryOutputTime,
+            io_env::{EmptyIoEnv, GraphIoEnv},
+            new_context::GraphContext,
+        },
         duration_data::DurationData,
-        edge_data::AnimationEvent,
+        edge_data::{AnimationEvent, DataSpec, DataValue, OptDataSpec},
         errors::{GraphError, GraphValidationError},
         event_track::EventTrack,
         pose::{BoneId, Pose},
-        prelude::GraphContextArena,
         state_machine::high_level::StateMachine,
     },
     nodes::FSMNode,
-    prelude::{
-        DataSpec, DataValue, DeferredGizmos, OptDataSpec, SpecContext, SystemResources,
-        graph_context::QueryOutputTime,
-        io_env::{EmptyIoEnv, GraphIoEnv},
-        new_context::GraphContext,
-    },
 };
 use bevy::{
     asset::ReflectAsset,
@@ -35,19 +34,30 @@ pub struct NodeId(#[uuid] pub(crate) Uuid);
 pub type PinId = String;
 
 #[derive(Reflect, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum TargetPin {
-    NodeData(NodeId, PinId),
-    OutputData(PinId),
-    NodeTime(NodeId, PinId),
-    OutputTime,
+pub enum GraphInputPin {
+    Default(PinId),
+    /// Specifies that input with provided [`PinId`] should be retrieved from a source state's
+    /// animation graph, e.g. if in an FSM transition.
+    FromSource(PinId),
+    /// Specifies that input with provided [`PinId`] should be retrieved from a target state's
+    /// animation graph, e.g. if in an FSM transition.
+    FromTarget(PinId),
 }
 
 #[derive(Reflect, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum SourcePin {
     NodeData(NodeId, PinId),
-    InputData(PinId),
+    InputData(GraphInputPin),
     NodeTime(NodeId),
-    InputTime(PinId),
+    InputTime(GraphInputPin),
+}
+
+#[derive(Reflect, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum TargetPin {
+    NodeData(NodeId, PinId),
+    OutputData(PinId),
+    NodeTime(NodeId, PinId),
+    OutputTime,
 }
 
 #[derive(Reflect, Debug, Clone, PartialEq, Eq, Hash)]
@@ -132,7 +142,7 @@ impl InputOverlay {
 /// Extra data for the graph that has no effect in evaluation.
 /// Used for editor data, such as node positions in screen.
 #[derive(Debug, Clone, Reflect, Default, Serialize, Deserialize)]
-pub struct Extra {
+pub struct EditorMetadata {
     /// Positions in canvas of each node
     pub node_positions: HashMap<NodeId, Vec2>,
     /// Position in canvas of special inputs node
@@ -153,7 +163,7 @@ pub struct Extra {
     pub output_pose_order: HashMap<PinId, i32>,
 }
 
-impl Extra {
+impl EditorMetadata {
     /// Set node position (for editor)
     pub fn set_node_position(&mut self, node_id: impl Into<NodeId>, position: Vec2) {
         self.node_positions.insert(node_id.into(), position);
@@ -200,20 +210,24 @@ pub type PinMap<V> = HashMap<PinId, V>;
 pub struct AnimationGraph {
     #[reflect(ignore)]
     pub nodes: HashMap<NodeId, AnimationNode>,
+
+    /// Indexed by start pin.
+    #[reflect(ignore)]
+    pub edges: HashMap<SourcePin, TargetPin>,
+
     /// Inverted, indexed by end pin.
     #[reflect(ignore)]
-    pub edges: HashMap<TargetPin, SourcePin>,
-    /// Inverted from the inverted state (inverted squared), indexed by start pin.
-    #[reflect(ignore)]
-    pub edges_inverted: HashMap<SourcePin, TargetPin>,
+    pub edges_inverted: HashMap<TargetPin, SourcePin>,
 
-    pub default_parameters: PinMap<DataValue>,
-    pub input_times: PinMap<()>,
+    pub input_data: HashMap<GraphInputPin, DataSpec>,
+    pub input_times: HashMap<GraphInputPin, ()>,
     pub output_parameters: PinMap<DataSpec>,
     pub output_time: Option<()>,
 
+    pub default_data: HashMap<GraphInputPin, DataValue>,
+
     #[reflect(ignore)]
-    pub extra: Extra,
+    pub extra: EditorMetadata,
 }
 
 impl Default for AnimationGraph {
@@ -229,15 +243,17 @@ impl AnimationGraph {
     pub fn new() -> Self {
         Self {
             nodes: HashMap::new(),
-            edges: HashMap::new(),
             edges_inverted: HashMap::new(),
+            edges: HashMap::new(),
 
-            default_parameters: PinMap::new(),
-            input_times: PinMap::new(),
+            input_data: HashMap::new(),
+            input_times: HashMap::new(),
             output_parameters: PinMap::new(),
             output_time: None,
 
-            extra: Extra::default(),
+            default_data: HashMap::new(),
+
+            extra: EditorMetadata::default(),
         }
     }
 
@@ -258,16 +274,17 @@ impl AnimationGraph {
 
     /// Add a new edge to the graph
     pub fn add_edge(&mut self, source_pin: SourcePin, target_pin: TargetPin) {
-        self.edges.insert(target_pin.clone(), source_pin.clone());
-        self.edges_inverted.insert(source_pin, target_pin);
+        self.edges_inverted
+            .insert(target_pin.clone(), source_pin.clone());
+        self.edges.insert(source_pin, target_pin);
     }
 
     /// Remove an edge from the graph.
     pub fn remove_edge_by_target(&mut self, target_pin: &TargetPin) -> Option<SourcePin> {
-        let source_pin = self.edges.remove(target_pin);
+        let source_pin = self.edges_inverted.remove(target_pin);
 
         if let Some(source_pin) = &source_pin {
-            self.edges_inverted.remove(source_pin);
+            self.edges.remove(source_pin);
         }
 
         source_pin
@@ -277,26 +294,30 @@ impl AnimationGraph {
     // --- Setting graph inputs and outputs
     // ----------------------------------------------------------------------------------------
     /// Sets the value for a default parameter, registering it if it wasn't yet done
-    pub fn set_default_parameter(&mut self, parameter_name: impl Into<String>, value: DataValue) {
-        let parameter_name = parameter_name.into();
+    pub fn set_default_data(&mut self, input: impl Into<GraphInputPin>, value: DataValue) {
+        let input = input.into();
         let mut spec = OptDataSpec::from(&value);
         spec.optional = true;
-        self.default_parameters
-            .insert(parameter_name.clone(), value);
+        self.default_data.insert(input, value);
     }
 
     /// Get the default value of an input parameter, if it exists
-    pub fn get_default_parameter(&mut self, parameter_name: &str) -> Option<DataValue> {
-        self.default_parameters.get(parameter_name).cloned()
+    pub fn get_default_data(&mut self, input: &GraphInputPin) -> Option<DataValue> {
+        self.default_data.get(input).cloned()
     }
 
     /// Register an input pose pin for the graph
-    pub fn add_input_time(&mut self, pin_id: impl Into<PinId>) {
+    pub fn set_input_data(&mut self, pin_id: GraphInputPin, data_spec: DataSpec) {
+        self.input_data.insert(pin_id, data_spec);
+    }
+
+    /// Register an input pose pin for the graph
+    pub fn add_input_time(&mut self, pin_id: impl Into<GraphInputPin>) {
         self.input_times.insert(pin_id.into(), ());
     }
 
     /// Register an output parameter for the graph
-    pub fn add_output_parameter(&mut self, pin_id: impl Into<PinId>, spec: DataSpec) {
+    pub fn add_output_data(&mut self, pin_id: impl Into<PinId>, spec: DataSpec) {
         self.output_parameters.insert(pin_id.into(), spec);
     }
 
@@ -308,19 +329,19 @@ impl AnimationGraph {
 
     // --- Helper functions for adding edges
     // ----------------------------------------------------------------------------------------
-    pub fn add_input_parameter_edge(
+    pub fn add_input_data_edge(
         &mut self,
-        parameter_name: impl Into<PinId>,
+        input_name: impl Into<GraphInputPin>,
         target_node: impl Into<NodeId>,
         target_edge: impl Into<PinId>,
     ) {
         self.add_edge(
-            SourcePin::InputData(parameter_name.into()),
+            SourcePin::InputData(input_name.into()),
             TargetPin::NodeData(target_node.into(), target_edge.into()),
         )
     }
 
-    pub fn add_output_parameter_edge(
+    pub fn add_output_data_edge(
         &mut self,
         source_node: impl Into<NodeId>,
         source_edge: impl Into<PinId>,
@@ -332,9 +353,9 @@ impl AnimationGraph {
         )
     }
 
-    pub fn add_input_pose_edge(
+    pub fn add_input_time_edge(
         &mut self,
-        input_name: impl Into<PinId>,
+        input_name: impl Into<GraphInputPin>,
         target_node: impl Into<NodeId>,
         target_edge: impl Into<PinId>,
     ) {
@@ -389,7 +410,7 @@ impl AnimationGraph {
 
         let mut counters = HashMap::<SourcePin, SourceType>::new();
 
-        for (_, source_pin) in self.edges.iter() {
+        for (_, source_pin) in self.edges_inverted.iter() {
             let source_type = match source_pin {
                 SourcePin::NodeData(_, _) => SourceType::Parameter,
                 SourcePin::InputData(_) => SourceType::Parameter,
@@ -440,9 +461,9 @@ impl AnimationGraph {
         }
 
         // Verify target does not already exist
-        if self.edges.contains_key(&edge.target) {
+        if self.edges_inverted.contains_key(&edge.target) {
             return Err(Some(Edge {
-                source: self.edges.get(&edge.target).unwrap().clone(),
+                source: self.edges_inverted.get(&edge.target).unwrap().clone(),
                 target: edge.target,
             }));
         }
@@ -494,7 +515,7 @@ impl AnimationGraph {
             .next()
     }
 
-    fn extract_target_param_spec(
+    fn extract_target_data_spec(
         &self,
         target_pin: &TargetPin,
         ctx: SpecContext,
@@ -510,7 +531,7 @@ impl AnimationGraph {
         }
     }
 
-    fn extract_source_param_spec(
+    fn extract_source_data_spec(
         &self,
         source_pin: &SourcePin,
         ctx: SpecContext,
@@ -521,12 +542,12 @@ impl AnimationGraph {
                 let p_spec = node.data_output_spec(ctx);
                 p_spec.get(tp).copied()
             }
-            SourcePin::InputData(ip) => self.default_parameters.get(ip).map(|ip| ip.into()),
+            SourcePin::InputData(ip) => self.default_data.get(ip).map(|ip| ip.into()),
             _ => None,
         }
     }
 
-    fn extract_source_pose_spec(&self, source_pin: &SourcePin, ctx: SpecContext) -> Option<()> {
+    fn extract_source_time_spec(&self, source_pin: &SourcePin, ctx: SpecContext) -> Option<()> {
         match source_pin {
             SourcePin::NodeTime(sn) => {
                 let node = self.nodes.get(sn)?;
@@ -537,7 +558,7 @@ impl AnimationGraph {
         }
     }
 
-    fn extract_target_pose_spec(&self, target_pin: &TargetPin, ctx: SpecContext) -> Option<()> {
+    fn extract_target_time_spec(&self, target_pin: &TargetPin, ctx: SpecContext) -> Option<()> {
         match target_pin {
             TargetPin::NodeTime(tn, tp) => {
                 let node = self.nodes.get(tn)?;
@@ -553,7 +574,7 @@ impl AnimationGraph {
     fn validate_edge_type_match(&self, ctx: SpecContext) -> HashSet<Edge> {
         let mut illegal_edges = HashSet::new();
 
-        for (target_pin, source_pin) in self.edges.iter() {
+        for (target_pin, source_pin) in self.edges_inverted.iter() {
             if !self.edge_end_types_match(source_pin, target_pin, ctx) {
                 illegal_edges.insert(Edge {
                     source: source_pin.clone(),
@@ -572,7 +593,7 @@ impl AnimationGraph {
 
         let mut used_sources = HashSet::<SourcePin>::new();
 
-        for (target_pin, source_pin) in self.edges.iter() {
+        for (target_pin, source_pin) in self.edges_inverted.iter() {
             match source_pin {
                 SourcePin::NodeTime(_) | SourcePin::InputTime(_) => {
                     if used_sources.contains(source_pin) {
@@ -592,13 +613,13 @@ impl AnimationGraph {
     }
 
     fn source_exists(&self, source_pin: &SourcePin, ctx: SpecContext) -> bool {
-        self.extract_source_param_spec(source_pin, ctx).is_some()
-            || self.extract_source_pose_spec(source_pin, ctx).is_some()
+        self.extract_source_data_spec(source_pin, ctx).is_some()
+            || self.extract_source_time_spec(source_pin, ctx).is_some()
     }
 
     fn target_exists(&self, target_pin: &TargetPin, ctx: SpecContext) -> bool {
-        self.extract_target_param_spec(target_pin, ctx).is_some()
-            || self.extract_target_pose_spec(target_pin, ctx).is_some()
+        self.extract_target_data_spec(target_pin, ctx).is_some()
+            || self.extract_target_time_spec(target_pin, ctx).is_some()
     }
 
     fn edge_end_types_match(
@@ -607,13 +628,13 @@ impl AnimationGraph {
         target_pin: &TargetPin,
         ctx: SpecContext,
     ) -> bool {
-        if let Some(source_spec) = self.extract_source_param_spec(source_pin, ctx) {
-            self.extract_target_param_spec(target_pin, ctx)
+        if let Some(source_spec) = self.extract_source_data_spec(source_pin, ctx) {
+            self.extract_target_data_spec(target_pin, ctx)
                 .and_then(|target_spec| (source_spec == target_spec).then_some(()))
                 .is_some()
         } else {
-            self.extract_source_pose_spec(source_pin, ctx)
-                .zip(self.extract_target_pose_spec(target_pin, ctx))
+            self.extract_source_time_spec(source_pin, ctx)
+                .zip(self.extract_target_time_spec(target_pin, ctx))
                 .is_some()
         }
     }
@@ -632,7 +653,7 @@ impl AnimationGraph {
     fn validate_edge_ends_present(&self, ctx: SpecContext) -> HashSet<Edge> {
         let mut illegal_edges = HashSet::new();
 
-        for (target_pin, source_pin) in self.edges.iter() {
+        for (target_pin, source_pin) in self.edges_inverted.iter() {
             if !self.edge_ends_exist(source_pin, target_pin, ctx) {
                 illegal_edges.insert(Edge {
                     source: source_pin.clone(),
@@ -654,7 +675,7 @@ impl AnimationGraph {
         mut ctx: GraphContext,
     ) -> Result<DataValue, GraphError> {
         // Get source pin
-        let Some(source_pin) = self.edges.get(&target_pin) else {
+        let Some(source_pin) = self.edges_inverted.get(&target_pin) else {
             return Err(GraphError::MissingEdgeToTarget(target_pin));
         };
 
@@ -688,7 +709,7 @@ impl AnimationGraph {
                 .io
                 .get_data_back(pin_id.clone(), ctx.clone())
                 .or_else(|_| {
-                    self.default_parameters.get(pin_id).cloned().ok_or_else(|| {
+                    self.default_data.get(pin_id).cloned().ok_or_else(|| {
                         GraphError::OutputMissing(SourcePin::InputData(pin_id.clone()))
                     })
                 })?,
@@ -710,7 +731,7 @@ impl AnimationGraph {
         target_pin: TargetPin,
         ctx: GraphContext,
     ) -> Result<DurationData, GraphError> {
-        let Some(source_pin) = self.edges.get(&target_pin) else {
+        let Some(source_pin) = self.edges_inverted.get(&target_pin) else {
             return Err(GraphError::MissingEdgeToTarget(target_pin));
         };
 
@@ -736,7 +757,9 @@ impl AnimationGraph {
                     ctx.node_caches().get_duration(node_id.clone(), key)?
                 }
             }
-            SourcePin::InputTime(pin_id) => ctx.io.get_duration_back(pin_id.into(), ctx.clone())?,
+            SourcePin::InputTime(pin_id) => {
+                ctx.io.get_duration_back(pin_id.clone(), ctx.clone())?
+            }
         };
 
         Ok(source_value)
@@ -747,7 +770,7 @@ impl AnimationGraph {
         source_pin: SourcePin,
         ctx: GraphContext,
     ) -> Result<TimeUpdate, GraphError> {
-        let Some(target_pin) = self.edges_inverted.get(&source_pin) else {
+        let Some(target_pin) = self.edges.get(&source_pin) else {
             return Err(GraphError::MissingEdgeToSource(source_pin));
         };
 

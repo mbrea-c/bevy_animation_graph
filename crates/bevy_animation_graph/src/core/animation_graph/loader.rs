@@ -1,11 +1,15 @@
-use super::{AnimationGraph, serial::AnimationGraphLoadDeserializer};
-use crate::core::errors::AssetLoaderError;
+use crate::core::{
+    animation_graph::{AnimationGraph, serial::AnimationGraphDeserializer},
+    errors::AssetLoaderError,
+};
 use bevy::{
     asset::{AssetLoader, LoadContext, io::Reader},
-    prelude::*,
+    ecs::{
+        reflect::AppTypeRegistry,
+        world::{FromWorld, World},
+    },
     reflect::TypeRegistryArc,
 };
-use serde::de::DeserializeSeed;
 
 #[derive(Debug, Clone)]
 pub struct AnimationGraphLoader {
@@ -35,57 +39,46 @@ impl AssetLoader for AnimationGraphLoader {
         let mut bytes = vec![];
         reader.read_to_end(&mut bytes).await?;
 
-        // TODO: what's stopping us from removing the AnimationGraphSerial
-        // intermediary, and just deserializing to an AnimationGraph?
-
-        let mut ron_deserializer = ron::de::Deserializer::from_bytes(&bytes)?;
-        let graph_deserializer = AnimationGraphLoadDeserializer {
-            type_registry: &self.type_registry.read(),
-            load_context,
-        };
-        let serial = graph_deserializer
-            .deserialize(&mut ron_deserializer)
-            .map_err(|err| ron_deserializer.span_error(err))?;
+        let serial = ron::de::from_bytes::<AnimationGraphDeserializer>(&bytes)?;
 
         let mut graph = AnimationGraph::new();
 
-        // --- Set up extra data
-        // --- Needs to be done before adding nodes in case data is missing, so that it
-        // --- gets properly initialized.
-        // ------------------------------------------------------------------------------------
+        // Set up editor metadata
+        // Needs to be done before adding nodes in case data is missing, so that it
+        // gets properly initialized.
         graph.extra = serial.extra;
-        // ------------------------------------------------------------------------------------
 
-        // --- Add nodes
-        // ------------------------------------------------------------------------------------
-        for node in serial.nodes {
+        // Add nodes
+        for node_ron in serial.nodes {
+            let node = node_ron.finish_deserialize(&self.type_registry.read(), load_context)?;
             graph.add_node(node);
         }
-        // ------------------------------------------------------------------------------------
 
-        // --- Set up inputs and outputs
-        // ------------------------------------------------------------------------------------
-        for (param_name, param_value) in &serial.default_parameters {
-            graph.set_default_parameter(param_name, param_value.clone());
+        // Set up inputs and outputs
+        for (input_name, data_spec) in serial.input_data {
+            graph.set_input_data(input_name, data_spec);
         }
-        for (pose_name, _) in &serial.input_times {
+        for (pose_name, _) in serial.input_times {
             graph.add_input_time(pose_name);
         }
-        for (param_name, param_spec) in &serial.output_parameters {
-            graph.add_output_parameter(param_name, *param_spec);
+        for (param_name, param_spec) in serial.output_parameters {
+            graph.add_output_data(param_name, param_spec);
         }
         if serial.output_time.is_some() {
             graph.add_output_time();
         }
-        // ------------------------------------------------------------------------------------
 
-        // --- Set up edges
-        // ------------------------------------------------------------------------------------
+        // Set default data values
+        for (param_name, param_value) in serial.default_data {
+            graph.set_default_data(param_name, param_value.clone());
+        }
+
+        // Set up edges
         for (target_pin, source_pin) in serial.edges_inverted.clone().into_iter() {
             graph.add_edge(source_pin, target_pin);
         }
-        // ------------------------------------------------------------------------------------
 
+        // Static validation
         graph.validate()?;
 
         Ok(graph)

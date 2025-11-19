@@ -381,7 +381,7 @@ pub fn make_graph_indices(graph: &AnimationGraph, ctx: SpecContext) -> Option<Gr
         }
     }
     // add input/output pins
-    for (name, _) in graph.default_parameters.iter() {
+    for (name, _) in graph.default_data.iter() {
         graph_indices
             .pin_indices
             .add_mapping(Pin::Source(SourcePin::InputData(name.clone())));
@@ -403,7 +403,7 @@ pub fn make_graph_indices(graph: &AnimationGraph, ctx: SpecContext) -> Option<Gr
     }
 
     // Add edges
-    for (target_pin, source_pin) in graph.edges.iter() {
+    for (target_pin, source_pin) in graph.edges_inverted.iter() {
         let source_id = graph_indices
             .pin_indices
             .id(&Pin::Source(source_pin.clone()))?;
@@ -597,7 +597,7 @@ impl GraphReprSpec {
         let mut input_time_store: Vec<(PinId, PinSpec)> = vec![];
         let mut output_data_store: Vec<(PinId, PinSpec)> = vec![];
 
-        for (name, p) in graph.default_parameters.iter() {
+        for (name, p) in graph.default_data.iter() {
             let spec = DataSpec::from(p);
             let (pin_style, _) = param_spec_to_colors(spec);
             let pin = Pin::Source(SourcePin::InputData(name.clone()));
@@ -703,7 +703,7 @@ impl GraphReprSpec {
     }
 
     fn add_edges(&mut self, graph: &AnimationGraph, indices: &GraphIndices, ctx: SpecContext) {
-        for (target_pin, source_pin) in graph.edges.iter() {
+        for (target_pin, source_pin) in graph.edges_inverted.iter() {
             let (edge_id, source_id, target_id) = indices
                 .edge_ids(source_pin.clone(), target_pin.clone())
                 .unwrap();

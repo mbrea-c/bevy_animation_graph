@@ -10,6 +10,9 @@ use bevy::time::Time;
 use bevy::transform::components::GlobalTransform;
 
 use crate::core::animation_graph::DEFAULT_OUTPUT_RAGDOLL_CONFIG;
+use crate::core::animation_graph_player::AnimationGraphPlayer;
+use crate::core::context::SystemResources;
+use crate::core::context::pose_fallback::{PoseFallbackContext, RootOffsetResult};
 use crate::core::ragdoll::bone_mapping::RagdollBoneMap;
 use crate::core::ragdoll::definition::{BodyMode, Ragdoll};
 use crate::core::ragdoll::read_pose_avian::read_pose;
@@ -18,8 +21,6 @@ use crate::core::ragdoll::relative_kinematic_body::{
 };
 use crate::core::ragdoll::spawning::spawn_ragdoll_avian;
 use crate::core::ragdoll::write_pose::write_pose_to_ragdoll;
-use crate::prelude::pose_fallback::{PoseFallbackContext, RootOffsetResult};
-use crate::prelude::{AnimationGraphPlayer, SystemResources};
 
 pub fn update_relative_kinematic_body_velocities(
     mut relative_kinematic_query: Query<(

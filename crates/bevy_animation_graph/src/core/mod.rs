@@ -19,17 +19,3 @@ pub mod skeleton;
 pub mod space_conversion;
 pub mod state_machine;
 pub mod systems;
-
-pub mod prelude {
-    use super::*;
-    pub use animated_scene::*;
-    pub use animation_clip::GraphClip;
-    pub use animation_graph::AnimationGraph;
-    pub use animation_graph_player::*;
-    pub use animation_node::*;
-    pub use context::*;
-    pub use edge_data::DataSpec;
-    pub use edge_data::DataValue;
-    pub use edge_data::OptDataSpec;
-    pub use plugin::*;
-}

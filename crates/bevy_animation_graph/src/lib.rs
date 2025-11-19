@@ -185,10 +185,3 @@ pub mod interpolation;
 pub mod nodes;
 pub mod symmetry;
 mod utils;
-
-pub mod prelude {
-    pub use super::core::prelude::*;
-    pub use super::interpolation::linear::*;
-    pub use super::nodes::*;
-    pub use super::symmetry::*;
-}

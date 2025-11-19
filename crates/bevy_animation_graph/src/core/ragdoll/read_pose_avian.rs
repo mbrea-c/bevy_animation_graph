@@ -1,16 +1,14 @@
 use avian3d::prelude::{Position, Rotation};
 use bevy::{ecs::system::Query, math::Isometry3d, transform::components::Transform};
 
-use crate::{
-    core::{
-        pose::{BonePose, Pose},
-        ragdoll::{
-            bone_mapping::RagdollBoneMap, configuration::RagdollConfig, spawning::SpawnedRagdoll,
-        },
-        skeleton::Skeleton,
-        space_conversion::SpaceConversionContext,
+use crate::core::{
+    context::pose_fallback::PoseFallbackContext,
+    pose::{BonePose, Pose},
+    ragdoll::{
+        bone_mapping::RagdollBoneMap, configuration::RagdollConfig, spawning::SpawnedRagdoll,
     },
-    prelude::pose_fallback::PoseFallbackContext,
+    skeleton::Skeleton,
+    space_conversion::SpaceConversionContext,
 };
 
 pub fn read_pose(

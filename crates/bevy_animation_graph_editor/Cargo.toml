@@ -9,7 +9,7 @@ description = "Animation graph editor for the Bevy game engine"
 keywords = ["bevy", "animation", "gamedev", "editor", "graph"]
 
 [dependencies]
-bevy = { workspace = true, features = ["file_watcher", "wayland"] }
+bevy = { workspace = true, features = ["file_watcher", "wayland", "reflect_documentation"] }
 ron = { workspace = true }
 derivative = "2.2.0"
 bevy_animation_graph = { workspace = true }

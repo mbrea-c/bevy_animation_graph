@@ -1,11 +1,10 @@
 use crate::core::animation_graph::{PinMap, TimeUpdate};
 use crate::core::animation_node::{NodeLike, ReflectNodeLike};
-use crate::core::edge_data::EventQueue;
+use crate::core::context::SpecContext;
+use crate::core::context::new_context::NodeContext;
+use crate::core::edge_data::{DataSpec, EventQueue};
 use crate::core::errors::GraphError;
 use crate::core::event_track::EventTrack;
-use crate::core::prelude::DataSpec;
-use crate::prelude::SpecContext;
-use crate::prelude::new_context::NodeContext;
 use bevy::platform::collections::HashMap;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -93,11 +92,11 @@ impl NodeLike for EventMarkupNode {
         Ok(())
     }
 
-    fn data_input_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {
+    fn data_input_spec(&self, _: SpecContext) -> PinMap<DataSpec> {
         [(Self::IN_POSE.into(), DataSpec::Pose)].into()
     }
 
-    fn data_output_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {
+    fn data_output_spec(&self, _: SpecContext) -> PinMap<DataSpec> {
         [(Self::OUT_POSE.into(), DataSpec::Pose)].into()
     }
 

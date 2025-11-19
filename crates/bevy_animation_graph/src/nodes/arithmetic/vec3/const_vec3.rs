@@ -1,9 +1,9 @@
 use crate::core::animation_graph::PinMap;
 use crate::core::animation_node::{NodeLike, ReflectNodeLike};
+use crate::core::context::SpecContext;
+use crate::core::context::new_context::NodeContext;
+use crate::core::edge_data::DataSpec;
 use crate::core::errors::GraphError;
-use crate::core::prelude::DataSpec;
-use crate::prelude::SpecContext;
-use crate::prelude::new_context::NodeContext;
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
@@ -30,7 +30,7 @@ impl NodeLike for ConstVec3Node {
         Ok(())
     }
 
-    fn data_output_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {
+    fn data_output_spec(&self, _: SpecContext) -> PinMap<DataSpec> {
         [(Self::OUTPUT.into(), DataSpec::Vec3)].into()
     }
 }

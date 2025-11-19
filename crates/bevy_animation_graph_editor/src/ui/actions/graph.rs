@@ -291,7 +291,7 @@ pub fn remove_node_system(In(action): In<RemoveNode>, mut provider: GraphAndCont
 
 pub fn update_input_data_system(In(action): In<UpdateInputData>, mut provider: GraphAndContext) {
     provider.provide_mut(&action.graph, |graph, _| {
-        graph.default_parameters = action.input_data.values;
+        graph.default_data = action.input_data.values;
         graph.extra.input_param_order = action.input_data.order;
     });
     provider.validate(&action.graph);

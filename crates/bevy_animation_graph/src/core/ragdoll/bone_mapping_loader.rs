@@ -14,7 +14,7 @@ use crate::{
             definition::BodyId,
         },
     },
-    prelude::serial::SymmetryConfigSerial,
+    symmetry::serial::SymmetryConfigSerial,
 };
 
 #[derive(Default)]

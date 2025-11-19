@@ -1,4 +1,4 @@
-use crate::{core::state_machine::high_level::StateMachine, prelude::AnimationGraph};
+use crate::core::{animation_graph::AnimationGraph, state_machine::high_level::StateMachine};
 use bevy::asset::Assets;
 
 #[derive(Clone, Copy)]

@@ -2,8 +2,6 @@ use super::animation_clip::Interpolation;
 use super::animation_clip::loader::GraphClipLoader;
 use super::edge_data::{AnimationEvent, EventQueue, SampledEvent};
 use super::pose::Pose;
-use super::prelude::loader::AnimatedSceneLoader;
-use super::prelude::{GraphClip, locate_animated_scene_player};
 use super::skeleton::Skeleton;
 use super::skeleton::loader::SkeletonLoader;
 use super::state_machine::high_level::GlobalTransition;
@@ -16,6 +14,11 @@ use super::{
     systems::{animation_player, animation_player_deferred_gizmos},
 };
 
+use crate::core::animated_scene::loader::AnimatedSceneLoader;
+use crate::core::animated_scene::locate_animated_scene_player;
+use crate::core::animation_clip::{EntityPath, GraphClip};
+use crate::core::animation_graph_player::AnimationGraphPlayer;
+use crate::core::animation_node::AnimationNode;
 #[cfg(feature = "physics_avian")]
 use crate::core::physics_systems_avian::{
     read_back_poses_avian, spawn_missing_ragdolls_avian, update_ragdoll_rigidbodies,
@@ -32,9 +35,8 @@ use crate::nodes::{
     DivF32, DummyNode, FSMNode, FireEventNode, FlipLRNode, GraphNode, LoopNode, MulF32,
     PaddingNode, RotationArcNode, RotationNode, SpeedNode, SubF32, TwoBoneIKNode,
 };
-use crate::prelude::serial::SymmetryConfigSerial;
-use crate::prelude::{AnimationGraph, AnimationGraphPlayer, config::SymmetryConfig};
-use crate::{core::animation_clip::EntityPath, prelude::AnimationNode};
+use crate::symmetry::config::SymmetryConfig;
+use crate::symmetry::serial::SymmetryConfigSerial;
 use bevy::ecs::intern::Interned;
 use bevy::ecs::schedule::ScheduleLabel;
 use bevy::prelude::*;

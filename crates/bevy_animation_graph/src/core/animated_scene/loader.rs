@@ -5,10 +5,7 @@ use bevy::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    core::{errors::AssetLoaderError, skeleton::Skeleton},
-    prelude::AnimationGraph,
-};
+use crate::core::{animation_graph::AnimationGraph, errors::AssetLoaderError, skeleton::Skeleton};
 
 use super::{AnimatedScene, Retargeting};
 

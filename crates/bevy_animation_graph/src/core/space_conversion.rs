@@ -1,4 +1,4 @@
-use crate::prelude::pose_fallback::PoseFallbackContext;
+use crate::core::context::pose_fallback::PoseFallbackContext;
 
 use super::{
     pose::{BoneId, BonePose, Pose},

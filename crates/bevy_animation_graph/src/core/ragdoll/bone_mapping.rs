@@ -12,7 +12,7 @@ use crate::{
         ragdoll::definition::{BodyId, Ragdoll},
         skeleton::Skeleton,
     },
-    prelude::config::SymmetryConfig,
+    symmetry::config::SymmetryConfig,
 };
 
 // TODO: Replace EntityPath with bone ids, and add a serial proxy that allows the loader to map

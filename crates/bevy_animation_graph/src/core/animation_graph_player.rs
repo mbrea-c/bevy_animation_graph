@@ -6,15 +6,15 @@ use super::{
     edge_data::{AnimationEvent, DataValue, EventQueue, SampledEvent},
     errors::GraphError,
     pose::{BoneId, Pose},
-    prelude::GraphContextArena,
     skeleton::Skeleton,
 };
-use crate::{
-    core::ragdoll::{bone_mapping::RagdollBoneMap, definition::Ragdoll, spawning::SpawnedRagdoll},
-    prelude::{
-        CustomRelativeDrawCommand, CustomRelativeDrawCommandReference, SystemResources,
-        io_env::IoOverrides, new_context::GraphContext,
+use crate::core::{
+    animation_graph::GraphInputPin,
+    context::{
+        CustomRelativeDrawCommand, CustomRelativeDrawCommandReference, GraphContextArena,
+        SystemResources, io_env::IoOverrides, new_context::GraphContext,
     },
+    ragdoll::{bone_mapping::RagdollBoneMap, definition::Ragdoll, spawning::SpawnedRagdoll},
 };
 use bevy::{
     asset::prelude::*,
@@ -125,13 +125,18 @@ impl AnimationGraphPlayer {
     }
 
     /// Configure an input parameter for the animation graph
-    pub fn set_input_parameter(&mut self, parameter_name: impl Into<String>, value: DataValue) {
-        self.io_overrides.data.insert(parameter_name.into(), value);
+    pub fn set_input_data(&mut self, input_pin: impl Into<PinId>, value: DataValue) {
+        self.io_overrides
+            .data
+            .insert(GraphInputPin::Default(input_pin.into()), value);
     }
 
     /// Return an input parameter for the animation graph
-    pub fn get_input_parameter(&self, parameter_name: &str) -> Option<DataValue> {
-        self.io_overrides.data.get(parameter_name).cloned()
+    pub fn get_input_data(&self, input_pin: PinId) -> Option<DataValue> {
+        self.io_overrides
+            .data
+            .get(&GraphInputPin::Default(input_pin))
+            .cloned()
     }
 
     /// Start playing an animation, resetting state of the player.

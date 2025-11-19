@@ -1,6 +1,6 @@
-use crate::{
-    core::{skeleton::Skeleton, state_machine::high_level::StateMachine},
-    prelude::{AnimationGraph, GraphClip},
+use crate::core::{
+    animation_clip::GraphClip, animation_graph::AnimationGraph, skeleton::Skeleton,
+    state_machine::high_level::StateMachine,
 };
 use bevy::{
     asset::Assets,

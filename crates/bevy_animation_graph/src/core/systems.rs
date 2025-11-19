@@ -1,8 +1,9 @@
+use crate::core::{animation_graph_player::PlaybackState, context::SystemResources};
+
 use super::{
     animation_clip::EntityPath, animation_graph::TimeUpdate,
-    animation_graph_player::AnimationGraphPlayer, pose::BoneId, prelude::PlaybackState,
+    animation_graph_player::AnimationGraphPlayer, pose::BoneId,
 };
-use crate::prelude::SystemResources;
 use bevy::{
     ecs::prelude::*, gizmos::gizmos::Gizmos, log::info_span, mesh::morph::MorphWeights,
     platform::collections::HashMap, time::prelude::*, transform::prelude::*,

@@ -1,8 +1,7 @@
-use crate::{
-    core::{
-        animation_graph::NodeId, prelude::AnimationGraph, state_machine::low_level::LowLevelStateId,
-    },
-    prelude::graph_context::GraphState,
+use crate::core::{
+    animation_graph::{AnimationGraph, NodeId},
+    context::graph_context::GraphState,
+    state_machine::low_level::LowLevelStateId,
 };
 use bevy::{asset::AssetId, platform::collections::HashMap, reflect::Reflect};
 

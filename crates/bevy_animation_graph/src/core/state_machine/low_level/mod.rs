@@ -1,18 +1,17 @@
 use std::{borrow::Cow, cmp::Ordering, collections::VecDeque};
 
-use crate::{
-    core::{
-        animation_graph::{
-            AnimationGraph, DEFAULT_OUTPUT_POSE, PinId, PinMap, SourcePin, TargetPin, TimeUpdate,
-        },
-        duration_data::DurationData,
-        edge_data::{AnimationEvent, DataValue, EventQueue},
-        errors::GraphError,
+use crate::core::{
+    animation_graph::{
+        AnimationGraph, DEFAULT_OUTPUT_POSE, GraphInputPin, PinId, PinMap, SourcePin, TargetPin,
+        TimeUpdate,
     },
-    prelude::{
+    context::{
         io_env::{GraphIoEnv, IoOverrides, LayeredIoEnv},
         new_context::{GraphContext, NodeContext},
     },
+    duration_data::DurationData,
+    edge_data::{AnimationEvent, DataValue, EventQueue},
+    errors::GraphError,
 };
 use bevy::{
     asset::{Asset, Handle},
@@ -501,7 +500,11 @@ impl<'a> FsmIoEnv<'a> {
 }
 
 impl<'a> GraphIoEnv for FsmIoEnv<'a> {
-    fn get_data_back(&self, pin_id: PinId, ctx: GraphContext) -> Result<DataValue, GraphError> {
+    fn get_data_back(
+        &self,
+        pin_id: GraphInputPin,
+        ctx: GraphContext,
+    ) -> Result<DataValue, GraphError> {
         match pin_id.as_str() {
             LowLevelStateMachine::SOURCE_POSE => self
                 .state_machine

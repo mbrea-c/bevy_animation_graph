@@ -1,9 +1,9 @@
 use crate::core::animation_graph::{PinMap, TimeUpdate};
-use crate::core::animation_node::{NodeLike, ReflectNodeLike};
+use crate::core::animation_node::{EditProxy, NodeLike, ReflectEditProxy, ReflectNodeLike};
+use crate::core::context::SpecContext;
+use crate::core::context::new_context::NodeContext;
+use crate::core::edge_data::DataSpec;
 use crate::core::errors::GraphError;
-use crate::core::prelude::DataSpec;
-use crate::prelude::new_context::NodeContext;
-use crate::prelude::{EditProxy, ReflectEditProxy, SpecContext};
 use crate::utils::delaunay::Triangulation;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};

@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     core::animation_clip::EntityPath,
-    prelude::serial::{PatternMapperSerial, SymmetryConfigSerial},
+    symmetry::serial::{PatternMapperSerial, SymmetryConfigSerial},
 };
 
 #[derive(Debug, Default, Reflect, Clone)]

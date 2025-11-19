@@ -1,12 +1,12 @@
 use crate::core::animation_graph::PinMap;
-use crate::core::animation_node::{NodeLike, ReflectNodeLike};
+use crate::core::animation_node::{EditProxy, NodeLike, ReflectNodeLike};
+use crate::core::context::SpecContext;
+use crate::core::context::new_context::NodeContext;
+use crate::core::edge_data::DataSpec;
 use crate::core::errors::GraphError;
-use crate::core::prelude::DataSpec;
-use crate::prelude::config::SymmetryConfig;
-use crate::prelude::new_context::NodeContext;
-use crate::prelude::serial::SymmetryConfigSerial;
-use crate::prelude::{EditProxy, SpecContext};
+use crate::symmetry::config::SymmetryConfig;
 use crate::symmetry::flip_pose;
+use crate::symmetry::serial::SymmetryConfigSerial;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -99,35 +99,4 @@ impl EditProxy for FlipLRNode {
             config: SymmetryConfigSerial::from_value(&self.config),
         }
     }
-}
-
-#[cfg(test)]
-mod test {
-    // TODO: Move serialization tests into "integration" tests (as they need to integrate with
-    // Bevy's types). Test round-trip serialiation.
-    // We create a Bevy type registry to test reflect-based serialization
-    // #[test]
-    // fn test_serialize() {
-    //     let mut registry = TypeRegistry::new();
-    //     registry.register::<FlipLRNode>();
-
-    //     let node = super::FlipLRNode::default();
-    //     let serializer = AnimationNodeSerializer {
-    //         type_registry: &registry,
-    //         name: "Test".to_string(),
-    //         inner: Box::new(node),
-    //     };
-    //     let serialized = ron::to_string(&serializer).unwrap();
-    //     assert_eq!(serialized, "(name:\"Test\",ty:\"bevy_animation_graph::nodes::flip_lr_node::FlipLRNode\",inner:(config:(name_mapper:Pattern((key_1:\"L\",key_2:\"R\",pattern_before:\"^.*\",pattern_after:\"$\")))))".to_string());
-    // }
-
-    // TODO: How do we test deserialization?
-    //
-    // The main issue is that we need a LoadContext. I could not figure
-    // out a way to mock it. Maybe we need to set up all the rigamarole
-    // necessary for actually loading an animation graph, add the node under test
-    // to an empty animation graph and test de/serialization on the graph
-    // using real asset loaders?
-    //
-    // See: https://github.com/bevyengine/bevy/blob/7c6057bc69cd7263a2971d8653675a8c9c194710/crates/bevy_asset/src/server/loaders.rs#L333
 }

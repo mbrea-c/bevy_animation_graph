@@ -223,7 +223,7 @@ fn graph_inspector(
 
             let mut input_data = OrderedMap {
                 order: graph.extra.input_param_order.clone(),
-                values: graph.default_parameters.clone(),
+                values: graph.default_data.clone(),
             };
 
             ui.collapsing("Default input data", |ui| {

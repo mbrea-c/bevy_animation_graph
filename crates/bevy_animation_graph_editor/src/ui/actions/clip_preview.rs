@@ -65,7 +65,7 @@ impl CreateClipPreview {
         let clip_node_id = clip_node.id;
         new_graph.add_node(clip_node);
 
-        new_graph.add_output_parameter("pose", DataSpec::Pose);
+        new_graph.add_output_data("pose", DataSpec::Pose);
         new_graph.add_output_time();
 
         new_graph.add_edge(
@@ -120,7 +120,7 @@ impl CreateTrackNodePreview {
 
         let mut new_graph = existing_graph.clone();
 
-        new_graph.add_output_parameter("pose", DataSpec::Pose);
+        new_graph.add_output_data("pose", DataSpec::Pose);
         new_graph.add_output_time();
 
         new_graph.add_edge(

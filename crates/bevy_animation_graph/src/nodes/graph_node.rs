@@ -1,12 +1,14 @@
-use crate::core::animation_graph::{AnimationGraph, PinId, PinMap, TargetPin, TimeUpdate};
+use crate::core::animation_graph::{
+    AnimationGraph, GraphInputPin, PinId, PinMap, TargetPin, TimeUpdate,
+};
 use crate::core::animation_node::{NodeLike, ReflectNodeLike};
+use crate::core::context::SpecContext;
+use crate::core::context::graph_context::QueryOutputTime;
+use crate::core::context::io_env::GraphIoEnv;
+use crate::core::context::new_context::{GraphContext, NodeContext};
 use crate::core::duration_data::DurationData;
+use crate::core::edge_data::{DataSpec, DataValue};
 use crate::core::errors::GraphError;
-use crate::core::prelude::DataSpec;
-use crate::prelude::graph_context::QueryOutputTime;
-use crate::prelude::io_env::GraphIoEnv;
-use crate::prelude::new_context::{GraphContext, NodeContext};
-use crate::prelude::{DataValue, SpecContext};
 use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
@@ -92,8 +94,12 @@ impl NodeLike for GraphNode {
             return Default::default();
         };
         graph
-            .default_parameters
+            .default_data
             .iter()
+            .filter_map(|(k, v)| match k {
+                GraphInputPin::Default(pin) => Some((pin, v)),
+                _ => None,
+            })
             .map(|(k, v)| (k.into(), v.into()))
             .collect()
     }

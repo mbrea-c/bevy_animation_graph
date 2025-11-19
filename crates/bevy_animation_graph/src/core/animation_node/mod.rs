@@ -1,15 +1,14 @@
 pub mod dyn_node_like;
+pub mod serial;
 
-use super::{
+use crate::core::{
     animation_graph::{PinId, PinMap},
+    animation_node::dyn_node_like::DynNodeLike,
+    context::{SpecContext, new_context::NodeContext},
     edge_data::DataSpec,
     errors::GraphError,
 };
-use crate::{
-    core::animation_graph::NodeId,
-    nodes::DummyNode,
-    prelude::{SpecContext, dyn_node_like::DynNodeLike, new_context::NodeContext},
-};
+use crate::{core::animation_graph::NodeId, nodes::DummyNode};
 use bevy::{
     platform::collections::HashMap,
     prelude::{Deref, DerefMut},

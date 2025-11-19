@@ -1,11 +1,9 @@
-use crate::{
-    core::{
-        animation_graph::PinMap,
-        animation_node::{NodeLike, ReflectNodeLike},
-        errors::GraphError,
-        prelude::DataSpec,
-    },
-    prelude::{SpecContext, new_context::NodeContext},
+use crate::core::{
+    animation_graph::PinMap,
+    animation_node::{NodeLike, ReflectNodeLike},
+    context::{SpecContext, new_context::NodeContext},
+    edge_data::DataSpec,
+    errors::GraphError,
 };
 use bevy::{
     color::LinearRgba,
