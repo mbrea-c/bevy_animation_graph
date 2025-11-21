@@ -9,6 +9,7 @@ use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default, NodeLike)]
+#[type_path = "bevy_animation_graph::builtin_nodes"]
 pub struct LoopNode {
     pub interpolation_period: f32,
 }

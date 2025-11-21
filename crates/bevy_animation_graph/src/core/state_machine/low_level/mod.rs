@@ -2,8 +2,7 @@ use std::{borrow::Cow, cmp::Ordering, collections::VecDeque};
 
 use crate::core::{
     animation_graph::{
-        AnimationGraph, DEFAULT_OUTPUT_POSE, GraphInputPin, PinId, PinMap, SourcePin, TargetPin,
-        TimeUpdate,
+        AnimationGraph, GraphInputPin, PinId, PinMap, SourcePin, TargetPin, TimeUpdate,
     },
     context::{
         io_env::{GraphIoEnv, IoOverrides, LayeredIoEnv},
@@ -19,6 +18,7 @@ use bevy::{
     platform::collections::HashMap,
     reflect::Reflect,
 };
+use serde::{Deserialize, Serialize};
 
 use super::high_level;
 
@@ -68,6 +68,12 @@ impl Ord for LowLevelTransitionType {
             (Fallback, Fallback) => Ordering::Equal,
         }
     }
+}
+
+#[derive(Reflect, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum FsmBuiltinPin {
+    PercentThroughDuration,
+    TimeElapsed,
 }
 
 /// Stateful data associated with an FSM node
@@ -120,15 +126,6 @@ pub struct LowLevelStateMachine {
 impl LowLevelStateMachine {
     pub const DRIVER_EVENT_QUEUE: &'static str = "driver events";
     pub const DRIVER_TIME: &'static str = "driver time";
-
-    // -----------------------------------------------------
-    // --- Reserved FSM input parameter names
-    const SOURCE_POSE: &'static str = "source pose";
-    const TARGET_POSE: &'static str = "target pose";
-    const SOURCE_TIME: &'static str = "source time";
-    const TARGET_TIME: &'static str = "target time";
-    const PERCENT_THROUGH_DURATION: &'static str = "elapsed percent";
-    // -----------------------------------------------------
 
     pub fn new() -> Self {
         Self {
@@ -269,7 +266,7 @@ impl LowLevelStateMachine {
             .unwrap_or(0.);
 
         io_overrides.data.insert(
-            Self::PERCENT_THROUGH_DURATION.into(),
+            FsmBuiltinPin::PercentThroughDuration.into(),
             percent_through_duration.into(),
         );
 
@@ -487,8 +484,8 @@ impl<'a> FsmIoEnv<'a> {
 
             graph.get_time_update(
                 SourcePin::InputTime(match self.current_state_role {
-                    StateRole::Source => LowLevelStateMachine::SOURCE_TIME.to_owned(),
-                    StateRole::Target => LowLevelStateMachine::TARGET_TIME.to_owned(),
+                    StateRole::Source => GraphInputPin::FromFsmSource("".into()),
+                    StateRole::Target => GraphInputPin::FromFsmTarget("".into()),
                     StateRole::Root => unreachable!(),
                 }),
                 sub_ctx,
@@ -502,25 +499,21 @@ impl<'a> FsmIoEnv<'a> {
 impl<'a> GraphIoEnv for FsmIoEnv<'a> {
     fn get_data_back(
         &self,
-        pin_id: GraphInputPin,
+        graph_input_pin: GraphInputPin,
         ctx: GraphContext,
     ) -> Result<DataValue, GraphError> {
-        match pin_id.as_str() {
-            LowLevelStateMachine::SOURCE_POSE => self
+        match graph_input_pin {
+            GraphInputPin::Default(pin_id) => self.parent_graph_data_back(&pin_id, &ctx),
+            GraphInputPin::FromFsmSource(pin_id) => self
                 .state_machine
                 .get_source(&self.current_state)
-                .and_then(|state| {
-                    self.state_data_back(DEFAULT_OUTPUT_POSE.into(), &ctx, state, StateRole::Source)
-                })
-                .or_else(|_| self.parent_graph_data_back(&pin_id, &ctx)),
-            LowLevelStateMachine::TARGET_POSE => self
+                .and_then(|state| self.state_data_back(pin_id, &ctx, state, StateRole::Source)),
+            GraphInputPin::FromFsmTarget(pin_id) => self
                 .state_machine
-                .get_target(&self.current_state)
-                .and_then(|state| {
-                    self.state_data_back(DEFAULT_OUTPUT_POSE.into(), &ctx, state, StateRole::Target)
-                })
-                .or_else(|_| self.parent_graph_data_back(&pin_id, &ctx)),
-            _ => self.parent_graph_data_back(&pin_id, &ctx),
+                .get_source(&self.current_state)
+                .and_then(|state| self.state_data_back(pin_id, &ctx, state, StateRole::Target)),
+            // This will get handled by the next IO layer in update_graph (defaults and overrides)
+            GraphInputPin::FsmBuiltin(_) => Err(GraphError::FSMRequestedMissingData),
         }
     }
 
@@ -528,21 +521,21 @@ impl<'a> GraphIoEnv for FsmIoEnv<'a> {
     // connected there! We need to allow arbitrary time inputs to the FSM as well
     fn get_duration_back(
         &self,
-        pin_id: PinId,
+        graph_input_pin: GraphInputPin,
         ctx: GraphContext,
     ) -> Result<DurationData, GraphError> {
-        match pin_id.as_str() {
-            LowLevelStateMachine::SOURCE_TIME => self
+        match graph_input_pin {
+            GraphInputPin::Default(pin_id) => self.parent_graph_duration_back(&pin_id, &ctx),
+            GraphInputPin::FromFsmSource(_) => self
                 .state_machine
                 .get_source(&self.current_state)
-                .and_then(|state| self.state_duration_back(&ctx, state, StateRole::Source))
-                .or_else(|_| self.parent_graph_duration_back(&pin_id, &ctx)),
-            LowLevelStateMachine::TARGET_TIME => self
+                .and_then(|state| self.state_duration_back(&ctx, state, StateRole::Source)),
+            GraphInputPin::FromFsmTarget(_) => self
                 .state_machine
                 .get_target(&self.current_state)
-                .and_then(|state| self.state_duration_back(&ctx, state, StateRole::Target))
-                .or_else(|_| self.parent_graph_duration_back(&pin_id, &ctx)),
-            _ => self.parent_graph_duration_back(&pin_id, &ctx),
+                .and_then(|state| self.state_duration_back(&ctx, state, StateRole::Target)),
+            // This will get handled by the next IO layer in update_graph (defaults and overrides)
+            GraphInputPin::FsmBuiltin(_) => Err(GraphError::FSMRequestedMissingData),
         }
     }
 

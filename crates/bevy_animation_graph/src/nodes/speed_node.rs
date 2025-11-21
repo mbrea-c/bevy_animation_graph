@@ -9,6 +9,7 @@ use bevy::reflect::std_traits::ReflectDefault;
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default, NodeLike)]
+#[type_path = "bevy_animation_graph::builtin_nodes"]
 pub struct SpeedNode;
 
 impl SpeedNode {

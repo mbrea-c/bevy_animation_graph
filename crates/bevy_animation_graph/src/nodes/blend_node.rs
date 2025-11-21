@@ -32,6 +32,7 @@ pub enum BlendSyncMode {
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default, NodeLike)]
+#[type_path = "bevy_animation_graph::builtin_nodes"]
 pub struct BlendNode {
     pub mode: BlendMode,
     pub sync_mode: BlendSyncMode,

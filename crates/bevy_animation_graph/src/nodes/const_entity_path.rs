@@ -10,6 +10,7 @@ use bevy::reflect::prelude::ReflectDefault;
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default)]
+#[type_path = "bevy_animation_graph::builtin_nodes"]
 pub struct ConstEntityPath {
     pub path: EntityPath,
 }

@@ -20,6 +20,7 @@ use bevy::reflect::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default, NodeLike)]
+#[type_path = "bevy_animation_graph::builtin_nodes"]
 pub struct ClipNode {
     pub(crate) clip: Handle<GraphClip>,
     pub(crate) override_duration: Option<f32>,

@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Reflect, Clone, Debug, Serialize, Deserialize)]
 #[reflect(Default, NodeLike, Serialize, Deserialize)]
+#[type_path = "bevy_animation_graph::builtin_nodes"]
 pub struct FlipLRNode {
     pub config: SymmetryConfig,
 }

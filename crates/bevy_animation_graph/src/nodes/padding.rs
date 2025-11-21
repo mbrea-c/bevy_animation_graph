@@ -11,6 +11,7 @@ use bevy::prelude::*;
 /// the last frame interpolates to the first
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default, NodeLike)]
+#[type_path = "bevy_animation_graph::builtin_nodes"]
 pub struct PaddingNode {
     pub interpolation_period: f32,
 }

@@ -168,7 +168,7 @@ impl AnimationGraphPlayer {
     pub(crate) fn update(&mut self, system_resources: &SystemResources, root_entity: Entity) {
         self.outputs.clear();
         self.io_overrides.data.insert(
-            Self::USER_EVENTS.into(),
+            GraphInputPin::Default(Self::USER_EVENTS.into()),
             std::mem::take(&mut self.queued_events).into(),
         );
 

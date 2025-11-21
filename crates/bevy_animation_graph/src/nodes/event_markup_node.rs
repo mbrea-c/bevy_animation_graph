@@ -19,6 +19,7 @@ use serde::{Deserialize, Serialize};
 /// apply for synchronization and/or gameplay effects.
 #[derive(Reflect, Clone, Debug, Serialize, Deserialize)]
 #[reflect(Default, NodeLike, Serialize, Deserialize)]
+#[type_path = "bevy_animation_graph::builtin_nodes"]
 pub struct EventMarkupNode {
     pub event_tracks: HashMap<String, EventTrack>,
 }

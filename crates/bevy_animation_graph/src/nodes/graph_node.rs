@@ -1,6 +1,4 @@
-use crate::core::animation_graph::{
-    AnimationGraph, GraphInputPin, PinId, PinMap, TargetPin, TimeUpdate,
-};
+use crate::core::animation_graph::{AnimationGraph, GraphInputPin, PinMap, TargetPin, TimeUpdate};
 use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use crate::core::context::SpecContext;
 use crate::core::context::graph_context::QueryOutputTime;
@@ -115,7 +113,14 @@ impl NodeLike for GraphNode {
         let Some(graph) = ctx.graph_assets.get(&self.graph) else {
             return Default::default();
         };
-        graph.input_times.clone()
+        graph
+            .input_times
+            .keys()
+            .filter_map(|key| match key {
+                GraphInputPin::Default(pin) => Some((pin.clone(), ())),
+                _ => None,
+            })
+            .collect()
     }
 
     fn time_output_spec(&self, ctx: SpecContext) -> Option<()> {
@@ -135,22 +140,34 @@ pub struct NestedGraphIoEnv<'a> {
 }
 
 impl<'a> GraphIoEnv for NestedGraphIoEnv<'a> {
-    fn get_data_back(&self, pin_id: PinId, ctx: GraphContext) -> Result<DataValue, GraphError> {
-        self.parent_ctx
-            .clone()
-            .with_state_key(ctx.state_key)
-            .data_back(pin_id)
+    fn get_data_back(
+        &self,
+        pin_id: GraphInputPin,
+        ctx: GraphContext,
+    ) -> Result<DataValue, GraphError> {
+        match pin_id {
+            GraphInputPin::Default(pin_id) => self
+                .parent_ctx
+                .clone()
+                .with_state_key(ctx.state_key)
+                .data_back(pin_id),
+            other => Err(GraphError::InvalidGraphInputPinType(other)),
+        }
     }
 
     fn get_duration_back(
         &self,
-        pin_id: PinId,
+        pin_id: GraphInputPin,
         ctx: GraphContext,
     ) -> Result<DurationData, GraphError> {
-        self.parent_ctx
-            .clone()
-            .with_state_key(ctx.state_key)
-            .duration_back(pin_id)
+        match pin_id {
+            GraphInputPin::Default(pin_id) => self
+                .parent_ctx
+                .clone()
+                .with_state_key(ctx.state_key)
+                .duration_back(pin_id),
+            other => Err(GraphError::InvalidGraphInputPinType(other)),
+        }
     }
 
     fn get_time_fwd(&self, ctx: GraphContext) -> Result<TimeUpdate, GraphError> {

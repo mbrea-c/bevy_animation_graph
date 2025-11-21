@@ -35,6 +35,7 @@ pub enum ChainDecay {
 
 #[derive(Reflect, Clone, Debug)]
 #[reflect(Default, NodeLike)]
+#[type_path = "bevy_animation_graph::builtin_nodes"]
 pub struct RotationNode {
     pub application_mode: RotationMode,
     pub rotation_space: RotationSpace,

@@ -15,7 +15,7 @@ use crate::{
         errors::{GraphError, GraphValidationError},
         event_track::EventTrack,
         pose::{BoneId, Pose},
-        state_machine::high_level::StateMachine,
+        state_machine::{high_level::StateMachine, low_level::FsmBuiltinPin},
     },
     nodes::FSMNode,
 };
@@ -38,10 +38,17 @@ pub enum GraphInputPin {
     Default(PinId),
     /// Specifies that input with provided [`PinId`] should be retrieved from a source state's
     /// animation graph, e.g. if in an FSM transition.
-    FromSource(PinId),
+    FromFsmSource(PinId),
     /// Specifies that input with provided [`PinId`] should be retrieved from a target state's
     /// animation graph, e.g. if in an FSM transition.
-    FromTarget(PinId),
+    FromFsmTarget(PinId),
+    FsmBuiltin(FsmBuiltinPin),
+}
+
+impl From<FsmBuiltinPin> for GraphInputPin {
+    fn from(value: FsmBuiltinPin) -> Self {
+        Self::FsmBuiltin(value)
+    }
 }
 
 #[derive(Reflect, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]

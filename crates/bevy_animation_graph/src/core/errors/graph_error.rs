@@ -6,6 +6,8 @@ use thiserror::Error;
 #[non_exhaustive]
 #[derive(Debug, Error, Reflect, Clone)]
 pub enum GraphError {
+    #[error("The graph input pin type used was not appropriate in this context: {0:?}")]
+    InvalidGraphInputPinType(GraphInputPin),
     #[error("Graph input data could not be retrieved {0:?}")]
     MissingGraphInputData(GraphInputPin),
     #[error("Graph input duration could not be retrieved {0:?}")]

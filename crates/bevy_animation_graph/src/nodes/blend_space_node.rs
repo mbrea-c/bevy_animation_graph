@@ -4,11 +4,10 @@ use crate::core::context::SpecContext;
 use crate::core::context::new_context::NodeContext;
 use crate::core::edge_data::DataSpec;
 use crate::core::errors::GraphError;
+use crate::nodes::blend_node::BlendSyncMode;
 use crate::utils::delaunay::Triangulation;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
-
-use super::BlendSyncMode;
 
 #[derive(Reflect, Clone, Copy, Debug, Default, Serialize, Deserialize)]
 #[reflect(Default, Serialize)]
@@ -34,6 +33,7 @@ pub struct PointElement {
 /// in a shooter game.
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default, NodeLike, EditProxy)]
+#[type_path = "bevy_animation_graph::builtin_nodes"]
 pub struct BlendSpaceNode {
     pub mode: BlendMode,
     pub sync_mode: BlendSyncMode,
