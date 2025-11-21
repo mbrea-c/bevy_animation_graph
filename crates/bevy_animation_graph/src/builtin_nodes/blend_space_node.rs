@@ -4,7 +4,7 @@ use crate::core::context::SpecContext;
 use crate::core::context::new_context::NodeContext;
 use crate::core::edge_data::DataSpec;
 use crate::core::errors::GraphError;
-use crate::nodes::blend_node::BlendSyncMode;
+use crate::builtin_nodes::blend_node::BlendSyncMode;
 use crate::utils::delaunay::Triangulation;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};

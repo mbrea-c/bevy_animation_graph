@@ -180,8 +180,8 @@
 //! [`AnimationGraphPlayer`]: crate::core::animation_graph_player::AnimationGraphPlayer
 //! [`AnimatedScene`]: crate::core::animated_scene::AnimatedScene
 
+pub mod builtin_nodes;
 pub mod core;
 pub mod interpolation;
-pub mod nodes;
 pub mod symmetry;
 mod utils;

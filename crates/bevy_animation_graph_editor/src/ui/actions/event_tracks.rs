@@ -10,8 +10,8 @@ use bevy::{
     platform::collections::HashMap,
 };
 use bevy_animation_graph::{
+    builtin_nodes::EventMarkupNode,
     core::event_track::{EventTrack, TrackItem, TrackItemValue},
-    nodes::EventMarkupNode,
     prelude::{AnimationGraph, GraphClip},
 };
 use uuid::Uuid;

@@ -1,6 +1,8 @@
 pub mod dyn_node_like;
 pub mod serial;
 
+use crate::builtin_nodes::dummy_node::DummyNode;
+use crate::core::animation_graph::NodeId;
 use crate::core::{
     animation_graph::{PinId, PinMap},
     animation_node::dyn_node_like::DynNodeLike,
@@ -8,7 +10,6 @@ use crate::core::{
     edge_data::DataSpec,
     errors::GraphError,
 };
-use crate::{core::animation_graph::NodeId, nodes::DummyNode};
 use bevy::{
     platform::collections::HashMap,
     prelude::{Deref, DerefMut},

@@ -2,6 +2,7 @@ pub mod loader;
 pub mod serial;
 
 use crate::{
+    builtin_nodes::fsm_node::FSMNode,
     core::{
         animation_node::AnimationNode,
         context::{
@@ -17,7 +18,6 @@ use crate::{
         pose::{BoneId, Pose},
         state_machine::{high_level::StateMachine, low_level::FsmBuiltinPin},
     },
-    nodes::FSMNode,
 };
 use bevy::{
     asset::ReflectAsset,

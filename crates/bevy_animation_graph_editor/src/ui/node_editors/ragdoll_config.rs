@@ -1,7 +1,7 @@
 use bevy::{asset::Assets, ecs::world::World};
 use bevy_animation_graph::{
+    builtin_nodes::const_ragdoll_config::ConstRagdollConfig,
     core::{ragdoll::definition::Ragdoll, skeleton::Skeleton},
-    nodes::const_ragdoll_config::ConstRagdollConfig,
 };
 use egui::Widget;
 

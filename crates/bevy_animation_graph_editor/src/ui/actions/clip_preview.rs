@@ -8,8 +8,8 @@ use bevy::{
     platform::collections::HashMap,
 };
 use bevy_animation_graph::{
+    builtin_nodes::ClipNode,
     core::animation_graph::{NodeId, PinId, SourcePin, TargetPin},
-    nodes::ClipNode,
     prelude::{AnimatedScene, AnimationGraph, AnimationNode, DataSpec, GraphClip},
 };
 

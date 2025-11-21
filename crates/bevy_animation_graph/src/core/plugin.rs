@@ -14,6 +14,7 @@ use super::{
     systems::{animation_player, animation_player_deferred_gizmos},
 };
 
+use crate::builtin_nodes::BuiltinNodesPlugin;
 use crate::core::animated_scene::loader::AnimatedSceneLoader;
 use crate::core::animated_scene::locate_animated_scene_player;
 use crate::core::animation_clip::{EntityPath, GraphClip};
@@ -28,13 +29,6 @@ use crate::core::ragdoll::bone_mapping::RagdollBoneMap;
 use crate::core::ragdoll::bone_mapping_loader::RagdollBoneMapLoader;
 use crate::core::ragdoll::definition::Ragdoll;
 use crate::core::ragdoll::definition_loader::RagdollLoader;
-use crate::nodes::blend_space_node::BlendSpaceNode;
-use crate::nodes::const_ragdoll_config::ConstRagdollConfig;
-use crate::nodes::{
-    AbsF32, AddF32, BlendMode, BlendNode, BlendSyncMode, ChainNode, ClampF32, ClipNode, CompareF32,
-    DivF32, DummyNode, FSMNode, FireEventNode, FlipLRNode, GraphNode, LoopNode, MulF32,
-    PaddingNode, RotationArcNode, RotationNode, SpeedNode, SubF32, TwoBoneIKNode,
-};
 use crate::symmetry::config::SymmetryConfig;
 use crate::symmetry::serial::SymmetryConfigSerial;
 use bevy::ecs::intern::Interned;
@@ -80,8 +74,9 @@ impl Plugin for AnimationGraphPlugin {
     fn build(&self, app: &mut App) {
         self.register_assets(app);
         self.register_types(app);
-        self.register_nodes(app);
         self.register_component_hooks(app);
+
+        app.add_plugins((BuiltinNodesPlugin,));
 
         app.configure_sets(
             self.physics_schedule,
@@ -197,34 +192,6 @@ impl AnimationGraphPlugin {
             .register_asset_reflect::<RagdollBoneMap>();
     }
 
-    /// Registers built-in animation node implementations
-    fn register_nodes(&self, app: &mut App) {
-        app //
-            .register_type::<ClipNode>()
-            .register_type::<DummyNode>()
-            .register_type::<ChainNode>()
-            .register_type::<BlendNode>()
-            .register_type::<BlendSpaceNode>()
-            .register_type::<FlipLRNode>()
-            .register_type::<GraphNode>()
-            .register_type::<LoopNode>()
-            .register_type::<PaddingNode>()
-            .register_type::<RotationNode>()
-            .register_type::<SpeedNode>()
-            .register_type::<TwoBoneIKNode>()
-            .register_type::<AbsF32>()
-            .register_type::<AddF32>()
-            .register_type::<ClampF32>()
-            .register_type::<DivF32>()
-            .register_type::<MulF32>()
-            .register_type::<SubF32>()
-            .register_type::<CompareF32>()
-            .register_type::<FireEventNode>()
-            .register_type::<RotationArcNode>()
-            .register_type::<ConstRagdollConfig>()
-            .register_type::<FSMNode>();
-    }
-
     /// "Other" reflect registrations
     fn register_types(&self, app: &mut App) {
         app //
@@ -243,8 +210,6 @@ impl AnimationGraphPlugin {
             .register_type::<AnimationNode>()
             .register_type::<SymmetryConfig>()
             .register_type::<SymmetryConfigSerial>()
-            .register_type::<BlendMode>()
-            .register_type::<BlendSyncMode>()
             .register_type::<GlobalTransition>()
             .register_type::<()>()
             .register_type_data::<(), ReflectDefault>();

@@ -4,7 +4,9 @@ pub mod reflect_editor;
 use std::any::Any;
 
 use bevy::{app::App, ecs::world::World, reflect::FromType};
-use bevy_animation_graph::{nodes::const_ragdoll_config::ConstRagdollConfig, prelude::NodeLike};
+use bevy_animation_graph::{
+    builtin_nodes::const_ragdoll_config::ConstRagdollConfig, prelude::NodeLike,
+};
 
 pub trait NodeEditor: 'static {
     type Target: 'static;
