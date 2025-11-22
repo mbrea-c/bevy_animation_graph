@@ -1,5 +1,5 @@
 [package]
-name = "bevy_animation_graph"
+name = "bevy_animation_graph_builtin_nodes"
 version = { workspace = true }
 edition = { workspace = true }
 license = { workspace = true }
@@ -11,7 +11,6 @@ keywords = ["bevy", "animation", "gamedev"]
 [dependencies]
 bevy_animation_graph_proc_macros = { workspace = true }
 bevy_animation_graph_core = { workspace = true }
-bevy_animation_graph_builtin_nodes = { workspace = true }
 
 bevy = { workspace = true }
 thiserror = "1.0.58"
@@ -25,8 +24,4 @@ avian3d = { workspace = true, optional = true }
 
 [features]
 default = []
-physics_avian = [
-    "dep:avian3d",
-    "bevy_animation_graph_core/physics_avian",
-    "bevy_animation_graph_builtin_nodes/physics_avian",
-]
+physics_avian = ["dep:avian3d", "bevy_animation_graph_core/physics_avian"]

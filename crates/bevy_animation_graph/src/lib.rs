@@ -180,5 +180,52 @@
 //! [`AnimationGraphPlayer`]: crate::core::animation_graph_player::AnimationGraphPlayer
 //! [`AnimatedScene`]: crate::core::animated_scene::AnimatedScene
 
-pub mod builtin_nodes;
-pub mod core;
+use bevy::{
+    app::{App, FixedPostUpdate, Plugin, PostUpdate},
+    ecs::{intern::Interned, schedule::ScheduleLabel},
+};
+use bevy_animation_graph_builtin_nodes::BuiltinNodesPlugin;
+use bevy_animation_graph_core::plugin::AnimationGraphCorePlugin;
+
+pub mod core {
+    pub use bevy_animation_graph_core::*;
+}
+
+pub mod builtin_nodes {
+    pub use bevy_animation_graph_builtin_nodes::*;
+}
+
+/// Adds animation support to an app
+pub struct AnimationGraphPlugin {
+    physics_schedule: Interned<dyn ScheduleLabel>,
+    final_schedule: Interned<dyn ScheduleLabel>,
+}
+
+impl Default for AnimationGraphPlugin {
+    fn default() -> Self {
+        Self {
+            physics_schedule: FixedPostUpdate.intern(),
+            final_schedule: PostUpdate.intern(),
+        }
+    }
+}
+
+impl AnimationGraphPlugin {
+    pub fn from_physics_schedule(schedule: impl ScheduleLabel) -> Self {
+        Self {
+            physics_schedule: schedule.intern(),
+            ..Default::default()
+        }
+    }
+}
+
+impl Plugin for AnimationGraphPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_plugins(AnimationGraphCorePlugin {
+            physics_schedule: self.physics_schedule,
+            final_schedule: self.final_schedule,
+        });
+
+        app.add_plugins(BuiltinNodesPlugin);
+    }
+}
