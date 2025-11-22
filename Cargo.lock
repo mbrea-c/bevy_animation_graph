@@ -713,6 +713,41 @@ version = "0.8.0"
 dependencies = [
  "avian3d",
  "bevy",
+ "bevy_animation_graph_builtin_nodes",
+ "bevy_animation_graph_core",
+ "bevy_animation_graph_proc_macros",
+ "indexmap",
+ "regex",
+ "rmp-serde",
+ "ron 0.10.1",
+ "serde",
+ "thiserror 1.0.69",
+ "uuid",
+]
+
+[[package]]
+name = "bevy_animation_graph_builtin_nodes"
+version = "0.8.0"
+dependencies = [
+ "avian3d",
+ "bevy",
+ "bevy_animation_graph_core",
+ "bevy_animation_graph_proc_macros",
+ "indexmap",
+ "regex",
+ "rmp-serde",
+ "ron 0.10.1",
+ "serde",
+ "thiserror 1.0.69",
+ "uuid",
+]
+
+[[package]]
+name = "bevy_animation_graph_core"
+version = "0.8.0"
+dependencies = [
+ "avian3d",
+ "bevy",
  "bevy_animation_graph_proc_macros",
  "indexmap",
  "regex",
