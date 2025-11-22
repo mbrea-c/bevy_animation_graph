@@ -27,9 +27,8 @@ use graph::{GraphAction, handle_graph_action};
 use saving::{SaveAction, handle_save_action};
 use window::WindowAction;
 
-use crate::ui::native_views::EditorViewUiState;
-
 use super::{UiState, core::ViewAction, windows::WindowId};
+use crate::ui::native_views::EditorViewUiState;
 
 #[derive(Resource, Default)]
 pub struct PendingActions {

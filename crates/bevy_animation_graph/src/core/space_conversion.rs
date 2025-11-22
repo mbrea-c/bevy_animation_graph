@@ -1,10 +1,10 @@
-use crate::core::context::pose_fallback::PoseFallbackContext;
+use bevy::transform::components::Transform;
 
 use super::{
     pose::{BoneId, BonePose, Pose},
     skeleton::Skeleton,
 };
-use bevy::transform::components::Transform;
+use crate::core::context::pose_fallback::PoseFallbackContext;
 
 // Implements Copy because it's just immutable references
 #[derive(Clone, Copy)]

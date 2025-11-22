@@ -1,11 +1,5 @@
 use std::sync::Arc;
 
-use super::SystemResources;
-use crate::core::{
-    pose::{BoneId, Pose},
-    skeleton::Skeleton,
-    space_conversion::SpaceConversionContext,
-};
 use bevy::{
     color::{Alpha, LinearRgba},
     gizmos::gizmos::Gizmos,
@@ -14,6 +8,13 @@ use bevy::{
     prelude::Entity,
     reflect::Reflect,
     transform::components::Transform,
+};
+
+use crate::core::{
+    context::system_resources::SystemResources,
+    pose::{BoneId, Pose},
+    skeleton::Skeleton,
+    space_conversion::SpaceConversionContext,
 };
 
 #[derive(Clone)]

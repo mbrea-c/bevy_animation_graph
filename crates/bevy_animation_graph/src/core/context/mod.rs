@@ -7,12 +7,5 @@ pub mod node_caches;
 pub mod node_state_box;
 pub mod node_states;
 pub mod pose_fallback;
-mod spec_context;
-mod system_resources;
-
-pub use deferred_gizmos::{
-    CustomRelativeDrawCommand, CustomRelativeDrawCommandReference, DeferredGizmos,
-};
-pub use graph_context_arena::{GraphContextArena, GraphContextId};
-pub use spec_context::SpecContext;
-pub use system_resources::SystemResources;
+pub mod spec_context;
+pub mod system_resources;

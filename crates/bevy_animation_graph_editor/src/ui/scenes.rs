@@ -1,21 +1,24 @@
-use std::ops::BitOr;
-use std::rc::Rc;
+use std::{ops::BitOr, rc::Rc};
 
-use bevy::camera::visibility::RenderLayers;
-use bevy::color::palettes::css::WHITE;
-use bevy::platform::collections::HashMap;
-use bevy::prelude::*;
-use bevy::render::render_resource::{
-    Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
+use bevy::{
+    camera::visibility::RenderLayers,
+    color::palettes::css::WHITE,
+    platform::collections::HashMap,
+    prelude::*,
+    render::render_resource::{
+        Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
+    },
 };
-
-use bevy_animation_graph::core::animated_scene::AnimatedSceneInstance;
-use bevy_animation_graph::core::animation_graph_player::AnimationGraphPlayer;
-use bevy_animation_graph::core::pose::Pose;
-use bevy_animation_graph::core::space_conversion::SpaceConversionContext;
-use bevy_animation_graph::prelude::deferred_gizmos::DeferredGizmosContext;
-use bevy_animation_graph::prelude::pose_fallback::PoseFallbackContext;
-use bevy_animation_graph::prelude::{AnimationSource, DeferredGizmos, SystemResources};
+use bevy_animation_graph::{
+    core::{
+        animated_scene::AnimatedSceneInstance, animation_graph_player::AnimationGraphPlayer,
+        pose::Pose, space_conversion::SpaceConversionContext,
+    },
+    prelude::{
+        AnimationSource, DeferredGizmos, SystemResources, deferred_gizmos::DeferredGizmosContext,
+        pose_fallback::PoseFallbackContext,
+    },
+};
 use bevy_inspector_egui::bevy_egui;
 use egui_dock::egui;
 

@@ -5,7 +5,6 @@ use crate::builtin_nodes::{
     blend_space_node::BlendSpaceNode,
     chain_node::ChainNode,
     clip_node::ClipNode,
-    const_ragdoll_config::ConstRagdollConfig,
     dummy_node::DummyNode,
     event_queue::fire_event::FireEventNode,
     f32::{
@@ -17,6 +16,7 @@ use crate::builtin_nodes::{
     graph_node::GraphNode,
     loop_node::LoopNode,
     padding::PaddingNode,
+    ragdoll::const_ragdoll_config::ConstRagdollConfig,
     rotation_node::RotationNode,
     speed_node::SpeedNode,
     twoboneik_node::TwoBoneIKNode,
@@ -29,7 +29,6 @@ pub mod bool;
 pub mod chain_node;
 pub mod clip_node;
 pub mod const_entity_path;
-pub mod const_ragdoll_config;
 pub mod dummy_node;
 pub mod event_markup_node;
 pub mod event_queue;
@@ -40,6 +39,7 @@ pub mod graph_node;
 pub mod loop_node;
 pub mod padding;
 pub mod quat;
+pub mod ragdoll;
 pub mod rotation_node;
 pub mod speed_node;
 pub mod twoboneik_node;
@@ -50,7 +50,6 @@ pub struct BuiltinNodesPlugin;
 impl Plugin for BuiltinNodesPlugin {
     fn build(&self, app: &mut App) {
         self.register_nodes(app);
-        self.register_other(app);
     }
 }
 
@@ -86,6 +85,4 @@ impl BuiltinNodesPlugin {
             // ragdoll
             .register_type::<ConstRagdollConfig>();
     }
-
-    fn register_other(&self, app: &mut App) {}
 }

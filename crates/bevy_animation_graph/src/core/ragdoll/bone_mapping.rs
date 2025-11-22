@@ -6,12 +6,10 @@ use bevy::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    core::{
-        animation_clip::EntityPath,
-        ragdoll::definition::{BodyId, Ragdoll},
-        skeleton::Skeleton,
-    },
+use crate::core::{
+    animation_clip::EntityPath,
+    ragdoll::definition::{BodyId, Ragdoll},
+    skeleton::Skeleton,
     symmetry::config::SymmetryConfig,
 };
 

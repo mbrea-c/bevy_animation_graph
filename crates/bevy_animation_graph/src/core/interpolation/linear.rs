@@ -1,5 +1,6 @@
-use crate::core::pose::{BonePose, Pose};
 use bevy::prelude::*;
+
+use crate::core::pose::{BonePose, Pose};
 
 pub trait InterpolateLinear {
     fn interpolate_linear(&self, other: &Self, f: f32) -> Self;

@@ -1,5 +1,6 @@
-use crate::core::{animation_graph::AnimationGraph, state_machine::high_level::StateMachine};
 use bevy::asset::Assets;
+
+use crate::core::{animation_graph::AnimationGraph, state_machine::high_level::StateMachine};
 
 #[derive(Clone, Copy)]
 pub struct SpecContext<'a> {

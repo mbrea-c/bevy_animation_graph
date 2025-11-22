@@ -1,9 +1,11 @@
-use crate::Cli;
-use bevy::{asset::LoadedUntypedAsset, platform::collections::HashSet, prelude::*};
 use std::{
     fs, io,
     path::{Path, PathBuf},
 };
+
+use bevy::{asset::LoadedUntypedAsset, platform::collections::HashSet, prelude::*};
+
+use crate::Cli;
 
 pub struct ScannerPlugin;
 impl Plugin for ScannerPlugin {

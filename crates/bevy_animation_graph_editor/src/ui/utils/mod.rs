@@ -1,22 +1,31 @@
-use std::f32::consts::{FRAC_PI_2, PI};
-use std::path::PathBuf;
+use std::{
+    f32::consts::{FRAC_PI_2, PI},
+    path::PathBuf,
+};
 
-use crate::tree::{TreeInternal, TreeResult};
-use crate::ui::SubSceneSyncAction;
-use bevy::asset::UntypedAssetId;
-use bevy::camera::RenderTarget;
-use bevy::ecs::world::CommandQueue;
-use bevy::prelude::*;
-use bevy::render::render_resource::Extent3d;
-use bevy_animation_graph::core::animation_graph::{AnimationGraph, NodeId, PinMap};
-use bevy_animation_graph::core::context::SpecContext;
-use bevy_animation_graph::core::state_machine::high_level::StateMachine;
-use bevy_animation_graph::prelude::{AnimatedSceneInstance, AnimationGraphPlayer, DataSpec};
-use bevy_inspector_egui::bevy_egui::EguiUserTextures;
-use bevy_inspector_egui::egui;
-use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
+use bevy::{
+    asset::UntypedAssetId, camera::RenderTarget, ecs::world::CommandQueue, prelude::*,
+    render::render_resource::Extent3d,
+};
+use bevy_animation_graph::{
+    core::{
+        animation_graph::{AnimationGraph, NodeId, PinMap},
+        context::SpecContext,
+        state_machine::high_level::StateMachine,
+    },
+    prelude::{AnimatedSceneInstance, AnimationGraphPlayer, DataSpec},
+};
+use bevy_inspector_egui::{
+    bevy_egui::EguiUserTextures,
+    egui,
+    reflect_inspector::{Context, InspectorUi},
+};
 
 use super::{PartOfSubScene, PreviewScene, SubSceneConfig, provide_texture_for_scene};
+use crate::{
+    tree::{TreeInternal, TreeResult},
+    ui::SubSceneSyncAction,
+};
 
 pub mod collapsing;
 pub mod popup;

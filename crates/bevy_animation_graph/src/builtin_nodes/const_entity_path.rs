@@ -1,12 +1,13 @@
-use crate::core::animation_clip::EntityPath;
-use crate::core::animation_graph::PinMap;
-use crate::core::animation_node::NodeLike;
-use crate::core::context::SpecContext;
-use crate::core::context::new_context::NodeContext;
-use crate::core::edge_data::{DataSpec, DataValue};
-use crate::core::errors::GraphError;
-use bevy::reflect::Reflect;
-use bevy::reflect::prelude::ReflectDefault;
+use bevy::reflect::{Reflect, prelude::ReflectDefault};
+
+use crate::core::{
+    animation_clip::EntityPath,
+    animation_graph::PinMap,
+    animation_node::NodeLike,
+    context::{new_context::NodeContext, spec_context::SpecContext},
+    edge_data::{DataSpec, DataValue},
+    errors::GraphError,
+};
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default)]

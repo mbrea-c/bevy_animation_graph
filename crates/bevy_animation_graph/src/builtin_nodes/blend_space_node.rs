@@ -1,13 +1,17 @@
-use crate::core::animation_graph::{PinMap, TimeUpdate};
-use crate::core::animation_node::{EditProxy, NodeLike, ReflectEditProxy, ReflectNodeLike};
-use crate::core::context::SpecContext;
-use crate::core::context::new_context::NodeContext;
-use crate::core::edge_data::DataSpec;
-use crate::core::errors::GraphError;
-use crate::builtin_nodes::blend_node::BlendSyncMode;
-use crate::utils::delaunay::Triangulation;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
+
+use crate::{
+    builtin_nodes::blend_node::BlendSyncMode,
+    core::{
+        animation_graph::{PinMap, TimeUpdate},
+        animation_node::{EditProxy, NodeLike, ReflectEditProxy, ReflectNodeLike},
+        context::{new_context::NodeContext, spec_context::SpecContext},
+        edge_data::DataSpec,
+        errors::GraphError,
+        utils::delaunay::Triangulation,
+    },
+};
 
 #[derive(Reflect, Clone, Copy, Debug, Default, Serialize, Deserialize)]
 #[reflect(Default, Serialize)]

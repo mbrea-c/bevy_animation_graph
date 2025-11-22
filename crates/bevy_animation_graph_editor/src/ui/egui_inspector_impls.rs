@@ -1,3 +1,9 @@
+use core::default::Default;
+use std::{
+    any::{Any, TypeId},
+    hash::{Hash, Hasher},
+};
+
 use bevy::{
     app::Plugin,
     ecs::{prelude::AppTypeRegistry, resource::Resource},
@@ -15,11 +21,6 @@ use bevy_inspector_egui::{
     inspector_egui_impls::InspectorEguiImpl,
     reflect_inspector::{InspectorUi, ProjectorReflect},
     restricted_world_view::RestrictedWorldView,
-};
-use core::default::Default;
-use std::{
-    any::{Any, TypeId},
-    hash::{Hash, Hasher},
 };
 
 use super::reflect_widgets;

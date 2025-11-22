@@ -1,6 +1,7 @@
 use bevy::{asset::Handle, ecs::world::World};
 use bevy_animation_graph::core::skeleton::Skeleton;
 
+use super::SelectedItem;
 use crate::{
     tree::{SkeletonTreeRenderer, Tree, TreeResult},
     ui::{
@@ -8,8 +9,6 @@ use crate::{
         utils::with_assets_all,
     },
 };
-
-use super::SelectedItem;
 
 pub struct BoneTree<'a, 'b> {
     pub skeleton: Handle<Skeleton>,

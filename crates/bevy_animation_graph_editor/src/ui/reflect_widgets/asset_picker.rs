@@ -7,9 +7,8 @@ use bevy::asset::{Asset, AssetServer, Assets, Handle};
 use bevy_inspector_egui::reflect_inspector::InspectorUi;
 use egui_dock::egui;
 
-use crate::ui::utils::asset_sort_key;
-
 use super::{EguiInspectorExtension, MakeBuffer};
+use crate::ui::utils::asset_sort_key;
 
 pub struct AssetPickerInspector<T> {
     _marker: PhantomData<T>,

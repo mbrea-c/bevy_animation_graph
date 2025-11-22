@@ -1,15 +1,18 @@
-use crate::core::animation_graph::PinMap;
-use crate::core::animation_node::{NodeLike, ReflectNodeLike};
-use crate::core::context::SpecContext;
-use crate::core::context::new_context::NodeContext;
-use crate::core::edge_data::DataSpec;
-use crate::core::errors::GraphError;
-use crate::core::pose::BonePose;
-use bevy::math::Quat;
-use bevy::reflect::Reflect;
-use bevy::reflect::std_traits::ReflectDefault;
-use bevy::transform::components::Transform;
+use bevy::{
+    math::Quat,
+    reflect::{Reflect, std_traits::ReflectDefault},
+    transform::components::Transform,
+};
 use serde::{Deserialize, Serialize};
+
+use crate::core::{
+    animation_graph::PinMap,
+    animation_node::{NodeLike, ReflectNodeLike},
+    context::{new_context::NodeContext, spec_context::SpecContext},
+    edge_data::DataSpec,
+    errors::GraphError,
+    pose::BonePose,
+};
 
 #[derive(Reflect, Serialize, Deserialize, Clone, Copy, Debug, Default)]
 #[reflect(Default)]

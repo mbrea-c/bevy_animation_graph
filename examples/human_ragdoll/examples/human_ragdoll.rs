@@ -1,15 +1,17 @@
 extern crate bevy;
 extern crate bevy_animation_graph;
 
-use avian3d::PhysicsPlugins;
-use avian3d::prelude::{Collider, Position, RigidBody};
-use bevy::color::palettes::css::GREEN;
-use bevy::light::CascadeShadowConfigBuilder;
-use bevy::prelude::*;
-use bevy_animation_graph::core::animated_scene::AnimatedSceneInstance;
-use bevy_animation_graph::core::ragdoll::definition::BodyLabel;
-use bevy_animation_graph::prelude::*;
 use std::f32::consts::PI;
+
+use avian3d::{
+    PhysicsPlugins,
+    prelude::{Collider, Position, RigidBody},
+};
+use bevy::{color::palettes::css::GREEN, light::CascadeShadowConfigBuilder, prelude::*};
+use bevy_animation_graph::{
+    core::{animated_scene::AnimatedSceneInstance, ragdoll::definition::BodyLabel},
+    prelude::*,
+};
 
 fn main() {
     let mut app = App::new();

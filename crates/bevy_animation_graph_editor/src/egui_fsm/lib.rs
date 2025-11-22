@@ -1,15 +1,14 @@
+use std::collections::HashMap;
+
 use bevy::math::Vec2;
 use bevy_egui::egui;
 use bevy_inspector_egui::bevy_egui;
 use derivative::Derivative;
-use std::collections::HashMap;
 
-use super::link::*;
-use super::node::*;
-
-pub use {
-    super::node::StateArgs,
-    super::style::{ColorStyle, Style, StyleFlags},
+use super::{link::*, node::*};
+pub use super::{
+    node::StateArgs,
+    style::{ColorStyle, Style, StyleFlags},
 };
 
 #[derive(Debug, Clone)]

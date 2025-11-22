@@ -1,21 +1,5 @@
 use std::sync::Arc;
 
-use super::{
-    animation_graph::{AnimationGraph, DEFAULT_OUTPUT_POSE, PinId, TimeUpdate},
-    context::DeferredGizmos,
-    edge_data::{AnimationEvent, DataValue, EventQueue, SampledEvent},
-    errors::GraphError,
-    pose::{BoneId, Pose},
-    skeleton::Skeleton,
-};
-use crate::core::{
-    animation_graph::GraphInputPin,
-    context::{
-        CustomRelativeDrawCommand, CustomRelativeDrawCommandReference, GraphContextArena,
-        SystemResources, io_env::IoOverrides, new_context::GraphContext,
-    },
-    ragdoll::{bone_mapping::RagdollBoneMap, definition::Ragdoll, spawning::SpawnedRagdoll},
-};
 use bevy::{
     asset::prelude::*,
     color::{Color, palettes::css::WHITE},
@@ -24,6 +8,27 @@ use bevy::{
     platform::collections::HashMap,
     reflect::prelude::*,
     transform::components::Transform,
+};
+
+use crate::core::{
+    animation_graph::{AnimationGraph, DEFAULT_OUTPUT_POSE, GraphInputPin, PinId, TimeUpdate},
+    context::{
+        deferred_gizmos::{
+            CustomRelativeDrawCommand, CustomRelativeDrawCommandReference, DeferredGizmos,
+        },
+        graph_context_arena::GraphContextArena,
+        io_env::IoOverrides,
+        new_context::GraphContext,
+        system_resources::SystemResources,
+    },
+    edge_data::{
+        DataValue,
+        events::{AnimationEvent, EventQueue, SampledEvent},
+    },
+    errors::GraphError,
+    pose::{BoneId, Pose},
+    ragdoll::{bone_mapping::RagdollBoneMap, definition::Ragdoll, spawning::SpawnedRagdoll},
+    skeleton::Skeleton,
 };
 
 #[derive(Default, Reflect, Clone, Copy)]

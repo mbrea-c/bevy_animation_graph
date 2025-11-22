@@ -5,6 +5,10 @@ use bevy_animation_graph::{
 };
 use egui_dock::egui;
 
+use super::{
+    EditorWindowRegistrationContext, event_track_editor::TargetTracks,
+    scene_preview::ScenePreviewConfig,
+};
 use crate::ui::{
     PartOfSubScene, PreviewScene,
     actions::clip_preview::{
@@ -18,11 +22,6 @@ use crate::ui::{
     view_state::clip_preview::{
         ClipPreviewTimingOrder, ClipPreviewViewState, SetClipPreviewBaseScene, SetElapsedTime,
     },
-};
-
-use super::{
-    EditorWindowRegistrationContext, event_track_editor::TargetTracks,
-    scene_preview::ScenePreviewConfig,
 };
 
 #[derive(Debug, Default)]

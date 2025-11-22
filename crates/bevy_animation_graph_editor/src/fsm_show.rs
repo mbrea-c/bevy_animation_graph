@@ -1,7 +1,3 @@
-use crate::egui_fsm::{
-    link::{LinkStyleArgs, TransitionSpec},
-    node::StateSpec,
-};
 use bevy::{
     asset::{AssetId, Assets},
     ecs::resource::Resource,
@@ -13,6 +9,11 @@ use bevy_animation_graph::core::state_machine::{
     low_level::{FSMState, LowLevelStateId},
 };
 use bevy_inspector_egui::egui::Color32;
+
+use crate::egui_fsm::{
+    link::{LinkStyleArgs, TransitionSpec},
+    node::StateSpec,
+};
 
 pub struct StateIndices {
     name_to_idx: HashMap<String, usize>,

@@ -1,9 +1,10 @@
-use crate::core::pose::BoneId;
 use bevy::{
     platform::collections::HashMap,
     reflect::{Reflect, std_traits::ReflectDefault},
 };
 use serde::{Deserialize, Serialize};
+
+use crate::core::pose::BoneId;
 
 #[derive(Reflect, Clone, Debug, Serialize, Deserialize)]
 #[reflect(Default)]

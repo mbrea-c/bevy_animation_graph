@@ -1,14 +1,14 @@
-use crate::core::animation_graph::PinMap;
-use crate::core::animation_node::{EditProxy, NodeLike, ReflectNodeLike};
-use crate::core::context::SpecContext;
-use crate::core::context::new_context::NodeContext;
-use crate::core::edge_data::DataSpec;
-use crate::core::errors::GraphError;
-use crate::symmetry::config::SymmetryConfig;
-use crate::symmetry::flip_pose;
-use crate::symmetry::serial::SymmetryConfigSerial;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
+
+use crate::core::{
+    animation_graph::PinMap,
+    animation_node::{EditProxy, NodeLike, ReflectNodeLike},
+    context::{new_context::NodeContext, spec_context::SpecContext},
+    edge_data::DataSpec,
+    errors::GraphError,
+    symmetry::{config::SymmetryConfig, flip_pose, serial::SymmetryConfigSerial},
+};
 
 #[derive(Reflect, Clone, Debug, Serialize, Deserialize)]
 #[reflect(Default, NodeLike, Serialize, Deserialize)]

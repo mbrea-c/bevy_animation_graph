@@ -1,8 +1,3 @@
-use super::{
-    Skeleton,
-    serial::{SkeletonSerial, SkeletonSource},
-};
-use crate::core::{animation_clip::EntityPath, errors::AssetLoaderError};
 use bevy::{
     animation::AnimationPlayer,
     asset::{AssetLoader, LoadContext, LoadedAsset, io::Reader},
@@ -12,6 +7,12 @@ use bevy::{
     scene::Scene,
     transform::components::Transform,
 };
+
+use super::{
+    Skeleton,
+    serial::{SkeletonSerial, SkeletonSource},
+};
+use crate::core::{animation_clip::EntityPath, errors::AssetLoaderError};
 
 #[derive(Default)]
 pub struct SkeletonLoader;

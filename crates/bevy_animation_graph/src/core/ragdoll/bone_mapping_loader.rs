@@ -5,14 +5,12 @@ use bevy::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    core::{
-        animation_clip::EntityPath,
-        errors::AssetLoaderError,
-        ragdoll::{
-            bone_mapping::{BodyMapping, BoneMapping, RagdollBoneMap},
-            definition::BodyId,
-        },
+use crate::core::{
+    animation_clip::EntityPath,
+    errors::AssetLoaderError,
+    ragdoll::{
+        bone_mapping::{BodyMapping, BoneMapping, RagdollBoneMap},
+        definition::BodyId,
     },
     symmetry::serial::SymmetryConfigSerial,
 };

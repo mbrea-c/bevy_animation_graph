@@ -182,6 +182,3 @@
 
 pub mod builtin_nodes;
 pub mod core;
-pub mod interpolation;
-pub mod symmetry;
-mod utils;

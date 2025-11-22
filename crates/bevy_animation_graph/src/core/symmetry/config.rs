@@ -7,8 +7,8 @@ use bevy::{
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    core::animation_clip::EntityPath,
+use crate::core::{
+    animation_clip::EntityPath,
     symmetry::serial::{PatternMapperSerial, SymmetryConfigSerial},
 };
 

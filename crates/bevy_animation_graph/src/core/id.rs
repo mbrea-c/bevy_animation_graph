@@ -1,9 +1,10 @@
+use std::hash::{Hash, Hasher};
+
 use bevy::{
     animation::AnimationTargetId,
     reflect::{Reflect, std_traits::ReflectDefault},
 };
 use serde::{Deserialize, Serialize};
-use std::hash::{Hash, Hasher};
 use uuid::Uuid;
 
 use super::animation_clip::EntityPath;

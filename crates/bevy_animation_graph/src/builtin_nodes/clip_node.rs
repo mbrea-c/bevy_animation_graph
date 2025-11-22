@@ -1,22 +1,26 @@
 use std::any::TypeId;
 
-use crate::core::animation_clip::{GraphClip, Interpolation};
-use crate::core::animation_graph::{PinMap, TimeUpdate};
-use crate::core::animation_node::{NodeLike, ReflectNodeLike};
-use crate::core::context::SpecContext;
-use crate::core::context::new_context::NodeContext;
-use crate::core::edge_data::{DataSpec, DataValue, EventQueue};
-use crate::core::errors::GraphError;
-use crate::core::event_track::sample_tracks;
-use crate::core::id::BoneId;
-use crate::core::pose::{BonePose, Pose};
-use bevy::asset::Handle;
-use bevy::math::{Quat, Vec3};
-use bevy::platform::hash::Hashed;
-use bevy::prelude::{
-    Animatable, AnimatableProperty, AnimationNodeIndex, EvaluatorId, Transform, VariableCurve,
+use bevy::{
+    asset::Handle,
+    math::{Quat, Vec3},
+    platform::hash::Hashed,
+    prelude::{
+        Animatable, AnimatableProperty, AnimationNodeIndex, EvaluatorId, Transform, VariableCurve,
+    },
+    reflect::prelude::*,
 };
-use bevy::reflect::prelude::*;
+
+use crate::core::{
+    animation_clip::{GraphClip, Interpolation},
+    animation_graph::{PinMap, TimeUpdate},
+    animation_node::{NodeLike, ReflectNodeLike},
+    context::{new_context::NodeContext, spec_context::SpecContext},
+    edge_data::{DataSpec, DataValue, events::EventQueue},
+    errors::GraphError,
+    event_track::sample_tracks,
+    id::BoneId,
+    pose::{BonePose, Pose},
+};
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default, NodeLike)]

@@ -1,9 +1,10 @@
+use bevy::{asset::AssetId, platform::collections::HashMap, reflect::Reflect};
+
 use crate::core::{
     animation_graph::{AnimationGraph, NodeId},
     context::graph_context::GraphState,
     state_machine::low_level::LowLevelStateId,
 };
-use bevy::{asset::AssetId, platform::collections::HashMap, reflect::Reflect};
 
 #[derive(Reflect, Clone, Copy, Debug, Eq, PartialEq, Hash, Default)]
 pub struct GraphContextId(usize);

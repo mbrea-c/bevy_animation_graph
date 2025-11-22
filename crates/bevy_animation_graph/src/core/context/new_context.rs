@@ -4,15 +4,16 @@ use uuid::Uuid;
 use crate::core::{
     animation_graph::{AnimationGraph, NodeId, PinId, SourcePin, TargetPin, TimeUpdate},
     context::{
-        GraphContextId, SystemResources,
         deferred_gizmos::{DeferredGizmoRef, DeferredGizmosContext},
         graph_context::GraphState,
-        graph_context_arena::{GraphContextArena, GraphContextArenaRef, SubContextId},
-        io_env::GraphIoEnv,
-        io_env::GraphIoEnvBox,
+        graph_context_arena::{
+            GraphContextArena, GraphContextArenaRef, GraphContextId, SubContextId,
+        },
+        io_env::{GraphIoEnv, GraphIoEnvBox},
         node_caches::NodeCaches,
         node_states::{GraphStateType, NodeStates, StateKey},
         pose_fallback::PoseFallbackContext,
+        system_resources::SystemResources,
     },
     duration_data::DurationData,
     edge_data::DataValue,

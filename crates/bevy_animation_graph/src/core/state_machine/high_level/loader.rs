@@ -1,6 +1,7 @@
+use bevy::asset::{AssetLoader, LoadContext, io::Reader};
+
 use super::{GlobalTransition, State, StateMachine, Transition, serial::StateMachineSerial};
 use crate::core::errors::AssetLoaderError;
-use bevy::asset::{AssetLoader, LoadContext, io::Reader};
 
 #[derive(Default)]
 pub struct StateMachineLoader;

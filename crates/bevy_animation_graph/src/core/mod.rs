@@ -9,6 +9,7 @@ pub mod edge_data;
 pub mod errors;
 pub mod event_track;
 pub mod id;
+pub mod interpolation;
 #[cfg(feature = "physics_avian")]
 pub mod physics_systems_avian;
 pub mod pin_map;
@@ -18,4 +19,6 @@ pub mod ragdoll;
 pub mod skeleton;
 pub mod space_conversion;
 pub mod state_machine;
+pub mod symmetry;
 pub mod systems;
+pub mod utils;

@@ -7,8 +7,9 @@ mod scanner;
 mod tree;
 mod ui;
 
-use bevy::camera::visibility::RenderLayers;
-use bevy::prelude::*;
+use std::path::PathBuf;
+
+use bevy::{camera::visibility::RenderLayers, prelude::*};
 use bevy_animation_graph::core::plugin::AnimationGraphPlugin;
 use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 use bevy_inspector_egui::{DefaultInspectorConfigPlugin, bevy_egui};
@@ -16,12 +17,11 @@ use clap::Parser;
 use fsm_show::FsmIndicesMap;
 use graph_show::GraphIndicesMap;
 use scanner::ScannerPlugin;
-use std::path::PathBuf;
-use ui::UiState;
-use ui::actions::PendingActions;
-use ui::actions::clip_preview::ClipPreviewScenes;
-use ui::actions::saving::DirtyAssets;
-use ui::egui_inspector_impls::BetterInspectorPlugin;
+use ui::{
+    UiState,
+    actions::{PendingActions, clip_preview::ClipPreviewScenes, saving::DirtyAssets},
+    egui_inspector_impls::BetterInspectorPlugin,
+};
 
 use crate::ui::node_editors::register_node_editables;
 

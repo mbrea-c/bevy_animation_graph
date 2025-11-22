@@ -3,9 +3,7 @@ use bevy::{
     prelude::{Entity, GlobalTransform, Transform},
 };
 
-use crate::core::{id::BoneId, skeleton::Skeleton};
-
-use super::SystemResources;
+use crate::core::{context::system_resources::SystemResources, id::BoneId, skeleton::Skeleton};
 
 /// Provides logic for getting a "fallback" bone transform when a pose does not
 /// have information for the particular bone.

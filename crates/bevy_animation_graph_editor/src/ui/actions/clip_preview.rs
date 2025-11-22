@@ -13,9 +13,8 @@ use bevy_animation_graph::{
     prelude::{AnimatedScene, AnimationGraph, AnimationNode, DataSpec, GraphClip},
 };
 
-use crate::ui::actions::ActionContext;
-
 use super::{DynamicAction, run_handler};
+use crate::ui::actions::ActionContext;
 
 #[derive(Resource, Default)]
 pub struct ClipPreviewScenes {

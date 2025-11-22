@@ -1,11 +1,15 @@
+use bevy::prelude::*;
+
 use crate::core::{
     animation_graph::PinMap,
     animation_node::{NodeLike, ReflectNodeLike},
-    context::{SpecContext, new_context::NodeContext},
-    edge_data::{AnimationEvent, DataSpec, EventQueue, SampledEvent},
+    context::{new_context::NodeContext, spec_context::SpecContext},
+    edge_data::{
+        DataSpec,
+        events::{AnimationEvent, EventQueue, SampledEvent},
+    },
     errors::GraphError,
 };
-use bevy::prelude::*;
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default, NodeLike)]

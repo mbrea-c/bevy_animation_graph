@@ -1,11 +1,13 @@
-use crate::core::animation_graph::{PinMap, TimeUpdate};
-use crate::core::animation_node::{NodeLike, ReflectNodeLike};
-use crate::core::context::SpecContext;
-use crate::core::context::new_context::NodeContext;
-use crate::core::edge_data::DataSpec;
-use crate::core::errors::GraphError;
-use crate::interpolation::linear::InterpolateLinear;
 use bevy::prelude::*;
+
+use crate::core::{
+    animation_graph::{PinMap, TimeUpdate},
+    animation_node::{NodeLike, ReflectNodeLike},
+    context::{new_context::NodeContext, spec_context::SpecContext},
+    edge_data::DataSpec,
+    errors::GraphError,
+    interpolation::linear::InterpolateLinear,
+};
 
 /// This node pads the duration of an animation with a configurable period where
 /// the last frame interpolates to the first

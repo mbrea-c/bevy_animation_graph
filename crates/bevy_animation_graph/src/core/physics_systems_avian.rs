@@ -1,26 +1,33 @@
 use avian3d::prelude::{AngularVelocity, LinearVelocity, Position, RigidBody, Rotation};
-use bevy::asset::Assets;
-use bevy::ecs::entity::Entity;
-use bevy::ecs::hierarchy::ChildOf;
-use bevy::ecs::query::With;
-use bevy::ecs::system::{Commands, Res};
-use bevy::ecs::{query::Without, system::Query};
-use bevy::math::{Isometry3d, Vec3};
-use bevy::time::Time;
-use bevy::transform::components::GlobalTransform;
-
-use crate::core::animation_graph::DEFAULT_OUTPUT_RAGDOLL_CONFIG;
-use crate::core::animation_graph_player::AnimationGraphPlayer;
-use crate::core::context::SystemResources;
-use crate::core::context::pose_fallback::{PoseFallbackContext, RootOffsetResult};
-use crate::core::ragdoll::bone_mapping::RagdollBoneMap;
-use crate::core::ragdoll::definition::{BodyMode, Ragdoll};
-use crate::core::ragdoll::read_pose_avian::read_pose;
-use crate::core::ragdoll::relative_kinematic_body::{
-    RelativeKinematicBody, RelativeKinematicBodyPositionBased,
+use bevy::{
+    asset::Assets,
+    ecs::{
+        entity::Entity,
+        hierarchy::ChildOf,
+        query::{With, Without},
+        system::{Commands, Query, Res},
+    },
+    math::{Isometry3d, Vec3},
+    time::Time,
+    transform::components::GlobalTransform,
 };
-use crate::core::ragdoll::spawning::spawn_ragdoll_avian;
-use crate::core::ragdoll::write_pose::write_pose_to_ragdoll;
+
+use crate::core::{
+    animation_graph::DEFAULT_OUTPUT_RAGDOLL_CONFIG,
+    animation_graph_player::AnimationGraphPlayer,
+    context::{
+        pose_fallback::{PoseFallbackContext, RootOffsetResult},
+        system_resources::SystemResources,
+    },
+    ragdoll::{
+        bone_mapping::RagdollBoneMap,
+        definition::{BodyMode, Ragdoll},
+        read_pose_avian::read_pose,
+        relative_kinematic_body::{RelativeKinematicBody, RelativeKinematicBodyPositionBased},
+        spawning::spawn_ragdoll_avian,
+        write_pose::write_pose_to_ragdoll,
+    },
+};
 
 pub fn update_relative_kinematic_body_velocities(
     mut relative_kinematic_query: Query<(

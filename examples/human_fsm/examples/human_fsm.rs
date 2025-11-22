@@ -1,12 +1,13 @@
 extern crate bevy;
 extern crate bevy_animation_graph;
 
-use bevy::light::CascadeShadowConfigBuilder;
-use bevy::prelude::*;
-use bevy_animation_graph::core::animated_scene::AnimatedSceneInstance;
-use bevy_animation_graph::core::edge_data::AnimationEvent;
-use bevy_animation_graph::prelude::*;
 use std::f32::consts::PI;
+
+use bevy::{light::CascadeShadowConfigBuilder, prelude::*};
+use bevy_animation_graph::{
+    core::{animated_scene::AnimatedSceneInstance, edge_data::AnimationEvent},
+    prelude::*,
+};
 
 fn main() {
     App::new()

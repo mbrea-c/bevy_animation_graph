@@ -1,17 +1,5 @@
 use std::{borrow::Cow, cmp::Ordering, collections::VecDeque};
 
-use crate::core::{
-    animation_graph::{
-        AnimationGraph, GraphInputPin, PinId, PinMap, SourcePin, TargetPin, TimeUpdate,
-    },
-    context::{
-        io_env::{GraphIoEnv, IoOverrides, LayeredIoEnv},
-        new_context::{GraphContext, NodeContext},
-    },
-    duration_data::DurationData,
-    edge_data::{AnimationEvent, DataValue, EventQueue},
-    errors::GraphError,
-};
 use bevy::{
     asset::{Asset, Handle},
     log::warn,
@@ -21,6 +9,21 @@ use bevy::{
 use serde::{Deserialize, Serialize};
 
 use super::high_level;
+use crate::core::{
+    animation_graph::{
+        AnimationGraph, GraphInputPin, PinId, PinMap, SourcePin, TargetPin, TimeUpdate,
+    },
+    context::{
+        io_env::{GraphIoEnv, IoOverrides, LayeredIoEnv},
+        new_context::{GraphContext, NodeContext},
+    },
+    duration_data::DurationData,
+    edge_data::{
+        DataValue,
+        events::{AnimationEvent, EventQueue},
+    },
+    errors::GraphError,
+};
 
 #[derive(Reflect, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum LowLevelTransitionId {

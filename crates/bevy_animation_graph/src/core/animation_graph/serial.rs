@@ -10,14 +10,15 @@
 //!
 //! This process may seem complicated, but it is better than the alternative (manual
 //! `DeserializeSeed` impl on animation graph).
+use bevy::{platform::collections::HashMap, prelude::*, reflect::TypeRegistry};
+use serde::{Deserialize, Serialize};
+
 use super::{AnimationGraph, EditorMetadata};
 use crate::core::{
     animation_graph::{GraphInputPin, PinId, SourcePin, TargetPin},
     animation_node::serial::{AnimationNodeDeserializer, AnimationNodeSerializer},
     edge_data::{DataSpec, DataValue},
 };
-use bevy::{platform::collections::HashMap, prelude::*, reflect::TypeRegistry};
-use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
 pub struct AnimationGraphDeserializer {

@@ -5,9 +5,8 @@ use bevy::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::core::{animation_graph::AnimationGraph, errors::AssetLoaderError, skeleton::Skeleton};
-
 use super::{AnimatedScene, Retargeting};
+use crate::core::{animation_graph::AnimationGraph, errors::AssetLoaderError, skeleton::Skeleton};
 
 #[derive(Serialize, Deserialize, Clone)]
 struct AnimatedSceneSerial {

@@ -1,7 +1,3 @@
-use crate::core::{
-    animation_graph::{AnimationGraph, serial::AnimationGraphDeserializer},
-    errors::AssetLoaderError,
-};
 use bevy::{
     asset::{AssetLoader, LoadContext, io::Reader},
     ecs::{
@@ -9,6 +5,11 @@ use bevy::{
         world::{FromWorld, World},
     },
     reflect::TypeRegistryArc,
+};
+
+use crate::core::{
+    animation_graph::{AnimationGraph, serial::AnimationGraphDeserializer},
+    errors::AssetLoaderError,
 };
 
 #[derive(Debug, Clone)]

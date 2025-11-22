@@ -1,13 +1,13 @@
-use bevy::reflect::Reflect;
-use bevy::reflect::prelude::ReflectDefault;
+use bevy::reflect::{Reflect, prelude::ReflectDefault};
 
-use crate::core::animation_graph::PinMap;
-use crate::core::animation_node::{NodeLike, ReflectNodeLike};
-use crate::core::context::SpecContext;
-use crate::core::context::new_context::NodeContext;
-use crate::core::edge_data::{DataSpec, DataValue};
-use crate::core::errors::GraphError;
-use crate::core::ragdoll::configuration::RagdollConfig;
+use crate::core::{
+    animation_graph::PinMap,
+    animation_node::{NodeLike, ReflectNodeLike},
+    context::{new_context::NodeContext, spec_context::SpecContext},
+    edge_data::{DataSpec, DataValue},
+    errors::GraphError,
+    ragdoll::configuration::RagdollConfig,
+};
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default, NodeLike)]

@@ -1,11 +1,12 @@
-use crate::core::{
-    animation_clip::GraphClip, animation_graph::AnimationGraph, skeleton::Skeleton,
-    state_machine::high_level::StateMachine,
-};
 use bevy::{
     asset::Assets,
     ecs::{prelude::*, system::SystemParam},
     transform::prelude::*,
+};
+
+use crate::core::{
+    animation_clip::GraphClip, animation_graph::AnimationGraph, skeleton::Skeleton,
+    state_machine::high_level::StateMachine,
 };
 
 /// Contains temprary data such as references to assets, gizmos, etc.

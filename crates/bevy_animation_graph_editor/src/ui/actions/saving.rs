@@ -1,12 +1,5 @@
-use crate::{
-    Cli,
-    ui::{
-        UiState,
-        core::EguiWindow,
-        editor_windows::saving::{SaveWindow, SaveWindowAssetMeta},
-        global_state::{ClearGlobalState, active_fsm::ActiveFsm, active_graph::ActiveGraph},
-    },
-};
+use std::path::PathBuf;
+
 use bevy::{asset::UntypedAssetId, platform::collections::HashMap, prelude::*};
 use bevy_animation_graph::{
     core::{
@@ -20,7 +13,16 @@ use bevy_animation_graph::{
     },
     prelude::GraphClip,
 };
-use std::path::PathBuf;
+
+use crate::{
+    Cli,
+    ui::{
+        UiState,
+        core::EguiWindow,
+        editor_windows::saving::{SaveWindow, SaveWindowAssetMeta},
+        global_state::{ClearGlobalState, active_fsm::ActiveFsm, active_graph::ActiveGraph},
+    },
+};
 
 /// Assets that have been modified in the editor but not yet saved
 #[derive(Resource, Default)]

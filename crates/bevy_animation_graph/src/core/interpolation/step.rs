@@ -1,5 +1,6 @@
-use crate::core::pose::{BonePose, Pose};
 use bevy::prelude::*;
+
+use crate::core::pose::{BonePose, Pose};
 
 pub trait InterpolateStep {
     fn interpolate_step(&self, other: &Self, f: f32) -> Self;

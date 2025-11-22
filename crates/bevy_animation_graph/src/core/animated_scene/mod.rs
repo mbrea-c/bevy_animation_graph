@@ -1,11 +1,5 @@
 pub mod loader;
 
-use super::{animation_clip::EntityPath, errors::AssetLoaderError, id::BoneId, skeleton::Skeleton};
-use crate::core::{
-    animation_graph::AnimationGraph,
-    animation_graph_player::{AnimationGraphPlayer, AnimationSource},
-    ragdoll::{bone_mapping::RagdollBoneMap, definition::Ragdoll},
-};
 use bevy::{
     animation::AnimationTarget,
     asset::{Asset, Assets, Handle, ReflectAsset},
@@ -24,6 +18,13 @@ use bevy::{
     reflect::Reflect,
     scene::{Scene, SceneInstanceReady, SceneRoot},
     transform::components::Transform,
+};
+
+use super::{animation_clip::EntityPath, errors::AssetLoaderError, id::BoneId, skeleton::Skeleton};
+use crate::core::{
+    animation_graph::AnimationGraph,
+    animation_graph_player::{AnimationGraphPlayer, AnimationSource},
+    ragdoll::{bone_mapping::RagdollBoneMap, definition::Ragdoll},
 };
 
 #[derive(Clone, Asset, Reflect)]

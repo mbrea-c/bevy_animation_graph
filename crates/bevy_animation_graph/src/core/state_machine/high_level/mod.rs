@@ -1,6 +1,15 @@
 pub mod loader;
 pub mod serial;
 
+use bevy::{
+    asset::{Asset, Handle, ReflectAsset},
+    math::Vec2,
+    platform::collections::HashMap,
+    prelude::ReflectDefault,
+    reflect::Reflect,
+};
+use serde::{Deserialize, Serialize};
+
 use super::low_level::{
     LowLevelState, LowLevelStateId, LowLevelStateMachine, LowLevelTransition, LowLevelTransitionId,
     LowLevelTransitionType,
@@ -10,14 +19,6 @@ use crate::core::{
     edge_data::DataValue,
     errors::GraphValidationError,
 };
-use bevy::{
-    asset::{Asset, Handle, ReflectAsset},
-    math::Vec2,
-    platform::collections::HashMap,
-    prelude::ReflectDefault,
-    reflect::Reflect,
-};
-use serde::{Deserialize, Serialize};
 
 /// Unique within a high-level FSM
 pub type StateId = String;

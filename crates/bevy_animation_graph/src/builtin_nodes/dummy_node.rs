@@ -1,5 +1,6 @@
-use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 use bevy::prelude::*;
+
+use crate::core::animation_node::{NodeLike, ReflectNodeLike};
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default, NodeLike)]

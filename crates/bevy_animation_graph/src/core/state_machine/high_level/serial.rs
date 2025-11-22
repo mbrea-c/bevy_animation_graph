@@ -1,8 +1,7 @@
 use serde::{Deserialize, Serialize};
 
-use crate::core::{animation_graph::PinMap, edge_data::DataValue};
-
 use super::{Extra, GlobalTransition, State, StateId, StateMachine, Transition, TransitionId};
+use crate::core::{animation_graph::PinMap, edge_data::DataValue};
 
 pub type StateIdSerial = StateId;
 pub type TransitionIdSerial = TransitionId;

@@ -1,23 +1,23 @@
 use core::any::TypeId;
 use std::any::Any;
 
-use crate::ui::ecs_utils::get_view_state;
-use crate::ui::global_state;
-use crate::ui::native_views::{EditorView, EditorViewContext, EditorViewUiState};
-use crate::ui::native_windows::{NativeEditorWindow, NativeEditorWindowExtension};
-use bevy::ecs::world::CommandQueue;
-use bevy::platform::collections::HashMap;
-use bevy::prelude::*;
+use bevy::{ecs::world::CommandQueue, platform::collections::HashMap, prelude::*};
 use bevy_egui::{EguiContext, PrimaryEguiContext};
 use bevy_inspector_egui::{bevy_egui, egui};
 use egui_dock::egui::Color32;
 use egui_notify::{Anchor, Toasts};
 
-use super::actions::saving::SaveAction;
-use super::actions::{EditorAction, PendingActions, PushQueue};
-
 pub use super::windows::EditorWindowExtension;
-use super::windows::{WindowId, Windows};
+use super::{
+    actions::{EditorAction, PendingActions, PushQueue, saving::SaveAction},
+    windows::{WindowId, Windows},
+};
+use crate::ui::{
+    ecs_utils::get_view_state,
+    global_state,
+    native_views::{EditorView, EditorViewContext, EditorViewUiState},
+    native_windows::{NativeEditorWindow, NativeEditorWindowExtension},
+};
 
 #[derive(Component)]
 pub struct HasLoadedImgLoaders;

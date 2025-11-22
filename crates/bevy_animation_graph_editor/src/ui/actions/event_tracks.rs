@@ -16,9 +16,8 @@ use bevy_animation_graph::{
 };
 use uuid::Uuid;
 
-use crate::ui::native_windows::event_track_editor::TargetTracks;
-
 use super::saving::DirtyAssets;
+use crate::ui::native_windows::event_track_editor::TargetTracks;
 
 pub enum EventTrackAction {
     NewEvent(NewEventAction),

@@ -1,15 +1,16 @@
-use crate::core::{
-    animation_graph::PinMap,
-    animation_node::{NodeLike, ReflectNodeLike},
-    context::{SpecContext, new_context::NodeContext},
-    edge_data::DataSpec,
-    errors::GraphError,
-};
 use bevy::{
     color::LinearRgba,
     math::{Quat, Vec3},
     reflect::{Reflect, std_traits::ReflectDefault},
     transform::components::Transform,
+};
+
+use crate::core::{
+    animation_graph::PinMap,
+    animation_node::{NodeLike, ReflectNodeLike},
+    context::{new_context::NodeContext, spec_context::SpecContext},
+    edge_data::DataSpec,
+    errors::GraphError,
 };
 
 #[derive(Reflect, Clone, Debug, Default)]

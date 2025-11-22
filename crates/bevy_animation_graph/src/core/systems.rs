@@ -1,14 +1,17 @@
-use crate::core::{animation_graph_player::PlaybackState, context::SystemResources};
+use std::collections::VecDeque;
+
+use bevy::{
+    ecs::prelude::*, gizmos::gizmos::Gizmos, log::info_span, mesh::morph::MorphWeights,
+    platform::collections::HashMap, time::prelude::*, transform::prelude::*,
+};
 
 use super::{
     animation_clip::EntityPath, animation_graph::TimeUpdate,
     animation_graph_player::AnimationGraphPlayer, pose::BoneId,
 };
-use bevy::{
-    ecs::prelude::*, gizmos::gizmos::Gizmos, log::info_span, mesh::morph::MorphWeights,
-    platform::collections::HashMap, time::prelude::*, transform::prelude::*,
+use crate::core::{
+    animation_graph_player::PlaybackState, context::system_resources::SystemResources,
 };
-use std::collections::VecDeque;
 
 fn build_entity_map(root_entity: Entity, resources: &SystemResources) -> HashMap<BoneId, Entity> {
     let mut entity_map = HashMap::default();

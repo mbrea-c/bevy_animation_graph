@@ -1,22 +1,25 @@
 pub mod dyn_node_like;
 pub mod serial;
 
-use crate::builtin_nodes::dummy_node::DummyNode;
-use crate::core::animation_graph::NodeId;
-use crate::core::{
-    animation_graph::{PinId, PinMap},
-    animation_node::dyn_node_like::DynNodeLike,
-    context::{SpecContext, new_context::NodeContext},
-    edge_data::DataSpec,
-    errors::GraphError,
-};
+use std::{any::TypeId, fmt::Debug};
+
 use bevy::{
     platform::collections::HashMap,
     prelude::{Deref, DerefMut},
     reflect::{FromType, prelude::*},
 };
-use std::{any::TypeId, fmt::Debug};
 use uuid::Uuid;
+
+use crate::{
+    builtin_nodes::dummy_node::DummyNode,
+    core::{
+        animation_graph::{NodeId, PinId, PinMap},
+        animation_node::dyn_node_like::DynNodeLike,
+        context::{new_context::NodeContext, spec_context::SpecContext},
+        edge_data::DataSpec,
+        errors::GraphError,
+    },
+};
 
 #[reflect_trait]
 pub trait NodeLike: NodeLikeClone + Send + Sync + Debug + Reflect + 'static {

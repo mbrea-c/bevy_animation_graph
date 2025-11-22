@@ -1,9 +1,3 @@
-use crate::egui_nodes::{
-    lib::{PinShape, PinStyleArgs},
-    link::{LinkSpec, LinkStyleArgs},
-    node::{NodeArgs, NodeSpec},
-    pin::{PinSpec, PinType},
-};
 use bevy::{asset::AssetId, ecs::resource::Resource, platform::collections::HashMap};
 use bevy_animation_graph::{
     core::{
@@ -15,6 +9,13 @@ use bevy_animation_graph::{
     prelude::{graph_context::GraphState, node_states::StateKey},
 };
 use bevy_inspector_egui::egui::Color32;
+
+use crate::egui_nodes::{
+    lib::{PinShape, PinStyleArgs},
+    link::{LinkSpec, LinkStyleArgs},
+    node::{NodeArgs, NodeSpec},
+    pin::{PinSpec, PinType},
+};
 
 // TODO: Come up with better colors
 /// returns (base, hovered, selected)

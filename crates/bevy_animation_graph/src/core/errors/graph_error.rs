@@ -1,6 +1,7 @@
-use crate::core::animation_graph::{GraphInputPin, NodeId, SourcePin, TargetPin};
 use bevy::prelude::*;
 use thiserror::Error;
+
+use crate::core::animation_graph::{GraphInputPin, NodeId, SourcePin, TargetPin};
 
 /// Possible errors that can be produced by graph evaluation
 #[non_exhaustive]

@@ -1,24 +1,6 @@
 pub mod loader;
 pub mod serial;
 
-use crate::{
-    builtin_nodes::fsm_node::FSMNode,
-    core::{
-        animation_node::AnimationNode,
-        context::{
-            DeferredGizmos, GraphContextArena, SpecContext, SystemResources,
-            graph_context::QueryOutputTime,
-            io_env::{EmptyIoEnv, GraphIoEnv},
-            new_context::GraphContext,
-        },
-        duration_data::DurationData,
-        edge_data::{AnimationEvent, DataSpec, DataValue, OptDataSpec},
-        errors::{GraphError, GraphValidationError},
-        event_track::EventTrack,
-        pose::{BoneId, Pose},
-        state_machine::{high_level::StateMachine, low_level::FsmBuiltinPin},
-    },
-};
 use bevy::{
     asset::ReflectAsset,
     platform::collections::{HashMap, HashSet},
@@ -27,6 +9,28 @@ use bevy::{
 use bevy_animation_graph_proc_macros::UuidWrapper;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+
+use crate::{
+    builtin_nodes::fsm_node::FSMNode,
+    core::{
+        animation_node::AnimationNode,
+        context::{
+            deferred_gizmos::DeferredGizmos,
+            graph_context::QueryOutputTime,
+            graph_context_arena::GraphContextArena,
+            io_env::{EmptyIoEnv, GraphIoEnv},
+            new_context::GraphContext,
+            spec_context::SpecContext,
+            system_resources::SystemResources,
+        },
+        duration_data::DurationData,
+        edge_data::{DataSpec, DataValue, OptDataSpec, events::AnimationEvent},
+        errors::{GraphError, GraphValidationError},
+        event_track::EventTrack,
+        pose::{BoneId, Pose},
+        state_machine::{high_level::StateMachine, low_level::FsmBuiltinPin},
+    },
+};
 
 #[derive(UuidWrapper, Clone, Copy, Debug, Reflect, PartialEq, Eq, Hash, Default)]
 pub struct NodeId(#[uuid] pub(crate) Uuid);

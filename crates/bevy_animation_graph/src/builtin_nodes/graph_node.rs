@@ -1,13 +1,18 @@
-use crate::core::animation_graph::{AnimationGraph, GraphInputPin, PinMap, TargetPin, TimeUpdate};
-use crate::core::animation_node::{NodeLike, ReflectNodeLike};
-use crate::core::context::SpecContext;
-use crate::core::context::graph_context::QueryOutputTime;
-use crate::core::context::io_env::GraphIoEnv;
-use crate::core::context::new_context::{GraphContext, NodeContext};
-use crate::core::duration_data::DurationData;
-use crate::core::edge_data::{DataSpec, DataValue};
-use crate::core::errors::GraphError;
 use bevy::prelude::*;
+
+use crate::core::{
+    animation_graph::{AnimationGraph, GraphInputPin, PinMap, TargetPin, TimeUpdate},
+    animation_node::{NodeLike, ReflectNodeLike},
+    context::{
+        graph_context::QueryOutputTime,
+        io_env::GraphIoEnv,
+        new_context::{GraphContext, NodeContext},
+        spec_context::SpecContext,
+    },
+    duration_data::DurationData,
+    edge_data::{DataSpec, DataValue},
+    errors::GraphError,
+};
 
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default, NodeLike)]

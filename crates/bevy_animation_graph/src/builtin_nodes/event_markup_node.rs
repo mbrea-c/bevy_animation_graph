@@ -1,13 +1,14 @@
-use crate::core::animation_graph::{PinMap, TimeUpdate};
-use crate::core::animation_node::{NodeLike, ReflectNodeLike};
-use crate::core::context::SpecContext;
-use crate::core::context::new_context::NodeContext;
-use crate::core::edge_data::{DataSpec, EventQueue};
-use crate::core::errors::GraphError;
-use crate::core::event_track::EventTrack;
-use bevy::platform::collections::HashMap;
-use bevy::prelude::*;
+use bevy::{platform::collections::HashMap, prelude::*};
 use serde::{Deserialize, Serialize};
+
+use crate::core::{
+    animation_graph::{PinMap, TimeUpdate},
+    animation_node::{NodeLike, ReflectNodeLike},
+    context::{new_context::NodeContext, spec_context::SpecContext},
+    edge_data::{DataSpec, events::EventQueue},
+    errors::GraphError,
+    event_track::EventTrack,
+};
 
 /// This node enables "decorating" arbitrary animations with event tracks.
 ///

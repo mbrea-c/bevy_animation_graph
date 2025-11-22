@@ -19,12 +19,11 @@ use bevy_animation_graph::{
     },
 };
 
+use super::{DynamicAction, run_handler, saving::DirtyAssets};
 use crate::{
     graph_show::{GraphIndicesMap, make_graph_indices},
     ui::{actions::ActionContext, egui_inspector_impls::OrderedMap},
 };
-
-use super::{DynamicAction, run_handler, saving::DirtyAssets};
 
 pub enum GraphAction {
     CreateLink(CreateLink),

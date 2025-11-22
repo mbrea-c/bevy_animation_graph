@@ -6,9 +6,8 @@ use bevy::{
 };
 use serde::{Deserialize, Serialize};
 
-use crate::core::{errors::AssetLoaderError, event_track::EventTrack};
-
 use super::GraphClip;
+use crate::core::{errors::AssetLoaderError, event_track::EventTrack};
 
 #[derive(Reflect, Serialize, Deserialize, Clone, Debug)]
 pub enum GraphClipSource {

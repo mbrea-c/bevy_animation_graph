@@ -1,3 +1,5 @@
+use bevy::{asset::AssetId, platform::collections::HashMap, reflect::prelude::*};
+
 use crate::core::{
     animation_graph::{AnimationGraph, TimeUpdate},
     context::{
@@ -5,7 +7,6 @@ use crate::core::{
         node_states::{NodeStates, StateKey},
     },
 };
-use bevy::{asset::AssetId, platform::collections::HashMap, reflect::prelude::*};
 
 #[derive(Debug, Reflect)]
 pub struct GraphState {

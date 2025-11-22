@@ -2,7 +2,7 @@ use bevy::reflect::Reflect;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::edge_data::{AnimationEvent, SampledEvent};
+use super::edge_data::events::{AnimationEvent, SampledEvent};
 
 #[derive(Debug, Reflect, Clone, Serialize, Deserialize, Default)]
 pub struct TrackItem {

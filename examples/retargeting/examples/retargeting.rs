@@ -1,9 +1,10 @@
 extern crate bevy;
 extern crate bevy_animation_graph;
 
+use std::f32::consts::PI;
+
 use bevy::{light::CascadeShadowConfigBuilder, prelude::*};
 use bevy_animation_graph::prelude::*;
-use std::f32::consts::PI;
 
 fn main() {
     App::new()

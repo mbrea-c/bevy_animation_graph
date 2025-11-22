@@ -1,10 +1,11 @@
-pub use super::id::BoneId;
-use super::skeleton::Skeleton;
 use bevy::{
     asset::prelude::*, math::prelude::*, platform::collections::HashMap, reflect::prelude::*,
     transform::prelude::*,
 };
 use serde::{Deserialize, Serialize};
+
+pub use super::id::BoneId;
+use super::skeleton::Skeleton;
 
 /// Vertical slice of a [`Keyframes`] that represents an instant in an animation [`Transform`].
 ///

@@ -1,39 +1,40 @@
-use super::animation_clip::Interpolation;
-use super::animation_clip::loader::GraphClipLoader;
-use super::edge_data::{AnimationEvent, EventQueue, SampledEvent};
-use super::pose::Pose;
-use super::skeleton::Skeleton;
-use super::skeleton::loader::SkeletonLoader;
-use super::state_machine::high_level::GlobalTransition;
-use super::systems::apply_animation_to_targets;
-use super::{
-    animated_scene::{AnimatedScene, spawn_animated_scenes},
-    animation_graph::loader::AnimationGraphLoader,
-    edge_data::{BoneMask, DataSpec, DataValue},
-    state_machine::high_level::{StateMachine, loader::StateMachineLoader},
-    systems::{animation_player, animation_player_deferred_gizmos},
+use bevy::{
+    ecs::{intern::Interned, schedule::ScheduleLabel},
+    prelude::*,
 };
 
-use crate::builtin_nodes::BuiltinNodesPlugin;
-use crate::core::animated_scene::loader::AnimatedSceneLoader;
-use crate::core::animated_scene::locate_animated_scene_player;
-use crate::core::animation_clip::{EntityPath, GraphClip};
-use crate::core::animation_graph_player::AnimationGraphPlayer;
-use crate::core::animation_node::AnimationNode;
 #[cfg(feature = "physics_avian")]
 use crate::core::physics_systems_avian::{
     read_back_poses_avian, spawn_missing_ragdolls_avian, update_ragdoll_rigidbodies,
     update_ragdolls_avian,
 };
-use crate::core::ragdoll::bone_mapping::RagdollBoneMap;
-use crate::core::ragdoll::bone_mapping_loader::RagdollBoneMapLoader;
-use crate::core::ragdoll::definition::Ragdoll;
-use crate::core::ragdoll::definition_loader::RagdollLoader;
-use crate::symmetry::config::SymmetryConfig;
-use crate::symmetry::serial::SymmetryConfigSerial;
-use bevy::ecs::intern::Interned;
-use bevy::ecs::schedule::ScheduleLabel;
-use bevy::prelude::*;
+use crate::{
+    builtin_nodes::BuiltinNodesPlugin,
+    core::{
+        animated_scene::{
+            AnimatedScene, loader::AnimatedSceneLoader, locate_animated_scene_player,
+            spawn_animated_scenes,
+        },
+        animation_clip::{EntityPath, GraphClip, Interpolation, loader::GraphClipLoader},
+        animation_graph::loader::AnimationGraphLoader,
+        animation_graph_player::AnimationGraphPlayer,
+        animation_node::AnimationNode,
+        edge_data::{
+            DataSpec, DataValue,
+            bone_mask::BoneMask,
+            events::{AnimationEvent, EventQueue, SampledEvent},
+        },
+        pose::Pose,
+        ragdoll::{
+            bone_mapping::RagdollBoneMap, bone_mapping_loader::RagdollBoneMapLoader,
+            definition::Ragdoll, definition_loader::RagdollLoader,
+        },
+        skeleton::{Skeleton, loader::SkeletonLoader},
+        state_machine::high_level::{GlobalTransition, StateMachine, loader::StateMachineLoader},
+        symmetry::{config::SymmetryConfig, serial::SymmetryConfigSerial},
+        systems::{animation_player, animation_player_deferred_gizmos, apply_animation_to_targets},
+    },
+};
 
 /// Adds animation support to an app
 pub struct AnimationGraphPlugin {
@@ -94,15 +95,16 @@ impl Plugin for AnimationGraphPlugin {
 
         #[cfg(feature = "physics_avian")]
         {
-            use crate::core::physics_systems_avian::{
-                update_relative_kinematic_body_velocities,
-                update_relative_kinematic_position_based_body_velocities,
-            };
             use avian3d::{
                 dynamics::{
                     integrator::IntegrationSystems, solver::schedule::SubstepSolverSystems,
                 },
                 prelude::{PhysicsSchedule, PhysicsSystems, SolverSystems, SubstepSchedule},
+            };
+
+            use crate::core::physics_systems_avian::{
+                update_relative_kinematic_body_velocities,
+                update_relative_kinematic_position_based_body_velocities,
             };
 
             app.configure_sets(
