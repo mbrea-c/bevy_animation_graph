@@ -5,7 +5,6 @@ use bevy::{
     transform::components::Transform,
 };
 use bevy_animation_graph_core::{
-    animation_graph::PinMap,
     animation_node::{NodeLike, ReflectNodeLike},
     context::{new_context::NodeContext, spec_context::SpecContext},
     edge_data::DataSpec,
@@ -121,29 +120,21 @@ impl NodeLike for TwoBoneIKNode {
         Ok(())
     }
 
-    fn data_input_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {
-        [
-            (Self::TARGETBONE.into(), DataSpec::EntityPath),
-            (Self::TARGETPOS.into(), DataSpec::Vec3),
-            (Self::IN_POSE.into(), DataSpec::Pose),
-        ]
-        .into()
+    fn spec(&self, mut ctx: SpecContext) -> Result<(), GraphError> {
+        ctx //
+            .add_input_data(Self::TARGETBONE, DataSpec::EntityPath)
+            .add_input_data(Self::TARGETPOS, DataSpec::Vec3)
+            .add_input_data(Self::IN_POSE, DataSpec::Pose)
+            .add_input_time(Self::IN_TIME);
+        ctx //
+            .add_output_data(Self::OUT_POSE, DataSpec::Pose)
+            .add_output_time();
+
+        Ok(())
     }
 
     fn display_name(&self) -> String {
         "Two Bone IK".into()
-    }
-
-    fn data_output_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {
-        [(Self::OUT_POSE.into(), DataSpec::Pose)].into()
-    }
-
-    fn time_input_spec(&self, _ctx: SpecContext) -> PinMap<()> {
-        [(Self::IN_TIME.into(), ())].into()
-    }
-
-    fn time_output_spec(&self, _ctx: SpecContext) -> Option<()> {
-        Some(())
     }
 }
 

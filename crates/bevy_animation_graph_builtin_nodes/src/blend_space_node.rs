@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_animation_graph_core::{
-    animation_graph::{PinMap, TimeUpdate},
+    animation_graph::TimeUpdate,
     animation_node::{EditProxy, NodeLike, ReflectEditProxy, ReflectNodeLike},
     context::{new_context::NodeContext, spec_context::SpecContext},
     edge_data::DataSpec,
@@ -194,36 +194,21 @@ impl NodeLike for BlendSpaceNode {
         Ok(())
     }
 
-    fn data_input_spec(&self, _: SpecContext) -> PinMap<DataSpec> {
-        let mut input_spec = PinMap::from([(Self::POSITION.into(), DataSpec::Vec2)]);
+    fn spec(&self, mut ctx: SpecContext) -> Result<(), GraphError> {
+        ctx.add_input_data(Self::POSITION, DataSpec::Vec2);
 
-        input_spec.extend(self.points.iter().flat_map(|p| {
-            let mut out = vec![(Self::pose_pin_id(&p.id), DataSpec::Pose)];
-
-            if matches!(self.sync_mode, BlendSyncMode::EventTrack(_)) {
-                out.push((Self::events_pin_id(&p.id), DataSpec::EventQueue));
+        for p in &self.points {
+            ctx.add_input_data(Self::pose_pin_id(&p.id), DataSpec::Pose);
+            if matches!(&self.sync_mode, BlendSyncMode::EventTrack(_)) {
+                ctx.add_input_data(Self::events_pin_id(&p.id), DataSpec::EventQueue);
             }
+            ctx.add_input_time(Self::time_pin_id(&p.id));
+        }
 
-            out
-        }));
+        ctx.add_output_data(Self::OUT_POSE, DataSpec::Pose)
+            .add_output_time();
 
-        input_spec
-    }
-
-    fn data_output_spec(&self, _: SpecContext) -> PinMap<DataSpec> {
-        [(Self::OUT_POSE.into(), DataSpec::Pose)].into()
-    }
-
-    fn time_input_spec(&self, _: SpecContext) -> PinMap<()> {
-        let mut input_spec = PinMap::new();
-
-        input_spec.extend(self.points.iter().map(|p| (Self::time_pin_id(&p.id), ())));
-
-        input_spec
-    }
-
-    fn time_output_spec(&self, _: SpecContext) -> Option<()> {
-        Some(())
+        Ok(())
     }
 
     fn display_name(&self) -> String {

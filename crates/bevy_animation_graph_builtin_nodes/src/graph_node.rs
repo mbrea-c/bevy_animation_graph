@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_animation_graph_core::{
-    animation_graph::{AnimationGraph, GraphInputPin, PinMap, TargetPin, TimeUpdate},
+    animation_graph::{AnimationGraph, GraphInputPin, TargetPin, TimeUpdate},
     animation_node::{NodeLike, ReflectNodeLike},
     context::{
         graph_context::QueryOutputTime,
@@ -9,7 +9,7 @@ use bevy_animation_graph_core::{
         spec_context::SpecContext,
     },
     duration_data::DurationData,
-    edge_data::{DataSpec, DataValue},
+    edge_data::DataValue,
     errors::GraphError,
 };
 
@@ -44,7 +44,7 @@ impl NodeLike for GraphNode {
             .create_child_context(self.graph.id(), None)
             .with_io(&sub_ctx_io);
 
-        if graph.output_time.is_some() {
+        if graph.node_spec.has_output_time() {
             let target_pin = TargetPin::OutputTime;
             let duration = graph.get_duration(target_pin, sub_ctx)?;
             ctx.set_duration_fwd(duration);
@@ -73,7 +73,7 @@ impl NodeLike for GraphNode {
             .create_child_context(self.graph.id(), None)
             .with_io(&sub_ctx_io);
 
-        if graph.output_time.is_some() {
+        if graph.node_spec.has_output_time() {
             let input = ctx.time_update_fwd();
             if let Ok(time_update) = input {
                 let key = sub_ctx.state_key;
@@ -82,7 +82,7 @@ impl NodeLike for GraphNode {
             }
         }
 
-        for id in graph.output_parameters.keys() {
+        for (id, _) in graph.node_spec.iter_output_data() {
             let target_pin = TargetPin::OutputData(id.clone());
             let value = graph.get_data(target_pin, sub_ctx.clone())?;
             ctx.set_data_fwd(id, value);
@@ -91,47 +91,15 @@ impl NodeLike for GraphNode {
         Ok(())
     }
 
-    fn data_input_spec(&self, ctx: SpecContext) -> PinMap<DataSpec> {
-        let Some(graph) = ctx.graph_assets.get(&self.graph) else {
-            return Default::default();
-        };
-        graph
-            .default_data
-            .iter()
-            .filter_map(|(k, v)| match k {
-                GraphInputPin::Default(pin) => Some((pin, v)),
-                _ => None,
-            })
-            .map(|(k, v)| (k.into(), v.into()))
-            .collect()
-    }
+    fn spec(&self, mut ctx: SpecContext) -> Result<(), GraphError> {
+        let graph = ctx
+            .resources()
+            .graph_assets
+            .get(&self.graph)
+            .ok_or(GraphError::GraphAssetMissing)?;
+        ctx.set_from_node_spec(&graph.node_spec);
 
-    fn data_output_spec(&self, ctx: SpecContext) -> PinMap<DataSpec> {
-        let Some(graph) = ctx.graph_assets.get(&self.graph) else {
-            return Default::default();
-        };
-        graph.output_parameters.clone()
-    }
-
-    fn time_input_spec(&self, ctx: SpecContext) -> PinMap<()> {
-        let Some(graph) = ctx.graph_assets.get(&self.graph) else {
-            return Default::default();
-        };
-        graph
-            .input_times
-            .keys()
-            .filter_map(|key| match key {
-                GraphInputPin::Default(pin) => Some((pin.clone(), ())),
-                _ => None,
-            })
-            .collect()
-    }
-
-    fn time_output_spec(&self, ctx: SpecContext) -> Option<()> {
-        let Some(graph) = ctx.graph_assets.get(&self.graph) else {
-            return Default::default();
-        };
-        graph.output_time
+        Ok(())
     }
 
     fn display_name(&self) -> String {

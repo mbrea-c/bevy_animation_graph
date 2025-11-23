@@ -15,9 +15,7 @@ use super::low_level::{
     LowLevelTransitionType,
 };
 use crate::{
-    animation_graph::{AnimationGraph, PinMap},
-    edge_data::DataValue,
-    errors::GraphValidationError,
+    animation_graph::AnimationGraph, context::spec_context::NodeSpec, errors::GraphValidationError,
 };
 
 /// Unique within a high-level FSM
@@ -109,7 +107,8 @@ pub struct StateMachine {
     #[reflect(ignore)]
     pub transitions: HashMap<TransitionId, Transition>,
 
-    pub input_data: PinMap<DataValue>,
+    #[reflect(ignore)]
+    pub node_spec: NodeSpec,
 
     #[reflect(ignore)]
     pub extra: Extra,
@@ -150,8 +149,8 @@ impl StateMachine {
         self.start_state = start_state;
     }
 
-    pub fn set_input_data(&mut self, input_data: PinMap<DataValue>) {
-        self.input_data = input_data;
+    pub fn set_input_spec(&mut self, spec: NodeSpec) {
+        self.node_spec = spec;
         self.update_low_level_fsm();
     }
 
@@ -262,7 +261,7 @@ impl StateMachine {
         let mut llfsm = LowLevelStateMachine::new();
 
         llfsm.start_state = Some(LowLevelStateId::HlState(self.start_state.clone()));
-        llfsm.input_data = self.input_data.clone();
+        llfsm.node_spec = self.node_spec.clone();
 
         for state in self.states.values() {
             llfsm.add_state(super::low_level::LowLevelState {

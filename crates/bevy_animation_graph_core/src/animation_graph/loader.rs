@@ -55,19 +55,7 @@ impl AssetLoader for AnimationGraphLoader {
             graph.add_node(node);
         }
 
-        // Set up inputs and outputs
-        for (input_name, data_spec) in serial.input_data {
-            graph.set_input_data(input_name, data_spec);
-        }
-        for (pose_name, _) in serial.input_times {
-            graph.add_input_time(pose_name);
-        }
-        for (param_name, param_spec) in serial.output_parameters {
-            graph.add_output_data(param_name, param_spec);
-        }
-        if serial.output_time.is_some() {
-            graph.add_output_time();
-        }
+        graph.node_spec = serial.node_spec;
 
         // Set default data values
         for (param_name, param_value) in serial.default_data {

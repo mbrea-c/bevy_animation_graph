@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use bevy_animation_graph_core::{
-    animation_graph::PinMap,
     animation_node::{NodeLike, ReflectNodeLike},
     context::{new_context::NodeContext, spec_context::SpecContext},
     edge_data::DataSpec,
@@ -35,12 +34,10 @@ impl NodeLike for IntoEulerNode {
         Ok(())
     }
 
-    fn data_input_spec(&self, _: SpecContext) -> PinMap<DataSpec> {
-        [(Self::INPUT.into(), DataSpec::Quat)].into()
-    }
-
-    fn data_output_spec(&self, _: SpecContext) -> PinMap<DataSpec> {
-        [(Self::OUTPUT.into(), DataSpec::Vec3)].into()
+    fn spec(&self, mut ctx: SpecContext) -> Result<(), GraphError> {
+        ctx.add_input_data(Self::INPUT, DataSpec::Quat);
+        ctx.add_output_data(Self::OUTPUT, DataSpec::Vec3);
+        Ok(())
     }
 
     fn display_name(&self) -> String {

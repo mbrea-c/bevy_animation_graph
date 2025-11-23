@@ -10,12 +10,11 @@ use serde::{Deserialize, Serialize};
 
 use super::high_level;
 use crate::{
-    animation_graph::{
-        AnimationGraph, GraphInputPin, PinId, PinMap, SourcePin, TargetPin, TimeUpdate,
-    },
+    animation_graph::{AnimationGraph, GraphInputPin, PinId, SourcePin, TargetPin, TimeUpdate},
     context::{
         io_env::{GraphIoEnv, IoOverrides, LayeredIoEnv},
         new_context::{GraphContext, NodeContext},
+        spec_context::NodeSpec,
     },
     duration_data::DurationData,
     edge_data::{
@@ -123,7 +122,7 @@ pub struct LowLevelStateMachine {
         HashMap<(high_level::StateId, high_level::StateId), Vec<LowLevelTransitionId>>,
 
     pub start_state: Option<LowLevelStateId>,
-    pub input_data: PinMap<DataValue>,
+    pub node_spec: NodeSpec,
 }
 
 impl LowLevelStateMachine {
@@ -136,7 +135,7 @@ impl LowLevelStateMachine {
             transitions: HashMap::new(),
             transitions_by_hl_state_pair: HashMap::new(),
             start_state: None,
-            input_data: PinMap::new(),
+            node_spec: NodeSpec::default(),
         }
     }
 
@@ -290,7 +289,7 @@ impl LowLevelStateMachine {
 
         let mut driver_event_queue = EventQueue::default();
 
-        for id in graph.output_parameters.keys() {
+        for (id, _) in graph.node_spec.iter_output_data() {
             let target_pin = TargetPin::OutputData(id.clone());
             let value = graph.get_data(target_pin, sub_ctx.clone())?;
             if id == Self::DRIVER_EVENT_QUEUE {
@@ -343,13 +342,6 @@ impl<'a> FsmIoEnv<'a> {
             .clone()
             .with_state_key(ctx.state_key)
             .data_back(pin_id)
-            .or_else(|_| {
-                self.state_machine
-                    .input_data
-                    .get(pin_id)
-                    .cloned()
-                    .ok_or(GraphError::FSMRequestedMissingData)
-            })
     }
 
     fn state_data_back(

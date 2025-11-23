@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy_animation_graph_core::{
-    animation_graph::{PinMap, TimeUpdate},
+    animation_graph::TimeUpdate,
     animation_node::{NodeLike, ReflectNodeLike},
     context::{new_context::NodeContext, spec_context::SpecContext},
     edge_data::DataSpec,
@@ -128,31 +128,27 @@ impl NodeLike for BlendNode {
         Ok(())
     }
 
-    fn data_input_spec(&self, _: SpecContext) -> PinMap<DataSpec> {
-        let mut input_data = vec![
-            (Self::FACTOR.into(), DataSpec::F32),
-            (Self::IN_POSE_A.into(), DataSpec::Pose),
-            (Self::IN_POSE_B.into(), DataSpec::Pose),
-        ];
+    fn spec(&self, mut ctx: SpecContext) -> Result<(), GraphError> {
+        // Input
+        ctx.add_input_data(Self::FACTOR, DataSpec::F32);
 
-        if matches!(self.sync_mode, BlendSyncMode::EventTrack(_)) {
-            input_data.push((Self::IN_EVENT_A.into(), DataSpec::EventQueue));
-            input_data.push((Self::IN_EVENT_B.into(), DataSpec::EventQueue));
+        ctx.add_input_data(Self::IN_POSE_A, DataSpec::Pose);
+        if matches!(&self.sync_mode, BlendSyncMode::EventTrack(_)) {
+            ctx.add_input_data(Self::IN_EVENT_A, DataSpec::EventQueue);
         }
+        ctx.add_input_time(Self::IN_TIME_A);
 
-        input_data.into_iter().collect()
-    }
+        ctx.add_input_data(Self::IN_POSE_B, DataSpec::Pose);
+        if matches!(&self.sync_mode, BlendSyncMode::EventTrack(_)) {
+            ctx.add_input_data(Self::IN_EVENT_B, DataSpec::EventQueue);
+        }
+        ctx.add_input_time(Self::IN_TIME_B);
 
-    fn data_output_spec(&self, _: SpecContext) -> PinMap<DataSpec> {
-        [(Self::OUT_POSE.into(), DataSpec::Pose)].into()
-    }
+        // Output
+        ctx.add_output_data(Self::OUT_POSE, DataSpec::Pose)
+            .add_output_time();
 
-    fn time_input_spec(&self, _: SpecContext) -> PinMap<()> {
-        [(Self::IN_TIME_A.into(), ()), (Self::IN_TIME_B.into(), ())].into()
-    }
-
-    fn time_output_spec(&self, _: SpecContext) -> Option<()> {
-        Some(())
+        Ok(())
     }
 
     fn display_name(&self) -> String {

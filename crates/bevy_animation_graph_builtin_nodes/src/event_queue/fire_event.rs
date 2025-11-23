@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use bevy_animation_graph_core::{
-    animation_graph::PinMap,
     animation_node::{NodeLike, ReflectNodeLike},
     context::{new_context::NodeContext, spec_context::SpecContext},
     edge_data::{
@@ -46,11 +45,10 @@ impl NodeLike for FireEventNode {
         Ok(())
     }
 
-    fn data_input_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {
-        [(Self::CONDITION_IN.into(), DataSpec::Bool)].into()
-    }
+    fn spec(&self, mut ctx: SpecContext) -> Result<(), GraphError> {
+        ctx.add_input_data(Self::CONDITION_IN, DataSpec::Bool);
+        ctx.add_output_data(Self::EVENT_OUT, DataSpec::EventQueue);
 
-    fn data_output_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {
-        [(Self::EVENT_OUT.into(), DataSpec::EventQueue)].into()
+        Ok(())
     }
 }

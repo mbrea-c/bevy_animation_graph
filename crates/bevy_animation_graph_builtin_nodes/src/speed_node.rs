@@ -1,6 +1,6 @@
 use bevy::reflect::{Reflect, std_traits::ReflectDefault};
 use bevy_animation_graph_core::{
-    animation_graph::{PinMap, TimeUpdate},
+    animation_graph::TimeUpdate,
     animation_node::{NodeLike, ReflectNodeLike},
     context::{new_context::NodeContext, spec_context::SpecContext},
     edge_data::DataSpec,
@@ -59,24 +59,16 @@ impl NodeLike for SpeedNode {
         Ok(())
     }
 
-    fn time_input_spec(&self, _: SpecContext) -> PinMap<()> {
-        [(Self::IN_TIME.into(), ())].into()
-    }
+    fn spec(&self, mut ctx: SpecContext) -> Result<(), GraphError> {
+        ctx //
+            .add_input_data(Self::SPEED, DataSpec::F32)
+            .add_input_data(Self::IN_POSE, DataSpec::Pose)
+            .add_input_time(Self::IN_TIME);
+        ctx //
+            .add_output_data(Self::OUT_POSE, DataSpec::Pose)
+            .add_output_time();
 
-    fn time_output_spec(&self, _ctx: SpecContext) -> Option<()> {
-        Some(())
-    }
-
-    fn data_input_spec(&self, _: SpecContext) -> PinMap<DataSpec> {
-        [
-            (Self::SPEED.into(), DataSpec::F32),
-            (Self::IN_POSE.into(), DataSpec::Pose),
-        ]
-        .into()
-    }
-
-    fn data_output_spec(&self, _: SpecContext) -> PinMap<DataSpec> {
-        [(Self::OUT_POSE.into(), DataSpec::Pose)].into()
+        Ok(())
     }
 
     fn display_name(&self) -> String {

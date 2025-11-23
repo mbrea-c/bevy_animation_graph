@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use bevy_animation_graph_core::{
-    animation_graph::PinMap,
     animation_node::{NodeLike, ReflectNodeLike},
     context::{new_context::NodeContext, spec_context::SpecContext},
     edge_data::DataSpec,
@@ -25,7 +24,7 @@ impl FSMNode {
 
 impl NodeLike for FSMNode {
     fn duration(&self, _ctx: NodeContext) -> Result<(), GraphError> {
-        todo!()
+        Err(GraphError::FsmDoesNotSupportDuration)
     }
 
     fn update(&self, ctx: NodeContext) -> Result<(), GraphError> {
@@ -40,35 +39,21 @@ impl NodeLike for FSMNode {
         Ok(())
     }
 
-    fn data_input_spec(&self, ctx: SpecContext) -> PinMap<DataSpec> {
+    fn spec(&self, mut ctx: SpecContext) -> Result<(), GraphError> {
         let fsm = ctx
+            .resources()
             .fsm_assets
             .get(&self.fsm)
-            .unwrap_or_else(|| panic!("no FSM asset `{:?}`", self.fsm));
-        let fsm_args = fsm
-            .input_data
-            .iter()
-            .map(|(pin_id, default_val)| (pin_id.clone(), DataSpec::from(default_val)));
+            .ok_or(GraphError::FsmAssetMissing)?;
 
-        let mut input_map = PinMap::from([(
-            LowLevelStateMachine::DRIVER_EVENT_QUEUE.into(),
+        ctx.set_from_node_spec(&fsm.node_spec);
+
+        ctx.add_input_data(
+            LowLevelStateMachine::DRIVER_EVENT_QUEUE,
             DataSpec::EventQueue,
-        )]);
-        input_map.extend(fsm_args);
+        );
 
-        input_map
-    }
-
-    fn data_output_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {
-        [(Self::OUT_POSE.into(), DataSpec::Pose)].into()
-    }
-
-    fn time_input_spec(&self, _ctx: SpecContext) -> PinMap<()> {
-        [].into()
-    }
-
-    fn time_output_spec(&self, _ctx: SpecContext) -> Option<()> {
-        Some(())
+        Ok(())
     }
 
     fn display_name(&self) -> String {

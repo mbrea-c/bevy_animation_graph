@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use bevy_animation_graph_core::{
-    animation_graph::PinMap,
     animation_node::{NodeLike, ReflectNodeLike},
     context::{new_context::NodeContext, spec_context::SpecContext},
     edge_data::DataSpec,
@@ -32,7 +31,9 @@ impl NodeLike for ConstBool {
         Ok(())
     }
 
-    fn data_output_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {
-        [(Self::OUTPUT.into(), DataSpec::Bool)].into()
+    fn spec(&self, mut ctx: SpecContext) -> Result<(), GraphError> {
+        ctx.add_output_data(Self::OUTPUT, DataSpec::Bool);
+
+        Ok(())
     }
 }

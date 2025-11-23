@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use bevy_animation_graph_core::{
-    animation_graph::PinMap,
     animation_node::{NodeLike, ReflectNodeLike},
     context::{new_context::NodeContext, spec_context::SpecContext},
     edge_data::DataSpec,
@@ -56,15 +55,11 @@ impl NodeLike for CompareF32 {
         Ok(())
     }
 
-    fn data_input_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {
-        [
-            (Self::INPUT_1.into(), DataSpec::F32),
-            (Self::INPUT_2.into(), DataSpec::F32),
-        ]
-        .into()
-    }
+    fn spec(&self, mut ctx: SpecContext) -> Result<(), GraphError> {
+        ctx.add_input_data(Self::INPUT_1, DataSpec::F32)
+            .add_input_data(Self::INPUT_2, DataSpec::F32)
+            .add_output_data(Self::OUTPUT, DataSpec::F32);
 
-    fn data_output_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {
-        [(Self::OUTPUT.into(), DataSpec::Bool)].into()
+        Ok(())
     }
 }

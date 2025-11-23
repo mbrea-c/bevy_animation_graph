@@ -11,7 +11,7 @@ use bevy::{
 };
 use bevy_animation_graph_core::{
     animation_clip::{GraphClip, Interpolation},
-    animation_graph::{PinMap, TimeUpdate},
+    animation_graph::TimeUpdate,
     animation_node::{NodeLike, ReflectNodeLike},
     context::{new_context::NodeContext, spec_context::SpecContext},
     edge_data::{DataSpec, DataValue, events::EventQueue},
@@ -134,16 +134,13 @@ impl NodeLike for ClipNode {
         Ok(())
     }
 
-    fn data_output_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {
-        [
-            (Self::OUT_POSE.into(), DataSpec::Pose),
-            (Self::OUT_EVENT_QUEUE.into(), DataSpec::EventQueue),
-        ]
-        .into()
-    }
+    fn spec(&self, mut ctx: SpecContext) -> Result<(), GraphError> {
+        ctx //
+            .add_output_data(Self::OUT_POSE, DataSpec::Pose)
+            .add_output_data(Self::OUT_EVENT_QUEUE, DataSpec::EventQueue)
+            .add_output_time();
 
-    fn time_output_spec(&self, _: SpecContext) -> Option<()> {
-        Some(())
+        Ok(())
     }
 
     fn display_name(&self) -> String {

@@ -52,6 +52,16 @@ pub enum GraphError {
     MismatchedStateType,
     #[error("State value not found for the given parameters")]
     MissingStateValue,
+
+    // FSM errors
+    #[error("FSM nodes do not support duration yet")]
+    FsmDoesNotSupportDuration,
+
+    // Missing asset errors
+    #[error("Requested an FSM asset that doesn't exist")]
+    FsmAssetMissing,
+    #[error("Requested a graph asset that doesn't exist")]
+    GraphAssetMissing,
 }
 
 pub type GraphResult<T> = Result<T, GraphError>;

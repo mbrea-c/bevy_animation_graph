@@ -11,52 +11,27 @@ use bevy::{
 use uuid::Uuid;
 
 use crate::{
-    animation_graph::{NodeId, PinId, PinMap},
+    animation_graph::{NodeId, PinId},
     animation_node::dyn_node_like::DynNodeLike,
-    context::{new_context::NodeContext, spec_context::SpecContext},
-    edge_data::DataSpec,
+    context::{
+        new_context::NodeContext,
+        spec_context::{NodeSpec, SpecContext, SpecResources},
+    },
     errors::GraphError,
 };
 
 #[reflect_trait]
 pub trait NodeLike: NodeLikeClone + Send + Sync + Debug + Reflect + 'static {
-    fn duration(&self, _ctx: NodeContext) -> Result<(), GraphError> {
+    #[allow(unused_variables)]
+    fn duration(&self, ctx: NodeContext) -> Result<(), GraphError> {
         Ok(())
     }
 
-    fn update(&self, _ctx: NodeContext) -> Result<(), GraphError> {
-        Ok(())
-    }
-
-    fn data_input_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {
-        PinMap::new()
-    }
-
-    fn data_output_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {
-        PinMap::new()
-    }
-
-    fn time_input_spec(&self, _ctx: SpecContext) -> PinMap<()> {
-        PinMap::new()
-    }
-
-    /// Specify whether or not a node outputs a pose, and which space the pose is in
-    fn time_output_spec(&self, _ctx: SpecContext) -> Option<()> {
-        None
-    }
+    fn update(&self, ctx: NodeContext) -> Result<(), GraphError>;
+    fn spec(&self, ctx: SpecContext) -> Result<(), GraphError>;
 
     /// The name of this node.
     fn display_name(&self) -> String;
-
-    /// The order of the input pins. This way, you can mix time and data pins in the UI.
-    fn input_pin_ordering(&self, _ctx: SpecContext) -> PinOrdering {
-        PinOrdering::default()
-    }
-
-    /// The order of the output pins. This way, you can mix time and data pins in the UI.
-    fn output_pin_ordering(&self, _ctx: SpecContext) -> PinOrdering {
-        PinOrdering::default()
-    }
 }
 
 pub trait NodeLikeClone {
@@ -157,5 +132,12 @@ impl AnimationNode {
             should_debug: false,
             id: NodeId(Uuid::new_v4()),
         }
+    }
+
+    pub fn new_spec(&self, resources: SpecResources) -> Result<NodeSpec, GraphError> {
+        let mut spec = NodeSpec::default();
+        let ctx = SpecContext::new(resources, &mut spec);
+        self.spec(ctx)?;
+        Ok(spec)
     }
 }

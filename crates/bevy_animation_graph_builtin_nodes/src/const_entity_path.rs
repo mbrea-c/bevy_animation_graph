@@ -1,7 +1,6 @@
 use bevy::reflect::{Reflect, prelude::ReflectDefault};
 use bevy_animation_graph_core::{
     animation_clip::EntityPath,
-    animation_graph::PinMap,
     animation_node::NodeLike,
     context::{new_context::NodeContext, spec_context::SpecContext},
     edge_data::{DataSpec, DataValue},
@@ -33,7 +32,9 @@ impl NodeLike for ConstEntityPath {
         Ok(())
     }
 
-    fn data_output_spec(&self, _ctx: SpecContext) -> PinMap<DataSpec> {
-        [(Self::OUTPUT.into(), DataSpec::EntityPath)].into()
+    fn spec(&self, mut ctx: SpecContext) -> Result<(), GraphError> {
+        ctx.add_output_data(Self::OUTPUT, DataSpec::EntityPath);
+
+        Ok(())
     }
 }

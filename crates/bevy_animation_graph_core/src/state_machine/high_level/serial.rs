@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::{Extra, GlobalTransition, State, StateId, StateMachine, Transition, TransitionId};
-use crate::{animation_graph::PinMap, edge_data::DataValue};
+use crate::context::spec_context::NodeSpec;
 
 pub type StateIdSerial = StateId;
 pub type TransitionIdSerial = TransitionId;
@@ -34,7 +34,7 @@ pub struct StateMachineSerial {
     pub transitions: Vec<TransitionSerial>,
     pub start_state: String,
     #[serde(default)]
-    pub input_data: PinMap<DataValue>,
+    pub node_spec: NodeSpec,
     #[serde(default)]
     pub extra: Extra,
 }
@@ -84,7 +84,7 @@ impl From<&StateMachine> for StateMachineSerial {
                 .collect(),
             start_state: value.start_state.clone(),
             extra: value.extra.clone(),
-            input_data: value.input_data.clone(),
+            node_spec: value.node_spec.clone(),
         }
     }
 }

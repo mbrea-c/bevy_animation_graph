@@ -10,14 +10,14 @@
 //!
 //! This process may seem complicated, but it is better than the alternative (manual
 //! `DeserializeSeed` impl on animation graph).
-use bevy::{platform::collections::HashMap, prelude::*, reflect::TypeRegistry};
+use bevy::{platform::collections::HashMap, reflect::TypeRegistry};
 use serde::{Deserialize, Serialize};
 
-use super::{AnimationGraph, EditorMetadata};
 use crate::{
-    animation_graph::{GraphInputPin, PinId, SourcePin, TargetPin},
+    animation_graph::{AnimationGraph, EditorMetadata, PinId, SourcePin, TargetPin},
     animation_node::serial::{AnimationNodeDeserializer, AnimationNodeSerializer},
-    edge_data::{DataSpec, DataValue},
+    context::spec_context::NodeSpec,
+    edge_data::DataValue,
 };
 
 #[derive(Deserialize)]
@@ -25,12 +25,9 @@ pub struct AnimationGraphDeserializer {
     pub nodes: Vec<AnimationNodeDeserializer>,
     pub edges_inverted: HashMap<TargetPin, SourcePin>,
 
-    pub input_data: HashMap<GraphInputPin, DataSpec>,
-    pub input_times: HashMap<GraphInputPin, ()>,
-    pub output_parameters: HashMap<PinId, DataSpec>,
-    pub output_time: Option<()>,
+    pub node_spec: NodeSpec,
 
-    pub default_data: HashMap<GraphInputPin, DataValue>,
+    pub default_data: HashMap<PinId, DataValue>,
 
     pub extra: EditorMetadata,
 }
@@ -40,12 +37,9 @@ pub struct AnimationGraphSerializer<'a> {
     pub nodes: Vec<AnimationNodeSerializer<'a>>,
     pub edges_inverted: HashMap<TargetPin, SourcePin>,
 
-    pub input_data: HashMap<GraphInputPin, DataSpec>,
-    pub input_times: HashMap<GraphInputPin, ()>,
-    pub output_data: HashMap<PinId, DataSpec>,
-    pub output_time: Option<()>,
+    pub node_spec: NodeSpec,
 
-    pub default_data: HashMap<GraphInputPin, DataValue>,
+    pub default_data: HashMap<PinId, DataValue>,
 
     pub extra: EditorMetadata,
 }
@@ -58,10 +52,7 @@ impl AnimationGraphSerializer<'_> {
         let mut serial = AnimationGraphSerializer {
             nodes: Vec::new(),
             edges_inverted: graph.edges_inverted.clone(),
-            input_data: graph.input_data.clone(),
-            input_times: graph.input_times.clone(),
-            output_data: graph.output_parameters.clone(),
-            output_time: graph.output_time,
+            node_spec: graph.node_spec.clone(),
             default_data: graph.default_data.clone(),
             extra: graph.extra.clone(),
         };

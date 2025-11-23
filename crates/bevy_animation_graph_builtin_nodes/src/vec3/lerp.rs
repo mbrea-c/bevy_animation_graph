@@ -1,6 +1,5 @@
 use bevy::prelude::*;
 use bevy_animation_graph_core::{
-    animation_graph::PinMap,
     animation_node::{NodeLike, ReflectNodeLike},
     context::{new_context::NodeContext, spec_context::SpecContext},
     edge_data::DataSpec,
@@ -36,17 +35,14 @@ impl NodeLike for LerpVec3Node {
         Ok(())
     }
 
-    fn data_input_spec(&self, _: SpecContext) -> PinMap<DataSpec> {
-        [
-            (Self::INPUT_A.into(), DataSpec::Vec3),
-            (Self::INPUT_B.into(), DataSpec::Vec3),
-            (Self::INPUT_FACTOR.into(), DataSpec::F32),
-        ]
-        .into()
-    }
+    fn spec(&self, mut ctx: SpecContext) -> Result<(), GraphError> {
+        ctx //
+            .add_input_data(Self::INPUT_A, DataSpec::Vec3)
+            .add_input_data(Self::INPUT_B, DataSpec::Vec3)
+            .add_input_data(Self::INPUT_FACTOR, DataSpec::F32);
+        ctx.add_output_data(Self::OUTPUT, DataSpec::Vec3);
 
-    fn data_output_spec(&self, _: SpecContext) -> PinMap<DataSpec> {
-        [(Self::OUTPUT.into(), DataSpec::Vec3)].into()
+        Ok(())
     }
 
     fn display_name(&self) -> String {
