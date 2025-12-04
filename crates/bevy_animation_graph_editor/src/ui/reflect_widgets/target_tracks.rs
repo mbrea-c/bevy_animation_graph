@@ -2,7 +2,8 @@ use std::any::Any;
 
 use bevy::asset::{AssetId, Assets, Handle};
 use bevy_animation_graph::{
-    builtin_nodes::EventMarkupNode, core::animation_graph::NodeId, prelude::AnimationGraph,
+    builtin_nodes::event_markup_node::EventMarkupNode,
+    core::animation_graph::{AnimationGraph, NodeId},
 };
 use bevy_inspector_egui::reflect_inspector::InspectorUi;
 use egui_dock::egui;

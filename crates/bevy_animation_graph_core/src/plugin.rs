@@ -1,6 +1,12 @@
 use bevy::{
-    ecs::{intern::Interned, schedule::ScheduleLabel},
-    prelude::*,
+    app::{App, Plugin, PreUpdate},
+    asset::AssetApp,
+    ecs::{
+        intern::Interned,
+        schedule::{IntoScheduleConfigs, ScheduleLabel, SystemSet},
+    },
+    reflect::prelude::ReflectDefault,
+    transform::TransformSystems,
 };
 
 #[cfg(feature = "physics_avian")]
@@ -14,7 +20,7 @@ use crate::{
         spawn_animated_scenes,
     },
     animation_clip::{EntityPath, GraphClip, Interpolation, loader::GraphClipLoader},
-    animation_graph::loader::AnimationGraphLoader,
+    animation_graph::{AnimationGraph, loader::AnimationGraphLoader},
     animation_graph_player::AnimationGraphPlayer,
     animation_node::AnimationNode,
     edge_data::{

@@ -7,11 +7,11 @@ use bevy::{
     reflect::{TypeRegistry, prelude::ReflectDefault},
     utils::default,
 };
-use bevy_animation_graph::{
-    core::state_machine::high_level::StateMachine,
-    prelude::{
-        AnimationGraph, AnimationNode, ReflectNodeLike, SpecContext, dyn_node_like::DynNodeLike,
-    },
+use bevy_animation_graph::core::{
+    animation_graph::AnimationGraph,
+    animation_node::{AnimationNode, ReflectNodeLike, dyn_node_like::DynNodeLike},
+    context::spec_context::SpecResources,
+    state_machine::high_level::StateMachine,
 };
 use egui_dock::egui;
 
@@ -35,7 +35,7 @@ use crate::{
             inspector_selection::{InspectorSelection, SetInspectorSelection},
         },
         native_windows::{EditorWindowContext, NativeEditorWindowExtension},
-        utils::{self, popup::CustomPopup},
+        utils::{self, dummy_node, popup::CustomPopup},
     },
 };
 
@@ -98,7 +98,7 @@ impl NativeEditorWindowExtension for GraphEditorWindow {
                         };
 
                         {
-                            let spec_context = SpecContext {
+                            let spec_resources = SpecResources {
                                 graph_assets: &graph_assets,
                                 fsm_assets: &fsm_assets,
                             };
@@ -117,7 +117,7 @@ impl NativeEditorWindowExtension for GraphEditorWindow {
                             let nodes = GraphReprSpec::from_graph(
                                 graph,
                                 graph_indices,
-                                spec_context,
+                                spec_resources,
                                 maybe_graph_context,
                             );
 
@@ -200,10 +200,18 @@ impl NativeEditorWindowExtension for GraphEditorWindow {
     }
 }
 
-#[derive(Default)]
 pub struct NodeCreationBuffer {
     pub node_type_search: String,
     pub node: AnimationNode,
+}
+
+impl Default for NodeCreationBuffer {
+    fn default() -> Self {
+        Self {
+            node_type_search: "".into(),
+            node: dummy_node(),
+        }
+    }
 }
 
 impl GraphEditorWindow {

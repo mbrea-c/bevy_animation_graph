@@ -8,9 +8,14 @@ use bevy::{
     platform::collections::HashMap,
 };
 use bevy_animation_graph::{
-    builtin_nodes::ClipNode,
-    core::animation_graph::{NodeId, PinId, SourcePin, TargetPin},
-    prelude::{AnimatedScene, AnimationGraph, AnimationNode, DataSpec, GraphClip},
+    builtin_nodes::clip_node::ClipNode,
+    core::{
+        animated_scene::AnimatedScene,
+        animation_clip::GraphClip,
+        animation_graph::{AnimationGraph, NodeId, PinId, SourcePin, TargetPin},
+        animation_node::AnimationNode,
+        edge_data::DataSpec,
+    },
 };
 
 use super::{DynamicAction, run_handler};
@@ -64,7 +69,7 @@ impl CreateClipPreview {
         let clip_node_id = clip_node.id;
         new_graph.add_node(clip_node);
 
-        new_graph.add_output_data("pose", DataSpec::Pose);
+        new_graph.add_output_data("pose".into(), DataSpec::Pose);
         new_graph.add_output_time();
 
         new_graph.add_edge(
@@ -119,7 +124,7 @@ impl CreateTrackNodePreview {
 
         let mut new_graph = existing_graph.clone();
 
-        new_graph.add_output_data("pose", DataSpec::Pose);
+        new_graph.add_output_data("pose".into(), DataSpec::Pose);
         new_graph.add_output_time();
 
         new_graph.add_edge(

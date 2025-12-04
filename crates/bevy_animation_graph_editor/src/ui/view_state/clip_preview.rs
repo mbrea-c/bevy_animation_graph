@@ -6,7 +6,7 @@ use bevy::{
     },
     platform::collections::HashSet,
 };
-use bevy_animation_graph::prelude::AnimatedScene;
+use bevy_animation_graph::core::animated_scene::AnimatedScene;
 use uuid::Uuid;
 
 use crate::ui::{

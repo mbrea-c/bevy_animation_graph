@@ -8,12 +8,16 @@ use bevy::{
     render::render_resource::Extent3d,
 };
 use bevy_animation_graph::{
+    builtin_nodes::dummy_node::DummyNode,
     core::{
+        animated_scene::AnimatedSceneInstance,
         animation_graph::{AnimationGraph, NodeId, PinMap},
-        context::SpecContext,
+        animation_graph_player::AnimationGraphPlayer,
+        animation_node::AnimationNode,
+        context::spec_context::SpecResources,
+        edge_data::DataSpec,
         state_machine::high_level::StateMachine,
     },
-    prelude::{AnimatedSceneInstance, AnimationGraphPlayer, DataSpec},
 };
 use bevy_inspector_egui::{
     bevy_egui::EguiUserTextures,
@@ -48,12 +52,17 @@ pub(crate) fn get_node_output_data_pins(
     world.resource_scope::<Assets<AnimationGraph>, _>(|world, graph_assets| {
         world.resource_scope::<Assets<StateMachine>, _>(|_, fsm_assets| {
             let graph = graph_assets.get(graph_id).unwrap();
-            let spec_context = SpecContext {
+            let spec_resources = SpecResources {
                 graph_assets: &graph_assets,
                 fsm_assets: &fsm_assets,
             };
             let node = graph.nodes.get(node_id)?;
-            Some(node.inner.data_output_spec(spec_context))
+            let spec = node.new_spec(spec_resources).ok()?;
+            Some(
+                spec.iter_output_data()
+                    .map(|(k, v)| (k.to_owned(), v.to_owned()))
+                    .collect(),
+            )
         })
     })
 }
@@ -353,4 +362,8 @@ pub fn with_assets_all<A: Asset, T, const N: usize>(
             std::array::from_fn(|i| maybe_assets[i].expect("Already checked it's not None"));
         Some(f(world, all_assets))
     })
+}
+
+pub fn dummy_node() -> AnimationNode {
+    AnimationNode::new("New node", DummyNode)
 }

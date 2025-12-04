@@ -6,7 +6,7 @@ use bevy::{
     },
     platform::collections::HashMap,
 };
-use bevy_animation_graph::prelude::GraphContextId;
+use bevy_animation_graph::core::context::graph_context_arena::GraphContextId;
 
 use crate::ui::global_state::{GlobalState, RegisterStateComponent};
 

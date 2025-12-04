@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     animation_graph::{AnimationGraph, EditorMetadata, PinId, SourcePin, TargetPin},
     animation_node::serial::{AnimationNodeDeserializer, AnimationNodeSerializer},
-    context::spec_context::NodeSpec,
+    context::spec_context::GraphSpec,
     edge_data::DataValue,
 };
 
@@ -25,11 +25,11 @@ pub struct AnimationGraphDeserializer {
     pub nodes: Vec<AnimationNodeDeserializer>,
     pub edges_inverted: HashMap<TargetPin, SourcePin>,
 
-    pub node_spec: NodeSpec,
+    pub io_spec: GraphSpec,
 
     pub default_data: HashMap<PinId, DataValue>,
 
-    pub extra: EditorMetadata,
+    pub editor_metadata: EditorMetadata,
 }
 
 #[derive(Serialize)]
@@ -37,11 +37,11 @@ pub struct AnimationGraphSerializer<'a> {
     pub nodes: Vec<AnimationNodeSerializer<'a>>,
     pub edges_inverted: HashMap<TargetPin, SourcePin>,
 
-    pub node_spec: NodeSpec,
+    pub io_spec: GraphSpec,
 
     pub default_data: HashMap<PinId, DataValue>,
 
-    pub extra: EditorMetadata,
+    pub editor_metadata: EditorMetadata,
 }
 
 impl AnimationGraphSerializer<'_> {
@@ -52,9 +52,9 @@ impl AnimationGraphSerializer<'_> {
         let mut serial = AnimationGraphSerializer {
             nodes: Vec::new(),
             edges_inverted: graph.edges_inverted.clone(),
-            node_spec: graph.node_spec.clone(),
+            io_spec: graph.io_spec.clone(),
             default_data: graph.default_data.clone(),
-            extra: graph.extra.clone(),
+            editor_metadata: graph.editor_metadata.clone(),
         };
 
         for node in graph.nodes.values() {

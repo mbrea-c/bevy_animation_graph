@@ -4,10 +4,16 @@ use bevy::{
     prelude::{AppTypeRegistry, World},
 };
 use bevy_animation_graph::{
-    core::state_machine::high_level::{State, StateMachine, Transition},
-    prelude::{AnimationGraph, AnimationNode, GraphContextId, graph_context::GraphState},
+    builtin_nodes::fsm_node::FSMNode,
+    core::{
+        animation_graph::AnimationGraph,
+        animation_node::AnimationNode,
+        context::{graph_context::GraphState, graph_context_arena::GraphContextId},
+        state_machine::high_level::{State, StateMachine, Transition},
+    },
 };
 use bevy_inspector_egui::reflect_inspector::InspectorUi;
+use egui::Widget;
 use egui_dock::egui;
 
 use crate::ui::{
@@ -17,12 +23,9 @@ use crate::ui::{
             CreateState, CreateTransition, FsmAction, FsmProperties, UpdateProperties, UpdateState,
             UpdateTransition,
         },
-        graph::{
-            EditNode, GraphAction, RenameNode, UpdateInputData, UpdateInputTimes, UpdateOutputData,
-            UpdateOutputTime,
-        },
+        graph::{EditNode, GraphAction, RenameNode, UpdateGraphSpec},
     },
-    egui_inspector_impls::OrderedMap,
+    generic_widgets::{graph_input_pin::GraphInputPinWidget, io_spec::IoSpecWidget},
     global_state::{
         active_fsm::ActiveFsm,
         active_fsm_state::ActiveFsmState,
@@ -212,106 +215,27 @@ fn graph_inspector(
 
     let active_graph = get_global_state::<ActiveGraph>(world)?.clone();
 
-    world.resource_scope::<Assets<AnimationGraph>, _>(|world, graph_assets| {
+    world.resource_scope::<Assets<AnimationGraph>, _>(|_, graph_assets| {
         let graph = graph_assets.get(&active_graph.handle)?;
 
-        using_inspector_env(world, |mut env| {
-            let mut input_data_changed = false;
-            let mut output_data_changed = false;
-            let mut input_times_changed = false;
-            let mut output_time_changed = false;
+        let graph_spec_buffer = ctx
+            .buffers
+            .get_mut_or_insert_with(ui.id().with("graph_spec"), || graph.io_spec.clone());
 
-            let mut input_data = OrderedMap {
-                order: graph.extra.input_param_order.clone(),
-                values: graph.default_data.clone(),
-            };
-
-            ui.collapsing("Default input data", |ui| {
-                input_data_changed = env.ui_for_reflect_with_options(
-                    &mut input_data,
-                    ui,
-                    ui.id().with("default input data"),
-                    &(),
-                );
+        let spec_response = IoSpecWidget::new_salted(graph_spec_buffer, "graph_spec_widget")
+            .show(ui, |ui, i| {
+                GraphInputPinWidget::new_salted(i, "graph input pin edit").ui(ui)
             });
 
-            let mut output_data = OrderedMap {
-                order: graph.extra.output_data_order.clone(),
-                values: graph.output_parameters.clone(),
-            };
-            ui.collapsing("Output data", |ui| {
-                output_data_changed = env.ui_for_reflect_with_options(
-                    &mut output_data,
-                    ui,
-                    ui.id().with("output data"),
-                    &(),
-                );
-            });
-
-            let mut input_times = OrderedMap {
-                order: graph.extra.input_time_order.clone(),
-                values: graph.input_times.clone(),
-            };
-            ui.collapsing("Input times", |ui| {
-                input_times_changed = env.ui_for_reflect_with_options(
-                    &mut input_times,
-                    ui,
-                    ui.id().with("input times"),
-                    &(),
-                );
-            });
-
-            let mut output_time = graph.output_time;
-
-            ui.collapsing("Output time", |ui| {
-                output_time_changed = env.ui_for_reflect_with_options(
-                    &mut output_time,
-                    ui,
-                    ui.id().with("output time"),
-                    &(),
-                );
-            });
-
-            if input_data_changed {
-                ctx.editor_actions
-                    .push(EditorAction::Graph(GraphAction::UpdateInputData(
-                        UpdateInputData {
-                            graph: active_graph.handle.clone(),
-                            input_data,
-                        },
-                    )));
-            }
-
-            if output_data_changed {
-                ctx.editor_actions
-                    .push(EditorAction::Graph(GraphAction::UpdateOutputData(
-                        UpdateOutputData {
-                            graph: active_graph.handle.clone(),
-                            output_data,
-                        },
-                    )));
-            }
-
-            if input_times_changed {
-                ctx.editor_actions
-                    .push(EditorAction::Graph(GraphAction::UpdateInputTimes(
-                        UpdateInputTimes {
-                            graph: active_graph.handle.clone(),
-                            input_times,
-                        },
-                    )));
-            }
-
-            if output_time_changed {
-                ctx.editor_actions
-                    .push(EditorAction::Graph(GraphAction::UpdateOutputTime(
-                        UpdateOutputTime {
-                            graph: active_graph.handle.clone(),
-                            output_time,
-                        },
-                    )));
-            }
-        });
+        if spec_response.changed() {
+            ctx.editor_actions
+                .push(EditorAction::Graph(GraphAction::UpdateGraphSpec(
+                    UpdateGraphSpec {
+                        graph: active_graph.handle.clone(),
+                        new_spec: graph_spec_buffer.clone(),
+                    },
+                )));
+        }
 
         Some(())
     })
@@ -473,7 +397,7 @@ fn select_graph_context_fsm(
             return false;
         };
         graph
-            .contains_state_machine(active_fsm.handle.id())
+            .contains_node_that::<FSMNode>(|n| &n.fsm == &active_fsm.handle)
             .is_some()
     });
 

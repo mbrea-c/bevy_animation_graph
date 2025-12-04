@@ -19,7 +19,7 @@ use crate::{
         graph_context_arena::GraphContextArena,
         io_env::{EmptyIoEnv, GraphIoEnv},
         new_context::GraphContext,
-        spec_context::{NodeSpec, SpecResources},
+        spec_context::{GraphSpec, SpecResources},
         system_resources::SystemResources,
     },
     duration_data::DurationData,
@@ -45,6 +45,12 @@ pub enum GraphInputPin {
     /// animation graph, e.g. if in an FSM transition.
     FromFsmTarget(PinId),
     FsmBuiltin(FsmBuiltinPin),
+}
+
+impl Default for GraphInputPin {
+    fn default() -> Self {
+        Self::Default("".into())
+    }
 }
 
 impl From<FsmBuiltinPin> for GraphInputPin {
@@ -229,12 +235,12 @@ pub struct AnimationGraph {
     pub edges_inverted: HashMap<TargetPin, SourcePin>,
 
     /// Defines inputs and outputs for this graph.
-    pub node_spec: NodeSpec,
+    pub io_spec: GraphSpec,
 
     pub default_data: HashMap<PinId, DataValue>,
 
     #[reflect(ignore)]
-    pub extra: EditorMetadata,
+    pub editor_metadata: EditorMetadata,
 }
 
 impl Default for AnimationGraph {
@@ -253,11 +259,11 @@ impl AnimationGraph {
             edges_inverted: HashMap::new(),
             edges: HashMap::new(),
 
-            node_spec: NodeSpec::default(),
+            io_spec: GraphSpec::default(),
 
             default_data: HashMap::new(),
 
-            extra: EditorMetadata::default(),
+            editor_metadata: EditorMetadata::default(),
         }
     }
 
@@ -265,7 +271,7 @@ impl AnimationGraph {
     // ----------------------------------------------------------------------------------------
     /// Add a new node to the graph
     pub fn add_node(&mut self, node: AnimationNode) {
-        self.extra.node_added(node.id);
+        self.editor_metadata.node_added(node.id);
         self.nodes.insert(node.id, node);
     }
 
@@ -273,7 +279,7 @@ impl AnimationGraph {
     pub fn remove_node(&mut self, node_id: impl Into<NodeId>) {
         let node_id = node_id.into();
         self.nodes.remove(&node_id);
-        self.extra.node_positions.remove(&node_id);
+        self.editor_metadata.node_positions.remove(&node_id);
     }
 
     /// Add a new edge to the graph
@@ -309,23 +315,23 @@ impl AnimationGraph {
     }
 
     /// Register an input pose pin for the graph
-    pub fn add_input_data(&mut self, pin_id: PinId, data_spec: DataSpec) {
-        self.node_spec.add_input_data(pin_id, data_spec);
+    pub fn add_input_data(&mut self, input: GraphInputPin, data_spec: DataSpec) {
+        self.io_spec.add_input_data(input, data_spec);
     }
 
     /// Register an input pose pin for the graph
-    pub fn add_input_time(&mut self, pin_id: PinId) {
-        self.node_spec.add_input_time(pin_id);
+    pub fn add_input_time(&mut self, input: GraphInputPin) {
+        self.io_spec.add_input_time(input);
     }
 
     /// Register an output parameter for the graph
     pub fn add_output_data(&mut self, pin_id: PinId, spec: DataSpec) {
-        self.node_spec.add_output_data(pin_id, spec);
+        self.io_spec.add_output_data(pin_id, spec);
     }
 
     /// Enables time "output" for this graph
     pub fn add_output_time(&mut self) {
-        self.node_spec.add_output_time();
+        self.io_spec.add_output_time();
     }
     // ----------------------------------------------------------------------------------------
 
@@ -500,12 +506,12 @@ impl AnimationGraph {
         }
     }
 
-    pub fn contains_node<T: NodeLike>(&self) -> Option<NodeId> {
+    pub fn contains_node_that<T: NodeLike>(&self, f: impl Fn(&T) -> bool) -> Option<NodeId> {
         self.nodes
             .values()
             .filter_map(|node| {
-                node.inner.as_any().downcast_ref::<T>()?;
-                Some(node.id)
+                let inner = node.inner.as_any().downcast_ref::<T>()?;
+                if f(inner) { Some(node.id) } else { None }
             })
             .next()
     }
@@ -522,7 +528,7 @@ impl AnimationGraph {
                     .ok()
                     .and_then(|spec| spec.get_input_data(pin_id))
             }
-            TargetPin::OutputData(op) => self.node_spec.get_output_data(op),
+            TargetPin::OutputData(op) => self.io_spec.get_output_data(op),
             _ => None,
         }
     }
@@ -539,7 +545,7 @@ impl AnimationGraph {
                     .ok()
                     .and_then(|spec| spec.get_output_data(pin_id))
             }
-            SourcePin::InputData(GraphInputPin::Default(ip)) => self.node_spec.get_input_data(ip),
+            SourcePin::InputData(ip) => self.io_spec.get_input_data(ip),
             _ => None,
         }
     }
@@ -556,9 +562,7 @@ impl AnimationGraph {
                     .ok()
                     .and_then(|spec| spec.has_output_time().then_some(()))
             }
-            SourcePin::InputTime(GraphInputPin::Default(ip)) => {
-                self.node_spec.has_input_time(ip).then_some(())
-            }
+            SourcePin::InputTime(ip) => self.io_spec.has_input_time(ip).then_some(()),
             _ => None,
         }
     }
@@ -575,7 +579,7 @@ impl AnimationGraph {
                     .ok()
                     .and_then(|spec| spec.has_input_time(pin_id).then_some(()))
             }
-            TargetPin::OutputTime => self.node_spec.has_output_time().then_some(()),
+            TargetPin::OutputTime => self.io_spec.has_output_time().then_some(()),
             _ => None,
         }
     }
@@ -852,7 +856,7 @@ impl AnimationGraph {
         );
         ctx.context_mut().query_output_time = QueryOutputTime::Forced(time_update);
         let mut outputs = HashMap::new();
-        for (k, _) in self.node_spec.iter_output_data() {
+        for (k, _) in self.io_spec.iter_output_data() {
             let out = self.get_data(TargetPin::OutputData(k.clone()), ctx.clone())?;
             outputs.insert(k.clone(), out);
         }

@@ -10,7 +10,7 @@ mod ui;
 use std::path::PathBuf;
 
 use bevy::{camera::visibility::RenderLayers, prelude::*};
-use bevy_animation_graph::core::plugin::AnimationGraphPlugin;
+use bevy_animation_graph::AnimationGraphPlugin;
 use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 use bevy_inspector_egui::{DefaultInspectorConfigPlugin, bevy_egui};
 use clap::Parser;

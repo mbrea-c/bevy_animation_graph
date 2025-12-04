@@ -11,16 +11,14 @@ use bevy::{
     platform::collections::HashMap,
     transform::components::Transform,
 };
-use bevy_animation_graph::{
-    core::{
-        id::BoneId,
-        ragdoll::definition::{
-            Body, BodyId, Collider, ColliderId, ColliderShape, Joint, JointId, JointVariant,
-            Ragdoll,
-        },
-        skeleton::Skeleton,
+use bevy_animation_graph::core::{
+    animated_scene::{AnimatedScene, AnimatedSceneHandle},
+    animation_graph_player::{AnimationGraphPlayer, AnimationSource},
+    id::BoneId,
+    ragdoll::definition::{
+        Body, BodyId, Collider, ColliderId, ColliderShape, Joint, JointId, JointVariant, Ragdoll,
     },
-    prelude::{AnimatedScene, AnimatedSceneHandle, AnimationGraphPlayer, AnimationSource},
+    skeleton::Skeleton,
 };
 
 use crate::ui::{

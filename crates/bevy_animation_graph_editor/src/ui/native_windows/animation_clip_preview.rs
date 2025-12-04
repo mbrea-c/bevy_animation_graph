@@ -1,7 +1,7 @@
 use bevy::prelude::World;
 use bevy_animation_graph::{
-    builtin_nodes::EventMarkupNode,
-    prelude::{AnimatedSceneInstance, AnimationGraphPlayer},
+    builtin_nodes::event_markup_node::EventMarkupNode,
+    core::{animated_scene::AnimatedSceneInstance, animation_graph_player::AnimationGraphPlayer},
 };
 use egui_dock::egui;
 

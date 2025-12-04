@@ -1,5 +1,5 @@
 use bevy::ecs::world::World;
-use bevy_animation_graph::prelude::{NodeLike, ReflectEditProxy};
+use bevy_animation_graph::core::animation_node::{NodeLike, ReflectEditProxy};
 
 use crate::ui::{node_editors::DynNodeEditor, utils::using_inspector_env};
 

@@ -1,5 +1,5 @@
 use bevy::prelude::World;
-use bevy_animation_graph::core::edge_data::AnimationEvent;
+use bevy_animation_graph::core::edge_data::events::AnimationEvent;
 use egui_dock::egui;
 
 use crate::ui::{

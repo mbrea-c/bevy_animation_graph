@@ -1,11 +1,11 @@
 use bevy::app::{App, Plugin};
-use bevy_animation_graph::{
-    core::{
-        event_track::TrackItemValue,
-        ragdoll::{bone_mapping::RagdollBoneMap, definition::Ragdoll},
-        state_machine::high_level::StateMachine,
-    },
-    prelude::{AnimatedScene, AnimationGraph, GraphClip},
+use bevy_animation_graph::core::{
+    animated_scene::AnimatedScene,
+    animation_clip::GraphClip,
+    animation_graph::AnimationGraph,
+    event_track::TrackItemValue,
+    ragdoll::{bone_mapping::RagdollBoneMap, definition::Ragdoll},
+    state_machine::high_level::StateMachine,
 };
 
 use super::{

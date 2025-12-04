@@ -2,10 +2,7 @@ use bevy::{
     asset::Handle,
     ecs::{component::Component, entity::Entity, event::Event, world::World},
 };
-use bevy_animation_graph::{
-    core::animation_graph::{NodeId, PinId},
-    prelude::AnimationGraph,
-};
+use bevy_animation_graph::core::animation_graph::{AnimationGraph, NodeId, PinId};
 
 use crate::ui::global_state::{
     RegisterStateComponent, SetOrInsertEvent, observe_set_or_insert_event,

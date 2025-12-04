@@ -1,0 +1,40 @@
+(
+    nodes: [],
+    edges_inverted: {
+        OutputData("test"): InputData(Default("f")),
+    },
+    io_spec: (
+        input_times: [
+            Default("some time ago"),
+        ],
+        input_data: {
+            Default("test"): Quat,
+            Default("other_test"): RagdollConfig,
+            Default("f"): F32,
+        },
+        output_time: true,
+        output_data: {
+            "test": F32,
+        },
+        input_order: {
+            Data(Default("other_test")): 0,
+            Data(Default("test")): 1,
+            Data(Default("f")): 2,
+            Time(Default("some time ago")): 3,
+        },
+        output_order: {
+            Time: 0,
+            Data("test"): 1,
+        },
+    ),
+    default_data: {},
+    editor_metadata: (
+        node_positions: {},
+        input_position: (14.8515625, 58.16797),
+        output_position: (372.15234, 99.671875),
+        input_param_order: {},
+        input_time_order: {},
+        output_data_order: {},
+        output_pose_order: {},
+    ),
+)

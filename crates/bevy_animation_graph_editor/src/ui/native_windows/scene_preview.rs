@@ -6,8 +6,9 @@ use bevy::{
     math::Vec3,
     prelude::{Transform, World},
 };
-use bevy_animation_graph::prelude::{
-    AnimatedScene, AnimatedSceneHandle, AnimatedSceneInstance, AnimationGraphPlayer,
+use bevy_animation_graph::core::{
+    animated_scene::{AnimatedScene, AnimatedSceneHandle, AnimatedSceneInstance},
+    animation_graph_player::AnimationGraphPlayer,
 };
 use egui_dock::egui;
 

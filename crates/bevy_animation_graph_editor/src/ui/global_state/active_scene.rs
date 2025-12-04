@@ -9,7 +9,7 @@ use bevy::{
         world::World,
     },
 };
-use bevy_animation_graph::prelude::AnimatedScene;
+use bevy_animation_graph::core::animated_scene::AnimatedScene;
 
 use crate::ui::global_state::{
     RegisterStateComponent, SetOrInsertEvent,

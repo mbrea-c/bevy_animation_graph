@@ -14,7 +14,7 @@ use bevy::{
 use bevy_animation_graph::core::{
     animation_clip::EntityPath,
     animation_graph::PinId,
-    edge_data::{BoneMask, DataSpec, DataValue},
+    edge_data::{DataSpec, DataValue, bone_mask::BoneMask},
 };
 use bevy_inspector_egui::{
     egui,

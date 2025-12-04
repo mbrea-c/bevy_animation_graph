@@ -12,18 +12,18 @@ use bevy::{
     platform::collections::HashMap,
     reflect::{PartialReflect, Reflect, Reflectable, TypeRegistry},
 };
-use bevy_animation_graph::{
-    core::{
-        animation_clip::EntityPath,
-        event_track::TrackItemValue,
-        ragdoll::{
-            bone_mapping::RagdollBoneMap,
-            configuration::RagdollConfig,
-            definition::{ColliderShape, Ragdoll},
-        },
-        state_machine::high_level::StateMachine,
+use bevy_animation_graph::core::{
+    animated_scene::AnimatedScene,
+    animation_clip::{EntityPath, GraphClip},
+    animation_graph::AnimationGraph,
+    event_track::TrackItemValue,
+    ragdoll::{
+        bone_mapping::RagdollBoneMap,
+        configuration::RagdollConfig,
+        definition::{ColliderShape, Ragdoll},
     },
-    prelude::{AnimatedScene, AnimationGraph, GraphClip, config::PatternMapper},
+    state_machine::high_level::StateMachine,
+    symmetry::config::PatternMapper,
 };
 use bevy_inspector_egui::{
     inspector_egui_impls::InspectorEguiImpl,

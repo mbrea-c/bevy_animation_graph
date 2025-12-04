@@ -7,12 +7,9 @@ use bevy::{
     math::Vec2,
     reflect::Reflect,
 };
-use bevy_animation_graph::{
-    core::{
-        pin_map::PinMap,
-        state_machine::high_level::{State, StateId, StateMachine, Transition, TransitionId},
-    },
-    prelude::DataValue,
+use bevy_animation_graph::core::{
+    context::spec_context::NodeSpec,
+    state_machine::high_level::{State, StateId, StateMachine, Transition, TransitionId},
 };
 
 use super::{run_handler, saving::DirtyAssets};
@@ -172,7 +169,7 @@ pub fn handle_remove_transition_system(In(action): In<RemoveTransition>, mut ctx
 pub fn handle_update_properties_system(In(action): In<UpdateProperties>, mut ctx: FsmContext) {
     ctx.provide_mut(&action.fsm, |fsm| {
         fsm.set_start_state(action.new_properties.start_state);
-        fsm.set_input_data(action.new_properties.input_data);
+        fsm.node_spec = action.new_properties.node_spec;
     });
 
     ctx.generate_indices(&action.fsm);
@@ -222,14 +219,14 @@ impl FsmContext<'_> {
 #[derive(Debug, Clone, Reflect)]
 pub struct FsmProperties {
     pub start_state: StateId,
-    pub input_data: PinMap<DataValue>,
+    pub node_spec: NodeSpec,
 }
 
 impl From<&StateMachine> for FsmProperties {
     fn from(value: &StateMachine) -> Self {
         Self {
             start_state: value.start_state.clone(),
-            input_data: value.input_data.clone(),
+            node_spec: value.node_spec.clone(),
         }
     }
 }

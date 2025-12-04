@@ -4,11 +4,12 @@ use bevy::{
     math::Vec3,
     prelude::{Handle, Image, In, Query, Transform, World},
 };
-use bevy_animation_graph::{
-    core::pose::Pose,
-    prelude::{
-        AnimatedScene, AnimatedSceneHandle, AnimationGraphPlayer, DataValue, node_states::StateKey,
-    },
+use bevy_animation_graph::core::{
+    animated_scene::{AnimatedScene, AnimatedSceneHandle},
+    animation_graph_player::AnimationGraphPlayer,
+    context::node_states::StateKey,
+    edge_data::DataValue,
+    pose::Pose,
 };
 use egui_dock::egui;
 

@@ -1,17 +1,14 @@
 use std::path::PathBuf;
 
 use bevy::{asset::UntypedAssetId, platform::collections::HashMap, prelude::*};
-use bevy_animation_graph::{
-    core::{
-        animation_clip::loader::GraphClipSerial,
-        animation_graph::{AnimationGraph, serial::AnimationGraphSerializer},
-        ragdoll::{
-            bone_mapping::RagdollBoneMap, bone_mapping_loader::RagdollBoneMapSerial,
-            definition::Ragdoll,
-        },
-        state_machine::high_level::{StateMachine, serial::StateMachineSerial},
+use bevy_animation_graph::core::{
+    animation_clip::{GraphClip, loader::GraphClipSerial},
+    animation_graph::{AnimationGraph, serial::AnimationGraphSerializer},
+    ragdoll::{
+        bone_mapping::RagdollBoneMap, bone_mapping_loader::RagdollBoneMapSerial,
+        definition::Ragdoll,
     },
-    prelude::GraphClip,
+    state_machine::high_level::{StateMachine, serial::StateMachineSerial},
 };
 
 use crate::{

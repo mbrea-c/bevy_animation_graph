@@ -9,13 +9,13 @@ use bevy::{
     utils::default,
 };
 use bevy_animation_graph::{
-    builtin_nodes::EventMarkupNode,
+    builtin_nodes::event_markup_node::EventMarkupNode,
     core::{
-        animation_graph::NodeId,
-        edge_data::AnimationEvent,
+        animation_clip::GraphClip,
+        animation_graph::{AnimationGraph, NodeId},
+        edge_data::events::AnimationEvent,
         event_track::{EventTrack, TrackItem, TrackItemValue},
     },
-    prelude::{AnimationGraph, GraphClip},
 };
 use egui_dock::egui;
 use uuid::Uuid;

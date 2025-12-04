@@ -4,8 +4,12 @@ use bevy::{
     utils::default,
 };
 use bevy_animation_graph::{
-    core::state_machine::{high_level::StateMachine, low_level::FSMState},
-    prelude::{AnimationGraph, node_states::StateKey},
+    builtin_nodes::fsm_node::FSMNode,
+    core::{
+        animation_graph::AnimationGraph,
+        context::node_states::StateKey,
+        state_machine::{high_level::StateMachine, low_level::FSMState},
+    },
 };
 use egui_dock::egui;
 
@@ -98,7 +102,9 @@ impl NativeEditorWindowExtension for FsmEditorWindow {
                         let maybe_fsm_state = maybe_graph_context.and_then(|ctx| {
                             let graph_id = ctx.get_graph_id();
                             let graph = graph_assets.get(graph_id)?;
-                            let node_id = graph.contains_state_machine(&active_fsm.handle)?;
+                            let node_id = graph.contains_node_that::<FSMNode>(|node| {
+                                &node.fsm == &active_fsm.handle
+                            })?;
                             ctx.node_states
                                 .get::<FSMState>(node_id, StateKey::Default)
                                 .ok()

@@ -9,14 +9,12 @@ use bevy::{
     log::{error, info, warn},
     math::Vec2,
 };
-use bevy_animation_graph::{
-    core::{
-        animation_graph::{Edge, NodeId, PinId, SourcePin, TargetPin},
-        state_machine::high_level::StateMachine,
-    },
-    prelude::{
-        AnimationGraph, AnimationNode, DataSpec, DataValue, SpecContext, dyn_node_like::DynNodeLike,
-    },
+use bevy_animation_graph::core::{
+    animation_graph::{AnimationGraph, Edge, NodeId, PinId, SourcePin, TargetPin},
+    animation_node::{AnimationNode, dyn_node_like::DynNodeLike},
+    context::spec_context::{GraphSpec, SpecResources},
+    edge_data::DataValue,
+    state_machine::high_level::StateMachine,
 };
 
 use super::{DynamicAction, run_handler, saving::DirtyAssets};
@@ -35,10 +33,8 @@ pub enum GraphAction {
     CreateNode(CreateNode),
     EditNode(EditNode),
     RemoveNode(RemoveNode),
-    UpdateInputData(UpdateInputData),
-    UpdateInputTimes(UpdateInputTimes),
-    UpdateOutputData(UpdateOutputData),
-    UpdateOutputTime(UpdateOutputTime),
+    UpdateDefaultData(UpdateDefaultData),
+    UpdateGraphSpec(UpdateGraphSpec),
     Noop,
     GenerateIndices(GenerateIndices),
 }
@@ -92,25 +88,14 @@ pub struct RemoveNode {
     pub node: NodeId,
 }
 
-pub struct UpdateInputData {
+pub struct UpdateDefaultData {
     pub graph: Handle<AnimationGraph>,
     pub input_data: OrderedMap<PinId, DataValue>,
 }
 
-pub struct UpdateInputTimes {
+pub struct UpdateGraphSpec {
     pub graph: Handle<AnimationGraph>,
-    pub input_times: OrderedMap<PinId, ()>,
-}
-
-pub struct UpdateOutputData {
-    pub graph: Handle<AnimationGraph>,
-    pub output_data: OrderedMap<PinId, DataSpec>,
-}
-
-pub struct UpdateOutputTime {
-    pub graph: Handle<AnimationGraph>,
-    /// Whether the graph has an output time pin or not
-    pub output_time: Option<()>,
+    pub new_spec: GraphSpec,
 }
 
 pub struct GenerateIndices {
@@ -164,24 +149,14 @@ pub fn handle_graph_action(world: &mut World, action: GraphAction) {
                 .run_system_cached_with(remove_node_system, action)
                 .inspect_err(|err| handle_system_error(err));
         }
-        GraphAction::UpdateInputData(action) => {
+        GraphAction::UpdateGraphSpec(action) => {
+            let _ = world
+                .run_system_cached_with(update_node_spec_system, action)
+                .inspect_err(|err| handle_system_error(err));
+        }
+        GraphAction::UpdateDefaultData(action) => {
             let _ = world
                 .run_system_cached_with(update_input_data_system, action)
-                .inspect_err(|err| handle_system_error(err));
-        }
-        GraphAction::UpdateInputTimes(action) => {
-            let _ = world
-                .run_system_cached_with(update_input_times_system, action)
-                .inspect_err(|err| handle_system_error(err));
-        }
-        GraphAction::UpdateOutputData(action) => {
-            let _ = world
-                .run_system_cached_with(update_output_data_system, action)
-                .inspect_err(|err| handle_system_error(err));
-        }
-        GraphAction::UpdateOutputTime(action) => {
-            let _ = world
-                .run_system_cached_with(update_output_time_system, action)
                 .inspect_err(|err| handle_system_error(err));
         }
         GraphAction::Noop => {}
@@ -221,21 +196,23 @@ pub fn remove_link_system(In(action): In<RemoveLink>, mut provider: GraphAndCont
 
 pub fn move_node_system(In(action): In<MoveNode>, mut provider: GraphAndContext) {
     provider.provide_mut(&action.graph, |graph, _| {
-        graph.extra.set_node_position(action.node, action.new_pos);
+        graph
+            .editor_metadata
+            .set_node_position(action.node, action.new_pos);
     });
     provider.generate_indices(&action.graph);
 }
 
 pub fn move_input_system(In(action): In<MoveInput>, mut provider: GraphAndContext) {
     provider.provide_mut(&action.graph, |graph, _| {
-        graph.extra.set_input_position(action.new_pos);
+        graph.editor_metadata.set_input_position(action.new_pos);
     });
     provider.generate_indices(&action.graph);
 }
 
 pub fn move_output_system(In(action): In<MoveOutput>, mut provider: GraphAndContext) {
     provider.provide_mut(&action.graph, |graph, _| {
-        graph.extra.set_output_position(action.new_pos);
+        graph.editor_metadata.set_output_position(action.new_pos);
     });
     provider.generate_indices(&action.graph);
 }
@@ -288,36 +265,18 @@ pub fn remove_node_system(In(action): In<RemoveNode>, mut provider: GraphAndCont
     provider.generate_indices(&action.graph);
 }
 
-pub fn update_input_data_system(In(action): In<UpdateInputData>, mut provider: GraphAndContext) {
+pub fn update_input_data_system(In(action): In<UpdateDefaultData>, mut provider: GraphAndContext) {
     provider.provide_mut(&action.graph, |graph, _| {
         graph.default_data = action.input_data.values;
-        graph.extra.input_param_order = action.input_data.order;
+        graph.editor_metadata.input_param_order = action.input_data.order;
     });
     provider.validate(&action.graph);
     provider.generate_indices(&action.graph);
 }
 
-pub fn update_input_times_system(In(action): In<UpdateInputTimes>, mut provider: GraphAndContext) {
+pub fn update_node_spec_system(In(action): In<UpdateGraphSpec>, mut provider: GraphAndContext) {
     provider.provide_mut(&action.graph, |graph, _| {
-        graph.input_times = action.input_times.values;
-        graph.extra.input_time_order = action.input_times.order;
-    });
-    provider.validate(&action.graph);
-    provider.generate_indices(&action.graph);
-}
-
-pub fn update_output_data_system(In(action): In<UpdateOutputData>, mut provider: GraphAndContext) {
-    provider.provide_mut(&action.graph, |graph, _| {
-        graph.output_parameters = action.output_data.values;
-        graph.extra.output_data_order = action.output_data.order;
-    });
-    provider.validate(&action.graph);
-    provider.generate_indices(&action.graph);
-}
-
-pub fn update_output_time_system(In(action): In<UpdateOutputTime>, mut provider: GraphAndContext) {
-    provider.provide_mut(&action.graph, |graph, _| {
-        graph.output_time = action.output_time;
+        graph.io_spec = action.new_spec;
     });
     provider.validate(&action.graph);
     provider.generate_indices(&action.graph);
@@ -342,13 +301,13 @@ pub struct GraphAndContext<'w> {
 impl GraphAndContext<'_> {
     pub fn provide_mut<F>(&mut self, graph_handle: &Handle<AnimationGraph>, f: F)
     where
-        F: FnOnce(&mut AnimationGraph, SpecContext),
+        F: FnOnce(&mut AnimationGraph, SpecResources),
     {
         self.dirty_assets.add(graph_handle.clone().untyped());
 
         let graph_assets_copy =
             unsafe { &*(self.graph_assets.as_ref() as *const Assets<AnimationGraph>) };
-        let ctx = SpecContext {
+        let ctx = SpecResources {
             graph_assets: graph_assets_copy,
             fsm_assets: &self.fsm_assets,
         };
@@ -366,11 +325,11 @@ impl GraphAndContext<'_> {
         f: F,
     ) -> Option<T>
     where
-        F: FnOnce(&AnimationGraph, SpecContext) -> Option<T>,
+        F: FnOnce(&AnimationGraph, SpecResources) -> Option<T>,
     {
         let graph_assets_copy =
             unsafe { &*(self.graph_assets.as_ref() as *const Assets<AnimationGraph>) };
-        let ctx = SpecContext {
+        let ctx = SpecResources {
             graph_assets: graph_assets_copy,
             fsm_assets: &self.fsm_assets,
         };

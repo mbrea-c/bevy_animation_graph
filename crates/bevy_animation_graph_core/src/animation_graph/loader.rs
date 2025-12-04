@@ -47,7 +47,7 @@ impl AssetLoader for AnimationGraphLoader {
         // Set up editor metadata
         // Needs to be done before adding nodes in case data is missing, so that it
         // gets properly initialized.
-        graph.extra = serial.extra;
+        graph.editor_metadata = serial.editor_metadata;
 
         // Add nodes
         for node_ron in serial.nodes {
@@ -55,7 +55,7 @@ impl AssetLoader for AnimationGraphLoader {
             graph.add_node(node);
         }
 
-        graph.node_spec = serial.node_spec;
+        graph.io_spec = serial.io_spec;
 
         // Set default data values
         for (param_name, param_value) in serial.default_data {

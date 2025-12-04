@@ -6,7 +6,7 @@ use bevy_animation_graph_core::{
         graph_context::QueryOutputTime,
         io_env::GraphIoEnv,
         new_context::{GraphContext, NodeContext},
-        spec_context::SpecContext,
+        spec_context::{NodeInput, NodeOutput, SpecContext},
     },
     duration_data::DurationData,
     edge_data::DataValue,
@@ -44,7 +44,7 @@ impl NodeLike for GraphNode {
             .create_child_context(self.graph.id(), None)
             .with_io(&sub_ctx_io);
 
-        if graph.node_spec.has_output_time() {
+        if graph.io_spec.has_output_time() {
             let target_pin = TargetPin::OutputTime;
             let duration = graph.get_duration(target_pin, sub_ctx)?;
             ctx.set_duration_fwd(duration);
@@ -73,7 +73,7 @@ impl NodeLike for GraphNode {
             .create_child_context(self.graph.id(), None)
             .with_io(&sub_ctx_io);
 
-        if graph.node_spec.has_output_time() {
+        if graph.io_spec.has_output_time() {
             let input = ctx.time_update_fwd();
             if let Ok(time_update) = input {
                 let key = sub_ctx.state_key;
@@ -82,7 +82,7 @@ impl NodeLike for GraphNode {
             }
         }
 
-        for (id, _) in graph.node_spec.iter_output_data() {
+        for (id, _) in graph.io_spec.iter_output_data() {
             let target_pin = TargetPin::OutputData(id.clone());
             let value = graph.get_data(target_pin, sub_ctx.clone())?;
             ctx.set_data_fwd(id, value);
@@ -97,7 +97,28 @@ impl NodeLike for GraphNode {
             .graph_assets
             .get(&self.graph)
             .ok_or(GraphError::GraphAssetMissing)?;
-        ctx.set_from_node_spec(&graph.node_spec);
+        for input in graph.io_spec.sorted_inputs() {
+            match input {
+                NodeInput::Time(GraphInputPin::Default(pin_id)) => {
+                    ctx.add_input_time(pin_id);
+                }
+                NodeInput::Data(GraphInputPin::Default(pin_id), data_spec) => {
+                    ctx.add_input_data(pin_id, data_spec);
+                }
+                _ => {}
+            }
+        }
+
+        for output in graph.io_spec.sorted_outputs() {
+            match output {
+                NodeOutput::Time => {
+                    ctx.add_output_time();
+                }
+                NodeOutput::Data(pin_id, data_spec) => {
+                    ctx.add_output_data(pin_id, data_spec);
+                }
+            }
+        }
 
         Ok(())
     }

@@ -9,15 +9,16 @@ use bevy::{
         Extent3d, TextureDescriptor, TextureDimension, TextureFormat, TextureUsages,
     },
 };
-use bevy_animation_graph::{
-    core::{
-        animated_scene::AnimatedSceneInstance, animation_graph_player::AnimationGraphPlayer,
-        pose::Pose, space_conversion::SpaceConversionContext,
-    },
-    prelude::{
-        AnimationSource, DeferredGizmos, SystemResources, deferred_gizmos::DeferredGizmosContext,
+use bevy_animation_graph::core::{
+    animated_scene::AnimatedSceneInstance,
+    animation_graph_player::{AnimationGraphPlayer, AnimationSource},
+    context::{
+        deferred_gizmos::{DeferredGizmos, DeferredGizmosContext},
         pose_fallback::PoseFallbackContext,
+        system_resources::SystemResources,
     },
+    pose::Pose,
+    space_conversion::SpaceConversionContext,
 };
 use bevy_inspector_egui::bevy_egui;
 use egui_dock::egui;

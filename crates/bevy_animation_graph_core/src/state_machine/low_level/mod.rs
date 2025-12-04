@@ -72,8 +72,9 @@ impl Ord for LowLevelTransitionType {
     }
 }
 
-#[derive(Reflect, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Reflect, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 pub enum FsmBuiltinPin {
+    #[default]
     PercentThroughDuration,
     TimeElapsed,
 }
@@ -289,7 +290,7 @@ impl LowLevelStateMachine {
 
         let mut driver_event_queue = EventQueue::default();
 
-        for (id, _) in graph.node_spec.iter_output_data() {
+        for (id, _) in graph.io_spec.iter_output_data() {
             let target_pin = TargetPin::OutputData(id.clone());
             let value = graph.get_data(target_pin, sub_ctx.clone())?;
             if id == Self::DRIVER_EVENT_QUEUE {
