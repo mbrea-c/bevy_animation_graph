@@ -75,6 +75,23 @@ pub enum DataValue {
     RagdollConfig(RagdollConfig),
 }
 
+impl DataValue {
+    pub fn default_from_spec(spec: DataSpec) -> Self {
+        match spec {
+            DataSpec::F32 => DataValue::F32(Default::default()),
+            DataSpec::Bool => DataValue::Bool(Default::default()),
+            DataSpec::Vec2 => DataValue::Vec2(Default::default()),
+            DataSpec::Vec3 => DataValue::Vec3(Default::default()),
+            DataSpec::EntityPath => DataValue::EntityPath(Default::default()),
+            DataSpec::Quat => DataValue::Quat(Default::default()),
+            DataSpec::BoneMask => DataValue::BoneMask(Default::default()),
+            DataSpec::Pose => DataValue::Pose(Default::default()),
+            DataSpec::EventQueue => DataValue::EventQueue(Default::default()),
+            DataSpec::RagdollConfig => DataValue::RagdollConfig(Default::default()),
+        }
+    }
+}
+
 impl Default for DataValue {
     fn default() -> Self {
         Self::F32(0.)

@@ -23,9 +23,12 @@ use crate::ui::{
             CreateState, CreateTransition, FsmAction, FsmProperties, UpdateProperties, UpdateState,
             UpdateTransition,
         },
-        graph::{EditNode, GraphAction, RenameNode, UpdateGraphSpec},
+        graph::{EditNode, GraphAction, RenameNode, UpdateDefaultData, UpdateGraphSpec},
     },
-    generic_widgets::{graph_input_pin::GraphInputPinWidget, io_spec::IoSpecWidget},
+    generic_widgets::{
+        data_value::DataValueWidget, graph_input_pin::GraphInputPinWidget, hashmap::HashMapWidget,
+        io_spec::IoSpecWidget,
+    },
     global_state::{
         active_fsm::ActiveFsm,
         active_fsm_state::ActiveFsmState,
@@ -233,6 +236,32 @@ fn graph_inspector(
                     UpdateGraphSpec {
                         graph: active_graph.handle.clone(),
                         new_spec: graph_spec_buffer.clone(),
+                    },
+                )));
+        }
+
+        let default_values_buffer = ctx
+            .buffers
+            .get_mut_or_insert_with(ui.id().with("graph_default_values"), || {
+                graph.default_data.clone()
+            });
+
+        ui.heading("Default data");
+
+        let default_values_response =
+            HashMapWidget::new_salted(default_values_buffer, "graph_default_values").ui(
+                ui,
+                |ui, key| ui.text_edit_singleline(key),
+                |ui, key| ui.label(key),
+                |ui, value| ui.add(DataValueWidget::new_salted(value, "default value widget")),
+            );
+
+        if default_values_response.changed() {
+            ctx.editor_actions
+                .push(EditorAction::Graph(GraphAction::UpdateDefaultData(
+                    UpdateDefaultData {
+                        graph: active_graph.handle.clone(),
+                        input_data: default_values_buffer.clone(),
                     },
                 )));
         }

@@ -8,6 +8,7 @@ use bevy::{
     },
     log::{error, info, warn},
     math::Vec2,
+    platform::collections::HashMap,
 };
 use bevy_animation_graph::core::{
     animation_graph::{AnimationGraph, Edge, NodeId, PinId, SourcePin, TargetPin},
@@ -20,7 +21,7 @@ use bevy_animation_graph::core::{
 use super::{DynamicAction, run_handler, saving::DirtyAssets};
 use crate::{
     graph_show::{GraphIndicesMap, make_graph_indices},
-    ui::{actions::ActionContext, egui_inspector_impls::OrderedMap},
+    ui::actions::ActionContext,
 };
 
 pub enum GraphAction {
@@ -90,7 +91,7 @@ pub struct RemoveNode {
 
 pub struct UpdateDefaultData {
     pub graph: Handle<AnimationGraph>,
-    pub input_data: OrderedMap<PinId, DataValue>,
+    pub input_data: HashMap<PinId, DataValue>,
 }
 
 pub struct UpdateGraphSpec {
@@ -267,8 +268,7 @@ pub fn remove_node_system(In(action): In<RemoveNode>, mut provider: GraphAndCont
 
 pub fn update_input_data_system(In(action): In<UpdateDefaultData>, mut provider: GraphAndContext) {
     provider.provide_mut(&action.graph, |graph, _| {
-        graph.default_data = action.input_data.values;
-        graph.editor_metadata.input_param_order = action.input_data.order;
+        graph.default_data = action.input_data;
     });
     provider.validate(&action.graph);
     provider.generate_indices(&action.graph);
