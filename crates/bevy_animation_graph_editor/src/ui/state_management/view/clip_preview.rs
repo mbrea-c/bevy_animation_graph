@@ -10,7 +10,8 @@ use bevy_animation_graph::core::animated_scene::AnimatedScene;
 use uuid::Uuid;
 
 use crate::ui::{
-    global_state::RegisterStateComponent, native_windows::event_track_editor::TargetTracks,
+    native_windows::event_track_editor::TargetTracks,
+    state_management::global::RegisterStateComponent,
 };
 
 #[derive(Debug, Clone)]

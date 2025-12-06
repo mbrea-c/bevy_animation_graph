@@ -24,8 +24,8 @@ impl<'a> SpecContext<'a> {
         }
     }
 
-    pub fn set_from_node_spec(&mut self, node_spec: &NodeSpec) -> &mut Self {
-        self.node_spec.set_from_node_spec(node_spec);
+    pub fn update_from_node_spec(&mut self, node_spec: &NodeSpec) -> &mut Self {
+        self.node_spec.update_from_node_spec(node_spec);
         self
     }
 
@@ -164,21 +164,18 @@ impl<I> Default for IoSpec<I> {
     }
 }
 
-impl<I> IoSpec<I> {
-    pub fn add_input_time(&mut self, pin_id: I)
-    where
-        I: Clone + Eq + std::hash::Hash,
-    {
+impl<I> IoSpec<I>
+where
+    I: Clone + Eq + std::hash::Hash,
+{
+    pub fn add_input_time(&mut self, pin_id: I) {
         self.input_times.insert(pin_id.clone());
         self.input_order
             .insert(NodeInputPin::Time(pin_id), self.next_input_order);
         self.next_input_order += 1;
     }
 
-    pub fn add_input_data(&mut self, pin_id: I, data_spec: DataSpec)
-    where
-        I: Clone + Eq + std::hash::Hash,
-    {
+    pub fn add_input_data(&mut self, pin_id: I, data_spec: DataSpec) {
         self.input_data.insert(pin_id.clone(), data_spec);
         self.input_order
             .insert(NodeInputPin::Data(pin_id), self.next_input_order);
@@ -199,10 +196,7 @@ impl<I> IoSpec<I> {
         self.next_output_order += 1;
     }
 
-    pub fn input_compare_key(&self, input: &NodeInputPin<I>) -> i32
-    where
-        I: Eq + std::hash::Hash,
-    {
+    pub fn input_compare_key(&self, input: &NodeInputPin<I>) -> i32 {
         self.input_order.get(input).copied().unwrap_or(i32::MAX)
     }
 
@@ -210,17 +204,11 @@ impl<I> IoSpec<I> {
         self.output_order.get(output).copied().unwrap_or(i32::MAX)
     }
 
-    pub fn get_input_data(&self, pin_id: &I) -> Option<DataSpec>
-    where
-        I: Eq + std::hash::Hash,
-    {
+    pub fn get_input_data(&self, pin_id: &I) -> Option<DataSpec> {
         self.input_data.get(pin_id).copied()
     }
 
-    pub fn has_input_time(&self, pin_id: &I) -> bool
-    where
-        I: Eq + std::hash::Hash,
-    {
+    pub fn has_input_time(&self, pin_id: &I) -> bool {
         self.input_times.contains(pin_id)
     }
 
@@ -232,11 +220,20 @@ impl<I> IoSpec<I> {
         self.output_time
     }
 
-    pub fn set_from_node_spec(&mut self, other: &IoSpec<I>)
-    where
-        I: Clone,
-    {
-        *self = other.clone();
+    pub fn update_from_node_spec(&mut self, other: &IoSpec<I>) {
+        for input in other.sorted_inputs() {
+            match input {
+                NodeInput::Time(key) => self.add_input_time(key),
+                NodeInput::Data(key, data_spec) => self.add_input_data(key, data_spec),
+            }
+        }
+
+        for output in other.sorted_outputs() {
+            match output {
+                NodeOutput::Time => self.add_output_time(),
+                NodeOutput::Data(key, data_spec) => self.add_output_data(key, data_spec),
+            }
+        }
     }
 
     /// Unsorted iterator over input data

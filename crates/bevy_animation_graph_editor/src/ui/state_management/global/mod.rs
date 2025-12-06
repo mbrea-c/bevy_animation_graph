@@ -7,6 +7,7 @@ pub mod active_graph_node;
 pub mod active_ragdoll;
 pub mod active_scene;
 pub mod active_skeleton;
+pub mod fsm;
 pub mod inspector_selection;
 
 use std::marker::PhantomData;
@@ -22,12 +23,12 @@ use bevy::ecs::{
     world::World,
 };
 
-use crate::ui::global_state::{
+use crate::ui::state_management::global::{
     active_fsm::ActiveFsm, active_fsm_state::ActiveFsmState,
     active_fsm_transition::ActiveFsmTransition, active_graph::ActiveGraph,
     active_graph_context::ActiveContexts, active_graph_node::ActiveGraphNode,
     active_ragdoll::ActiveRagdoll, active_scene::ActiveScene, active_skeleton::ActiveSkeleton,
-    inspector_selection::InspectorSelection,
+    fsm::FsmManager, inspector_selection::InspectorSelection,
 };
 
 #[derive(Component)]
@@ -47,6 +48,7 @@ impl GlobalState {
         ActiveScene::register(world, entity);
         ActiveSkeleton::register(world, entity);
         InspectorSelection::register(world, entity);
+        FsmManager::register(world, entity);
     }
 }
 

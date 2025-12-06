@@ -15,13 +15,13 @@ use egui_dock::egui;
 
 use crate::ui::{
     OverrideSceneAnimation, PartOfSubScene, SubSceneConfig, SubSceneSyncAction,
-    global_state::{
+    native_windows::{EditorWindowContext, NativeEditorWindowExtension},
+    state_management::global::{
         active_graph_context::ActiveContexts,
         active_graph_node::{ActiveGraphNode, SetActiveGraphNode},
         active_scene::ActiveScene,
         get_global_state,
     },
-    native_windows::{EditorWindowContext, NativeEditorWindowExtension},
     utils::{self, orbit_camera_scene_show, using_inspector_env},
 };
 

@@ -14,8 +14,8 @@ use egui_dock::egui;
 
 use crate::ui::{
     PartOfSubScene, PreviewScene, SubSceneConfig, SubSceneSyncAction,
-    global_state::{ClearGlobalState, active_scene::ActiveScene, get_global_state},
     native_windows::{EditorWindowContext, NativeEditorWindowExtension},
+    state_management::global::{ClearGlobalState, active_scene::ActiveScene, get_global_state},
     utils::orbit_camera_scene_show,
 };
 

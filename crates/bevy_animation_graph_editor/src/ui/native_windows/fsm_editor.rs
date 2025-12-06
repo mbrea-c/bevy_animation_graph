@@ -4,7 +4,7 @@ use bevy::{
     utils::default,
 };
 use bevy_animation_graph::{
-    builtin_nodes::fsm_node::FSMNode,
+    builtin_nodes::fsm_node::FsmNode,
     core::{
         animation_graph::AnimationGraph,
         context::node_states::StateKey,
@@ -21,7 +21,8 @@ use crate::{
             EditorAction,
             fsm::{FsmAction, GenerateIndices, MoveState, RemoveState, RemoveTransition},
         },
-        global_state::{
+        native_windows::{EditorWindowContext, NativeEditorWindowExtension},
+        state_management::global::{
             active_fsm::ActiveFsm,
             active_fsm_state::{ActiveFsmState, SetActiveFsmState},
             active_fsm_transition::{ActiveFsmTransition, SetActiveFsmTransition},
@@ -29,7 +30,6 @@ use crate::{
             get_global_state,
             inspector_selection::{InspectorSelection, SetInspectorSelection},
         },
-        native_windows::{EditorWindowContext, NativeEditorWindowExtension},
         utils,
     },
 };
@@ -102,7 +102,7 @@ impl NativeEditorWindowExtension for FsmEditorWindow {
                         let maybe_fsm_state = maybe_graph_context.and_then(|ctx| {
                             let graph_id = ctx.get_graph_id();
                             let graph = graph_assets.get(graph_id)?;
-                            let node_id = graph.contains_node_that::<FSMNode>(|node| {
+                            let node_id = graph.contains_node_that::<FsmNode>(|node| {
                                 &node.fsm == &active_fsm.handle
                             })?;
                             ctx.node_states

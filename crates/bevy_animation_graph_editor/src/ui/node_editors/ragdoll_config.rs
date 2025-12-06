@@ -7,10 +7,10 @@ use egui::Widget;
 
 use crate::ui::{
     generic_widgets::ragdoll_config::RagdollConfigWidget,
-    global_state::{
+    node_editors::{Editable, NodeEditor},
+    state_management::global::{
         active_ragdoll::ActiveRagdoll, active_skeleton::ActiveSkeleton, get_global_state,
     },
-    node_editors::{Editable, NodeEditor},
 };
 
 pub struct RagdollConfigNodeEditor;

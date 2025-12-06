@@ -11,7 +11,7 @@ use bevy::{
 };
 use bevy_animation_graph::core::animated_scene::AnimatedScene;
 
-use crate::ui::global_state::{
+use crate::ui::state_management::global::{
     RegisterStateComponent, SetOrInsertEvent,
     active_ragdoll::{ActiveRagdoll, SetActiveRagdoll},
     active_skeleton::{ActiveSkeleton, SetActiveSkeleton},

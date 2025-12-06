@@ -4,7 +4,7 @@ use bevy::{
 };
 use bevy_animation_graph::core::state_machine::high_level::{StateId, StateMachine};
 
-use crate::ui::global_state::{
+use crate::ui::state_management::global::{
     RegisterStateComponent, SetOrInsertEvent, observe_set_or_insert_event,
 };
 

@@ -1,6 +1,6 @@
 use bevy::ecs::{component::Component, entity::Entity, event::Event, world::World};
 
-use crate::ui::global_state::{
+use crate::ui::state_management::global::{
     RegisterStateComponent, SetOrInsertEvent, observe_set_or_insert_event,
 };
 

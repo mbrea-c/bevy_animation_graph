@@ -513,8 +513,6 @@ impl<'a> GraphIoEnv for FsmIoEnv<'a> {
         }
     }
 
-    // TODO: We can forward duration queries to the parent graph, but there will never be anything
-    // connected there! We need to allow arbitrary time inputs to the FSM as well
     fn get_duration_back(
         &self,
         graph_input_pin: GraphInputPin,

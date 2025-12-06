@@ -10,11 +10,11 @@ use bevy_animation_graph_core::{
 #[derive(Reflect, Clone, Debug, Default)]
 #[reflect(Default, NodeLike)]
 #[type_path = "bevy_animation_graph::builtin_nodes"]
-pub struct FSMNode {
+pub struct FsmNode {
     pub fsm: Handle<StateMachine>,
 }
 
-impl FSMNode {
+impl FsmNode {
     pub const OUT_POSE: &'static str = "pose";
 
     pub fn new(fsm: Handle<StateMachine>) -> Self {
@@ -22,7 +22,7 @@ impl FSMNode {
     }
 }
 
-impl NodeLike for FSMNode {
+impl NodeLike for FsmNode {
     fn duration(&self, _ctx: NodeContext) -> Result<(), GraphError> {
         Err(GraphError::FsmDoesNotSupportDuration)
     }
@@ -46,12 +46,12 @@ impl NodeLike for FSMNode {
             .get(&self.fsm)
             .ok_or(GraphError::FsmAssetMissing)?;
 
-        ctx.set_from_node_spec(&fsm.node_spec);
-
         ctx.add_input_data(
             LowLevelStateMachine::DRIVER_EVENT_QUEUE,
             DataSpec::EventQueue,
         );
+
+        ctx.update_from_node_spec(&fsm.node_spec);
 
         Ok(())
     }

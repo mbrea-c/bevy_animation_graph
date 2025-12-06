@@ -14,9 +14,9 @@ use super::{
 };
 use crate::ui::{
     ecs_utils::get_view_state,
-    global_state,
     native_views::{EditorView, EditorViewContext, EditorViewUiState},
     native_windows::{NativeEditorWindow, NativeEditorWindowExtension},
+    state_management::global::GlobalState,
 };
 
 #[derive(Component)]
@@ -90,7 +90,7 @@ impl UiState {
         ui_state.new_native_view(ragdoll_view);
 
         world.insert_resource(ui_state);
-        global_state::GlobalState::init(world);
+        GlobalState::init(world);
     }
 
     pub fn new_native_view(&mut self, state: EditorViewUiState) {

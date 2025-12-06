@@ -12,7 +12,7 @@ use crate::{
         div_f32::DivF32, mul_f32::MulF32, sub_f32::SubF32,
     },
     flip_lr_node::FlipLRNode,
-    fsm_node::FSMNode,
+    fsm_node::FsmNode,
     graph_node::GraphNode,
     loop_node::LoopNode,
     padding::PaddingNode,
@@ -68,7 +68,7 @@ impl BuiltinNodesPlugin {
             .register_type::<PaddingNode>()
             .register_type::<RotationNode>()
             .register_type::<SpeedNode>()
-            .register_type::<FSMNode>()
+            .register_type::<FsmNode>()
             .register_type::<TwoBoneIKNode>()
             // f32
             .register_type::<AbsF32>()

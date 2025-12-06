@@ -15,13 +15,15 @@ use crate::ui::{
         ClipPreviewScenes, CreateClipPreview, CreateTrackNodePreview, NodePreviewKey,
         NodePreviewScenes,
     },
-    global_state::register_if_missing,
     native_windows::{EditorWindowContext, NativeEditorWindowExtension},
     reflect_widgets::wrap_ui::using_wrap_ui,
-    utils::orbit_camera_scene_show,
-    view_state::clip_preview::{
-        ClipPreviewTimingOrder, ClipPreviewViewState, SetClipPreviewBaseScene, SetElapsedTime,
+    state_management::{
+        global::register_if_missing,
+        view::clip_preview::{
+            ClipPreviewTimingOrder, ClipPreviewViewState, SetClipPreviewBaseScene, SetElapsedTime,
+        },
     },
+    utils::orbit_camera_scene_show,
 };
 
 #[derive(Debug, Default)]

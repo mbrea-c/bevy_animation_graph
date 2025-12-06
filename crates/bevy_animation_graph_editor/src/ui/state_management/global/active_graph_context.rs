@@ -8,7 +8,7 @@ use bevy::{
 };
 use bevy_animation_graph::core::context::graph_context_arena::GraphContextId;
 
-use crate::ui::global_state::{GlobalState, RegisterStateComponent};
+use crate::ui::state_management::global::{GlobalState, RegisterStateComponent};
 
 #[derive(Debug, Component, Clone, Default)]
 pub struct ActiveContexts {

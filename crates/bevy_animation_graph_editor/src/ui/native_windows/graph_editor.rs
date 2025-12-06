@@ -27,14 +27,14 @@ use crate::{
             },
         },
         generic_widgets::animation_node::AnimationNodeWidget,
-        global_state::{
+        native_windows::{EditorWindowContext, NativeEditorWindowExtension},
+        state_management::global::{
             active_graph::ActiveGraph,
             active_graph_context::ActiveContexts,
             active_graph_node::{ActiveGraphNode, SetActiveGraphNode},
             get_global_state,
             inspector_selection::{InspectorSelection, SetInspectorSelection},
         },
-        native_windows::{EditorWindowContext, NativeEditorWindowExtension},
         utils::{self, dummy_node, popup::CustomPopup},
     },
 };

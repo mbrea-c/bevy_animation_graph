@@ -4,7 +4,7 @@ use bevy::{
     prelude::{AppTypeRegistry, World},
 };
 use bevy_animation_graph::{
-    builtin_nodes::fsm_node::FSMNode,
+    builtin_nodes::fsm_node::FsmNode,
     core::{
         animation_graph::AnimationGraph,
         animation_node::AnimationNode,
@@ -29,18 +29,19 @@ use crate::ui::{
         data_value::DataValueWidget, graph_input_pin::GraphInputPinWidget, hashmap::HashMapWidget,
         io_spec::IoSpecWidget,
     },
-    global_state::{
+    native_windows::{EditorWindowContext, NativeEditorWindowExtension},
+    node_editors::{ReflectEditable, reflect_editor::ReflectNodeEditor},
+    state_management::global::{
         active_fsm::ActiveFsm,
         active_fsm_state::ActiveFsmState,
         active_fsm_transition::ActiveFsmTransition,
         active_graph::ActiveGraph,
         active_graph_context::{ActiveContexts, SetActiveContext},
         active_graph_node::ActiveGraphNode,
+        fsm::{SetFsmNodeSpec, SetFsmStartState},
         get_global_state,
         inspector_selection::InspectorSelection,
     },
-    native_windows::{EditorWindowContext, NativeEditorWindowExtension},
-    node_editors::{ReflectEditable, reflect_editor::ReflectNodeEditor},
     utils::{self, using_inspector_env, with_assets_all},
 };
 
@@ -282,27 +283,46 @@ fn fsm_inspector(
     let active_fsm = get_global_state::<ActiveFsm>(world)?.clone();
 
     world.resource_scope::<Assets<StateMachine>, _>(|world, fsm_assets| {
+        // We should make sure to include the fsm id in the buffer id salt to avoid reusing buffers
+        // when active FSM changes
+        let buffer_id = |ui: &mut egui::Ui, s: &str| ui.id().with(s).with(active_fsm.handle.id());
+
         let fsm = fsm_assets.get(&active_fsm.handle)?;
+        let spec_buffer = ctx
+            .buffers
+            .get_mut_or_insert_with(buffer_id(ui, "fsm input spec"), || fsm.node_spec.clone());
+
+        let spec_response = IoSpecWidget::new_salted(spec_buffer, "fsm input spec widget")
+            .show(ui, |ui, i| ui.text_edit_singleline(i));
+
+        if spec_response.changed() {
+            let new = spec_buffer.clone();
+            ctx.trigger(SetFsmNodeSpec {
+                fsm: active_fsm.handle.clone(),
+                new,
+            });
+        }
+
+        let start_state_buffer = ctx
+            .buffers
+            .get_mut_or_insert_with(buffer_id(ui, "fsm start state"), || fsm.start_state.clone());
+
+        let r = ui
+            .horizontal(|ui| {
+                ui.label("start state:");
+                ui.text_edit_singleline(start_state_buffer)
+            })
+            .inner;
+
+        if r.changed() {
+            let new = start_state_buffer.clone();
+            ctx.trigger(SetFsmStartState {
+                fsm: active_fsm.handle.clone(),
+                new,
+            });
+        }
 
         using_inspector_env(world, |mut env| {
-            let mut new_properties = FsmProperties::from(fsm);
-
-            let changed = env.ui_for_reflect_with_options(
-                &mut new_properties,
-                ui,
-                ui.id().with("fsm properties inspector"),
-                &(),
-            );
-            if changed {
-                ctx.editor_actions
-                    .push(EditorAction::Fsm(FsmAction::UpdateProperties(
-                        UpdateProperties {
-                            fsm: active_fsm.handle.clone(),
-                            new_properties,
-                        },
-                    )));
-            }
-
             if let Some(state) = add_state_ui(ui, &mut env, ctx) {
                 ctx.editor_actions
                     .push(EditorAction::Fsm(FsmAction::CreateState(CreateState {
@@ -426,7 +446,7 @@ fn select_graph_context_fsm(
             return false;
         };
         graph
-            .contains_node_that::<FSMNode>(|n| &n.fsm == &active_fsm.handle)
+            .contains_node_that::<FsmNode>(|n| &n.fsm == &active_fsm.handle)
             .is_some()
     });
 

@@ -17,7 +17,9 @@ use crate::{
         UiState,
         core::EguiWindow,
         editor_windows::saving::{SaveWindow, SaveWindowAssetMeta},
-        global_state::{ClearGlobalState, active_fsm::ActiveFsm, active_graph::ActiveGraph},
+        state_management::global::{
+            ClearGlobalState, active_fsm::ActiveFsm, active_graph::ActiveGraph,
+        },
     },
 };
 

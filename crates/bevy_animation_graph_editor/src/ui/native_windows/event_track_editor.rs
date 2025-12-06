@@ -29,10 +29,10 @@ use crate::ui::{
         EditorWindowContext, EditorWindowRegistrationContext, NativeEditorWindowExtension,
     },
     reflect_widgets::{submittable::Submittable, wrap_ui::using_wrap_ui},
-    utils::popup::CustomPopup,
-    view_state::clip_preview::{
+    state_management::view::clip_preview::{
         ClipPreviewTimingOrder, ClipPreviewViewState, SetOrder, SetTargetTracks,
     },
+    utils::popup::CustomPopup,
 };
 
 #[derive(Debug)]
