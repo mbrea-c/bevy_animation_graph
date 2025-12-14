@@ -1,5 +1,5 @@
 use bevy::{
-    asset::{AssetId, Assets, Handle},
+    asset::{Assets, Handle},
     ecs::{
         component::Component,
         entity::Entity,
@@ -8,16 +8,15 @@ use bevy::{
         system::{ResMut, SystemParam},
         world::World,
     },
+    math::Vec2,
+    platform::collections::HashSet,
 };
 use bevy_animation_graph::core::{
     context::spec_context::NodeSpec,
     state_machine::high_level::{StateId, StateMachine},
 };
 
-use crate::{
-    fsm_show::{FsmIndicesMap, make_fsm_indices},
-    ui::{actions::saving::DirtyAssets, state_management::global::RegisterStateComponent},
-};
+use crate::ui::{actions::saving::DirtyAssets, state_management::global::RegisterStateComponent};
 
 #[derive(Debug, Component, Default, Clone)]
 pub struct FsmManager;
@@ -26,6 +25,7 @@ impl RegisterStateComponent for FsmManager {
     fn register(world: &mut World, _global_state_entity: Entity) {
         world.add_observer(SetFsmNodeSpec::observe);
         world.add_observer(SetFsmStartState::observe);
+        world.add_observer(MoveStates::observe);
     }
 }
 
@@ -57,11 +57,27 @@ impl SetFsmStartState {
     }
 }
 
+#[derive(Event)]
+pub struct MoveStates {
+    pub fsm: Handle<StateMachine>,
+    pub states: HashSet<StateId>,
+    pub delta: Vec2,
+}
+
+impl MoveStates {
+    pub fn observe(move_states: On<MoveStates>, mut ctx: FsmContext) {
+        ctx.provide_mut(&move_states.fsm, |fsm| {
+            for state_id in &move_states.states {
+                fsm.extra.move_state(*state_id, move_states.delta);
+            }
+        });
+    }
+}
+
 #[derive(SystemParam)]
 pub struct FsmContext<'w> {
     fsm_assets: ResMut<'w, Assets<StateMachine>>,
     dirty_asets: ResMut<'w, DirtyAssets>,
-    fsm_indices: ResMut<'w, FsmIndicesMap>,
 }
 
 impl FsmContext<'_> {
@@ -76,19 +92,5 @@ impl FsmContext<'_> {
         };
 
         f(fsm)
-    }
-
-    pub fn generate_indices(&mut self, fsm_id: impl Into<AssetId<StateMachine>>) {
-        let fsm_id = fsm_id.into();
-
-        let Some(fsm) = self.fsm_assets.get(fsm_id) else {
-            return;
-        };
-
-        let indices = make_fsm_indices(fsm);
-
-        if let Ok(indices) = indices {
-            self.fsm_indices.indices.insert(fsm_id, indices);
-        }
     }
 }

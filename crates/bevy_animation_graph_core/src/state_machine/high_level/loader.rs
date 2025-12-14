@@ -1,6 +1,6 @@
 use bevy::asset::{AssetLoader, LoadContext, io::Reader};
 
-use super::{GlobalTransition, State, StateMachine, Transition, serial::StateMachineSerial};
+use super::{State, StateMachine, Transition, serial::StateMachineSerial};
 use crate::errors::AssetLoaderError;
 
 #[derive(Default)]
@@ -27,23 +27,17 @@ impl AssetLoader for StateMachineLoader {
         };
 
         for state_serial in serial.states {
-            let global_transition_data =
-                state_serial.global_transition.map(|gt| GlobalTransition {
-                    duration: gt.duration,
-                    graph: load_context.load(gt.graph),
-                });
             fsm.add_state(State {
                 id: state_serial.id,
                 graph: load_context.load(state_serial.graph),
-                global_transition: global_transition_data,
+                label: state_serial.label,
             });
         }
 
         for transition_serial in serial.transitions {
-            fsm.add_transition(Transition {
+            fsm.add_transition_unchecked(Transition {
                 id: transition_serial.id,
-                source: transition_serial.source,
-                target: transition_serial.target,
+                variant: transition_serial.variant,
                 duration: transition_serial.duration,
                 graph: load_context.load(transition_serial.graph),
             });

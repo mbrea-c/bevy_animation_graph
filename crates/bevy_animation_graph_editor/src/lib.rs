@@ -1,6 +1,4 @@
-mod egui_fsm;
 mod egui_nodes;
-mod fsm_show;
 mod graph_show;
 mod icons;
 mod scanner;
@@ -14,7 +12,6 @@ use bevy_animation_graph::AnimationGraphPlugin;
 use bevy_egui::{EguiPlugin, EguiPrimaryContextPass};
 use bevy_inspector_egui::{DefaultInspectorConfigPlugin, bevy_egui};
 use clap::Parser;
-use fsm_show::FsmIndicesMap;
 use graph_show::GraphIndicesMap;
 use scanner::ScannerPlugin;
 use ui::{
@@ -70,7 +67,6 @@ impl Plugin for AnimationGraphEditorPlugin {
         app.insert_resource(PendingActions::default())
             .insert_resource(DirtyAssets::default())
             .insert_resource(GraphIndicesMap::default())
-            .insert_resource(FsmIndicesMap::default())
             .insert_resource(ClipPreviewScenes::default())
             .insert_resource(cli);
 

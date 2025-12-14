@@ -19,10 +19,7 @@ use egui_dock::egui;
 use crate::ui::{
     actions::{
         EditorAction,
-        fsm::{
-            CreateState, CreateTransition, FsmAction, FsmProperties, UpdateProperties, UpdateState,
-            UpdateTransition,
-        },
+        fsm::{CreateState, CreateTransition, FsmAction, UpdateState, UpdateTransition},
         graph::{EditNode, GraphAction, RenameNode, UpdateDefaultData, UpdateGraphSpec},
     },
     generic_widgets::{
@@ -310,7 +307,8 @@ fn fsm_inspector(
         let r = ui
             .horizontal(|ui| {
                 ui.label("start state:");
-                ui.text_edit_singleline(start_state_buffer)
+                ui.label("TODO")
+                // ui.text_edit_singleline(start_state_buffer)
             })
             .inner;
 

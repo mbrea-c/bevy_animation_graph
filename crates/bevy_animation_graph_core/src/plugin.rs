@@ -34,7 +34,7 @@ use crate::{
         definition::Ragdoll, definition_loader::RagdollLoader,
     },
     skeleton::{Skeleton, loader::SkeletonLoader},
-    state_machine::high_level::{GlobalTransition, StateMachine, loader::StateMachineLoader},
+    state_machine::high_level::{StateMachine, loader::StateMachineLoader},
     symmetry::{config::SymmetryConfig, serial::SymmetryConfigSerial},
     systems::{animation_player, animation_player_deferred_gizmos, apply_animation_to_targets},
 };
@@ -195,7 +195,6 @@ impl AnimationGraphCorePlugin {
             .register_type::<AnimationNode>()
             .register_type::<SymmetryConfig>()
             .register_type::<SymmetryConfigSerial>()
-            .register_type::<GlobalTransition>()
             .register_type::<()>()
             .register_type_data::<(), ReflectDefault>();
     }

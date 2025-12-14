@@ -1,52 +1,42 @@
+use bevy::asset::AssetPath;
 use serde::{Deserialize, Serialize};
 
-use super::{Extra, GlobalTransition, State, StateId, StateMachine, Transition, TransitionId};
-use crate::context::spec_context::NodeSpec;
-
-pub type StateIdSerial = StateId;
-pub type TransitionIdSerial = TransitionId;
+use super::{FsmEditorMetadata, State, StateId, StateMachine, Transition, TransitionId};
+use crate::{context::spec_context::NodeSpec, state_machine::high_level::TransitionVariant};
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct StateSerial {
-    pub id: StateIdSerial,
-    pub graph: String,
-    pub global_transition: Option<GlobalTransitionSerial>,
-}
-
-#[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct GlobalTransitionSerial {
-    pub duration: f32,
-    pub graph: String,
+    pub id: StateId,
+    pub label: String,
+    pub graph: AssetPath<'static>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct TransitionSerial {
-    pub id: TransitionIdSerial,
-    pub source: StateIdSerial,
-    pub target: StateIdSerial,
+    pub id: TransitionId,
+    pub variant: TransitionVariant,
     pub duration: f32,
-    pub graph: String,
+    pub graph: AssetPath<'static>,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct StateMachineSerial {
     pub states: Vec<StateSerial>,
     pub transitions: Vec<TransitionSerial>,
-    pub start_state: String,
+    pub start_state: StateId,
     #[serde(default)]
     pub node_spec: NodeSpec,
     #[serde(default)]
-    pub extra: Extra,
+    pub extra: FsmEditorMetadata,
 }
 
 impl From<&Transition> for TransitionSerial {
     fn from(value: &Transition) -> Self {
         Self {
-            id: value.id.clone(),
-            source: value.source.clone(),
-            target: value.target.clone(),
+            id: value.id,
+            variant: value.variant.clone(),
             duration: value.duration,
-            graph: value.graph.path().unwrap().to_string(),
+            graph: value.graph.path().unwrap().clone_owned(),
         }
     }
 }
@@ -55,20 +45,8 @@ impl From<&State> for StateSerial {
     fn from(value: &State) -> Self {
         Self {
             id: value.id.clone(),
-            graph: value.graph.path().unwrap().to_string(),
-            global_transition: value
-                .global_transition
-                .as_ref()
-                .map(GlobalTransitionSerial::from),
-        }
-    }
-}
-
-impl From<&GlobalTransition> for GlobalTransitionSerial {
-    fn from(value: &GlobalTransition) -> Self {
-        Self {
-            duration: value.duration,
-            graph: value.graph.path().unwrap().to_string(),
+            label: value.label.clone(),
+            graph: value.graph.path().unwrap().clone_owned(),
         }
     }
 }

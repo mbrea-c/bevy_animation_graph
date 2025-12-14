@@ -1,7 +1,7 @@
 use bevy::ecs::{
     component::Component,
     entity::Entity,
-    event::Event,
+    event::{EntityEvent, Event},
     query::With,
     system::command::trigger,
     world::{CommandQueue, World},
@@ -43,6 +43,8 @@ pub struct EditorWindowContext<'a> {
 impl EditorWindowContext<'_> {
     pub fn make_queue(&self) -> OwnedQueue {
         OwnedQueue {
+            window_entity: self.window_entity,
+            view_entity: self.view_entity,
             command_queue: CommandQueue::default(),
         }
     }
@@ -53,11 +55,26 @@ impl EditorWindowContext<'_> {
 }
 
 pub struct OwnedQueue {
+    pub window_entity: Entity,
+    pub view_entity: Entity,
     pub command_queue: CommandQueue,
 }
 
 impl OwnedQueue {
     pub fn trigger<'b>(&mut self, event: impl Event<Trigger<'b>: Default>) {
+        self.command_queue.push(trigger(event));
+    }
+
+    pub fn trigger_window<'b>(
+        &mut self,
+        mut event: impl Event<Trigger<'b>: Default> + EntityEvent,
+    ) {
+        *event.event_target_mut() = self.window_entity;
+        self.command_queue.push(trigger(event));
+    }
+
+    pub fn trigger_view<'b>(&mut self, mut event: impl Event<Trigger<'b>: Default> + EntityEvent) {
+        *event.event_target_mut() = self.view_entity;
         self.command_queue.push(trigger(event));
     }
 }

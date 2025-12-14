@@ -13,7 +13,6 @@ use bevy_animation_graph::core::{
 };
 
 use super::{run_handler, saving::DirtyAssets};
-use crate::fsm_show::{FsmIndicesMap, make_fsm_indices};
 
 pub enum FsmAction {
     MoveState(MoveState),
@@ -23,7 +22,6 @@ pub enum FsmAction {
     CreateTransition(CreateTransition),
     RemoveState(RemoveState),
     RemoveTransition(RemoveTransition),
-    UpdateProperties(UpdateProperties),
     GenerateIndices(GenerateIndices),
 }
 
@@ -67,11 +65,6 @@ pub struct RemoveTransition {
     pub transition_id: TransitionId,
 }
 
-pub struct UpdateProperties {
-    pub fsm: Handle<StateMachine>,
-    pub new_properties: FsmProperties,
-}
-
 pub struct GenerateIndices {
     pub fsm: AssetId<StateMachine>,
 }
@@ -101,9 +94,6 @@ pub fn handle_fsm_action(world: &mut World, action: FsmAction) {
         FsmAction::RemoveTransition(action) => {
             run_handler(world, FSM_ERR)(handle_remove_transition_system, action)
         }
-        FsmAction::UpdateProperties(action) => {
-            run_handler(world, FSM_ERR)(handle_update_properties_system, action)
-        }
         FsmAction::GenerateIndices(action) => {
             run_handler(world, FSM_ERR)(handle_generate_indices_system, action)
         }
@@ -112,10 +102,11 @@ pub fn handle_fsm_action(world: &mut World, action: FsmAction) {
 
 pub fn handle_move_state_system(In(action): In<MoveState>, mut ctx: FsmContext) {
     ctx.provide_mut(&action.fsm, |fsm| {
-        fsm.extra.set_node_position(action.state_id, action.new_pos);
+        fsm.extra
+            .set_state_position(action.state_id, action.new_pos);
     });
 
-    ctx.generate_indices(&action.fsm);
+    // ctx.generate_indices(&action.fsm);
 }
 
 pub fn handle_update_state_system(In(action): In<UpdateState>, mut ctx: FsmContext) {
@@ -123,7 +114,7 @@ pub fn handle_update_state_system(In(action): In<UpdateState>, mut ctx: FsmConte
         let _ = fsm.update_state(action.state_id, action.new_state);
     });
 
-    ctx.generate_indices(&action.fsm);
+    // ctx.generate_indices(&action.fsm);
 }
 
 pub fn handle_update_transition_system(In(action): In<UpdateTransition>, mut ctx: FsmContext) {
@@ -131,7 +122,7 @@ pub fn handle_update_transition_system(In(action): In<UpdateTransition>, mut ctx
         let _ = fsm.update_transition(action.transition_id, action.new_transition);
     });
 
-    ctx.generate_indices(&action.fsm);
+    // ctx.generate_indices(&action.fsm);
 }
 
 pub fn handle_create_state_system(In(action): In<CreateState>, mut ctx: FsmContext) {
@@ -139,7 +130,7 @@ pub fn handle_create_state_system(In(action): In<CreateState>, mut ctx: FsmConte
         fsm.add_state(action.state);
     });
 
-    ctx.generate_indices(&action.fsm);
+    // ctx.generate_indices(&action.fsm);
 }
 
 pub fn handle_create_transition_system(In(action): In<CreateTransition>, mut ctx: FsmContext) {
@@ -147,7 +138,7 @@ pub fn handle_create_transition_system(In(action): In<CreateTransition>, mut ctx
         let _ = fsm.add_transition_from_ui(action.transition);
     });
 
-    ctx.generate_indices(&action.fsm);
+    // ctx.generate_indices(&action.fsm);
 }
 
 pub fn handle_remove_state_system(In(action): In<RemoveState>, mut ctx: FsmContext) {
@@ -155,7 +146,7 @@ pub fn handle_remove_state_system(In(action): In<RemoveState>, mut ctx: FsmConte
         let _ = fsm.delete_state(action.state_id);
     });
 
-    ctx.generate_indices(&action.fsm);
+    // ctx.generate_indices(&action.fsm);
 }
 
 pub fn handle_remove_transition_system(In(action): In<RemoveTransition>, mut ctx: FsmContext) {
@@ -163,27 +154,17 @@ pub fn handle_remove_transition_system(In(action): In<RemoveTransition>, mut ctx
         let _ = fsm.delete_transition(action.transition_id);
     });
 
-    ctx.generate_indices(&action.fsm);
-}
-
-pub fn handle_update_properties_system(In(action): In<UpdateProperties>, mut ctx: FsmContext) {
-    ctx.provide_mut(&action.fsm, |fsm| {
-        fsm.set_start_state(action.new_properties.start_state);
-        fsm.node_spec = action.new_properties.node_spec;
-    });
-
-    ctx.generate_indices(&action.fsm);
+    // ctx.generate_indices(&action.fsm);
 }
 
 pub fn handle_generate_indices_system(In(action): In<GenerateIndices>, mut ctx: FsmContext) {
-    ctx.generate_indices(action.fsm);
+    // ctx.generate_indices(action.fsm);
 }
 
 #[derive(SystemParam)]
 pub struct FsmContext<'w> {
     fsm_assets: ResMut<'w, Assets<StateMachine>>,
     dirty_asets: ResMut<'w, DirtyAssets>,
-    fsm_indices: ResMut<'w, FsmIndicesMap>,
 }
 
 impl FsmContext<'_> {
@@ -200,19 +181,19 @@ impl FsmContext<'_> {
         f(fsm)
     }
 
-    pub fn generate_indices(&mut self, fsm_id: impl Into<AssetId<StateMachine>>) {
-        let fsm_id = fsm_id.into();
+    // pub fn generate_indices(&mut self, fsm_id: impl Into<AssetId<StateMachine>>) {
+    //     let fsm_id = fsm_id.into();
 
-        let Some(fsm) = self.fsm_assets.get(fsm_id) else {
-            return;
-        };
+    //     let Some(fsm) = self.fsm_assets.get(fsm_id) else {
+    //         return;
+    //     };
 
-        let indices = make_fsm_indices(fsm);
+    //     let indices = make_fsm_indices(fsm);
 
-        if let Ok(indices) = indices {
-            self.fsm_indices.indices.insert(fsm_id, indices);
-        }
-    }
+    //     if let Ok(indices) = indices {
+    //         self.fsm_indices.indices.insert(fsm_id, indices);
+    //     }
+    // }
 }
 
 /// Just a helper for using with the reflect based editor
