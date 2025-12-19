@@ -128,7 +128,16 @@ pub fn handle_save_fsm(
     mut commands: Commands,
 ) {
     let fsm = graph_assets.get(save_fsm.asset_id).unwrap();
-    let graph_serial = StateMachineSerial::from(fsm);
+    let graph_serial = match StateMachineSerial::try_from(fsm) {
+        Ok(serial) => serial,
+        Err(err) => {
+            error!(
+                "Failed to save FSM with id {:?} - Error: {:?}",
+                save_fsm.asset_id, err
+            );
+            return;
+        }
+    };
     let mut final_path = cli.asset_source.clone();
     final_path.push(&save_fsm.virtual_path);
     info!(

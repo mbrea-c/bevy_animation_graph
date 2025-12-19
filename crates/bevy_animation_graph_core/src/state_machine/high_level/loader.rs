@@ -1,7 +1,7 @@
 use bevy::asset::{AssetLoader, LoadContext, io::Reader};
 
-use super::{State, StateMachine, Transition, serial::StateMachineSerial};
-use crate::errors::AssetLoaderError;
+use super::{StateMachine, serial::StateMachineSerial};
+use crate::{errors::AssetLoaderError, utils::loading::TryLoad};
 
 #[derive(Default)]
 pub struct StateMachineLoader;
@@ -27,20 +27,11 @@ impl AssetLoader for StateMachineLoader {
         };
 
         for state_serial in serial.states {
-            fsm.add_state(State {
-                id: state_serial.id,
-                graph: load_context.load(state_serial.graph),
-                label: state_serial.label,
-            });
+            fsm.add_state(state_serial.try_load(load_context)?);
         }
 
         for transition_serial in serial.transitions {
-            fsm.add_transition_unchecked(Transition {
-                id: transition_serial.id,
-                variant: transition_serial.variant,
-                duration: transition_serial.duration,
-                graph: load_context.load(transition_serial.graph),
-            });
+            fsm.add_transition_unchecked(transition_serial.try_load(load_context)?);
         }
 
         fsm.set_start_state(serial.start_state);

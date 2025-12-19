@@ -1,5 +1,5 @@
 use core::any::TypeId;
-use std::any::Any;
+use std::{any::Any, default};
 
 use bevy::{ecs::world::CommandQueue, platform::collections::HashMap, prelude::*};
 use bevy_egui::{EguiContext, PrimaryEguiContext};
@@ -262,10 +262,15 @@ fn view_button(
 
 pub trait BufferType: Any + Send + Sync + 'static {
     fn any_mut(&mut self) -> &mut dyn Any;
+    fn any_ref(&self) -> &dyn Any;
 }
 
 impl<T: Any + Send + Sync + 'static> BufferType for T {
     fn any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+
+    fn any_ref(&self) -> &dyn Any {
         self
     }
 }
@@ -282,6 +287,31 @@ impl Buffers {
         default_provider: impl FnOnce() -> T,
     ) -> &mut T {
         let key = (id, TypeId::of::<T>());
+        self.by_id_and_type
+            .entry(key)
+            .or_insert(Box::new(default_provider()))
+            .as_mut()
+            .any_mut()
+            .downcast_mut::<T>()
+            .expect("There must never be a type mismatch here")
+    }
+
+    pub fn get_mut_or_insert_with_condition<T: BufferType>(
+        &mut self,
+        id: egui::Id,
+        reset_condition: impl FnOnce(&T) -> bool,
+        default_provider: impl FnOnce() -> T,
+    ) -> &mut T {
+        let key = (id, TypeId::of::<T>());
+        if let Some(old_val) = self
+            .by_id_and_type
+            .get(&key)
+            .and_then(|v| v.as_ref().any_ref().downcast_ref::<T>())
+        {
+            if reset_condition(old_val) {
+                self.by_id_and_type.remove(&key);
+            }
+        }
         self.by_id_and_type
             .entry(key)
             .or_insert(Box::new(default_provider()))

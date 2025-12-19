@@ -4,9 +4,11 @@
             id: "505e7d48-bbdb-440b-ad3f-5886d332b291",
             label: "walk",
             graph: "animation_graphs/walk.animgraph.ron",
-            global_transition: Some((
-                duration: 1.0,
-                graph: "animation_graphs/walk_to_run.animgraph.ron",
+            state_transition: Some((
+                kind: Graph(
+                    graph: "animation_graphs/walk_to_run.animgraph.ron",
+                    timed: Some(1.0),
+                ),
             )),
         ),
         (
@@ -19,15 +21,26 @@
     transitions: [
         (
             id: "505e7d48-bbdb-440b-ad3f-5886d332b293",
-            variant: Direct(source: "505e7d48-bbdb-440b-ad3f-5886d332b292", target: "505e7d48-bbdb-440b-ad3f-5886d332b291"),
-            duration: 1.0,
-            graph: "animation_graphs/walk_to_run.animgraph.ron",
+            source: "505e7d48-bbdb-440b-ad3f-5886d332b292",
+            target: "505e7d48-bbdb-440b-ad3f-5886d332b291",
+            data: (
+                kind: Graph(
+                    graph: "animation_graphs/walk_to_run.animgraph.ron",
+                    timed: Some(1.0),
+                ),
+            ),
+            
         ),
         (
             id: "505e7d48-bbdb-440b-ad3f-5886d332b294",
-            variant: Direct(source: "505e7d48-bbdb-440b-ad3f-5886d332b291", target: "505e7d48-bbdb-440b-ad3f-5886d332b292"),
-            duration: 1.0,
-            graph: "animation_graphs/walk_to_run.animgraph.ron",
+            source: "505e7d48-bbdb-440b-ad3f-5886d332b291",
+            target: "505e7d48-bbdb-440b-ad3f-5886d332b292",
+            data: (
+                kind: Graph(
+                    graph: "animation_graphs/walk_to_run.animgraph.ron",
+                    timed: Some(1.0),
+                ),
+            ),
         ),
     ],
     start_state: "505e7d48-bbdb-440b-ad3f-5886d332b291",

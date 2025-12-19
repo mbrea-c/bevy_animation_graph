@@ -1,4 +1,5 @@
 use core::f32;
+use std::cmp::Ordering;
 
 use bevy::{
     asset::{Assets, Handle},
@@ -8,7 +9,7 @@ use bevy::{
     prelude::World,
 };
 use bevy_animation_graph::core::state_machine::high_level::{
-    State, StateId, StateMachine, TransitionId, TransitionVariant,
+    DirectTransitionId, State, StateId, StateMachine,
 };
 use egui_dock::egui;
 
@@ -85,7 +86,7 @@ impl NativeEditorWindowExtension for FsmEditorWindow {
 #[derive(Component, Clone)]
 pub struct FsmEditorWindowState {
     pub selected_states: HashSet<StateId>,
-    pub selected_transitions: HashSet<TransitionId>,
+    pub selected_transitions: HashSet<DirectTransitionId>,
     pub style: FsmEditorStyle,
 }
 
@@ -220,7 +221,7 @@ impl FsmEditorWindowState {
         &self,
         fsm: &StateMachine,
         rect: egui::Rect,
-    ) -> (HashSet<StateId>, HashSet<TransitionId>) {
+    ) -> (HashSet<StateId>, HashSet<DirectTransitionId>) {
         let mut selected_states = HashSet::new();
 
         for state in fsm.states.values() {
@@ -244,11 +245,18 @@ impl FsmEditorWindowState {
                 let Some(transition) = fsm.transitions.get(transition_id) else {
                     continue;
                 };
-                let TransitionVariant::Direct { source, target } = &transition.variant else {
-                    continue;
-                };
-                let source_pos = fsm.extra.states.get(source).copied().unwrap_or(Vec2::ZERO);
-                let target_pos = fsm.extra.states.get(target).copied().unwrap_or(Vec2::ZERO);
+                let source_pos = fsm
+                    .extra
+                    .states
+                    .get(&transition.source)
+                    .copied()
+                    .unwrap_or(Vec2::ZERO);
+                let target_pos = fsm
+                    .extra
+                    .states
+                    .get(&transition.target)
+                    .copied()
+                    .unwrap_or(Vec2::ZERO);
                 let data =
                     Self::transition_arrow_endpoints(source_pos, target_pos, i, transitions.len());
                 if rect.intersects_ray(egui_pos2(data.start), egui_vec2(data.dir))
@@ -281,7 +289,6 @@ impl FsmEditorWindowState {
                 state,
                 pos,
                 fsm.start_state == state.id,
-                None, // TODO: get correct one
                 queue,
                 fsm_handle,
             );
@@ -290,22 +297,18 @@ impl FsmEditorWindowState {
 
     fn collapse_direct_transitions(
         fsm: &StateMachine,
-    ) -> HashMap<(StateId, StateId), Vec<TransitionId>> {
-        let mut direct_transitions: HashMap<(StateId, StateId), Vec<TransitionId>> = HashMap::new();
+    ) -> HashMap<(StateId, StateId), Vec<DirectTransitionId>> {
+        let mut direct_transitions: HashMap<(StateId, StateId), Vec<DirectTransitionId>> =
+            HashMap::new();
         for transition in fsm.transitions.values() {
-            match &transition.variant {
-                TransitionVariant::Direct { source, target } => {
-                    let key = match source.cmp(target) {
-                        std::cmp::Ordering::Less => (*source, *target),
-                        _ => (*target, *source),
-                    };
-                    direct_transitions
-                        .entry(key)
-                        .or_insert(vec![])
-                        .push(transition.id);
-                }
-                TransitionVariant::State { .. } => {}
-            }
+            let key = match transition.source.cmp(&transition.target) {
+                Ordering::Less => (transition.source, transition.target),
+                _ => (transition.target, transition.source),
+            };
+            direct_transitions
+                .entry(key)
+                .or_insert(vec![])
+                .push(transition.id);
         }
 
         direct_transitions
@@ -324,11 +327,18 @@ impl FsmEditorWindowState {
                 let Some(transition) = fsm.transitions.get(transition_id) else {
                     continue;
                 };
-                let TransitionVariant::Direct { source, target } = &transition.variant else {
-                    continue;
-                };
-                let source_pos = fsm.extra.states.get(source).copied().unwrap_or(Vec2::ZERO);
-                let target_pos = fsm.extra.states.get(target).copied().unwrap_or(Vec2::ZERO);
+                let source_pos = fsm
+                    .extra
+                    .states
+                    .get(&transition.source)
+                    .copied()
+                    .unwrap_or(Vec2::ZERO);
+                let target_pos = fsm
+                    .extra
+                    .states
+                    .get(&transition.target)
+                    .copied()
+                    .unwrap_or(Vec2::ZERO);
                 self.draw_direct_transition(
                     ui,
                     *transition_id,
@@ -365,7 +375,6 @@ impl FsmEditorWindowState {
         state: &State,
         pos: Vec2,
         is_start_state: bool,
-        state_transition: Option<TransitionId>,
         queue: &mut OwnedQueue,
         fsm: &Handle<StateMachine>,
     ) -> egui::Response {
@@ -430,6 +439,18 @@ impl FsmEditorWindowState {
             );
         }
 
+        if state.state_transition.is_some() {
+            ui.painter().text(
+                egui_pos2(
+                    pos - Vec2::new(Self::STATE_WIDTH / 2. - 10., Self::STATE_HEIGHT / 2. - 10.),
+                ),
+                egui::Align2::CENTER_CENTER,
+                "⚡",
+                egui::FontId::proportional(18.),
+                egui::Color32::YELLOW,
+            );
+        }
+
         ui.painter().text(
             egui::Pos2::new(pos.x, pos.y),
             egui::Align2::CENTER_CENTER,
@@ -476,7 +497,7 @@ impl FsmEditorWindowState {
     fn draw_direct_transition(
         &self,
         ui: &mut egui::Ui,
-        transition_id: TransitionId,
+        transition_id: DirectTransitionId,
         source_pos: Vec2,
         target_pos: Vec2,
         offset: usize,
@@ -645,11 +666,11 @@ impl SelectStates {
 #[derive(EntityEvent)]
 struct SelectTransitions {
     entity: Entity,
-    transitions: HashSet<TransitionId>,
+    transitions: HashSet<DirectTransitionId>,
 }
 
 impl SelectTransitions {
-    pub fn placeholder(transitions: HashSet<TransitionId>) -> Self {
+    pub fn placeholder(transitions: HashSet<DirectTransitionId>) -> Self {
         Self {
             entity: Entity::PLACEHOLDER,
             transitions,

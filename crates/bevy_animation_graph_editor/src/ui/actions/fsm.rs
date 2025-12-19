@@ -9,7 +9,9 @@ use bevy::{
 };
 use bevy_animation_graph::core::{
     context::spec_context::NodeSpec,
-    state_machine::high_level::{State, StateId, StateMachine, Transition, TransitionId},
+    state_machine::high_level::{
+        DirectTransition, DirectTransitionId, State, StateId, StateMachine,
+    },
 };
 
 use super::{run_handler, saving::DirtyAssets};
@@ -22,7 +24,6 @@ pub enum FsmAction {
     CreateTransition(CreateTransition),
     RemoveState(RemoveState),
     RemoveTransition(RemoveTransition),
-    GenerateIndices(GenerateIndices),
 }
 
 pub struct MoveState {
@@ -41,8 +42,8 @@ pub struct UpdateState {
 
 pub struct UpdateTransition {
     pub fsm: Handle<StateMachine>,
-    pub transition_id: TransitionId,
-    pub new_transition: Transition,
+    pub transition_id: DirectTransitionId,
+    pub new_transition: DirectTransition,
 }
 
 pub struct CreateState {
@@ -52,7 +53,7 @@ pub struct CreateState {
 
 pub struct CreateTransition {
     pub fsm: Handle<StateMachine>,
-    pub transition: Transition,
+    pub transition: DirectTransition,
 }
 
 pub struct RemoveState {
@@ -62,7 +63,7 @@ pub struct RemoveState {
 
 pub struct RemoveTransition {
     pub fsm: Handle<StateMachine>,
-    pub transition_id: TransitionId,
+    pub transition_id: DirectTransitionId,
 }
 
 pub struct GenerateIndices {
@@ -94,9 +95,6 @@ pub fn handle_fsm_action(world: &mut World, action: FsmAction) {
         FsmAction::RemoveTransition(action) => {
             run_handler(world, FSM_ERR)(handle_remove_transition_system, action)
         }
-        FsmAction::GenerateIndices(action) => {
-            run_handler(world, FSM_ERR)(handle_generate_indices_system, action)
-        }
     }
 }
 
@@ -105,60 +103,42 @@ pub fn handle_move_state_system(In(action): In<MoveState>, mut ctx: FsmContext) 
         fsm.extra
             .set_state_position(action.state_id, action.new_pos);
     });
-
-    // ctx.generate_indices(&action.fsm);
 }
 
 pub fn handle_update_state_system(In(action): In<UpdateState>, mut ctx: FsmContext) {
     ctx.provide_mut(&action.fsm, |fsm| {
         let _ = fsm.update_state(action.state_id, action.new_state);
     });
-
-    // ctx.generate_indices(&action.fsm);
 }
 
 pub fn handle_update_transition_system(In(action): In<UpdateTransition>, mut ctx: FsmContext) {
     ctx.provide_mut(&action.fsm, |fsm| {
         let _ = fsm.update_transition(action.transition_id, action.new_transition);
     });
-
-    // ctx.generate_indices(&action.fsm);
 }
 
 pub fn handle_create_state_system(In(action): In<CreateState>, mut ctx: FsmContext) {
     ctx.provide_mut(&action.fsm, |fsm| {
         fsm.add_state(action.state);
     });
-
-    // ctx.generate_indices(&action.fsm);
 }
 
 pub fn handle_create_transition_system(In(action): In<CreateTransition>, mut ctx: FsmContext) {
     ctx.provide_mut(&action.fsm, |fsm| {
         let _ = fsm.add_transition_from_ui(action.transition);
     });
-
-    // ctx.generate_indices(&action.fsm);
 }
 
 pub fn handle_remove_state_system(In(action): In<RemoveState>, mut ctx: FsmContext) {
     ctx.provide_mut(&action.fsm, |fsm| {
         let _ = fsm.delete_state(action.state_id);
     });
-
-    // ctx.generate_indices(&action.fsm);
 }
 
 pub fn handle_remove_transition_system(In(action): In<RemoveTransition>, mut ctx: FsmContext) {
     ctx.provide_mut(&action.fsm, |fsm| {
         let _ = fsm.delete_transition(action.transition_id);
     });
-
-    // ctx.generate_indices(&action.fsm);
-}
-
-pub fn handle_generate_indices_system(In(action): In<GenerateIndices>, mut ctx: FsmContext) {
-    // ctx.generate_indices(action.fsm);
 }
 
 #[derive(SystemParam)]
@@ -180,20 +160,6 @@ impl FsmContext<'_> {
 
         f(fsm)
     }
-
-    // pub fn generate_indices(&mut self, fsm_id: impl Into<AssetId<StateMachine>>) {
-    //     let fsm_id = fsm_id.into();
-
-    //     let Some(fsm) = self.fsm_assets.get(fsm_id) else {
-    //         return;
-    //     };
-
-    //     let indices = make_fsm_indices(fsm);
-
-    //     if let Ok(indices) = indices {
-    //         self.fsm_indices.indices.insert(fsm_id, indices);
-    //     }
-    // }
 }
 
 /// Just a helper for using with the reflect based editor

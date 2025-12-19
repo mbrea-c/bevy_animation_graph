@@ -9,7 +9,7 @@ use bevy_animation_graph::{
         animation_graph::AnimationGraph,
         animation_node::AnimationNode,
         context::{graph_context::GraphState, graph_context_arena::GraphContextId},
-        state_machine::high_level::{State, StateMachine, Transition},
+        state_machine::high_level::{DirectTransition, State, StateMachine},
     },
 };
 use bevy_inspector_egui::reflect_inspector::InspectorUi;
@@ -23,8 +23,8 @@ use crate::ui::{
         graph::{EditNode, GraphAction, RenameNode, UpdateDefaultData, UpdateGraphSpec},
     },
     generic_widgets::{
-        data_value::DataValueWidget, graph_input_pin::GraphInputPinWidget, hashmap::HashMapWidget,
-        io_spec::IoSpecWidget,
+        data_value::DataValueWidget, fsm::state::StateWidget, graph_input_pin::GraphInputPinWidget,
+        hashmap::HashMapWidget, io_spec::IoSpecWidget,
     },
     native_windows::{EditorWindowContext, NativeEditorWindowExtension},
     node_editors::{ReflectEditable, reflect_editor::ReflectNodeEditor},
@@ -156,18 +156,22 @@ fn state_inspector(
     with_assets_all(world, [active_state.handle.id()], |world, [fsm]| {
         let state = fsm.states.get(&active_state.state)?;
 
-        using_inspector_env(world, |mut env| {
-            let mut copy = state.clone();
-            let changed = env.ui_for_reflect(&mut copy, ui);
-            if changed {
-                ctx.editor_actions
-                    .push(EditorAction::Fsm(FsmAction::UpdateState(UpdateState {
-                        fsm: active_state.handle.clone(),
-                        state_id: active_state.state.clone(),
-                        new_state: copy,
-                    })));
-            }
-        });
+        let buffer_id = ui.id().with("state buffer").with(active_state.state);
+        let buffer = ctx.buffers.get_mut_or_insert_with_condition(
+            buffer_id,
+            |v: &State| v.id != active_state.state,
+            || state.clone(),
+        );
+
+        let r = ui.add(StateWidget::new_salted(buffer, world, "state widget"));
+        if r.changed() {
+            ctx.editor_actions
+                .push(EditorAction::Fsm(FsmAction::UpdateState(UpdateState {
+                    fsm: active_state.handle.clone(),
+                    state_id: active_state.state.clone(),
+                    new_state: buffer.clone(),
+                })));
+        }
 
         Some(())
     })
@@ -347,13 +351,13 @@ fn add_transition_ui(
     ui: &mut egui::Ui,
     env: &mut InspectorUi,
     ctx: &mut EditorWindowContext,
-) -> Option<Transition> {
+) -> Option<DirectTransition> {
     ui.push_id("fsm add transition", |ui| {
         ui.separator();
         ui.label("Transition creation");
         let buffer = ctx
             .buffers
-            .get_mut_or_insert_with(ui.id(), Transition::default);
+            .get_mut_or_insert_with(ui.id(), DirectTransition::default);
         env.ui_for_reflect_with_options(buffer, ui, egui::Id::new("Transition creation"), &());
         if ui.button("Create transition").clicked() {
             Some(buffer.clone())

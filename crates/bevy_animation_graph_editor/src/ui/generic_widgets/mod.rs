@@ -8,6 +8,7 @@ pub mod bone_mask;
 pub mod data_spec_widget;
 pub mod data_value;
 pub mod entity_path;
+pub mod fsm;
 pub mod graph_input_pin;
 pub mod hashmap;
 pub mod io_spec;

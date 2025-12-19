@@ -2,7 +2,7 @@ use bevy::{
     asset::Handle,
     ecs::{component::Component, entity::Entity, event::Event, world::World},
 };
-use bevy_animation_graph::core::state_machine::high_level::{StateMachine, TransitionId};
+use bevy_animation_graph::core::state_machine::high_level::{DirectTransitionId, StateMachine};
 
 use crate::ui::state_management::global::{
     RegisterStateComponent, SetOrInsertEvent, observe_set_or_insert_event,
@@ -11,7 +11,7 @@ use crate::ui::state_management::global::{
 #[derive(Debug, Component, Default, Clone)]
 pub struct ActiveFsmTransition {
     pub handle: Handle<StateMachine>,
-    pub transition: TransitionId,
+    pub transition: DirectTransitionId,
 }
 
 impl RegisterStateComponent for ActiveFsmTransition {

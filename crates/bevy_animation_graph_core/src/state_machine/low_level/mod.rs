@@ -28,24 +28,19 @@ use crate::{
 pub enum LowLevelTransitionId {
     Start(high_level::TransitionId),
     End(high_level::TransitionId),
+    Immediate(high_level::TransitionId),
 }
 
 #[derive(Reflect, Debug, Clone, PartialEq, Eq, Hash)]
 pub enum LowLevelStateId {
     HlState(high_level::StateId),
-    DirectTransition(high_level::TransitionId),
-    GlobalTransition(
-        /// source
-        high_level::StateId,
-        /// target (state with global transition enabled)
-        high_level::StateId,
-    ),
+    HlTransition(high_level::TransitionId),
 }
 
 #[derive(Reflect, Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum LowLevelTransitionType {
     Direct,
-    Global,
+    State,
     Fallback,
 }
 
@@ -60,13 +55,13 @@ impl Ord for LowLevelTransitionType {
         use LowLevelTransitionType::*;
         match (self, other) {
             (Direct, Direct) => Ordering::Equal,
-            (Direct, Global) => Ordering::Less,
+            (Direct, State) => Ordering::Less,
             (Direct, Fallback) => Ordering::Less,
-            (Global, Direct) => Ordering::Greater,
-            (Global, Global) => Ordering::Equal,
-            (Global, Fallback) => Ordering::Less,
+            (State, Direct) => Ordering::Greater,
+            (State, State) => Ordering::Equal,
+            (State, Fallback) => Ordering::Less,
             (Fallback, Direct) => Ordering::Greater,
-            (Fallback, Global) => Ordering::Greater,
+            (Fallback, State) => Ordering::Greater,
             (Fallback, Fallback) => Ordering::Equal,
         }
     }
@@ -87,11 +82,11 @@ pub struct FSMState {
 }
 
 #[derive(Reflect, Debug, Clone)]
-pub struct TransitionData {
+pub struct LlTransitionData {
     pub source: high_level::StateId,
     pub target: high_level::StateId,
     pub hl_transition_id: high_level::TransitionId,
-    pub duration: f32,
+    pub timed: Option<f32>,
 }
 
 /// Specification of a state node in the low-level FSM
@@ -99,7 +94,7 @@ pub struct TransitionData {
 pub struct LowLevelState {
     pub id: LowLevelStateId,
     pub graph: Handle<AnimationGraph>,
-    pub hl_transition: Option<TransitionData>,
+    pub hl_transition: Option<LlTransitionData>,
 }
 
 /// Specification of a transition in the low-level FSM
@@ -262,16 +257,19 @@ impl LowLevelStateMachine {
         let mut io_overrides = IoOverrides::default();
 
         let elapsed_time = time - fsm_state.state_entered_time;
-        let percent_through_duration = state
-            .hl_transition
-            .as_ref()
-            .map(|t| elapsed_time / t.duration)
-            .unwrap_or(0.);
 
-        io_overrides.data.insert(
-            FsmBuiltinPin::PercentThroughDuration.into(),
-            percent_through_duration.into(),
-        );
+        io_overrides
+            .data
+            .insert(FsmBuiltinPin::TimeElapsed.into(), elapsed_time.into());
+
+        if let Some(duration) = state.hl_transition.as_ref().and_then(|t| t.timed)
+            && duration > 0.
+        {
+            io_overrides.data.insert(
+                FsmBuiltinPin::PercentThroughDuration.into(),
+                (elapsed_time / duration).into(),
+            );
+        }
 
         let sub_io_env = LayeredIoEnv(
             Cow::<IoOverrides>::Owned(io_overrides),

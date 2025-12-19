@@ -12,8 +12,8 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use super::low_level::{
-    LowLevelState, LowLevelStateId, LowLevelStateMachine, LowLevelTransition, LowLevelTransitionId,
-    LowLevelTransitionType,
+    self, LowLevelState, LowLevelStateId, LowLevelStateMachine, LowLevelTransition,
+    LowLevelTransitionId, LowLevelTransitionType,
 };
 use crate::{
     animation_graph::AnimationGraph, context::spec_context::NodeSpec, errors::GraphValidationError,
@@ -29,7 +29,30 @@ pub struct StateId(#[uuid] pub(crate) Uuid);
 #[derive(
     UuidWrapper, Clone, Copy, Debug, Reflect, PartialEq, Eq, PartialOrd, Ord, Hash, Default,
 )]
-pub struct TransitionId(#[uuid] pub(crate) Uuid);
+pub struct DirectTransitionId(#[uuid] pub(crate) Uuid);
+
+/// It's convenient to have a way to refer to a given transition in a state machine, of any kind,
+/// uniquely.
+#[derive(
+    Clone,
+    Copy,
+    Debug,
+    Reflect,
+    PartialEq,
+    Eq,
+    PartialOrd,
+    Ord,
+    Hash,
+    Default,
+    Serialize,
+    Deserialize,
+)]
+pub enum TransitionId {
+    Direct(DirectTransitionId),
+    State(StateId),
+    #[default]
+    Fallback,
+}
 
 /// Specification of a state node in the low-level FSM
 #[derive(Reflect, Debug, Clone, Default)]
@@ -37,31 +60,31 @@ pub struct State {
     pub id: StateId,
     pub label: String,
     pub graph: Handle<AnimationGraph>,
+    pub state_transition: Option<TransitionData>,
 }
 
 #[derive(Reflect, Debug, Clone, Default)]
-pub struct Transition {
-    pub id: TransitionId,
-    pub variant: TransitionVariant,
-    pub duration: f32,
-    pub graph: Handle<AnimationGraph>,
+pub struct DirectTransition {
+    pub id: DirectTransitionId,
+    pub source: StateId,
+    pub target: StateId,
+    pub data: TransitionData,
 }
 
-#[derive(Reflect, Debug, Clone, Serialize, Deserialize)]
-pub enum TransitionVariant {
-    // From state A to state B
-    Direct { source: StateId, target: StateId },
-    // From any state to state B
-    State { target: StateId },
+#[derive(Reflect, Debug, Clone, Default)]
+pub struct TransitionData {
+    pub kind: TransitionKind,
 }
 
-impl Default for TransitionVariant {
-    fn default() -> Self {
-        Self::Direct {
-            source: Default::default(),
-            target: Default::default(),
-        }
-    }
+#[derive(Reflect, Debug, Clone, Default)]
+pub enum TransitionKind {
+    #[default]
+    Immediate,
+    Graph {
+        graph: Handle<AnimationGraph>,
+        /// If set, will automatically end the transition after the given time has elapsed
+        timed: Option<f32>,
+    },
 }
 
 /// Stateful data associated with an FSM node
@@ -70,12 +93,8 @@ impl Default for TransitionVariant {
 pub struct StateMachine {
     pub start_state: StateId,
 
-    #[reflect(ignore)]
     pub states: HashMap<StateId, State>,
-    #[reflect(ignore)]
-    pub transitions: HashMap<TransitionId, Transition>,
-
-    #[reflect(ignore)]
+    pub transitions: HashMap<DirectTransitionId, DirectTransition>,
     pub node_spec: NodeSpec,
 
     #[reflect(ignore)]
@@ -91,30 +110,20 @@ impl StateMachine {
         self.states.insert(state.id.clone(), state);
     }
 
-    pub fn add_transition_unchecked(&mut self, transition: Transition) {
+    pub fn add_transition_unchecked(&mut self, transition: DirectTransition) {
         self.transitions.insert(transition.id.clone(), transition);
     }
 
-    // TODO: REMOVE THIS AND UPDATE `add_transition`
     pub fn add_transition_from_ui(
         &mut self,
-        transition: Transition,
+        transition: DirectTransition,
     ) -> Result<(), GraphValidationError> {
-        match &transition.variant {
-            TransitionVariant::Direct { source, target } => {
-                if !self.states.contains_key(source) || !self.states.contains_key(target) {
-                    return Err(GraphValidationError::UnknownError(
-                        "Transition connects states that don't exist!".into(),
-                    ));
-                }
-            }
-            TransitionVariant::State { target } => {
-                if !self.states.contains_key(target) {
-                    return Err(GraphValidationError::UnknownError(
-                        "Transition connects states that don't exist!".into(),
-                    ));
-                }
-            }
+        if !self.states.contains_key(&transition.source)
+            || !self.states.contains_key(&transition.target)
+        {
+            return Err(GraphValidationError::UnknownError(
+                "Transition connects states that don't exist!".into(),
+            ));
         }
 
         self.add_transition_unchecked(transition);
@@ -164,12 +173,8 @@ impl StateMachine {
             ));
         }
 
-        self.transitions.retain(|_, v| match &v.variant {
-            TransitionVariant::Direct { source, target } => {
-                *source != state_name && *target != state_name
-            }
-            TransitionVariant::State { target } => *target != state_name,
-        });
+        self.transitions
+            .retain(|_, v| v.source != state_name && v.target != state_name);
 
         self.states.remove(&state_name);
         self.update_low_level_fsm();
@@ -179,8 +184,8 @@ impl StateMachine {
 
     pub fn update_transition(
         &mut self,
-        old_transition_name: TransitionId,
-        new_transition: Transition,
+        old_transition_name: DirectTransitionId,
+        new_transition: DirectTransition,
     ) -> Result<(), GraphValidationError> {
         if !self.transitions.contains_key(&old_transition_name) {
             return Err(GraphValidationError::UnknownError(
@@ -193,21 +198,12 @@ impl StateMachine {
             ));
         }
 
-        match &new_transition.variant {
-            TransitionVariant::Direct { source, target } => {
-                if !self.states.contains_key(source) || !self.states.contains_key(target) {
-                    return Err(GraphValidationError::UnknownError(
-                        "Transition connects states that don't exist!".into(),
-                    ));
-                }
-            }
-            TransitionVariant::State { target } => {
-                if !self.states.contains_key(target) {
-                    return Err(GraphValidationError::UnknownError(
-                        "Transition connects states that don't exist!".into(),
-                    ));
-                }
-            }
+        if !self.states.contains_key(&new_transition.source)
+            || !self.states.contains_key(&new_transition.target)
+        {
+            return Err(GraphValidationError::UnknownError(
+                "Transition connects states that don't exist!".into(),
+            ));
         }
 
         self.transitions
@@ -219,7 +215,7 @@ impl StateMachine {
 
     pub fn delete_transition(
         &mut self,
-        transition_name: TransitionId,
+        transition_name: DirectTransitionId,
     ) -> Result<(), GraphValidationError> {
         if !self.transitions.contains_key(&transition_name) {
             return Err(GraphValidationError::UnknownError(
@@ -240,79 +236,102 @@ impl StateMachine {
         llfsm.node_spec = self.node_spec.clone();
 
         for state in self.states.values() {
-            llfsm.add_state(super::low_level::LowLevelState {
+            llfsm.add_state(low_level::LowLevelState {
                 id: LowLevelStateId::HlState(state.id.clone()),
                 graph: state.graph.clone(),
                 hl_transition: None,
             });
+            if let Some(state_transition) = &state.state_transition {
+                let transition_id = TransitionId::State(state.id);
+                for source_state in self.states.values() {
+                    if source_state.id != state.id {
+                        match &state_transition.kind {
+                            TransitionKind::Immediate => {
+                                llfsm.add_transition(LowLevelTransition {
+                                    id: LowLevelTransitionId::Immediate(transition_id),
+                                    source: LowLevelStateId::HlState(source_state.id),
+                                    target: LowLevelStateId::HlState(state.id),
+                                    transition_type: LowLevelTransitionType::State,
+                                    hl_source: source_state.id,
+                                    hl_target: state.id,
+                                });
+                            }
+                            TransitionKind::Graph { graph, timed } => {
+                                llfsm.add_state(LowLevelState {
+                                    id: LowLevelStateId::HlTransition(transition_id),
+                                    graph: graph.clone(),
+                                    hl_transition: Some(low_level::LlTransitionData {
+                                        source: source_state.id,
+                                        target: state.id,
+                                        hl_transition_id: transition_id,
+                                        timed: *timed,
+                                    }),
+                                });
+                                llfsm.add_transition(LowLevelTransition {
+                                    id: LowLevelTransitionId::Start(transition_id),
+                                    source: LowLevelStateId::HlState(source_state.id),
+                                    target: LowLevelStateId::HlTransition(transition_id),
+                                    transition_type: LowLevelTransitionType::State,
+                                    hl_source: source_state.id,
+                                    hl_target: state.id,
+                                });
+                                llfsm.add_transition(LowLevelTransition {
+                                    id: LowLevelTransitionId::End(transition_id),
+                                    source: LowLevelStateId::HlTransition(transition_id),
+                                    target: LowLevelStateId::HlState(state.id),
+                                    transition_type: LowLevelTransitionType::State,
+                                    hl_source: source_state.id,
+                                    hl_target: state.id,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         for transition in self.transitions.values() {
-            match &transition.variant {
-                TransitionVariant::Direct { source, target } => {
+            let transition_id = TransitionId::Direct(transition.id);
+            match &transition.data.kind {
+                TransitionKind::Immediate => {
+                    llfsm.add_transition(LowLevelTransition {
+                        id: LowLevelTransitionId::Immediate(transition_id),
+                        source: LowLevelStateId::HlState(transition.source),
+                        target: LowLevelStateId::HlTransition(transition_id),
+                        transition_type: LowLevelTransitionType::Direct,
+                        hl_source: transition.source,
+                        hl_target: transition.target,
+                    });
+                }
+                TransitionKind::Graph { graph, timed } => {
                     llfsm.add_state(LowLevelState {
-                        id: LowLevelStateId::DirectTransition(transition.id),
-                        graph: transition.graph.clone(),
-                        hl_transition: Some(super::low_level::TransitionData {
-                            source: *source,
-                            target: *target,
-                            hl_transition_id: transition.id.clone(),
-                            duration: transition.duration,
+                        id: LowLevelStateId::HlTransition(transition_id),
+                        graph: graph.clone(),
+                        hl_transition: Some(low_level::LlTransitionData {
+                            source: transition.source,
+                            target: transition.target,
+                            hl_transition_id: transition_id,
+                            timed: *timed,
                         }),
                     });
 
                     llfsm.add_transition(LowLevelTransition {
-                        id: LowLevelTransitionId::Start(transition.id),
-                        source: LowLevelStateId::HlState(*source),
-                        target: LowLevelStateId::DirectTransition(transition.id),
+                        id: LowLevelTransitionId::Start(transition_id),
+                        source: LowLevelStateId::HlState(transition.source),
+                        target: LowLevelStateId::HlTransition(transition_id),
                         transition_type: LowLevelTransitionType::Direct,
-                        hl_source: *source,
-                        hl_target: *target,
+                        hl_source: transition.source,
+                        hl_target: transition.target,
                     });
 
                     llfsm.add_transition(LowLevelTransition {
-                        id: LowLevelTransitionId::End(transition.id),
-                        source: LowLevelStateId::DirectTransition(transition.id),
-                        target: LowLevelStateId::HlState(*target),
+                        id: LowLevelTransitionId::End(transition_id),
+                        source: LowLevelStateId::HlTransition(transition_id),
+                        target: LowLevelStateId::HlState(transition.target),
                         transition_type: LowLevelTransitionType::Direct,
-                        hl_source: *source,
-                        hl_target: *target,
+                        hl_source: transition.source,
+                        hl_target: transition.target,
                     });
-                }
-                TransitionVariant::State { target } => {
-                    for source_state in self.states.values() {
-                        if source_state.id != *target {
-                            llfsm.add_state(LowLevelState {
-                                id: LowLevelStateId::GlobalTransition(source_state.id, *target),
-                                graph: transition.graph.clone(),
-                                hl_transition: Some(super::low_level::TransitionData {
-                                    source: source_state.id,
-                                    target: *target,
-                                    hl_transition_id: transition.id,
-                                    duration: transition.duration,
-                                }),
-                            });
-                            llfsm.add_transition(LowLevelTransition {
-                                id: LowLevelTransitionId::Start(transition.id),
-                                source: LowLevelStateId::HlState(source_state.id),
-                                target: LowLevelStateId::GlobalTransition(source_state.id, *target),
-                                transition_type: LowLevelTransitionType::Global,
-                                hl_source: source_state.id,
-                                hl_target: *target,
-                            });
-                            llfsm.add_transition(LowLevelTransition {
-                                id: LowLevelTransitionId::End(transition.id),
-                                source: LowLevelStateId::GlobalTransition(
-                                    source_state.id.clone(),
-                                    *target,
-                                ),
-                                target: LowLevelStateId::HlState(*target),
-                                transition_type: LowLevelTransitionType::Global,
-                                hl_source: source_state.id,
-                                hl_target: *target,
-                            });
-                        }
-                    }
                 }
             }
         }
