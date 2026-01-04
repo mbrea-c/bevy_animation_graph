@@ -58,8 +58,8 @@ impl AssetLoader for AnimationGraphLoader {
         graph.io_spec = serial.io_spec;
 
         // Set default data values
-        for (param_name, param_value) in serial.default_data {
-            graph.set_default_data(param_name, param_value.clone());
+        for (param_key, param_value) in serial.default_data {
+            graph.set_default_data(param_key, param_value.clone());
         }
 
         // Set up edges

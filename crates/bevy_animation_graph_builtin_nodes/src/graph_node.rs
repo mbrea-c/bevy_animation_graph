@@ -99,10 +99,10 @@ impl NodeLike for GraphNode {
             .ok_or(GraphError::GraphAssetMissing)?;
         for input in graph.io_spec.sorted_inputs() {
             match input {
-                NodeInput::Time(GraphInputPin::Default(pin_id)) => {
+                NodeInput::Time(GraphInputPin::Passthrough(pin_id)) => {
                     ctx.add_input_time(pin_id);
                 }
-                NodeInput::Data(GraphInputPin::Default(pin_id), data_spec) => {
+                NodeInput::Data(GraphInputPin::Passthrough(pin_id), data_spec) => {
                     ctx.add_input_data(pin_id, data_spec);
                 }
                 _ => {}
@@ -139,7 +139,7 @@ impl<'a> GraphIoEnv for NestedGraphIoEnv<'a> {
         ctx: GraphContext,
     ) -> Result<DataValue, GraphError> {
         match pin_id {
-            GraphInputPin::Default(pin_id) => self
+            GraphInputPin::Passthrough(pin_id) => self
                 .parent_ctx
                 .clone()
                 .with_state_key(ctx.state_key)
@@ -154,7 +154,7 @@ impl<'a> GraphIoEnv for NestedGraphIoEnv<'a> {
         ctx: GraphContext,
     ) -> Result<DurationData, GraphError> {
         match pin_id {
-            GraphInputPin::Default(pin_id) => self
+            GraphInputPin::Passthrough(pin_id) => self
                 .parent_ctx
                 .clone()
                 .with_state_key(ctx.state_key)

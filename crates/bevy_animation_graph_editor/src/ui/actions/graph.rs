@@ -11,7 +11,7 @@ use bevy::{
     platform::collections::HashMap,
 };
 use bevy_animation_graph::core::{
-    animation_graph::{AnimationGraph, Edge, NodeId, PinId, SourcePin, TargetPin},
+    animation_graph::{AnimationGraph, Edge, GraphInputPin, NodeId, SourcePin, TargetPin},
     animation_node::{AnimationNode, dyn_node_like::DynNodeLike},
     context::spec_context::{GraphSpec, SpecResources},
     edge_data::DataValue,
@@ -91,7 +91,7 @@ pub struct RemoveNode {
 
 pub struct UpdateDefaultData {
     pub graph: Handle<AnimationGraph>,
-    pub input_data: HashMap<PinId, DataValue>,
+    pub input_data: HashMap<GraphInputPin, DataValue>,
 }
 
 pub struct UpdateGraphSpec {

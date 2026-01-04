@@ -133,14 +133,14 @@ impl AnimationGraphPlayer {
     pub fn set_input_data(&mut self, input_pin: impl Into<PinId>, value: DataValue) {
         self.io_overrides
             .data
-            .insert(GraphInputPin::Default(input_pin.into()), value);
+            .insert(GraphInputPin::Passthrough(input_pin.into()), value);
     }
 
     /// Return an input parameter for the animation graph
     pub fn get_input_data(&self, input_pin: PinId) -> Option<DataValue> {
         self.io_overrides
             .data
-            .get(&GraphInputPin::Default(input_pin))
+            .get(&GraphInputPin::Passthrough(input_pin))
             .cloned()
     }
 
@@ -173,7 +173,7 @@ impl AnimationGraphPlayer {
     pub(crate) fn update(&mut self, system_resources: &SystemResources, root_entity: Entity) {
         self.outputs.clear();
         self.io_overrides.data.insert(
-            GraphInputPin::Default(Self::USER_EVENTS.into()),
+            GraphInputPin::Passthrough(Self::USER_EVENTS.into()),
             std::mem::take(&mut self.queued_events).into(),
         );
 

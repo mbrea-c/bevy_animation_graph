@@ -26,7 +26,7 @@ impl<'a> egui::Widget for GraphInputPinWidget<'a> {
             let mut response = PickerWidget::new_salted("pin type picker")
                 .ui(ui, format!("{:?}", selected), |ui| {
                     for val in [
-                        GraphInputPinType::Default,
+                        GraphInputPinType::Passthrough,
                         GraphInputPinType::FsmSource,
                         GraphInputPinType::FsmTarget,
                         GraphInputPinType::FsmBuiltin,
@@ -45,7 +45,7 @@ impl<'a> egui::Widget for GraphInputPinWidget<'a> {
             }
 
             match self.graph_input_pin {
-                GraphInputPin::Default(pin_id)
+                GraphInputPin::Passthrough(pin_id)
                 | GraphInputPin::FromFsmSource(pin_id)
                 | GraphInputPin::FromFsmTarget(pin_id) => {
                     response |= ui.text_edit_singleline(pin_id);
@@ -77,7 +77,7 @@ impl<'a> egui::Widget for GraphInputPinWidget<'a> {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum GraphInputPinType {
-    Default,
+    Passthrough,
     FsmSource,
     FsmTarget,
     FsmBuiltin,
@@ -86,7 +86,7 @@ enum GraphInputPinType {
 impl From<&GraphInputPin> for GraphInputPinType {
     fn from(value: &GraphInputPin) -> Self {
         match value {
-            GraphInputPin::Default(_) => Self::Default,
+            GraphInputPin::Passthrough(_) => Self::Passthrough,
             GraphInputPin::FromFsmSource(_) => Self::FsmSource,
             GraphInputPin::FromFsmTarget(_) => Self::FsmTarget,
             GraphInputPin::FsmBuiltin(_) => Self::FsmBuiltin,
@@ -103,7 +103,7 @@ impl ToString for GraphInputPinType {
 impl GraphInputPinType {
     pub fn initialize(&self) -> GraphInputPin {
         match self {
-            GraphInputPinType::Default => GraphInputPin::Default(PinId::default()),
+            GraphInputPinType::Passthrough => GraphInputPin::Passthrough(PinId::default()),
             GraphInputPinType::FsmSource => GraphInputPin::FromFsmSource(PinId::default()),
             GraphInputPinType::FsmTarget => GraphInputPin::FromFsmTarget(PinId::default()),
             GraphInputPinType::FsmBuiltin => GraphInputPin::FsmBuiltin(FsmBuiltinPin::default()),

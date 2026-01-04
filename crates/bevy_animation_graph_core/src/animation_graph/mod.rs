@@ -35,9 +35,9 @@ pub struct NodeId(#[uuid] pub(crate) Uuid);
 
 pub type PinId = String;
 
-#[derive(Reflect, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Reflect, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum GraphInputPin {
-    Default(PinId),
+    Passthrough(PinId),
     /// Specifies that input with provided [`PinId`] should be retrieved from a source state's
     /// animation graph, e.g. if in an FSM transition.
     FromFsmSource(PinId),
@@ -49,7 +49,7 @@ pub enum GraphInputPin {
 
 impl Default for GraphInputPin {
     fn default() -> Self {
-        Self::Default("".into())
+        Self::Passthrough("".into())
     }
 }
 
@@ -237,7 +237,7 @@ pub struct AnimationGraph {
     /// Defines inputs and outputs for this graph.
     pub io_spec: GraphSpec,
 
-    pub default_data: HashMap<PinId, DataValue>,
+    pub default_data: HashMap<GraphInputPin, DataValue>,
 
     #[reflect(ignore)]
     pub editor_metadata: EditorMetadata,
@@ -304,13 +304,12 @@ impl AnimationGraph {
     // --- Setting graph inputs and outputs
     // ----------------------------------------------------------------------------------------
     /// Sets the value for a default parameter, registering it if it wasn't yet done
-    pub fn set_default_data(&mut self, input: PinId, value: DataValue) {
-        let input = input.into();
+    pub fn set_default_data(&mut self, input: GraphInputPin, value: DataValue) {
         self.default_data.insert(input, value);
     }
 
     /// Get the default value of an input parameter, if it exists
-    pub fn get_default_data(&mut self, input: &PinId) -> Option<DataValue> {
+    pub fn get_default_data(&mut self, input: &GraphInputPin) -> Option<DataValue> {
         self.default_data.get(input).cloned()
     }
 
@@ -723,14 +722,13 @@ impl AnimationGraph {
             SourcePin::InputData(graph_input_pin) => ctx
                 .io
                 .get_data_back(graph_input_pin.clone(), ctx.clone())
-                .or_else(|e| {
-                    if let GraphInputPin::Default(pin_id) = graph_input_pin {
-                        self.default_data.get(pin_id).cloned().ok_or_else(|| {
+                .or_else(|_| {
+                    self.default_data
+                        .get(graph_input_pin)
+                        .cloned()
+                        .ok_or_else(|| {
                             GraphError::OutputMissing(SourcePin::InputData(graph_input_pin.clone()))
                         })
-                    } else {
-                        Err(e)
-                    }
                 })?,
             SourcePin::NodeTime(_) => {
                 // TODO: Make a graph error

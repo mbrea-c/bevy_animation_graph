@@ -14,7 +14,7 @@ use bevy::{platform::collections::HashMap, reflect::TypeRegistry};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    animation_graph::{AnimationGraph, EditorMetadata, PinId, SourcePin, TargetPin},
+    animation_graph::{AnimationGraph, EditorMetadata, GraphInputPin, SourcePin, TargetPin},
     animation_node::serial::{AnimationNodeDeserializer, AnimationNodeSerializer},
     context::spec_context::GraphSpec,
     edge_data::DataValue,
@@ -27,7 +27,7 @@ pub struct AnimationGraphDeserializer {
 
     pub io_spec: GraphSpec,
 
-    pub default_data: HashMap<PinId, DataValue>,
+    pub default_data: HashMap<GraphInputPin, DataValue>,
 
     pub editor_metadata: EditorMetadata,
 }
@@ -39,7 +39,7 @@ pub struct AnimationGraphSerializer<'a> {
 
     pub io_spec: GraphSpec,
 
-    pub default_data: HashMap<PinId, DataValue>,
+    pub default_data: HashMap<GraphInputPin, DataValue>,
 
     pub editor_metadata: EditorMetadata,
 }

@@ -262,8 +262,13 @@ fn graph_inspector(
         let default_values_response =
             HashMapWidget::new_salted(default_values_buffer, "graph_default_values").ui(
                 ui,
-                |ui, key| ui.text_edit_singleline(key),
-                |ui, key| ui.label(key),
+                |ui, key| {
+                    ui.add(GraphInputPinWidget::new_salted(
+                        key,
+                        "default value graph input pin",
+                    ))
+                },
+                |ui, key| ui.label(format!("{:?}", key)),
                 |ui, value| ui.add(DataValueWidget::new_salted(value, "default value widget")),
             );
 

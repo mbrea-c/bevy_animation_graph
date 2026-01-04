@@ -720,7 +720,7 @@ impl GraphReprSpec {
 
 fn graph_input_pin_string(input: &GraphInputPin) -> String {
     match input {
-        GraphInputPin::Default(pin_id) => pin_id.clone(),
+        GraphInputPin::Passthrough(pin_id) => pin_id.clone(),
         GraphInputPin::FromFsmSource(pin_id) => format!("src: {}", pin_id),
         GraphInputPin::FromFsmTarget(pin_id) => format!("tgt: {}", pin_id),
         GraphInputPin::FsmBuiltin(fsm_builtin_pin) => format!("fsm: {:?}", fsm_builtin_pin),

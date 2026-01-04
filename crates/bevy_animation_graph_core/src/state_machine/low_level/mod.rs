@@ -67,7 +67,9 @@ impl Ord for LowLevelTransitionType {
     }
 }
 
-#[derive(Reflect, Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+#[derive(
+    Reflect, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Default,
+)]
 pub enum FsmBuiltinPin {
     #[default]
     PercentThroughDuration,
@@ -497,7 +499,7 @@ impl<'a> GraphIoEnv for FsmIoEnv<'a> {
         ctx: GraphContext,
     ) -> Result<DataValue, GraphError> {
         match graph_input_pin {
-            GraphInputPin::Default(pin_id) => self.parent_graph_data_back(&pin_id, &ctx),
+            GraphInputPin::Passthrough(pin_id) => self.parent_graph_data_back(&pin_id, &ctx),
             GraphInputPin::FromFsmSource(pin_id) => self
                 .state_machine
                 .get_source(&self.current_state)
@@ -517,7 +519,7 @@ impl<'a> GraphIoEnv for FsmIoEnv<'a> {
         ctx: GraphContext,
     ) -> Result<DurationData, GraphError> {
         match graph_input_pin {
-            GraphInputPin::Default(pin_id) => self.parent_graph_duration_back(&pin_id, &ctx),
+            GraphInputPin::Passthrough(pin_id) => self.parent_graph_duration_back(&pin_id, &ctx),
             GraphInputPin::FromFsmSource(_) => self
                 .state_machine
                 .get_source(&self.current_state)
