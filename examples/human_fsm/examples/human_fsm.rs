@@ -5,8 +5,12 @@ use std::f32::consts::PI;
 
 use bevy::{light::CascadeShadowConfigBuilder, prelude::*};
 use bevy_animation_graph::{
-    core::{animated_scene::AnimatedSceneInstance, edge_data::AnimationEvent},
-    prelude::*,
+    AnimationGraphPlugin,
+    core::{
+        animated_scene::{AnimatedSceneHandle, AnimatedSceneInstance},
+        animation_graph_player::AnimationGraphPlayer,
+        edge_data::events::AnimationEvent,
+    },
 };
 
 fn main() {
@@ -130,5 +134,5 @@ fn keyboard_animation_control(
         params.direction = Vec3::Z;
     }
 
-    player.set_input_parameter("target_speed", params.speed.into());
+    player.set_input_data("target_speed", params.speed.into());
 }
