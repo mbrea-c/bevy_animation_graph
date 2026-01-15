@@ -1,0 +1,22 @@
+(
+    nodes: [],
+    edges_inverted: {},
+    io_spec: (
+        input_times: [],
+        input_data: {},
+        output_time: false,
+        output_data: {},
+        input_order: {},
+        output_order: {},
+    ),
+    default_data: {},
+    editor_metadata: (
+        node_positions: {},
+        input_position: (0.0, 0.0),
+        output_position: (0.0, 0.0),
+        input_param_order: {},
+        input_time_order: {},
+        output_data_order: {},
+        output_pose_order: {},
+    ),
+)

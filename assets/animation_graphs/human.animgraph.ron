@@ -1,0 +1,182 @@
+(
+    nodes: [
+        (
+            id: "d8636d07-9e62-4413-b3bb-761fc8461ae0",
+            name: "run clip 2",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::ClipNode": (
+                    clip: "animations/human_run.anim.ron",
+                    override_duration: None,
+                    override_interpolation: None,
+                ),
+            },
+            should_debug: false,
+        ),
+        (
+            id: "8a3262a8-d9b0-4c23-bb1f-a170b3bf4e6a",
+            name: "blend",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::BlendNode": (
+                    mode: LinearInterpolate,
+                    sync_mode: Absolute,
+                ),
+            },
+            should_debug: true,
+        ),
+        (
+            id: "3451ae58-0ff4-49d1-a67a-8249e1dd2d88",
+            name: "walk clip 2",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::ClipNode": (
+                    clip: "animations/human_walk.anim.ron",
+                    override_duration: None,
+                    override_interpolation: None,
+                ),
+            },
+            should_debug: false,
+        ),
+        (
+            id: "098be6e7-c3f5-4caf-b36d-3f9e069aee6e",
+            name: "flip run",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::FlipLRNode": (
+                    config: (
+                        name_mapper: Pattern((
+                            key_1: "L",
+                            key_2: "R",
+                            pattern_before: "^.*",
+                            pattern_after: "$",
+                        )),
+                        mode: MirrorX,
+                    ),
+                ),
+            },
+            should_debug: false,
+        ),
+        (
+            id: "8064d95a-b8f5-4304-8534-31ead6304068",
+            name: "run clip 1",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::ClipNode": (
+                    clip: "animations/human_run.anim.ron",
+                    override_duration: None,
+                    override_interpolation: None,
+                ),
+            },
+            should_debug: false,
+        ),
+        (
+            id: "ae04ba83-7b08-4eaf-a552-09b7fa10e54d",
+            name: "chain walk",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::ChainNode": (
+                    interpolation_period: 0.5,
+                ),
+            },
+            should_debug: false,
+        ),
+        (
+            id: "0ddfb1a3-4248-4be3-ace3-98e20841ccf3",
+            name: "walk clip 1",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::ClipNode": (
+                    clip: "animations/human_walk.anim.ron",
+                    override_duration: None,
+                    override_interpolation: None,
+                ),
+            },
+            should_debug: false,
+        ),
+        (
+            id: "13af4c51-1ab5-4f1d-a9d3-fc53c50e4a38",
+            name: "flip walk",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::FlipLRNode": (
+                    config: (
+                        name_mapper: Pattern((
+                            key_1: "L",
+                            key_2: "R",
+                            pattern_before: "^.*",
+                            pattern_after: "$",
+                        )),
+                        mode: MirrorX,
+                    ),
+                ),
+            },
+            should_debug: false,
+        ),
+        (
+            id: "b3d1c53f-1a14-4a75-b2c7-62bbe8eef87c",
+            name: "chain run",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::ChainNode": (
+                    interpolation_period: 0.5,
+                ),
+            },
+            should_debug: false,
+        ),
+    ],
+    edges_inverted: {
+        NodeTime("098be6e7-c3f5-4caf-b36d-3f9e069aee6e", "time"): NodeTime("d8636d07-9e62-4413-b3bb-761fc8461ae0"),
+        NodeTime("b3d1c53f-1a14-4a75-b2c7-62bbe8eef87c", "time_a"): NodeTime("8064d95a-b8f5-4304-8534-31ead6304068"),
+        NodeData("b3d1c53f-1a14-4a75-b2c7-62bbe8eef87c", "pose_b"): NodeData("098be6e7-c3f5-4caf-b36d-3f9e069aee6e", "pose"),
+        NodeData("ae04ba83-7b08-4eaf-a552-09b7fa10e54d", "pose_b"): NodeData("13af4c51-1ab5-4f1d-a9d3-fc53c50e4a38", "pose"),
+        NodeTime("ae04ba83-7b08-4eaf-a552-09b7fa10e54d", "time_b"): NodeTime("13af4c51-1ab5-4f1d-a9d3-fc53c50e4a38"),
+        NodeTime("ae04ba83-7b08-4eaf-a552-09b7fa10e54d", "time_a"): NodeTime("0ddfb1a3-4248-4be3-ace3-98e20841ccf3"),
+        NodeData("b3d1c53f-1a14-4a75-b2c7-62bbe8eef87c", "pose_a"): NodeData("8064d95a-b8f5-4304-8534-31ead6304068", "pose"),
+        NodeData("ae04ba83-7b08-4eaf-a552-09b7fa10e54d", "pose_a"): NodeData("0ddfb1a3-4248-4be3-ace3-98e20841ccf3", "pose"),
+        NodeData("8a3262a8-d9b0-4c23-bb1f-a170b3bf4e6a", "pose_a"): NodeData("ae04ba83-7b08-4eaf-a552-09b7fa10e54d", "pose"),
+        NodeData("8a3262a8-d9b0-4c23-bb1f-a170b3bf4e6a", "pose_b"): NodeData("b3d1c53f-1a14-4a75-b2c7-62bbe8eef87c", "pose"),
+        NodeTime("8a3262a8-d9b0-4c23-bb1f-a170b3bf4e6a", "time_b"): NodeTime("b3d1c53f-1a14-4a75-b2c7-62bbe8eef87c"),
+        NodeData("098be6e7-c3f5-4caf-b36d-3f9e069aee6e", "pose"): NodeData("d8636d07-9e62-4413-b3bb-761fc8461ae0", "pose"),
+        NodeTime("8a3262a8-d9b0-4c23-bb1f-a170b3bf4e6a", "time_a"): NodeTime("ae04ba83-7b08-4eaf-a552-09b7fa10e54d"),
+        NodeTime("13af4c51-1ab5-4f1d-a9d3-fc53c50e4a38", "time"): NodeTime("3451ae58-0ff4-49d1-a67a-8249e1dd2d88"),
+        NodeTime("b3d1c53f-1a14-4a75-b2c7-62bbe8eef87c", "time_b"): NodeTime("098be6e7-c3f5-4caf-b36d-3f9e069aee6e"),
+        NodeData("13af4c51-1ab5-4f1d-a9d3-fc53c50e4a38", "pose"): NodeData("3451ae58-0ff4-49d1-a67a-8249e1dd2d88", "pose"),
+    },
+    io_spec: (
+        input_times: [],
+        input_data: {
+            Passthrough("target_direction"): Vec3,
+            Passthrough("Z"): Vec3,
+            Passthrough("target_speed"): F32,
+            Passthrough("1"): F32,
+            Passthrough("rotation_bone"): EntityPath,
+        },
+        output_time: true,
+        output_data: {
+            "pose": Pose,
+        },
+        input_order: {
+            Data(Passthrough("rotation_bone")): 2,
+            Data(Passthrough("target_speed")): 3,
+            Data(Passthrough("target_direction")): 0,
+            Data(Passthrough("Z")): 1,
+            Data(Passthrough("1")): 4,
+        },
+        output_order: {
+            Time: 0,
+            Data("pose"): 1,
+        },
+    ),
+    default_data: {},
+    editor_metadata: (
+        node_positions: {
+            "d8636d07-9e62-4413-b3bb-761fc8461ae0": (-219.4336, 221.21094),
+            "8a3262a8-d9b0-4c23-bb1f-a170b3bf4e6a": (253.11328, -26.597656),
+            "3451ae58-0ff4-49d1-a67a-8249e1dd2d88": (-222.125, -128.01953),
+            "098be6e7-c3f5-4caf-b36d-3f9e069aee6e": (-81.71484, 232.32422),
+            "8064d95a-b8f5-4304-8534-31ead6304068": (-221.14453, 51.78125),
+            "ae04ba83-7b08-4eaf-a552-09b7fa10e54d": (66.21484, -236.3125),
+            "0ddfb1a3-4248-4be3-ace3-98e20841ccf3": (-224.76953, -292.48047),
+            "13af4c51-1ab5-4f1d-a9d3-fc53c50e4a38": (-85.3125, -113.33594),
+            "b3d1c53f-1a14-4a75-b2c7-62bbe8eef87c": (74.6875, 134.13672),
+        },
+        input_position: (-196.46875, 520.84766),
+        output_position: (675.91016, 603.58594),
+        input_param_order: {},
+        input_time_order: {},
+        output_data_order: {},
+        output_pose_order: {},
+    ),
+)

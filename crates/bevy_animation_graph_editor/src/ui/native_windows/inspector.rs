@@ -97,9 +97,11 @@ fn node_inspector(
 
             let node_buffer_id = ui.id().with("graph node buffer");
 
-            let node_buffer = ctx
-                .buffers
-                .get_mut_or_insert_with(node_buffer_id, || node.clone());
+            let node_buffer = ctx.buffers.get_mut_or_insert_with_condition(
+                node_buffer_id,
+                |n: &AnimationNode| n.id != active_node.node,
+                || node.clone(),
+            );
 
             let response = ui.text_edit_singleline(&mut node_buffer.name);
             let mut clear = false;
