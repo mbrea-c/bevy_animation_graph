@@ -49,7 +49,7 @@ if [ -z "$CUSTOM_DIR" ]; then
     (cd bevy_animation_graph_new && cargo build --release)
 fi
 
-(cd bevy_animation_graph_old && cargo run -p bevy_animation_graph_editor -- -a "$OLD_ASSETS_DIR") &
-(cd bevy_animation_graph_new && cargo run -p bevy_animation_graph_editor -- -a "$CURRENT_ASSETS_DIR") &
+(cd bevy_animation_graph_old && cargo run --release -p bevy_animation_graph_editor -- -a "$OLD_ASSETS_DIR") &
+(cd bevy_animation_graph_new && cargo run --release -p bevy_animation_graph_editor -- -a "$CURRENT_ASSETS_DIR") &
 
 wait
