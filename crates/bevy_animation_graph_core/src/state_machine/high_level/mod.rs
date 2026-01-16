@@ -98,7 +98,7 @@ pub struct StateMachine {
     pub node_spec: NodeSpec,
 
     #[reflect(ignore)]
-    pub extra: FsmEditorMetadata,
+    pub editor_metadata: FsmEditorMetadata,
 
     #[reflect(ignore)]
     low_level_fsm: LowLevelStateMachine,
@@ -106,7 +106,7 @@ pub struct StateMachine {
 
 impl StateMachine {
     pub fn add_state(&mut self, state: State) {
-        self.extra.state_added(state.id);
+        self.editor_metadata.state_added(state.id);
         self.states.insert(state.id.clone(), state);
     }
 

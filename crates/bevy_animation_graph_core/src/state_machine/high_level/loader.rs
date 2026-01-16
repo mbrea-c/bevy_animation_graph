@@ -21,7 +21,7 @@ impl AssetLoader for StateMachineLoader {
         reader.read_to_end(&mut bytes).await?;
         let serial: StateMachineSerial = ron::de::from_bytes(&bytes)?;
         let mut fsm = StateMachine {
-            extra: serial.extra,
+            editor_metadata: serial.editor_metadata,
             node_spec: serial.node_spec,
             ..Default::default()
         };

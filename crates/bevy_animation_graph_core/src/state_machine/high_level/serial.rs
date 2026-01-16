@@ -175,7 +175,7 @@ pub struct StateMachineSerial {
     #[serde(default)]
     pub node_spec: NodeSpec,
     #[serde(default)]
-    pub extra: FsmEditorMetadata,
+    pub editor_metadata: FsmEditorMetadata,
 }
 
 impl TryFrom<&StateMachine> for StateMachineSerial {
@@ -195,7 +195,7 @@ impl TryFrom<&StateMachine> for StateMachineSerial {
             states,
             transitions,
             start_state: value.start_state.clone(),
-            extra: value.extra.clone(),
+            editor_metadata: value.editor_metadata.clone(),
             node_spec: value.node_spec.clone(),
         })
     }

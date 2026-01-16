@@ -261,7 +261,7 @@ impl FsmEditorWindowState {
 
         for state in fsm.states.values() {
             let pos = fsm
-                .extra
+                .editor_metadata
                 .states
                 .get(&state.id)
                 .copied()
@@ -281,13 +281,13 @@ impl FsmEditorWindowState {
                     continue;
                 };
                 let source_pos = fsm
-                    .extra
+                    .editor_metadata
                     .states
                     .get(&transition.source)
                     .copied()
                     .unwrap_or(Vec2::ZERO);
                 let target_pos = fsm
-                    .extra
+                    .editor_metadata
                     .states
                     .get(&transition.target)
                     .copied()
@@ -314,7 +314,7 @@ impl FsmEditorWindowState {
     ) {
         for state in fsm.states.values() {
             let pos = fsm
-                .extra
+                .editor_metadata
                 .states
                 .get(&state.id)
                 .copied()
@@ -363,13 +363,13 @@ impl FsmEditorWindowState {
                     continue;
                 };
                 let source_pos = fsm
-                    .extra
+                    .editor_metadata
                     .states
                     .get(&transition.source)
                     .copied()
                     .unwrap_or(Vec2::ZERO);
                 let target_pos = fsm
-                    .extra
+                    .editor_metadata
                     .states
                     .get(&transition.target)
                     .copied()

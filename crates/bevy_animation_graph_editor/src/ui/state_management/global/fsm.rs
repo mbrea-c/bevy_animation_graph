@@ -76,7 +76,7 @@ impl MoveStates {
     pub fn observe(move_states: On<MoveStates>, mut ctx: FsmContext) {
         ctx.provide_mut(&move_states.fsm, |fsm| {
             for state_id in &move_states.states {
-                fsm.extra.move_state(*state_id, move_states.delta);
+                fsm.editor_metadata.move_state(*state_id, move_states.delta);
             }
         });
     }
