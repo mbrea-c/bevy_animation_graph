@@ -51,7 +51,7 @@
         input_order: {},
         output_order: {},
     ),
-    extra: (
+    editor_metadata: (
         states: {
             "505e7d48-bbdb-440b-ad3f-5886d332b291": (300.0, 230.0),
             "68a39708-7e0a-47b9-a943-995cb158c092": (143.0117, -15.183594),
