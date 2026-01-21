@@ -3,7 +3,7 @@ use bevy::ecs::{
     entity::Entity,
     event::{EntityEvent, Event},
     query::With,
-    system::command::trigger,
+    system::{Commands, command::trigger},
     world::{CommandQueue, World},
 };
 use egui_dock::egui;
@@ -16,6 +16,7 @@ use crate::ui::{
 };
 
 pub mod animation_clip_preview;
+pub mod asset_creation;
 pub mod debugger;
 pub mod event_sender;
 pub mod event_track_editor;
@@ -89,6 +90,21 @@ impl<'a> EditorWindowContext<'a> {
         self.command_queue.push(trigger(event));
     }
 
+    #[allow(dead_code)]
+    pub fn trigger_window<'b>(
+        &mut self,
+        mut event: impl Event<Trigger<'b>: Default> + EntityEvent,
+    ) {
+        *event.event_target_mut() = self.window_entity;
+        self.command_queue.push(trigger(event));
+    }
+
+    #[allow(dead_code)]
+    pub fn trigger_view<'b>(&mut self, mut event: impl Event<Trigger<'b>: Default> + EntityEvent) {
+        *event.event_target_mut() = self.view_entity;
+        self.command_queue.push(trigger(event));
+    }
+
     pub fn get_window_state<'w, T: Component>(&self, world: &'w World) -> Option<&'w T> {
         let mut query = world.try_query_filtered::<&T, With<WindowState>>()?;
         query.get(world, self.window_entity).ok()
@@ -156,6 +172,28 @@ impl NativeEditorWindow {
         };
 
         ext.init(world, &ctx);
+
+        Self {
+            window: Box::new(ext),
+            entity,
+        }
+    }
+
+    pub fn create_cmd<T: NativeEditorWindowExtension + Copy>(
+        commands: &mut Commands,
+        view_entity: Entity,
+        ext: T,
+    ) -> Self {
+        let entity = commands.spawn((WindowState,)).id();
+
+        let ctx = EditorWindowRegistrationContext {
+            window: entity,
+            view: view_entity,
+        };
+
+        commands.queue(move |world: &mut World| {
+            ext.init(world, &ctx);
+        });
 
         Self {
             window: Box::new(ext),

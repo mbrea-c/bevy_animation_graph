@@ -49,6 +49,7 @@ impl Plugin for AnimationGraphEditorPlugin {
                         .unwrap()
                         .to_string_lossy()
                         .into(),
+                    watch_for_changes_override: Some(true),
                     ..Default::default()
                 }),
             )

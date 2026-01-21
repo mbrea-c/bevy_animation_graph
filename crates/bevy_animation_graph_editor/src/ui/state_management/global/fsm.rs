@@ -5,9 +5,10 @@ use bevy::{
         entity::Entity,
         event::Event,
         observer::On,
-        system::{ResMut, SystemParam},
+        system::{Commands, Res, ResMut, SystemParam},
         world::World,
     },
+    log::error,
     math::Vec2,
     platform::collections::HashSet,
 };
@@ -15,10 +16,21 @@ use bevy_animation_graph::core::{
     context::spec_context::NodeSpec,
     state_machine::high_level::{
         DirectTransition, DirectTransitionId, State, StateId, StateMachine,
+        serial::StateMachineSerial,
     },
 };
 
-use crate::ui::{actions::saving::DirtyAssets, state_management::global::RegisterStateComponent};
+use crate::{
+    Cli,
+    scanner::RescanAssets,
+    ui::{
+        UiState,
+        actions::saving::DirtyAssets,
+        core::EguiWindow,
+        native_windows::{NativeEditorWindow, asset_creation::fsm::CreateFsmWindow},
+        state_management::global::RegisterStateComponent,
+    },
+};
 
 #[derive(Debug, Component, Default, Clone)]
 pub struct FsmManager;
@@ -34,6 +46,8 @@ impl RegisterStateComponent for FsmManager {
         world.add_observer(DeleteDirectTransitions::observe);
         world.add_observer(UpdateState::observe);
         world.add_observer(UpdateDirectTransition::observe);
+        world.add_observer(CreateFsm::observe);
+        world.add_observer(RequestCreateFsm::observe);
     }
 }
 
@@ -172,6 +186,58 @@ impl UpdateDirectTransition {
                 update_transition.transition.clone(),
             );
         });
+    }
+}
+
+#[derive(Event)]
+pub struct CreateFsm {
+    pub virtual_path: String,
+    pub fsm: StateMachine,
+}
+
+impl CreateFsm {
+    pub fn observe(event: On<CreateFsm>, cli: Res<Cli>, mut commands: Commands) {
+        let graph_serial = match StateMachineSerial::try_from(&event.fsm) {
+            Ok(serial) => serial,
+            Err(err) => {
+                error!(
+                    "Failed to create FSM with virtual path {:?}: {}",
+                    event.virtual_path, err
+                );
+                return;
+            }
+        };
+        let mut final_path = cli.asset_source.clone();
+        final_path.push(&event.virtual_path);
+        bevy::log::info!("Creating FSM at {:?}", final_path);
+        ron::Options::default()
+            .to_io_writer_pretty(
+                std::fs::File::create(final_path).unwrap(),
+                &graph_serial,
+                ron::ser::PrettyConfig::default(),
+            )
+            .unwrap();
+
+        commands.trigger(RescanAssets);
+    }
+}
+
+/// Will open a "create FSM" window popup
+#[derive(Event)]
+pub struct RequestCreateFsm;
+
+impl RequestCreateFsm {
+    pub fn observe(_: On<RequestCreateFsm>, mut commands: Commands, ui_state: ResMut<UiState>) {
+        if let Some(active_view_idx) = ui_state.active_view {
+            let view = &ui_state.views[active_view_idx];
+            let win = NativeEditorWindow::create_cmd(&mut commands, view.entity, CreateFsmWindow);
+
+            let UiState { views, .. } = ui_state.into_inner();
+
+            views[active_view_idx]
+                .dock_state
+                .add_window(vec![EguiWindow::EntityWindow(win)]);
+        }
     }
 }
 

@@ -1,0 +1,16 @@
+(
+    states: [],
+    transitions: [],
+    start_state: "00000000-0000-0000-0000-000000000000",
+    node_spec: (
+        input_times: [],
+        input_data: {},
+        output_time: false,
+        output_data: {},
+        input_order: {},
+        output_order: {},
+    ),
+    editor_metadata: (
+        states: {},
+    ),
+)

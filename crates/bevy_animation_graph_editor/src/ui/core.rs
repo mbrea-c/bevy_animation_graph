@@ -1,7 +1,11 @@
 use core::any::TypeId;
 use std::any::Any;
 
-use bevy::{ecs::world::CommandQueue, platform::collections::HashMap, prelude::*};
+use bevy::{
+    ecs::{system::command::trigger, world::CommandQueue},
+    platform::collections::HashMap,
+    prelude::*,
+};
 use bevy_egui::{EguiContext, PrimaryEguiContext};
 use bevy_inspector_egui::{bevy_egui, egui};
 use egui_dock::egui::Color32;
@@ -16,7 +20,7 @@ use crate::ui::{
     ecs_utils::get_view_state,
     native_views::{EditorView, EditorViewContext, EditorViewUiState},
     native_windows::{NativeEditorWindow, NativeEditorWindowExtension},
-    state_management::global::GlobalState,
+    state_management::global::{GlobalState, fsm::RequestCreateFsm},
 };
 
 #[derive(Component)]
@@ -104,6 +108,8 @@ impl UiState {
         queue: &mut PendingActions,
         command_queue: &mut CommandQueue,
     ) {
+        menu_bar(ctx, command_queue);
+
         if let Some(view_action) = view_selection_bar(world, ctx, self) {
             queue.actions.push(EditorAction::View(view_action));
         }
@@ -130,6 +136,25 @@ impl UiState {
 
         self.notifications.show(ctx);
     }
+}
+
+fn menu_bar(ctx: &mut egui::Context, command_queue: &mut CommandQueue) {
+    egui::TopBottomPanel::top("Application menu bar").show(ctx, |ui| {
+        egui::MenuBar::new().ui(ui, |ui| {
+            ui.menu_button("Assets", |ui| {
+                ui.menu_button("Create", |ui| {
+                    if ui.button("Skeleton").clicked() {}
+                    if ui.button("Animation").clicked() {}
+                    if ui.button("Animated scene").clicked() {}
+                    if ui.button("State machine").clicked() {
+                        command_queue.push(trigger(RequestCreateFsm));
+                    }
+                    if ui.button("Ragdoll").clicked() {}
+                    if ui.button("Ragdoll bone map").clicked() {}
+                });
+            })
+        });
+    });
 }
 
 pub struct LegacyEditorWindowContext<'a> {

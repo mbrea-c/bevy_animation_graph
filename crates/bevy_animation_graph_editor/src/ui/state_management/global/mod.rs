@@ -16,7 +16,7 @@ use bevy::ecs::{
     component::{Component, Mutable},
     entity::Entity,
     error::BevyError,
-    event::Event,
+    event::{EntityEvent, Event},
     observer::On,
     query::With,
     system::{Commands, Query, Single},
@@ -49,6 +49,8 @@ impl GlobalState {
         ActiveSkeleton::register(world, entity);
         InspectorSelection::register(world, entity);
         FsmManager::register(world, entity);
+
+        world.add_observer(CloseWindow::observe);
     }
 }
 
@@ -104,4 +106,21 @@ pub fn observe_clear_global_state<T: Component>(
     let global_state_entity = global_state.single()?;
     commands.entity(global_state_entity).remove::<T>();
     Ok(())
+}
+
+// Windowing stuff (unintuitively this needs to be registered globally so it does belong here)
+
+#[derive(EntityEvent)]
+pub struct CloseWindow(pub Entity);
+
+impl Default for CloseWindow {
+    fn default() -> Self {
+        Self(Entity::PLACEHOLDER)
+    }
+}
+
+impl CloseWindow {
+    pub fn observe(event: On<CloseWindow>, mut commands: Commands) {
+        commands.entity(event.0).despawn();
+    }
 }
