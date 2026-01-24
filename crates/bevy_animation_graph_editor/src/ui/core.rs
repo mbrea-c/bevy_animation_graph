@@ -22,6 +22,7 @@ use crate::ui::{
     native_windows::{NativeEditorWindow, NativeEditorWindowExtension},
     state_management::global::{
         GlobalState, clip::RequestCreateClip, fsm::RequestCreateFsm, ragdoll::RequestCreateRagdoll,
+        ragdoll_bone_map::RequestCreateRagdollBoneMap, skeleton::RequestCreateSkeleton,
     },
 };
 
@@ -145,18 +146,23 @@ fn menu_bar(ctx: &mut egui::Context, command_queue: &mut CommandQueue) {
         egui::MenuBar::new().ui(ui, |ui| {
             ui.menu_button("Assets", |ui| {
                 ui.menu_button("Create", |ui| {
-                    if ui.button("Skeleton").clicked() {}
+                    if ui.button("Skeleton").clicked() {
+                        command_queue.push(trigger(RequestCreateSkeleton));
+                    }
                     if ui.button("Animation").clicked() {
                         command_queue.push(trigger(RequestCreateClip));
                     }
-                    if ui.button("Animated scene").clicked() {}
                     if ui.button("State machine").clicked() {
                         command_queue.push(trigger(RequestCreateFsm));
                     }
                     if ui.button("Ragdoll").clicked() {
                         command_queue.push(trigger(RequestCreateRagdoll));
                     }
-                    if ui.button("Ragdoll bone map").clicked() {}
+                    if ui.button("Ragdoll bone map").clicked() {
+                        command_queue.push(trigger(RequestCreateRagdollBoneMap));
+                    }
+                    ui.disable();
+                    if ui.button("Animated scene").clicked() {}
                 });
             })
         });

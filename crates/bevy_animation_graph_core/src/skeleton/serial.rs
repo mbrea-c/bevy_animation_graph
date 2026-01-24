@@ -1,4 +1,4 @@
-use bevy::reflect::Reflect;
+use bevy::{asset::AssetPath, reflect::Reflect};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -9,5 +9,8 @@ pub struct SkeletonSerial {
 
 #[derive(Clone, Reflect, Serialize, Deserialize)]
 pub enum SkeletonSource {
-    Gltf { source: String, label: String },
+    Gltf {
+        source: AssetPath<'static>,
+        label: String,
+    },
 }
