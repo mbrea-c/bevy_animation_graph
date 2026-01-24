@@ -298,7 +298,7 @@ impl<'a, I: Clone + std::fmt::Debug + Eq + std::hash::Hash + Default + Send + Sy
         input: &mut PinId,
         spec: &mut DataSpec,
     ) -> egui::Response {
-        let mut response = ui.text_edit_singleline(input);
+        let mut response = ui.add(egui::TextEdit::singleline(input).desired_width(100.));
         response |= ui.add(DataSpecWidget::new_salted(spec, "data spec widget"));
 
         response
