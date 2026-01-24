@@ -12,7 +12,7 @@ use bevy::{
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Asset, Debug, Clone, Reflect, Serialize, Deserialize)]
+#[derive(Asset, Debug, Clone, Default, Reflect, Serialize, Deserialize)]
 pub struct Ragdoll {
     pub bodies: HashMap<BodyId, Body>,
     pub colliders: HashMap<ColliderId, Collider>,

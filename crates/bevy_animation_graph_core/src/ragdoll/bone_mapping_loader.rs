@@ -53,7 +53,7 @@ impl AssetLoader for RagdollBoneMapLoader {
     }
 }
 
-#[derive(Debug, Clone, Reflect, Serialize, Deserialize)]
+#[derive(Debug, Clone, Reflect, Default, Serialize, Deserialize)]
 pub struct RagdollBoneMapSerial {
     pub bones_from_bodies: HashMap<EntityPath, BoneMapping>,
     pub bodies_from_bones: HashMap<BodyId, BodyMapping>,

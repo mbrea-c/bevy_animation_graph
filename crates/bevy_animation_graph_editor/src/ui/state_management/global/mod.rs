@@ -10,6 +10,8 @@ pub mod active_skeleton;
 pub mod clip;
 pub mod fsm;
 pub mod inspector_selection;
+pub mod ragdoll;
+pub mod ragdoll_bone_map;
 
 use std::marker::PhantomData;
 
@@ -30,6 +32,7 @@ use crate::ui::state_management::global::{
     active_graph_context::ActiveContexts, active_graph_node::ActiveGraphNode,
     active_ragdoll::ActiveRagdoll, active_scene::ActiveScene, active_skeleton::ActiveSkeleton,
     clip::ClipManager, fsm::FsmManager, inspector_selection::InspectorSelection,
+    ragdoll::RagdollManager, ragdoll_bone_map::RagdollBoneMapManager,
 };
 
 #[derive(Component)]
@@ -51,6 +54,8 @@ impl GlobalState {
         InspectorSelection::register(world, entity);
         FsmManager::register(world, entity);
         ClipManager::register(world, entity);
+        RagdollManager::register(world, entity);
+        RagdollBoneMapManager::register(world, entity);
 
         world.add_observer(CloseWindow::observe);
     }
