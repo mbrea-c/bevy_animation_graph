@@ -21,7 +21,8 @@ use crate::ui::{
     native_views::{EditorView, EditorViewContext, EditorViewUiState},
     native_windows::{NativeEditorWindow, NativeEditorWindowExtension},
     state_management::global::{
-        GlobalState, clip::RequestCreateClip, fsm::RequestCreateFsm, ragdoll::RequestCreateRagdoll,
+        GlobalState, animation_graph::RequestCreateAnimationGraph, clip::RequestCreateClip,
+        fsm::RequestCreateFsm, ragdoll::RequestCreateRagdoll,
         ragdoll_bone_map::RequestCreateRagdollBoneMap, skeleton::RequestCreateSkeleton,
     },
 };
@@ -151,6 +152,9 @@ fn menu_bar(ctx: &mut egui::Context, command_queue: &mut CommandQueue) {
                     }
                     if ui.button("Animation").clicked() {
                         command_queue.push(trigger(RequestCreateClip));
+                    }
+                    if ui.button("Animation graph").clicked() {
+                        command_queue.push(trigger(RequestCreateAnimationGraph));
                     }
                     if ui.button("State machine").clicked() {
                         command_queue.push(trigger(RequestCreateFsm));
