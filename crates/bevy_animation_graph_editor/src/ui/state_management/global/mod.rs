@@ -7,6 +7,7 @@ pub mod active_graph_node;
 pub mod active_ragdoll;
 pub mod active_scene;
 pub mod active_skeleton;
+pub mod clip;
 pub mod fsm;
 pub mod inspector_selection;
 
@@ -28,7 +29,7 @@ use crate::ui::state_management::global::{
     active_fsm_transition::ActiveFsmTransition, active_graph::ActiveGraph,
     active_graph_context::ActiveContexts, active_graph_node::ActiveGraphNode,
     active_ragdoll::ActiveRagdoll, active_scene::ActiveScene, active_skeleton::ActiveSkeleton,
-    fsm::FsmManager, inspector_selection::InspectorSelection,
+    clip::ClipManager, fsm::FsmManager, inspector_selection::InspectorSelection,
 };
 
 #[derive(Component)]
@@ -49,6 +50,7 @@ impl GlobalState {
         ActiveSkeleton::register(world, entity);
         InspectorSelection::register(world, entity);
         FsmManager::register(world, entity);
+        ClipManager::register(world, entity);
 
         world.add_observer(CloseWindow::observe);
     }

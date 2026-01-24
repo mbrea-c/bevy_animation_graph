@@ -4,7 +4,10 @@ use std::{
 };
 
 use bevy::{
-    asset::UntypedAssetId, camera::RenderTarget, ecs::world::CommandQueue, prelude::*,
+    asset::{AssetPath, UntypedAssetId},
+    camera::RenderTarget,
+    ecs::world::CommandQueue,
+    prelude::*,
     render::render_resource::Extent3d,
 };
 use bevy_animation_graph::{
@@ -150,6 +153,13 @@ pub fn handle_path_server(handle: UntypedAssetId, asset_server: &AssetServer) ->
     asset_server
         .get_path(handle)
         .map_or("<asset without path>".into(), |p| p.path().to_owned())
+}
+
+pub fn asset_path(handle: UntypedAssetId, asset_server: &AssetServer) -> AssetPath<'static> {
+    asset_server.get_path(handle).map_or(
+        AssetPath::from_path(&PathBuf::from("<asset without path>")).clone_owned(),
+        |p| p.clone_owned(),
+    )
 }
 
 pub fn handle_path(handle: UntypedHandle) -> String {

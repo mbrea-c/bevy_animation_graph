@@ -20,7 +20,7 @@ use crate::ui::{
     ecs_utils::get_view_state,
     native_views::{EditorView, EditorViewContext, EditorViewUiState},
     native_windows::{NativeEditorWindow, NativeEditorWindowExtension},
-    state_management::global::{GlobalState, fsm::RequestCreateFsm},
+    state_management::global::{GlobalState, clip::RequestCreateClip, fsm::RequestCreateFsm},
 };
 
 #[derive(Component)]
@@ -144,7 +144,9 @@ fn menu_bar(ctx: &mut egui::Context, command_queue: &mut CommandQueue) {
             ui.menu_button("Assets", |ui| {
                 ui.menu_button("Create", |ui| {
                     if ui.button("Skeleton").clicked() {}
-                    if ui.button("Animation").clicked() {}
+                    if ui.button("Animation").clicked() {
+                        command_queue.push(trigger(RequestCreateClip));
+                    }
                     if ui.button("Animated scene").clicked() {}
                     if ui.button("State machine").clicked() {
                         command_queue.push(trigger(RequestCreateFsm));

@@ -48,6 +48,7 @@ impl<T: Asset> EguiInspectorExtension for AssetPickerInspector<T> {
         };
 
         let mut selected = value_id;
+
         egui::ComboBox::from_id_salt(id)
             .selected_text(if t_assets.contains(selected) {
                 asset_server

@@ -1,5 +1,5 @@
 use bevy::{
-    asset::{AssetLoader, LoadContext, io::Reader},
+    asset::{AssetLoader, AssetPath, LoadContext, io::Reader},
     gltf::Gltf,
     platform::collections::HashMap,
     reflect::Reflect,
@@ -12,17 +12,17 @@ use crate::{errors::AssetLoaderError, event_track::EventTrack};
 #[derive(Reflect, Serialize, Deserialize, Clone, Debug)]
 pub enum GraphClipSource {
     GltfNamed {
-        path: String,
+        path: AssetPath<'static>,
         animation_name: String,
     },
 }
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct GraphClipSerial {
-    source: GraphClipSource,
-    skeleton: String,
+    pub source: GraphClipSource,
+    pub skeleton: AssetPath<'static>,
     #[serde(default)]
-    event_tracks: HashMap<String, EventTrack>,
+    pub event_tracks: HashMap<String, EventTrack>,
 }
 
 #[derive(Default)]
@@ -105,10 +105,7 @@ impl TryFrom<&GraphClip> for GraphClipSerial {
 
         Ok(Self {
             source,
-            skeleton: value
-                .skeleton
-                .path()
-                .map_or(Err(()), |s| Ok(s.to_string()))?,
+            skeleton: value.skeleton.path().cloned().ok_or(())?,
             event_tracks: value.event_tracks.clone(),
         })
     }
