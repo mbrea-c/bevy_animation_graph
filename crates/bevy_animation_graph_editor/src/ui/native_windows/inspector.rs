@@ -1,6 +1,6 @@
 use bevy::{
     asset::Assets,
-    ecs::entity::Entity,
+    ecs::{entity::Entity, observer::On, system::Commands},
     prelude::{AppTypeRegistry, World},
 };
 use bevy_animation_graph::{
@@ -15,6 +15,7 @@ use bevy_animation_graph::{
 use egui::Widget;
 use egui_dock::egui;
 
+use super::EditorWindowRegistrationContext;
 use crate::ui::{
     actions::{
         EditorAction,
@@ -32,16 +33,19 @@ use crate::ui::{
     },
     native_windows::{EditorWindowContext, NativeEditorWindowExtension},
     node_editors::{ReflectEditable, reflect_editor::ReflectNodeEditor},
-    state_management::global::{
-        active_fsm::ActiveFsm,
-        active_fsm_state::ActiveFsmState,
-        active_fsm_transition::ActiveFsmTransition,
-        active_graph::ActiveGraph,
-        active_graph_context::{ActiveContexts, SetActiveContext},
-        active_graph_node::ActiveGraphNode,
-        fsm::{SetFsmNodeSpec, SetFsmStartState, UpdateDirectTransition, UpdateState},
-        get_global_state,
-        inspector_selection::InspectorSelection,
+    state_management::{
+        global::{
+            active_fsm::ActiveFsm,
+            active_fsm_state::ActiveFsmState,
+            active_fsm_transition::ActiveFsmTransition,
+            active_graph::ActiveGraph,
+            active_graph_context::{ActiveContexts, SetActiveContext},
+            active_graph_node::ActiveGraphNode,
+            fsm::{SetFsmNodeSpec, SetFsmStartState, UpdateDirectTransition, UpdateState},
+            get_global_state,
+            inspector_selection::{InspectorSelection, SetInspectorSelection},
+        },
+        window::buffers::ClearBuffers,
     },
     utils::{self, with_assets_all},
 };
@@ -50,6 +54,15 @@ use crate::ui::{
 pub struct InspectorWindow;
 
 impl NativeEditorWindowExtension for InspectorWindow {
+    fn init(&self, world: &mut World, ctx: &EditorWindowRegistrationContext) {
+        let window = ctx.window;
+        world.add_observer(
+            move |_: On<SetInspectorSelection>, mut commands: Commands| {
+                commands.trigger(ClearBuffers(window));
+            },
+        );
+    }
+
     fn ui(&self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
         let inspector_selection = get_global_state::<InspectorSelection>(world)
             .cloned()

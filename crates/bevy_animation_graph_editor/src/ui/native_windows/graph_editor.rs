@@ -2,7 +2,7 @@ use std::any::TypeId;
 
 use bevy::{
     asset::{AssetId, Assets, Handle},
-    ecs::reflect::AppTypeRegistry,
+    ecs::{observer::On, reflect::AppTypeRegistry, system::Commands},
     prelude::World,
     reflect::{TypeRegistry, prelude::ReflectDefault},
     utils::default,
@@ -29,12 +29,15 @@ use crate::{
         },
         generic_widgets::animation_node::AnimationNodeWidget,
         native_windows::{EditorWindowContext, NativeEditorWindowExtension},
-        state_management::global::{
-            active_graph::ActiveGraph,
-            active_graph_context::ActiveContexts,
-            active_graph_node::{ActiveGraphNode, SetActiveGraphNode},
-            get_global_state,
-            inspector_selection::{InspectorSelection, SetInspectorSelection},
+        state_management::{
+            global::{
+                active_graph::{ActiveGraph, SetActiveGraph},
+                active_graph_context::ActiveContexts,
+                active_graph_node::{ActiveGraphNode, SetActiveGraphNode},
+                get_global_state,
+                inspector_selection::{InspectorSelection, SetInspectorSelection},
+            },
+            window::buffers::ClearBuffers,
         },
         utils::{self, dummy_node, popup::CustomPopup},
     },
@@ -58,6 +61,13 @@ pub struct GraphEditBuffer {
 }
 
 impl NativeEditorWindowExtension for GraphEditorWindow {
+    fn init(&self, world: &mut World, ctx: &super::EditorWindowRegistrationContext) {
+        let window = ctx.window;
+        world.add_observer(move |_: On<SetActiveGraph>, mut commands: Commands| {
+            commands.trigger(ClearBuffers(window));
+        });
+    }
+
     fn ui(&self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
         let Some(active_graph) = get_global_state::<ActiveGraph>(world).cloned() else {
             ui.centered_and_justified(|ui| ui.label("Select a graph to edit!"));

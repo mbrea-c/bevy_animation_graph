@@ -1,6 +1,101 @@
 (
-    nodes: [],
-    edges_inverted: {},
+    nodes: [
+        (
+            id: "cf89215b-57f5-4495-b977-4e07fd6ef284",
+            name: "",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::SubF32": (),
+            },
+            should_debug: false,
+        ),
+        (
+            id: "82e508f7-e4d6-49c1-867d-8af6328763ea",
+            name: "",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::SubF32": (),
+            },
+            should_debug: false,
+        ),
+        (
+            id: "36ac78ef-ca35-4f62-9917-2b166dbc4a6c",
+            name: "",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::AddF32": (),
+            },
+            should_debug: false,
+        ),
+        (
+            id: "ccb16daf-ccb9-4857-a15e-fa73db9f7b10",
+            name: "",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::MulF32": (),
+            },
+            should_debug: false,
+        ),
+        (
+            id: "a8c025b9-a90c-4cc7-93bf-78e4899a4287",
+            name: "blend_range",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::SubF32": (),
+            },
+            should_debug: false,
+        ),
+        (
+            id: "372a50d9-a084-4dd8-b81f-66a849911f95",
+            name: "",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::DivF32": (),
+            },
+            should_debug: false,
+        ),
+        (
+            id: "6cd7bd3f-a58a-470a-b71e-a2547aaf9275",
+            name: "",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::ClampF32": (),
+            },
+            should_debug: false,
+        ),
+        (
+            id: "07f25d63-3b40-4c70-a03c-f461446c8673",
+            name: "",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::MulF32": (),
+            },
+            should_debug: false,
+        ),
+        (
+            id: "21e0d546-635d-4afd-9a0b-eb7ebff2072d",
+            name: "",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::DivF32": (),
+            },
+            should_debug: false,
+        ),
+    ],
+    edges_inverted: {
+        NodeData("a8c025b9-a90c-4cc7-93bf-78e4899a4287", "in_a"): InputData(Passthrough("bled_end")),
+        NodeData("07f25d63-3b40-4c70-a03c-f461446c8673", "in_b"): NodeData("82e508f7-e4d6-49c1-867d-8af6328763ea", "out"),
+        NodeData("cf89215b-57f5-4495-b977-4e07fd6ef284", "in_a"): InputData(Passthrough("speed")),
+        NodeData("6cd7bd3f-a58a-470a-b71e-a2547aaf9275", "in"): NodeData("21e0d546-635d-4afd-9a0b-eb7ebff2072d", "out"),
+        NodeData("82e508f7-e4d6-49c1-867d-8af6328763ea", "in_a"): InputData(Passthrough("1")),
+        NodeData("07f25d63-3b40-4c70-a03c-f461446c8673", "in_a"): NodeData("6cd7bd3f-a58a-470a-b71e-a2547aaf9275", "out"),
+        NodeData("372a50d9-a084-4dd8-b81f-66a849911f95", "in_b"): NodeData("36ac78ef-ca35-4f62-9917-2b166dbc4a6c", "out"),
+        NodeData("cf89215b-57f5-4495-b977-4e07fd6ef284", "in_b"): InputData(Passthrough("bend_start")),
+        NodeData("21e0d546-635d-4afd-9a0b-eb7ebff2072d", "in_a"): NodeData("cf89215b-57f5-4495-b977-4e07fd6ef284", "out"),
+        OutputData("blend_fac"): NodeData("6cd7bd3f-a58a-470a-b71e-a2547aaf9275", "out"),
+        NodeData("6cd7bd3f-a58a-470a-b71e-a2547aaf9275", "max"): InputData(Passthrough("1")),
+        NodeData("82e508f7-e4d6-49c1-867d-8af6328763ea", "in_b"): NodeData("6cd7bd3f-a58a-470a-b71e-a2547aaf9275", "out"),
+        NodeData("36ac78ef-ca35-4f62-9917-2b166dbc4a6c", "in_b"): NodeData("07f25d63-3b40-4c70-a03c-f461446c8673", "out"),
+        NodeData("36ac78ef-ca35-4f62-9917-2b166dbc4a6c", "in_a"): NodeData("ccb16daf-ccb9-4857-a15e-fa73db9f7b10", "out"),
+        NodeData("372a50d9-a084-4dd8-b81f-66a849911f95", "in_a"): InputData(Passthrough("speed")),
+        NodeData("6cd7bd3f-a58a-470a-b71e-a2547aaf9275", "min"): InputData(Passthrough("0")),
+        NodeData("a8c025b9-a90c-4cc7-93bf-78e4899a4287", "in_b"): InputData(Passthrough("bend_start")),
+        NodeData("ccb16daf-ccb9-4857-a15e-fa73db9f7b10", "in_b"): InputData(Passthrough("run_speed")),
+        NodeData("21e0d546-635d-4afd-9a0b-eb7ebff2072d", "in_b"): NodeData("a8c025b9-a90c-4cc7-93bf-78e4899a4287", "out"),
+        NodeData("ccb16daf-ccb9-4857-a15e-fa73db9f7b10", "in_a"): NodeData("6cd7bd3f-a58a-470a-b71e-a2547aaf9275", "out"),
+        OutputData("speed_fac"): NodeData("372a50d9-a084-4dd8-b81f-66a849911f95", "out"),
+    },
     io_spec: (
         input_times: [],
         input_data: {
@@ -13,17 +108,23 @@
             Passthrough("bled_end"): F32,
         },
         output_time: false,
-        output_data: {},
+        output_data: {
+            "blend_fac": F32,
+            "speed_fac": F32,
+        },
         input_order: {
-            Data(Passthrough("run_speed")): 4,
-            Data(Passthrough("speed")): 5,
+            Data(Passthrough("0")): 5,
+            Data(Passthrough("speed")): 4,
             Data(Passthrough("1")): 6,
             Data(Passthrough("bend_start")): 0,
-            Data(Passthrough("0")): 3,
+            Data(Passthrough("run_speed")): 3,
             Data(Passthrough("walk_speed")): 1,
             Data(Passthrough("bled_end")): 2,
         },
-        output_order: {},
+        output_order: {
+            Data("blend_fac"): 0,
+            Data("speed_fac"): 1,
+        },
     ),
     default_data: {
         Passthrough("walk_speed"): F32(0.7),
@@ -35,9 +136,19 @@
         Passthrough("speed"): F32(1.0),
     },
     editor_metadata: (
-        node_positions: {},
-        input_position: (0.0, 0.0),
-        output_position: (0.0, 0.0),
+        node_positions: {
+            "cf89215b-57f5-4495-b977-4e07fd6ef284": (219.79297, 115.64844),
+            "82e508f7-e4d6-49c1-867d-8af6328763ea": (256.8672, 495.78906),
+            "36ac78ef-ca35-4f62-9917-2b166dbc4a6c": (602.58984, 471.4922),
+            "ccb16daf-ccb9-4857-a15e-fa73db9f7b10": (442.96094, 411.61328),
+            "a8c025b9-a90c-4cc7-93bf-78e4899a4287": (220.71875, 268.1797),
+            "372a50d9-a084-4dd8-b81f-66a849911f95": (756.6914, 464.76563),
+            "6cd7bd3f-a58a-470a-b71e-a2547aaf9275": (532.8281, 177.50781),
+            "07f25d63-3b40-4c70-a03c-f461446c8673": (443.60547, 567.0156),
+            "21e0d546-635d-4afd-9a0b-eb7ebff2072d": (388.07813, 192.6875),
+        },
+        input_position: (13.703125, 260.0625),
+        output_position: (981.3906, 379.09375),
         input_param_order: {},
         input_time_order: {},
         output_data_order: {},

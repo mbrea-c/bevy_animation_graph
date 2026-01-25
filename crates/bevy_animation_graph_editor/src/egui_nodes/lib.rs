@@ -527,133 +527,138 @@ impl NodesContext {
 
 impl NodesContext {
     fn add_node(&mut self, node_spec: NodeSpec, ui: &mut egui::Ui) {
-        let node_state = if let Some(node) = self.nodes.get(&node_spec.id) {
-            let mut state = node.state.clone();
-            state.pin_indices.clear();
-            state
-        } else {
-            NodeState::default()
-        };
-        let mut node = Node {
-            spec: node_spec,
-            state: node_state,
-        };
-        let (color_style, layout_style) = self.settings.style.format_node(node.spec.args.clone());
-        node.state.color_style = color_style;
-        node.state.layout_style = layout_style;
-
-        node.state
-            .background_shape
-            .replace(ui.painter().add(egui::Shape::Noop));
-
-        let node_origin = node.spec.origin;
-        let node_size = node.state.size;
-        let title_space = node.state.layout_style.padding.y;
-
-        let response = ui.scope_builder(
-            egui::UiBuilder::default().max_rect(egui::Rect::from_min_size(
-                self.grid_space_to_screen_space(node_origin),
-                node_size,
-            )),
-            |ui| {
-                let mut title_info = None;
-                let titlebar_shape = ui.painter().add(egui::Shape::Noop);
-                let node_title = node.spec.name.clone();
-                let node_subtitle = node.spec.subtitle.clone();
-                let response = ui.allocate_ui(ui.available_size(), |ui| {
-                    let r1 = ui.label(node_title);
-                    let r2 = ui.separator();
-                    let r3 = ui.label(node_subtitle);
-
-                    r1.union(r2).union(r3)
-                });
-                let title_bar_content_rect = response.response.rect;
-                title_info.replace((titlebar_shape, title_bar_content_rect));
-                ui.add_space(title_space);
-                let outline_shape = ui.painter().add(egui::Shape::Noop);
-                egui::Grid::new(format!("node pins {}", node.spec.name))
-                    .min_col_width(ui.available_width() / 2.)
-                    .striped(true)
-                    .show(ui, |ui| {
-                        ui.vertical(|ui| {
-                            for pin_spec in node
-                                .spec
-                                .attributes
-                                .clone()
-                                .iter()
-                                .filter(|n| n.kind == PinType::Input)
-                            {
-                                self.add_pin(pin_spec.clone(), &mut node, ui);
-                            }
-                        });
-                        ui.vertical(|ui| {
-                            for pin_spec in node
-                                .spec
-                                .attributes
-                                .clone()
-                                .iter()
-                                .filter(|n| n.kind == PinType::Output)
-                            {
-                                self.add_pin(pin_spec.clone(), &mut node, ui);
-                            }
-                        });
-                        ui.end_row();
-                    });
-                egui::Frame::default()
-                    .outer_margin(egui::vec2(0.5, 0.5))
-                    .inner_margin(egui::vec2(1.5, 1.5))
-                    .corner_radius(3.0)
-                    .stroke(egui::Stroke::new(
-                        1.0,
-                        self.settings.style.colors[if node.spec.active {
-                            ColorStyle::NodeOutlineActive
-                        } else {
-                            ColorStyle::NodeOutline
-                        } as usize],
-                    ))
-                    .show(ui, |ui| {
-                        ui.label("Runtime data");
-                        if let (Some(time), Some(duration)) = (node.spec.time, node.spec.duration) {
-                            ui.label(format!("Time: {time:.2} / {duration:.2}"));
-                            ui.add(egui::ProgressBar::new(time / duration).desired_height(5.));
-                        } else if let Some(time) = node.spec.time {
-                            ui.label(format!("Time: {time:.2}"));
-                        } else {
-                            ui.label("Empty");
-                        }
-                    });
-
-                (title_info, outline_shape)
-            },
-        );
-        let (title_info, outline_shape) = response.inner;
-        if let Some((titlebar_shape, title_bar_content_rect)) = title_info {
-            node.state.titlebar_shape.replace(titlebar_shape);
-            node.state.title_bar_content_rect = title_bar_content_rect;
-        }
-        node.state.outline_shape.replace(outline_shape);
-        node.state.rect = response
-            .response
-            .rect
-            .expand2(node.state.layout_style.padding);
-
-        let rect = response.response.rect;
-        let hovered = rect.is_positive() && {
-            let pointer_pos = ui.ctx().input(|i| i.pointer.interact_pos());
-            if let Some(pointer_pos) = pointer_pos {
-                rect.contains(pointer_pos) //&& ui.ctx().layer_id_at(pointer_pos) == Some(layer_id)
+        ui.push_id(node_spec.id, |ui| {
+            let node_state = if let Some(node) = self.nodes.get(&node_spec.id) {
+                let mut state = node.state.clone();
+                state.pin_indices.clear();
+                state
             } else {
-                false
+                NodeState::default()
+            };
+            let mut node = Node {
+                spec: node_spec,
+                state: node_state,
+            };
+            let (color_style, layout_style) =
+                self.settings.style.format_node(node.spec.args.clone());
+            node.state.color_style = color_style;
+            node.state.layout_style = layout_style;
+
+            node.state
+                .background_shape
+                .replace(ui.painter().add(egui::Shape::Noop));
+
+            let node_origin = node.spec.origin;
+            let node_size = node.state.size;
+            let title_space = node.state.layout_style.padding.y;
+
+            let response = ui.scope_builder(
+                egui::UiBuilder::default().max_rect(egui::Rect::from_min_size(
+                    self.grid_space_to_screen_space(node_origin),
+                    node_size,
+                )),
+                |ui| {
+                    let mut title_info = None;
+                    let titlebar_shape = ui.painter().add(egui::Shape::Noop);
+                    let node_title = node.spec.name.clone();
+                    let node_subtitle = node.spec.subtitle.clone();
+                    let response = ui.allocate_ui(ui.available_size(), |ui| {
+                        let r1 = ui.label(node_title);
+                        let r2 = ui.separator();
+                        let r3 = ui.label(node_subtitle);
+
+                        r1.union(r2).union(r3)
+                    });
+                    let title_bar_content_rect = response.response.rect;
+                    title_info.replace((titlebar_shape, title_bar_content_rect));
+                    ui.add_space(title_space);
+                    let outline_shape = ui.painter().add(egui::Shape::Noop);
+                    egui::Grid::new(format!("node pins {}", node.spec.name))
+                        .min_col_width(ui.available_width() / 2.)
+                        .striped(true)
+                        .show(ui, |ui| {
+                            ui.vertical(|ui| {
+                                for pin_spec in node
+                                    .spec
+                                    .attributes
+                                    .clone()
+                                    .iter()
+                                    .filter(|n| n.kind == PinType::Input)
+                                {
+                                    self.add_pin(pin_spec.clone(), &mut node, ui);
+                                }
+                            });
+                            ui.vertical(|ui| {
+                                for pin_spec in node
+                                    .spec
+                                    .attributes
+                                    .clone()
+                                    .iter()
+                                    .filter(|n| n.kind == PinType::Output)
+                                {
+                                    self.add_pin(pin_spec.clone(), &mut node, ui);
+                                }
+                            });
+                            ui.end_row();
+                        });
+                    egui::Frame::default()
+                        .outer_margin(egui::vec2(0.5, 0.5))
+                        .inner_margin(egui::vec2(1.5, 1.5))
+                        .corner_radius(3.0)
+                        .stroke(egui::Stroke::new(
+                            1.0,
+                            self.settings.style.colors[if node.spec.active {
+                                ColorStyle::NodeOutlineActive
+                            } else {
+                                ColorStyle::NodeOutline
+                            } as usize],
+                        ))
+                        .show(ui, |ui| {
+                            ui.label("Runtime data");
+                            if let (Some(time), Some(duration)) =
+                                (node.spec.time, node.spec.duration)
+                            {
+                                ui.label(format!("Time: {time:.2} / {duration:.2}"));
+                                ui.add(egui::ProgressBar::new(time / duration).desired_height(5.));
+                            } else if let Some(time) = node.spec.time {
+                                ui.label(format!("Time: {time:.2}"));
+                            } else {
+                                ui.label("Empty");
+                            }
+                        });
+
+                    (title_info, outline_shape)
+                },
+            );
+            let (title_info, outline_shape) = response.inner;
+            if let Some((titlebar_shape, title_bar_content_rect)) = title_info {
+                node.state.titlebar_shape.replace(titlebar_shape);
+                node.state.title_bar_content_rect = title_bar_content_rect;
             }
-        };
+            node.state.outline_shape.replace(outline_shape);
+            node.state.rect = response
+                .response
+                .rect
+                .expand2(node.state.layout_style.padding);
 
-        if hovered {
-            self.frame_state
-                .node_indices_overlapping_with_mouse
-                .push(node.spec.id);
-        }
+            let rect = response.response.rect;
+            let hovered = rect.is_positive() && {
+                let pointer_pos = ui.ctx().input(|i| i.pointer.interact_pos());
+                if let Some(pointer_pos) = pointer_pos {
+                    rect.contains(pointer_pos) //&& ui.ctx().layer_id_at(pointer_pos) == Some(layer_id)
+                } else {
+                    false
+                }
+            };
 
-        self.frame_state.nodes_tmp.insert(node.spec.id, node);
+            if hovered {
+                self.frame_state
+                    .node_indices_overlapping_with_mouse
+                    .push(node.spec.id);
+            }
+
+            self.frame_state.nodes_tmp.insert(node.spec.id, node);
+        });
     }
 
     fn add_pin(&mut self, pin_spec: PinSpec, node: &mut Node, ui: &mut egui::Ui) {

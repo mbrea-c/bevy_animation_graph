@@ -72,7 +72,7 @@ pub struct UiState {
 
     pub(crate) views: Vec<EditorViewUiState>,
     pub(crate) active_view: Option<usize>,
-    pub(crate) buffers: Buffers,
+    pub(crate) buffers: GlobalBuffers,
 }
 
 impl UiState {
@@ -85,7 +85,7 @@ impl UiState {
             views: Vec::new(),
             active_view: Some(0),
             windows: Windows::default(),
-            buffers: Buffers::default(),
+            buffers: GlobalBuffers::default(),
         };
 
         let main_view = EditorViewUiState::animation_graphs(world, "Graph editing");
@@ -313,6 +313,22 @@ impl<T: Any + Send + Sync + 'static> BufferType for T {
 
     fn any_ref(&self) -> &dyn Any {
         self
+    }
+}
+
+/// Buffers are hierarchical
+#[derive(Default)]
+pub struct GlobalBuffers {
+    pub window_buffers: HashMap<Entity, Buffers>,
+}
+
+impl GlobalBuffers {
+    pub fn for_window(&mut self, window: Entity) -> &mut Buffers {
+        self.window_buffers.entry(window).or_default()
+    }
+
+    pub fn clear_for_window(&mut self, window: Entity) {
+        self.window_buffers.remove(&window);
     }
 }
 

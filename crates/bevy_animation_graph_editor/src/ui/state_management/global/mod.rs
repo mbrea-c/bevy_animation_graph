@@ -28,14 +28,17 @@ use bevy::ecs::{
     world::World,
 };
 
-use crate::ui::state_management::global::{
-    active_fsm::ActiveFsm, active_fsm_state::ActiveFsmState,
-    active_fsm_transition::ActiveFsmTransition, active_graph::ActiveGraph,
-    active_graph_context::ActiveContexts, active_graph_node::ActiveGraphNode,
-    active_ragdoll::ActiveRagdoll, active_scene::ActiveScene, active_skeleton::ActiveSkeleton,
-    animation_graph::AnimationGraphManager, clip::ClipManager, fsm::FsmManager,
-    inspector_selection::InspectorSelection, ragdoll::RagdollManager,
-    ragdoll_bone_map::RagdollBoneMapManager, skeleton::SkeletonManager,
+use crate::ui::state_management::{
+    global::{
+        active_fsm::ActiveFsm, active_fsm_state::ActiveFsmState,
+        active_fsm_transition::ActiveFsmTransition, active_graph::ActiveGraph,
+        active_graph_context::ActiveContexts, active_graph_node::ActiveGraphNode,
+        active_ragdoll::ActiveRagdoll, active_scene::ActiveScene, active_skeleton::ActiveSkeleton,
+        animation_graph::AnimationGraphManager, clip::ClipManager, fsm::FsmManager,
+        inspector_selection::InspectorSelection, ragdoll::RagdollManager,
+        ragdoll_bone_map::RagdollBoneMapManager, skeleton::SkeletonManager,
+    },
+    window::buffers::WindowBuffersManager,
 };
 
 #[derive(Component)]
@@ -62,6 +65,7 @@ impl GlobalState {
         SkeletonManager::register(world, entity);
         AnimationGraphManager::register(world, entity);
 
+        WindowBuffersManager::register(world, entity);
         world.add_observer(CloseWindow::observe);
     }
 }
