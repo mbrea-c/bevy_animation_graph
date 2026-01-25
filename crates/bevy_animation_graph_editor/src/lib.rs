@@ -44,14 +44,25 @@ impl Plugin for AnimationGraphEditorPlugin {
 
         app //
             .add_plugins(
-                DefaultPlugins.set(AssetPlugin {
-                    file_path: std::fs::canonicalize(&cli.asset_source)
-                        .unwrap()
-                        .to_string_lossy()
-                        .into(),
-                    watch_for_changes_override: Some(true),
-                    ..Default::default()
-                }),
+                DefaultPlugins
+                    .set(AssetPlugin {
+                        file_path: std::fs::canonicalize(&cli.asset_source)
+                            .unwrap()
+                            .to_string_lossy()
+                            .into(),
+                        watch_for_changes_override: Some(true),
+                        ..Default::default()
+                    })
+                    .set(WindowPlugin {
+                        primary_window: Some(Window {
+                            title: format!(
+                                "Bevy Animation Graph Editor {}",
+                                env!("CARGO_PKG_VERSION")
+                            ),
+                            ..Default::default()
+                        }),
+                        ..Default::default()
+                    }),
             )
             .add_plugins(EguiPlugin::default())
             .add_plugins(AnimationGraphPlugin::from_physics_schedule(FixedPostUpdate))
