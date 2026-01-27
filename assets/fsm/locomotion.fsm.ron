@@ -6,7 +6,7 @@
             graph: "animation_graphs/walk.animgraph.ron",
             state_transition: Some((
                 kind: Graph(
-                    graph: "animation_graphs/walk_to_run.animgraph.ron",
+                    graph: "animation_graphs/blend_transition.animgraph.ron",
                     timed: Some(1.0),
                 ),
             )),
@@ -25,7 +25,7 @@
             target: "505e7d48-bbdb-440b-ad3f-5886d332b292",
             data: (
                 kind: Graph(
-                    graph: "animation_graphs/walk_to_run.animgraph.ron",
+                    graph: "animation_graphs/blend_transition.animgraph.ron",
                     timed: Some(1.0),
                 ),
             ),
@@ -36,7 +36,7 @@
             target: "505e7d48-bbdb-440b-ad3f-5886d332b291",
             data: (
                 kind: Graph(
-                    graph: "animation_graphs/walk_to_run.animgraph.ron",
+                    graph: "animation_graphs/blend_transition.animgraph.ron",
                     timed: Some(1.0),
                 ),
             ),
@@ -45,17 +45,26 @@
     start_state: "505e7d48-bbdb-440b-ad3f-5886d332b291",
     node_spec: (
         input_times: [],
-        input_data: {},
-        output_time: false,
-        output_data: {},
-        input_order: {},
-        output_order: {},
+        input_data: {
+            "speed": F32,
+        },
+        output_time: true,
+        output_data: {
+            "pose": Pose,
+        },
+        input_order: {
+            Data("speed"): 0,
+        },
+        output_order: {
+            Time: 0,
+            Data("pose"): 1,
+        },
     ),
     editor_metadata: (
         states: {
             "505e7d48-bbdb-440b-ad3f-5886d332b291": (300.0, 230.0),
             "68a39708-7e0a-47b9-a943-995cb158c092": (143.0117, -15.183594),
-            "505e7d48-bbdb-440b-ad3f-5886d332b292": (-22.433594, 175.38669),
+            "505e7d48-bbdb-440b-ad3f-5886d332b292": (1.4636974, 171.30792),
         },
     ),
 )

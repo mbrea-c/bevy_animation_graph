@@ -12,6 +12,13 @@ pub enum AnimationEvent {
     /// * A direct transition, if present, or
     /// * A global transition, if present
     TransitionToState(StateId),
+    /// Trigger the most specific transition from transitioning into a state with the provided
+    /// label. That will be:
+    /// * A direct transition, if present, or
+    /// * A global transition, if present
+    ///
+    /// If multiple states share the same label, no guarantees are given as to which is chosen.
+    TransitionToStateLabel(String),
     /// Trigger a specific transition (if possible)
     Transition(TransitionId),
     EndTransition,
@@ -75,7 +82,11 @@ impl EventQueue {
     }
 
     pub fn concat(mut self, other: EventQueue) -> Self {
-        self.events.extend(other.events);
+        self.extend(other);
         self
+    }
+
+    pub fn extend(&mut self, other: EventQueue) {
+        self.events.extend(other.events);
     }
 }

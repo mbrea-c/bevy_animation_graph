@@ -19,7 +19,7 @@ use crate::{
     duration_data::DurationData,
     edge_data::{
         DataValue,
-        events::{AnimationEvent, EventQueue},
+        events::{AnimationEvent, EventQueue, SampledEvent},
     },
     errors::GraphError,
 };
@@ -116,6 +116,7 @@ pub struct LowLevelStateMachine {
     pub states: HashMap<LowLevelStateId, LowLevelState>,
 
     pub transitions: HashMap<LowLevelTransitionId, LowLevelTransition>,
+    pub hl_states_by_label: HashMap<String, Vec<high_level::StateId>>,
     pub transitions_by_hl_state_pair:
         HashMap<(high_level::StateId, high_level::StateId), Vec<LowLevelTransitionId>>,
 
@@ -134,6 +135,7 @@ impl LowLevelStateMachine {
             transitions_by_hl_state_pair: HashMap::new(),
             start_state: None,
             node_spec: NodeSpec::default(),
+            hl_states_by_label: HashMap::new(),
         }
     }
 
@@ -173,6 +175,24 @@ impl LowLevelStateMachine {
                         && let Some(transition) = self
                             .transitions_by_hl_state_pair
                             .get(&(hl_curr_state_id, hl_target_state_id))
+                            .and_then(|ids| ids.iter().next())
+                            .and_then(|id| self.transitions.get(id))
+                    {
+                        *fsm_state = FSMState {
+                            state: transition.target.clone(),
+                            state_entered_time: time,
+                        };
+                    }
+                }
+                AnimationEvent::TransitionToStateLabel(label) => {
+                    if let Some(hl_target_state_id) = self
+                        .hl_states_by_label
+                        .get(&label)
+                        .and_then(|states| states.get(0))
+                        && let LowLevelStateId::HlState(hl_curr_state_id) = fsm_state.state.clone()
+                        && let Some(transition) = self
+                            .transitions_by_hl_state_pair
+                            .get(&(hl_curr_state_id, *hl_target_state_id))
                             .and_then(|ids| ids.iter().next())
                             .and_then(|id| self.transitions.get(id))
                     {
@@ -233,8 +253,7 @@ impl LowLevelStateMachine {
         ctx.set_time_update_back(Self::DRIVER_TIME, input);
         let event_queue = ctx
             .data_back(Self::DRIVER_EVENT_QUEUE)?
-            .into_event_queue()
-            .unwrap();
+            .into_event_queue()?;
 
         self.handle_event_queue(event_queue, ctx.clone())?;
         let inner_eq = self.update_graph(ctx.clone())?;
@@ -247,14 +266,13 @@ impl LowLevelStateMachine {
     pub fn update_graph(&self, mut ctx: NodeContext) -> Result<EventQueue, GraphError> {
         let time = ctx.time();
         let fsm_state = ctx.state::<FSMState>()?;
-        // TODO: Replace panic with `GraphError`
         let state = self.states.get(&fsm_state.state).unwrap();
         let graph = ctx
             .graph_context
             .resources
             .animation_graph_assets
             .get(&state.graph)
-            .unwrap();
+            .ok_or_else(|| GraphError::GraphAssetMissing)?;
 
         let mut io_overrides = IoOverrides::default();
 
@@ -264,13 +282,21 @@ impl LowLevelStateMachine {
             .data
             .insert(FsmBuiltinPin::TimeElapsed.into(), elapsed_time.into());
 
+        let mut driver_event_queue = EventQueue::default();
+
         if let Some(duration) = state.hl_transition.as_ref().and_then(|t| t.timed)
             && duration > 0.
         {
-            io_overrides.data.insert(
-                FsmBuiltinPin::PercentThroughDuration.into(),
-                (elapsed_time / duration).into(),
-            );
+            let percent = elapsed_time / duration;
+            io_overrides
+                .data
+                .insert(FsmBuiltinPin::PercentThroughDuration.into(), percent.into());
+
+            if percent >= 1. {
+                driver_event_queue
+                    .events
+                    .push(SampledEvent::instant(AnimationEvent::EndTransition));
+            }
         }
 
         let sub_io_env = LayeredIoEnv(
@@ -288,13 +314,11 @@ impl LowLevelStateMachine {
             .create_child_context(state.graph.id(), Some(state.id.clone()))
             .with_io(&sub_io_env);
 
-        let mut driver_event_queue = EventQueue::default();
-
         for (id, _) in graph.io_spec.iter_output_data() {
             let target_pin = TargetPin::OutputData(id.clone());
             let value = graph.get_data(target_pin, sub_ctx.clone())?;
             if id == Self::DRIVER_EVENT_QUEUE {
-                driver_event_queue = value.into_event_queue().unwrap();
+                driver_event_queue.extend(value.into_event_queue()?);
             } else {
                 ctx.set_data_fwd(id, value);
             }
@@ -506,7 +530,7 @@ impl<'a> GraphIoEnv for FsmIoEnv<'a> {
                 .and_then(|state| self.state_data_back(pin_id, &ctx, state, StateRole::Source)),
             GraphInputPin::FromFsmTarget(pin_id) => self
                 .state_machine
-                .get_source(&self.current_state)
+                .get_target(&self.current_state)
                 .and_then(|state| self.state_data_back(pin_id, &ctx, state, StateRole::Target)),
             // This will get handled by the next IO layer in update_graph (defaults and overrides)
             GraphInputPin::FsmBuiltin(_) => Err(GraphError::FSMRequestedMissingData),

@@ -1,34 +1,62 @@
 (
     nodes: [
         (
-            name: "base anim",
+            id: "66a220c6-c546-468f-bcce-6725de2c11ab",
+            name: "base_anim",
             inner: {
-                "bevy_animation_graph::nodes::graph_node::GraphNode": (
-                    graph: "animation_graphs/human_new.animgraph.ron",
-                )
-            }
+                "bevy_animation_graph_builtin_nodes::graph_node::GraphNode": (
+                    graph: "animation_graphs/human.animgraph.ron",
+                ),
+            },
+            should_debug: false,
         ),
         (
-            name: "arm ik",
+            id: "f7c1cfe1-dd28-4ae9-b322-e1b85ae09a50",
+            name: "",
             inner: {
-                "bevy_animation_graph::nodes::twoboneik_node::TwoBoneIKNode": ()
-            }
+                "bevy_animation_graph::builtin_nodes::TwoBoneIKNode": (),
+            },
+            should_debug: false,
         ),
     ],
     edges_inverted: {
-        NodeData("arm ik", "target_path"): InputData("right hand path"),
-        NodeData("base anim", "target_speed"): InputData("target_speed"),
-        OutputTime: NodeTime("arm ik"),
-        NodeData("base anim", "target_direction"): InputData("target_direction"),
-        OutputData("pose"): NodeData("arm ik", "pose"),
-        NodeData("arm ik", "pose"): NodeData("base anim", "pose"),
-        NodeData("arm ik", "target_position"): InputData("target hand pos"),
-        NodeTime("arm ik", "time"): NodeTime("base anim"),
+        NodeData("f7c1cfe1-dd28-4ae9-b322-e1b85ae09a50", "target_position"): InputData(Passthrough("target_hand_pos")),
+        NodeData("66a220c6-c546-468f-bcce-6725de2c11ab", "target_speed"): InputData(Passthrough("target_speed")),
+        OutputData("pose"): NodeData("f7c1cfe1-dd28-4ae9-b322-e1b85ae09a50", "pose"),
+        OutputTime: NodeTime("f7c1cfe1-dd28-4ae9-b322-e1b85ae09a50"),
+        NodeTime("f7c1cfe1-dd28-4ae9-b322-e1b85ae09a50", "time"): NodeTime("66a220c6-c546-468f-bcce-6725de2c11ab"),
+        NodeData("f7c1cfe1-dd28-4ae9-b322-e1b85ae09a50", "target_path"): InputData(Passthrough("right_hand")),
+        NodeData("f7c1cfe1-dd28-4ae9-b322-e1b85ae09a50", "pose"): NodeData("66a220c6-c546-468f-bcce-6725de2c11ab", "pose"),
+        NodeData("66a220c6-c546-468f-bcce-6725de2c11ab", "target_direction"): InputData(Passthrough("target_direction")),
     },
-    default_parameters: {
-        "target_speed": F32(1.0),
-        "target_direction": Vec3((1.0, 0.0, 0.0)),
-        "right hand path": EntityPath([
+    io_spec: (
+        input_times: [],
+        input_data: {
+            Passthrough("target_hand_pos"): Vec3,
+            Passthrough("target_speed"): F32,
+            Passthrough("target_direction"): Vec3,
+            Passthrough("right_hand"): EntityPath,
+        },
+        output_time: true,
+        output_data: {
+            "pose": Pose,
+        },
+        input_order: {
+            Data(Passthrough("right_hand")): 0,
+            Data(Passthrough("target_hand_pos")): 1,
+            Data(Passthrough("target_direction")): 2,
+            Data(Passthrough("target_speed")): 3,
+        },
+        output_order: {
+            Data("pose"): 0,
+            Time: 1,
+        },
+    ),
+    default_data: {
+        Passthrough("target_hand_pos"): Vec3((0.5, 1.5, 0.0)),
+        Passthrough("target_speed"): F32(1.0),
+        Passthrough("target_direction"): Vec3((1.0, 0.0, 0.0)),
+        Passthrough("right_hand"): EntityPath([
             "metarig",
             "spine",
             "spine.001",
@@ -39,19 +67,17 @@
             "forearm.R",
             "hand.R",
         ]),
-        "target hand pos": Vec3((0.5, 1.5, 0.0)),
     },
-    input_times: {},
-    output_parameters: {
-        "pose": Pose,
-    },
-    output_time: Some(()),
-    extra: (
+    editor_metadata: (
         node_positions: {
-            "base anim": (366.46158, 444.0),
-            "arm ik": (563.07697, 420.92303),
+            "66a220c6-c546-468f-bcce-6725de2c11ab": (202.19531, 507.92578),
+            "f7c1cfe1-dd28-4ae9-b322-e1b85ae09a50": (362.46875, 373.8203),
         },
-        input_position: (108.0, 459.69223),
-        output_position: (777.2307, 446.7692),
+        input_position: (39.851563, 365.96484),
+        output_position: (524.9297, 369.23438),
+        input_param_order: {},
+        input_time_order: {},
+        output_data_order: {},
+        output_pose_order: {},
     ),
 )

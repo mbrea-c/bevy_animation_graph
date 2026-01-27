@@ -12,6 +12,29 @@
             should_debug: false,
         ),
         (
+            id: "67e0bb59-a7c3-4304-a1fe-58386cb89943",
+            name: "",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::ClipNode": (
+                    clip: "animations/human_stand.anim.ron",
+                    override_duration: None,
+                    override_interpolation: None,
+                ),
+            },
+            should_debug: false,
+        ),
+        (
+            id: "73c0c063-104a-433a-83e3-74792f9bc1a5",
+            name: "",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::BlendNode": (
+                    mode: Difference,
+                    sync_mode: Absolute,
+                ),
+            },
+            should_debug: false,
+        ),
+        (
             id: "3451ae58-0ff4-49d1-a67a-8249e1dd2d88",
             name: "walk clip 2",
             inner: {
@@ -96,12 +119,11 @@
             should_debug: false,
         ),
         (
-            id: "82b72c1e-ac41-4778-b5e2-b8d7d2ab2860",
-            name: "",
+            id: "b3d1c53f-1a14-4a75-b2c7-62bbe8eef87c",
+            name: "chain run",
             inner: {
-                "bevy_animation_graph::builtin_nodes::BlendNode": (
-                    mode: Additive,
-                    sync_mode: NoSync,
+                "bevy_animation_graph::builtin_nodes::ChainNode": (
+                    interpolation_period: 0.5,
                 ),
             },
             should_debug: false,
@@ -129,11 +151,12 @@
             should_debug: false,
         ),
         (
-            id: "b3d1c53f-1a14-4a75-b2c7-62bbe8eef87c",
-            name: "chain run",
+            id: "82b72c1e-ac41-4778-b5e2-b8d7d2ab2860",
+            name: "",
             inner: {
-                "bevy_animation_graph::builtin_nodes::ChainNode": (
-                    interpolation_period: 0.5,
+                "bevy_animation_graph::builtin_nodes::BlendNode": (
+                    mode: Additive,
+                    sync_mode: NoSync,
                 ),
             },
             should_debug: false,
@@ -155,6 +178,18 @@
             should_debug: false,
         ),
         (
+            id: "a7e8c955-64dd-4f48-8925-22d1580eb855",
+            name: "",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::ClipNode": (
+                    clip: "animations/human_wave.anim.ron",
+                    override_duration: None,
+                    override_interpolation: None,
+                ),
+            },
+            should_debug: false,
+        ),
+        (
             id: "23d698d3-f10f-46db-9562-7aa39e754553",
             name: "parameters",
             inner: {
@@ -162,7 +197,7 @@
                     graph: "animation_graphs/blend_parameters.animgraph.ron",
                 ),
             },
-            should_debug: false,
+            should_debug: true,
         ),
         (
             id: "0ddfb1a3-4248-4be3-ace3-98e20841ccf3",
@@ -182,6 +217,7 @@
         NodeData("3f82e055-c95e-483f-a182-5d125ee5431c", "in_b"): InputData(Passthrough("target_direction")),
         NodeData("3f82e055-c95e-483f-a182-5d125ee5431c", "in_a"): InputData(Passthrough("Z")),
         NodeTime("b3d1c53f-1a14-4a75-b2c7-62bbe8eef87c", "time_a"): NodeTime("8064d95a-b8f5-4304-8534-31ead6304068"),
+        NodeData("82b72c1e-ac41-4778-b5e2-b8d7d2ab2860", "pose_b"): NodeData("73c0c063-104a-433a-83e3-74792f9bc1a5", "pose"),
         NodeData("ae04ba83-7b08-4eaf-a552-09b7fa10e54d", "pose_b"): NodeData("13af4c51-1ab5-4f1d-a9d3-fc53c50e4a38", "pose"),
         NodeData("b3d1c53f-1a14-4a75-b2c7-62bbe8eef87c", "pose_a"): NodeData("8064d95a-b8f5-4304-8534-31ead6304068", "pose"),
         NodeTime("82b72c1e-ac41-4778-b5e2-b8d7d2ab2860", "time_a"): NodeTime("9a66fcae-9d35-48e6-b993-54fe42511df8"),
@@ -189,6 +225,7 @@
         NodeData("8a3262a8-d9b0-4c23-bb1f-a170b3bf4e6a", "pose_b"): NodeData("b3d1c53f-1a14-4a75-b2c7-62bbe8eef87c", "pose"),
         OutputTime: NodeTime("11960072-0e9c-4f59-af64-ee7f82247bcb"),
         NodeTime("9a66fcae-9d35-48e6-b993-54fe42511df8", "time"): NodeTime("84b0b602-cb74-429d-8825-5b4bb730ca93"),
+        NodeTime("73c0c063-104a-433a-83e3-74792f9bc1a5", "time_b"): NodeTime("a7e8c955-64dd-4f48-8925-22d1580eb855"),
         NodeData("13af4c51-1ab5-4f1d-a9d3-fc53c50e4a38", "pose"): NodeData("3451ae58-0ff4-49d1-a67a-8249e1dd2d88", "pose"),
         NodeData("11960072-0e9c-4f59-af64-ee7f82247bcb", "bone_mask"): InputData(Passthrough("rotation_bone")),
         NodeData("82b72c1e-ac41-4778-b5e2-b8d7d2ab2860", "factor"): InputData(Passthrough("1")),
@@ -201,8 +238,10 @@
         NodeTime("ae04ba83-7b08-4eaf-a552-09b7fa10e54d", "time_a"): NodeTime("0ddfb1a3-4248-4be3-ace3-98e20841ccf3"),
         NodeData("9a66fcae-9d35-48e6-b993-54fe42511df8", "speed"): NodeData("23d698d3-f10f-46db-9562-7aa39e754553", "speed_fac"),
         NodeData("11960072-0e9c-4f59-af64-ee7f82247bcb", "rotation"): NodeData("3f82e055-c95e-483f-a182-5d125ee5431c", "out"),
+        NodeTime("73c0c063-104a-433a-83e3-74792f9bc1a5", "time_a"): NodeTime("67e0bb59-a7c3-4304-a1fe-58386cb89943"),
         NodeTime("8a3262a8-d9b0-4c23-bb1f-a170b3bf4e6a", "time_b"): NodeTime("b3d1c53f-1a14-4a75-b2c7-62bbe8eef87c"),
         NodeData("8a3262a8-d9b0-4c23-bb1f-a170b3bf4e6a", "pose_a"): NodeData("ae04ba83-7b08-4eaf-a552-09b7fa10e54d", "pose"),
+        NodeData("73c0c063-104a-433a-83e3-74792f9bc1a5", "pose_a"): NodeData("67e0bb59-a7c3-4304-a1fe-58386cb89943", "pose"),
         NodeData("8a3262a8-d9b0-4c23-bb1f-a170b3bf4e6a", "factor"): NodeData("23d698d3-f10f-46db-9562-7aa39e754553", "blend_fac"),
         NodeData("098be6e7-c3f5-4caf-b36d-3f9e069aee6e", "pose"): NodeData("d8636d07-9e62-4413-b3bb-761fc8461ae0", "pose"),
         NodeTime("8a3262a8-d9b0-4c23-bb1f-a170b3bf4e6a", "time_a"): NodeTime("ae04ba83-7b08-4eaf-a552-09b7fa10e54d"),
@@ -210,8 +249,10 @@
         NodeData("9a66fcae-9d35-48e6-b993-54fe42511df8", "pose"): NodeData("84b0b602-cb74-429d-8825-5b4bb730ca93", "pose"),
         NodeTime("13af4c51-1ab5-4f1d-a9d3-fc53c50e4a38", "time"): NodeTime("3451ae58-0ff4-49d1-a67a-8249e1dd2d88"),
         NodeTime("84b0b602-cb74-429d-8825-5b4bb730ca93", "time"): NodeTime("8a3262a8-d9b0-4c23-bb1f-a170b3bf4e6a"),
+        NodeData("73c0c063-104a-433a-83e3-74792f9bc1a5", "pose_b"): NodeData("a7e8c955-64dd-4f48-8925-22d1580eb855", "pose"),
         NodeData("11960072-0e9c-4f59-af64-ee7f82247bcb", "pose"): NodeData("82b72c1e-ac41-4778-b5e2-b8d7d2ab2860", "pose"),
         NodeTime("b3d1c53f-1a14-4a75-b2c7-62bbe8eef87c", "time_b"): NodeTime("098be6e7-c3f5-4caf-b36d-3f9e069aee6e"),
+        NodeTime("82b72c1e-ac41-4778-b5e2-b8d7d2ab2860", "time_b"): NodeTime("73c0c063-104a-433a-83e3-74792f9bc1a5"),
     },
     io_spec: (
         input_times: [],
@@ -239,32 +280,37 @@
         },
     ),
     default_data: {
-        Passthrough("rotation_bone"): EntityPath([
-            "metarigspine",
-        ]),
+        Passthrough("target_direction"): Vec3((1.0, 0.0, 0.0)),
         Passthrough("Z"): Vec3((0.0, 0.0, 1.0)),
         Passthrough("1"): F32(1.0),
+        Passthrough("rotation_bone"): EntityPath([
+            "metarig",
+            "spine",
+        ]),
     },
     editor_metadata: (
         node_positions: {
             "8a3262a8-d9b0-4c23-bb1f-a170b3bf4e6a": (291.98828, -30.4375),
+            "67e0bb59-a7c3-4304-a1fe-58386cb89943": (-199.54688, 416.5078),
+            "73c0c063-104a-433a-83e3-74792f9bc1a5": (-7.4257813, 470.1953),
             "3451ae58-0ff4-49d1-a67a-8249e1dd2d88": (-222.125, -128.01953),
             "098be6e7-c3f5-4caf-b36d-3f9e069aee6e": (-81.71484, 232.32422),
             "8064d95a-b8f5-4304-8534-31ead6304068": (-221.14453, 51.78125),
             "ae04ba83-7b08-4eaf-a552-09b7fa10e54d": (66.21484, -236.3125),
-            "11960072-0e9c-4f59-af64-ee7f82247bcb": (1010.14453, -266.51563),
+            "11960072-0e9c-4f59-af64-ee7f82247bcb": (879.96484, -142.73047),
             "13af4c51-1ab5-4f1d-a9d3-fc53c50e4a38": (-85.3125, -113.33594),
-            "82b72c1e-ac41-4778-b5e2-b8d7d2ab2860": (788.9531, -67.109375),
-            "d8636d07-9e62-4413-b3bb-761fc8461ae0": (-219.4336, 221.21094),
-            "84b0b602-cb74-429d-8825-5b4bb730ca93": (457.3828, -30.125),
             "b3d1c53f-1a14-4a75-b2c7-62bbe8eef87c": (74.6875, 134.13672),
-            "3f82e055-c95e-483f-a182-5d125ee5431c": (544.04297, -350.9414),
-            "9a66fcae-9d35-48e6-b993-54fe42511df8": (611.2422, -44.63672),
+            "d8636d07-9e62-4413-b3bb-761fc8461ae0": (-219.4336, 221.21094),
+            "84b0b602-cb74-429d-8825-5b4bb730ca93": (434.14844, -27.535156),
+            "82b72c1e-ac41-4778-b5e2-b8d7d2ab2860": (721.76953, -59.085938),
+            "3f82e055-c95e-483f-a182-5d125ee5431c": (505.4922, -350.3828),
+            "9a66fcae-9d35-48e6-b993-54fe42511df8": (572.6914, -44.078125),
+            "a7e8c955-64dd-4f48-8925-22d1580eb855": (-196.65234, 582.8086),
             "23d698d3-f10f-46db-9562-7aa39e754553": (12.769531, -633.27734),
             "0ddfb1a3-4248-4be3-ace3-98e20841ccf3": (-224.76953, -292.48047),
         },
         input_position: (-318.57813, -611.8594),
-        output_position: (1180.8281, -259.7578),
+        output_position: (1031.4688, -141.51172),
         input_param_order: {},
         input_time_order: {},
         output_data_order: {},

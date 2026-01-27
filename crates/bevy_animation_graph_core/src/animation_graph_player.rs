@@ -95,7 +95,7 @@ pub struct AnimationGraphPlayer {
 }
 
 impl AnimationGraphPlayer {
-    pub const USER_EVENTS: &'static str = "user events";
+    pub const USER_EVENTS: &'static str = "user_events";
 
     /// Create a new animation graph player, with no graph playing
     pub fn new(skeleton: Handle<Skeleton>) -> Self {

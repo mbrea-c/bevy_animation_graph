@@ -1,9 +1,54 @@
 (
     nodes: [
         (
-            name: "flip run",
+            id: "939ac6ef-20da-4151-90e6-11461812b22d",
+            name: "",
             inner: {
-                "bevy_animation_graph::nodes::flip_lr_node::FlipLRNode": (
+                "bevy_animation_graph::builtin_nodes::ClipNode": (
+                    clip: "animations/human_run.anim.ron",
+                    override_duration: None,
+                    override_interpolation: None,
+                ),
+            },
+            should_debug: false,
+        ),
+        (
+            id: "5298fece-5bca-4327-802b-70966468855e",
+            name: "",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::ClipNode": (
+                    clip: "animations/human_run.anim.ron",
+                    override_duration: None,
+                    override_interpolation: None,
+                ),
+            },
+            should_debug: false,
+        ),
+        (
+            id: "6cb9db31-c8aa-4d7b-a7af-d6a3206c9da8",
+            name: "",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::ChainNode": (
+                    interpolation_period: 0.5,
+                ),
+            },
+            should_debug: false,
+        ),
+        (
+            id: "ff83768c-bf53-4c36-930e-40433929fcd6",
+            name: "",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::LoopNode": (
+                    interpolation_period: 0.5,
+                ),
+            },
+            should_debug: false,
+        ),
+        (
+            id: "c16dc0d9-7fb4-40b6-ab59-ee7c4361db1f",
+            name: "",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::FlipLRNode": (
                     config: (
                         name_mapper: Pattern((
                             key_1: "L",
@@ -11,83 +56,52 @@
                             pattern_before: "^.*",
                             pattern_after: "$",
                         )),
+                        mode: MirrorX,
                     ),
                 ),
             },
-        ),
-        (
-            name: "chain run",
-            inner: {
-                "bevy_animation_graph::nodes::chain_node::ChainNode": (
-                    interpolation_period: 0.5,
-                ),
-            },
-        ),
-        (
-            name: "speed",
-            inner: {
-                "bevy_animation_graph::nodes::speed_node::SpeedNode": (),
-            },
-        ),
-        (
-            name: "run clip 1",
-            inner: {
-                "bevy_animation_graph::nodes::clip_node::ClipNode": (
-                    clip: "animations/human_run.anim.ron",
-                ),
-            },
-        ),
-        (
-            name: "loop",
-            inner: {
-                "bevy_animation_graph::nodes::loop_node::LoopNode": (
-                    interpolation_period: 0.5,
-                ),
-            },
-        ),
-        (
-            name: "run clip 2",
-            inner: {
-                "bevy_animation_graph::nodes::clip_node::ClipNode": (
-                    clip: "animations/human_run.anim.ron",
-                ),
-            },
+            should_debug: false,
         ),
     ],
     edges_inverted: {
-        NodeData("speed", "pose"): NodeData("loop", "pose"),
-        NodeTime("flip run", "time"): NodeTime("run clip 2"),
-        NodeTime("loop", "time"): NodeTime("chain run"),
-        NodeTime("chain run", "time_b"): NodeTime("flip run"),
-        OutputTime: NodeTime("speed"),
-        NodeData("flip run", "pose"): NodeData("run clip 2", "pose"),
-        NodeData("chain run", "pose_b"): NodeData("flip run", "pose"),
-        OutputData("pose"): NodeData("speed", "pose"),
-        NodeTime("speed", "time"): NodeTime("loop"),
-        NodeData("loop", "pose"): NodeData("chain run", "pose"),
-        NodeData("speed", "speed"): InputData("speed"),
-        NodeTime("chain run", "time_a"): NodeTime("run clip 1"),
-        NodeData("chain run", "pose_a"): NodeData("run clip 1", "pose"),
+        NodeTime("c16dc0d9-7fb4-40b6-ab59-ee7c4361db1f", "time"): NodeTime("939ac6ef-20da-4151-90e6-11461812b22d"),
+        OutputData("pose"): NodeData("ff83768c-bf53-4c36-930e-40433929fcd6", "pose"),
+        OutputTime: NodeTime("ff83768c-bf53-4c36-930e-40433929fcd6"),
+        NodeData("6cb9db31-c8aa-4d7b-a7af-d6a3206c9da8", "pose_b"): NodeData("c16dc0d9-7fb4-40b6-ab59-ee7c4361db1f", "pose"),
+        NodeData("c16dc0d9-7fb4-40b6-ab59-ee7c4361db1f", "pose"): NodeData("939ac6ef-20da-4151-90e6-11461812b22d", "pose"),
+        NodeData("6cb9db31-c8aa-4d7b-a7af-d6a3206c9da8", "pose_a"): NodeData("5298fece-5bca-4327-802b-70966468855e", "pose"),
+        NodeTime("6cb9db31-c8aa-4d7b-a7af-d6a3206c9da8", "time_b"): NodeTime("c16dc0d9-7fb4-40b6-ab59-ee7c4361db1f"),
+        NodeTime("ff83768c-bf53-4c36-930e-40433929fcd6", "time"): NodeTime("6cb9db31-c8aa-4d7b-a7af-d6a3206c9da8"),
+        NodeTime("6cb9db31-c8aa-4d7b-a7af-d6a3206c9da8", "time_a"): NodeTime("5298fece-5bca-4327-802b-70966468855e"),
+        NodeData("ff83768c-bf53-4c36-930e-40433929fcd6", "pose"): NodeData("6cb9db31-c8aa-4d7b-a7af-d6a3206c9da8", "pose"),
     },
-    default_parameters: {
-        "blend": F32(0.2),
-        "speed": F32(1.0),
-    },
-    input_times: {},
-    output_parameters: {
-        "pose": Pose,
-    },
-    output_time: Some(()),
-    extra: (
-        node_positions: {
-            "flip run": (325.0, 549.0),
-            "chain run": (483.0, 436.0),
-            "speed": (777.0, 428.0),
-            "run clip 1": (327.0, 394.0),
-            "loop": (640.0, 443.0),
-            "run clip 2": (182.0, 548.0),
+    io_spec: (
+        input_times: [],
+        input_data: {},
+        output_time: true,
+        output_data: {
+            "pose": Pose,
         },
-        input_position: (414.0, 193.0),
-        output_position: (914.0, 431.0),
+        input_order: {},
+        output_order: {
+            Data("pose"): 5,
+            Time: 6,
+        },
+    ),
+    default_data: {},
+    editor_metadata: (
+        node_positions: {
+            "939ac6ef-20da-4151-90e6-11461812b22d": (31.652344, 217.34375),
+            "5298fece-5bca-4327-802b-70966468855e": (136.02344, 34.527344),
+            "6cb9db31-c8aa-4d7b-a7af-d6a3206c9da8": (348.97656, 105.19531),
+            "ff83768c-bf53-4c36-930e-40433929fcd6": (506.47656, 116.41016),
+            "c16dc0d9-7fb4-40b6-ab59-ee7c4361db1f": (180.35156, 221.55078),
+        },
+        input_position: (132.7539, 482.0586),
+        output_position: (664.27734, 116.890625),
+        input_param_order: {},
+        input_time_order: {},
+        output_data_order: {},
+        output_pose_order: {},
     ),
 )

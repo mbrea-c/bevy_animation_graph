@@ -108,38 +108,48 @@ impl NativeEditorWindowExtension for GraphEditorWindow {
                             return None;
                         };
 
-                        {
-                            let spec_resources = SpecResources {
-                                graph_assets: &graph_assets,
-                                fsm_assets: &fsm_assets,
-                            };
+                        let spec_resources = SpecResources {
+                            graph_assets: &graph_assets,
+                            fsm_assets: &fsm_assets,
+                        };
 
-                            let maybe_graph_context = get_global_state::<ActiveContexts>(world)
-                                .and_then(|s| s.by_asset.get(&active_graph.handle.id().untyped()))
-                                .and_then(|(entity, id)| {
-                                    Some((
-                                        id,
-                                        utils::get_specific_animation_graph_player(world, *entity)?,
-                                    ))
-                                })
-                                .and_then(|(id, p)| Some(id).zip(p.get_context_arena()))
-                                .and_then(|(id, ca)| ca.get_context(*id));
+                        let maybe_graph_context = get_global_state::<ActiveContexts>(world)
+                            .and_then(|s| s.by_asset.get(&active_graph.handle.id().untyped()))
+                            .and_then(|(entity, id)| {
+                                Some((
+                                    id,
+                                    utils::get_specific_animation_graph_player(world, *entity)?,
+                                ))
+                            })
+                            .and_then(|(id, p)| Some(id).zip(p.get_context_arena()))
+                            .and_then(|(id, ca)| ca.get_context(*id));
 
-                            let nodes = GraphReprSpec::from_graph(
-                                graph,
-                                graph_indices,
-                                spec_resources,
-                                maybe_graph_context,
-                            );
+                        let Some(nodes) = GraphReprSpec::from_graph(
+                            graph,
+                            graph_indices,
+                            spec_resources,
+                            maybe_graph_context,
+                        ) else {
+                            ctx.editor_actions.push(EditorAction::Graph(
+                                GraphAction::GenerateIndices(GenerateIndices {
+                                    graph: active_graph.handle.id(),
+                                }),
+                            ));
+                            return None;
+                        };
 
-                            buffer.nodes_context.show(nodes.nodes, nodes.edges, ui);
-                            buffer.nodes_context.get_changes().clone()
-                        }
-                        .into_iter()
-                        .map(|c| {
-                            convert_graph_change(c, graph_indices, active_graph.handle.clone())
-                        })
-                        .for_each(|action| ctx.editor_actions.push(EditorAction::Graph(action)));
+                        buffer.nodes_context.show(nodes.nodes, nodes.edges, ui);
+                        buffer
+                            .nodes_context
+                            .get_changes()
+                            .clone()
+                            .into_iter()
+                            .map(|c| {
+                                convert_graph_change(c, graph_indices, active_graph.handle.clone())
+                            })
+                            .for_each(|action| {
+                                ctx.editor_actions.push(EditorAction::Graph(action))
+                            });
 
                         // --- Update selection for node inspector.
                         // --- And enable debug render for latest node selected only
@@ -186,6 +196,7 @@ impl NativeEditorWindowExtension for GraphEditorWindow {
                     })
                 })
             });
+
         if let Some((set_active_graph_node, set_inspector_selection)) = result {
             ctx.trigger(set_active_graph_node);
             ctx.trigger(set_inspector_selection);

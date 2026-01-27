@@ -236,6 +236,12 @@ impl StateMachine {
         llfsm.node_spec = self.node_spec.clone();
 
         for state in self.states.values() {
+            llfsm
+                .hl_states_by_label
+                .entry(state.label.clone())
+                .or_default()
+                .push(state.id);
+
             llfsm.add_state(low_level::LowLevelState {
                 id: LowLevelStateId::HlState(state.id.clone()),
                 graph: state.graph.clone(),

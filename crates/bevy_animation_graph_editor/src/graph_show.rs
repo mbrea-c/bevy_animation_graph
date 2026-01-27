@@ -434,14 +434,14 @@ impl GraphReprSpec {
         indices: &GraphIndices,
         ctx: SpecResources,
         graph_context: Option<&GraphState>,
-    ) -> Self {
+    ) -> Option<Self> {
         let mut repr_spec = GraphReprSpec::default();
 
-        repr_spec.add_nodes(graph, indices, ctx, graph_context);
-        repr_spec.add_input_output_nodes(graph, indices);
+        repr_spec.add_nodes(graph, indices, ctx, graph_context)?;
+        repr_spec.add_input_output_nodes(graph, indices)?;
         let _ = repr_spec.add_edges(graph, indices, ctx);
 
-        repr_spec
+        Some(repr_spec)
     }
 
     fn node_debug_info(
@@ -472,19 +472,20 @@ impl GraphReprSpec {
         indices: &GraphIndices,
         ctx: SpecResources,
         graph_context: Option<&GraphState>,
-    ) {
+    ) -> Option<()> {
         for node in graph.nodes.values() {
             let (time, duration, active) = Self::node_debug_info(node, graph_context);
 
             let mut constructor = NodeSpec {
-                id: indices.node_indices.id(node.id).unwrap(),
+                id: indices.node_indices.id(node.id)?,
                 name: node.name.clone(),
                 subtitle: node.display_name(),
                 origin: graph
                     .editor_metadata
                     .node_positions
                     .get(&node.id)
-                    .unwrap()
+                    .copied()
+                    .unwrap_or_default()
                     .to_array()
                     .into(),
                 time,
@@ -497,16 +498,14 @@ impl GraphReprSpec {
             let mut input_tmp_store: Vec<(PinId, PinSpec)> = vec![];
             let mut output_tmp_store: Vec<(PinId, PinSpec)> = vec![];
 
-            let Ok(node_spec) = node.new_spec(ctx) else {
-                return;
-            };
+            let node_spec = node.new_spec(ctx).ok()?;
 
             for input in node_spec.sorted_inputs().into_iter() {
                 match input {
                     NodeInput::Time(pin_id) => {
                         let (pin_style, _) = time_colors();
                         let pin = Pin::Target(TargetPin::NodeTime(node.id, pin_id.clone()));
-                        let pin_idx = indices.pin_indices.id(&pin).unwrap();
+                        let pin_idx = indices.pin_indices.id(&pin)?;
                         let name = pin_id.clone();
                         input_tmp_store.push((
                             name.clone(),
@@ -522,7 +521,7 @@ impl GraphReprSpec {
                     NodeInput::Data(pin_id, data_spec) => {
                         let (pin_style, _) = param_spec_to_colors(data_spec);
                         let pin = Pin::Target(TargetPin::NodeData(node.id, pin_id.clone()));
-                        let pin_idx = indices.pin_indices.id(&pin).unwrap();
+                        let pin_idx = indices.pin_indices.id(&pin)?;
                         let name = pin_id.clone();
                         input_tmp_store.push((
                             name.clone(),
@@ -543,7 +542,7 @@ impl GraphReprSpec {
                     NodeOutput::Time => {
                         let (pin_style, _) = time_colors();
                         let pin = Pin::Source(SourcePin::NodeTime(node.id));
-                        let pin_id = indices.pin_indices.id(&pin).unwrap();
+                        let pin_id = indices.pin_indices.id(&pin)?;
                         output_tmp_store.push((
                             "___time_out".into(),
                             PinSpec {
@@ -558,7 +557,7 @@ impl GraphReprSpec {
                     NodeOutput::Data(pin_id, data_spec) => {
                         let (pin_style, _) = param_spec_to_colors(data_spec);
                         let pin = Pin::Source(SourcePin::NodeData(node.id, pin_id.clone()));
-                        let pin_idx = indices.pin_indices.id(&pin).unwrap();
+                        let pin_idx = indices.pin_indices.id(&pin)?;
                         let name = pin_id.clone();
                         output_tmp_store.push((
                             name.clone(),
@@ -583,11 +582,16 @@ impl GraphReprSpec {
 
             self.nodes.push(constructor);
         }
+
+        Some(())
     }
 
-    fn add_input_output_nodes(&mut self, graph: &AnimationGraph, indices: &GraphIndices) {
+    fn add_input_output_nodes(
+        &mut self,
+        graph: &AnimationGraph,
+        indices: &GraphIndices,
+    ) -> Option<()> {
         // --- Input node
-        // ---------------------------------------------------
         let mut input_node_contructor = NodeSpec {
             id: 0,
             args: NodeArgs {
@@ -606,7 +610,7 @@ impl GraphReprSpec {
                 NodeInput::Time(pin_id) => {
                     let (pin_style, _) = time_colors();
                     let pin = Pin::Source(SourcePin::InputTime(pin_id.clone()));
-                    let pin_idx = indices.pin_indices.id(&pin).unwrap();
+                    let pin_idx = indices.pin_indices.id(&pin)?;
                     input_node_contructor.attributes.push(PinSpec {
                         id: pin_idx,
                         kind: PinType::Output,
@@ -618,7 +622,7 @@ impl GraphReprSpec {
                 NodeInput::Data(pin_id, data_spec) => {
                     let (pin_style, _) = param_spec_to_colors(data_spec);
                     let pin = Pin::Source(SourcePin::InputData(pin_id.clone()));
-                    let pin_idx = indices.pin_indices.id(&pin).unwrap();
+                    let pin_idx = indices.pin_indices.id(&pin)?;
                     input_node_contructor.attributes.push(PinSpec {
                         id: pin_idx,
                         kind: PinType::Output,
@@ -631,10 +635,8 @@ impl GraphReprSpec {
         }
 
         self.nodes.push(input_node_contructor);
-        // ---------------------------------------------------
 
         // --- Output node
-        // ---------------------------------------------------
         let mut output_node_contructor = NodeSpec {
             id: 1,
             args: NodeArgs {
@@ -653,7 +655,7 @@ impl GraphReprSpec {
                 NodeOutput::Time => {
                     let (pin_style, _) = time_colors();
                     let pin = Pin::Target(TargetPin::OutputTime);
-                    let pin_id = indices.pin_indices.id(&pin).unwrap();
+                    let pin_id = indices.pin_indices.id(&pin)?;
                     output_node_contructor.attributes.push(PinSpec {
                         id: pin_id,
                         kind: PinType::Input,
@@ -665,7 +667,7 @@ impl GraphReprSpec {
                 NodeOutput::Data(pin_id, data_spec) => {
                     let (pin_style, _) = param_spec_to_colors(data_spec);
                     let pin = Pin::Target(TargetPin::OutputData(pin_id.clone()));
-                    let pin_idx = indices.pin_indices.id(&pin).unwrap();
+                    let pin_idx = indices.pin_indices.id(&pin)?;
                     output_node_contructor.attributes.push(PinSpec {
                         id: pin_idx,
                         kind: PinType::Input,
@@ -678,7 +680,7 @@ impl GraphReprSpec {
         }
 
         self.nodes.push(output_node_contructor);
-        // ---------------------------------------------------
+        Some(())
     }
 
     fn add_edges(

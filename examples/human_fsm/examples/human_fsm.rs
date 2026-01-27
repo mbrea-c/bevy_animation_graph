@@ -124,10 +124,10 @@ fn keyboard_animation_control(
     }
 
     if keyboard_input.pressed(KeyCode::ArrowUp) {
-        player.send_event(AnimationEvent::TransitionToState("run".into()));
+        player.send_event(AnimationEvent::TransitionToStateLabel("run".into()));
     }
     if keyboard_input.pressed(KeyCode::ArrowDown) {
-        player.send_event(AnimationEvent::TransitionToState("walk".into()));
+        player.send_event(AnimationEvent::TransitionToStateLabel("walk".into()));
     }
 
     if params.direction == Vec3::ZERO {
