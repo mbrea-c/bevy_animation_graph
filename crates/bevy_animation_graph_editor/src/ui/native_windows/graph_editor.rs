@@ -74,6 +74,8 @@ impl NativeEditorWindowExtension for GraphEditorWindow {
             return;
         };
 
+        let mut queue = ctx.make_queue();
+
         let buffer_id = ui.id().with("Graph editor nodes context buffer");
         let buffer = ctx
             .buffers
@@ -92,7 +94,7 @@ impl NativeEditorWindowExtension for GraphEditorWindow {
             buffer
         };
 
-        let result =
+        let _: Option<()> =
             world.resource_scope::<Assets<AnimationGraph>, _>(|world, mut graph_assets| {
                 world.resource_scope::<Assets<StateMachine>, _>(|world, fsm_assets| {
                     world.resource_scope::<GraphIndicesMap, _>(|world, graph_indices_map| {
@@ -165,30 +167,40 @@ impl NativeEditorWindowExtension for GraphEditorWindow {
                             .iter()
                             .rev()
                             .find(|id| **id > 1)
-                            && *selected_node > 1
                         {
-                            let node_id = graph_indices.node_indices.name(*selected_node).unwrap();
-                            graph.nodes.get_mut(&node_id).unwrap().should_debug = true;
-                            if let Some(active_node) = get_global_state::<ActiveGraphNode>(world)
-                                && let Some(InspectorSelection::ActiveNode) =
-                                    get_global_state::<InspectorSelection>(world)
-                                && active_node.node == node_id
-                                && active_node.handle == active_graph.handle
-                            {
-                                // pass
-                            } else {
-                                return Some((
-                                    SetActiveGraphNode {
+                            if *selected_node > 1 {
+                                let node_id =
+                                    graph_indices.node_indices.name(*selected_node).unwrap();
+                                graph.nodes.get_mut(&node_id).unwrap().should_debug = true;
+                                if let Some(active_node) =
+                                    get_global_state::<ActiveGraphNode>(world)
+                                    && let Some(InspectorSelection::ActiveNode) =
+                                        get_global_state::<InspectorSelection>(world)
+                                    && active_node.node == node_id
+                                    && active_node.handle == active_graph.handle
+                                {
+                                    // pass
+                                } else {
+                                    queue.trigger(SetActiveGraphNode {
                                         new: ActiveGraphNode {
                                             handle: active_graph.handle.clone(),
                                             node: node_id,
                                             selected_pin: None,
                                         },
-                                    },
-                                    SetInspectorSelection {
+                                    });
+                                    queue.trigger(SetInspectorSelection {
                                         selection: InspectorSelection::ActiveNode,
+                                    });
+                                }
+                            } else if *selected_node <= 1 {
+                                queue.trigger(SetActiveGraph {
+                                    new: ActiveGraph {
+                                        handle: active_graph.handle.clone(),
                                     },
-                                ));
+                                });
+                                queue.trigger(SetInspectorSelection {
+                                    selection: InspectorSelection::ActiveGraph,
+                                });
                             }
                         }
                         // ----------------------------------------------------------------
@@ -196,11 +208,6 @@ impl NativeEditorWindowExtension for GraphEditorWindow {
                     })
                 })
             });
-
-        if let Some((set_active_graph_node, set_inspector_selection)) = result {
-            ctx.trigger(set_active_graph_node);
-            ctx.trigger(set_inspector_selection);
-        }
 
         let available_size = ui.available_size();
         let (id, rect) = ui.allocate_space(available_size);
