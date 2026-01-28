@@ -2,9 +2,11 @@ extern crate bevy;
 extern crate bevy_animation_graph;
 
 use bevy::prelude::*;
-use bevy_animation_graph::{
-    core::{animation_graph::PinMap, errors::GraphError},
-    prelude::{DataSpec, NodeLike, ReflectNodeLike, SpecContext, new_context::NodeContext},
+use bevy_animation_graph::core::{
+    animation_node::{NodeLike, ReflectNodeLike},
+    context::{new_context::NodeContext, spec_context::SpecContext},
+    edge_data::DataSpec,
+    errors::GraphError,
 };
 use bevy_animation_graph_editor::AnimationGraphEditorPlugin;
 
@@ -71,29 +73,23 @@ impl NodeLike for MyCustomNode {
         Ok(())
     }
 
-    fn time_input_spec(&self, _: SpecContext) -> PinMap<()> {
-        // Specify input time pins
-        [(Self::IN_TIME.into(), ())].into()
-    }
-
-    fn time_output_spec(&self, _ctx: SpecContext) -> Option<()> {
-        // Specify that this node has an output time pin. Nodes can only have one or zero output
-        // time pins
-        Some(())
-    }
-
-    fn data_input_spec(&self, _: SpecContext) -> PinMap<DataSpec> {
-        // Specify input data pins for this node
-        [(Self::IN_POSE.into(), DataSpec::Pose)].into()
-    }
-
-    fn data_output_spec(&self, _: SpecContext) -> PinMap<DataSpec> {
-        // Specify output data pins for this node
-        [(Self::OUT_POSE.into(), DataSpec::Pose)].into()
-    }
-
     fn display_name(&self) -> String {
         // This is the name that will be displayed in the editor for the node
         "Custom example node".into()
+    }
+
+    fn spec(&self, mut ctx: SpecContext) -> Result<(), GraphError> {
+        // Specify input data pins for this node
+        ctx.add_input_data(Self::IN_POSE, DataSpec::Pose);
+        // Specify input time pins
+        ctx.add_input_time(Self::IN_TIME);
+
+        // Specify output data pins for this node
+        ctx.add_output_data(Self::OUT_POSE, DataSpec::Pose);
+        // Specify that this node has an output time pin. Nodes can only have one or zero output
+        // time pins
+        ctx.add_output_time();
+
+        Ok(())
     }
 }

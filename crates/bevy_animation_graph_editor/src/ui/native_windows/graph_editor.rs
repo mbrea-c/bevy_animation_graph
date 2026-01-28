@@ -153,9 +153,8 @@ impl NativeEditorWindowExtension for GraphEditorWindow {
                                 ctx.editor_actions.push(EditorAction::Graph(action))
                             });
 
-                        // --- Update selection for node inspector.
-                        // --- And enable debug render for latest node selected only
-                        // ----------------------------------------------------------------
+                        // Update selection for node inspector.
+                        // And enable debug render for latest node selected only
 
                         let graph = graph_assets.get_mut(&active_graph.handle).unwrap();
                         for (_, node) in graph.nodes.iter_mut() {
@@ -166,7 +165,7 @@ impl NativeEditorWindowExtension for GraphEditorWindow {
                             .get_selected_nodes()
                             .iter()
                             .rev()
-                            .find(|id| **id > 1)
+                            .next()
                         {
                             if *selected_node > 1 {
                                 let node_id =
@@ -192,22 +191,19 @@ impl NativeEditorWindowExtension for GraphEditorWindow {
                                         selection: InspectorSelection::ActiveNode,
                                     });
                                 }
-                            } else if *selected_node <= 1 {
-                                queue.trigger(SetActiveGraph {
-                                    new: ActiveGraph {
-                                        handle: active_graph.handle.clone(),
-                                    },
-                                });
+                            } else {
                                 queue.trigger(SetInspectorSelection {
                                     selection: InspectorSelection::ActiveGraph,
                                 });
                             }
                         }
-                        // ----------------------------------------------------------------
+
                         None
                     })
                 })
             });
+
+        ctx.consume_queue(queue);
 
         let available_size = ui.available_size();
         let (id, rect) = ui.allocate_space(available_size);
