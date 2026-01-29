@@ -192,9 +192,14 @@ impl NativeEditorWindowExtension for GraphEditorWindow {
                                     });
                                 }
                             } else {
-                                queue.trigger(SetInspectorSelection {
-                                    selection: InspectorSelection::ActiveGraph,
-                                });
+                                if !matches!(
+                                    get_global_state::<InspectorSelection>(world),
+                                    Some(InspectorSelection::ActiveGraph)
+                                ) {
+                                    queue.trigger(SetInspectorSelection {
+                                        selection: InspectorSelection::ActiveGraph,
+                                    });
+                                }
                             }
                         }
 

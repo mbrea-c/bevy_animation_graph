@@ -9,8 +9,12 @@ use avian3d::{
 };
 use bevy::{color::palettes::css::GREEN, light::CascadeShadowConfigBuilder, prelude::*};
 use bevy_animation_graph::{
-    core::{animated_scene::AnimatedSceneInstance, ragdoll::definition::BodyLabel},
-    prelude::*,
+    AnimationGraphPlugin,
+    core::{
+        animated_scene::{AnimatedSceneHandle, AnimatedSceneInstance},
+        animation_graph_player::AnimationGraphPlayer,
+        ragdoll::definition::BodyLabel,
+    },
 };
 
 fn main() {
@@ -222,8 +226,8 @@ fn update_animation_player(
         params.speed -= 1.5 * time.delta_secs();
     }
 
-    player.set_input_parameter("target_speed", params.real_speed.into());
-    player.set_input_parameter(
+    player.set_input_data("target_speed", params.real_speed.into());
+    player.set_input_data(
         "target_direction",
         (Quat::from_rotation_y(-params.angle) * Vec3::X).into(),
     );

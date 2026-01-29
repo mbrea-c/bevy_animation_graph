@@ -1,9 +1,20 @@
 (
     nodes: [
         (
-            name: "ragdoll config",
+            id: "a0be6dce-5208-44c8-adeb-53c3b48a8cb6",
+            name: "",
             inner: {
-                "bevy_animation_graph::nodes::const_ragdoll_config::ConstRagdollConfig": (
+                "bevy_animation_graph_builtin_nodes::graph_node::GraphNode": (
+                    graph: "animation_graphs/human.animgraph.ron",
+                ),
+            },
+            should_debug: false,
+        ),
+        (
+            id: "5dae7c8b-a650-4604-8d6d-646074f464a3",
+            name: "",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::ConstRagdollConfig": (
                     value: (
                         default_mode: None,
                         mode_overrides: {},
@@ -12,61 +23,38 @@
                     ),
                 ),
             },
-        ),
-        (
-            name: "locomotion",
-            inner: {
-                "bevy_animation_graph::nodes::graph_node::GraphNode": (
-                    graph: "animation_graphs/human_new.animgraph.ron",
-                ),
-            },
+            should_debug: false,
         ),
     ],
     edges_inverted: {
-        OutputData("pose"): NodeData("locomotion", "pose"),
-        NodeData("locomotion", "target_speed"): InputData("target_speed"),
-        OutputData("ragdoll_config"): NodeData("ragdoll config", "out"),
-        OutputTime: NodeTime("locomotion"),
-        NodeData("locomotion", "rotation_bone"): InputData("rotation_bone"),
-        NodeData("locomotion", "Z"): InputData("Z"),
-        NodeData("locomotion", "1"): InputData("1"),
-        NodeData("locomotion", "target_direction"): InputData("target_direction"),
+        NodeData("a0be6dce-5208-44c8-adeb-53c3b48a8cb6", "target_speed"): InputData(Passthrough("target_speed")),
+        NodeData("a0be6dce-5208-44c8-adeb-53c3b48a8cb6", "target_direction"): InputData(Passthrough("target_direction")),
     },
-    default_parameters: {
-        "rotation_bone": EntityPath([
-            "metarig",
-            "spine",
-        ]),
-        "Z": Vec3((0.0, 0.0, 1.0)),
-        "target_direction": Vec3((1.0, 0.0, 0.0)),
-        "target_speed": F32(0.0),
-        "1": F32(1.0),
-    },
-    input_times: {},
-    output_parameters: {
-        "ragdoll_config": RagdollConfig,
-        "pose": Pose,
-    },
-    output_time: Some(()),
-    extra: (
+    io_spec: (
+        input_times: [],
+        input_data: {
+            Passthrough("target_direction"): Vec3,
+            Passthrough("target_speed"): F32,
+        },
+        output_time: false,
+        output_data: {},
+        input_order: {
+            Data(Passthrough("target_speed")): 1,
+            Data(Passthrough("target_direction")): 0,
+        },
+        output_order: {},
+    ),
+    default_data: {},
+    editor_metadata: (
         node_positions: {
-            "ragdoll config": (44.128906, 327.39453),
-            "locomotion": (43.117188, -5.1875),
+            "a0be6dce-5208-44c8-adeb-53c3b48a8cb6": (191.49219, 399.4297),
+            "5dae7c8b-a650-4604-8d6d-646074f464a3": (192.83984, 666.6992),
         },
-        input_position: (-280.8789, -4.265625),
-        output_position: (368.76953, 156.24219),
-        input_param_order: {
-            "rotation_bone": 2,
-            "Z": 1,
-            "target_direction": 0,
-            "target_speed": 3,
-            "1": 4,
-        },
+        input_position: (30.949219, 421.6797),
+        output_position: (507.83984, 431.6211),
+        input_param_order: {},
         input_time_order: {},
-        output_data_order: {
-            "ragdoll_config": 1,
-            "pose": 0,
-        },
+        output_data_order: {},
         output_pose_order: {},
     ),
 )
