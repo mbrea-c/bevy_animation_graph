@@ -282,6 +282,7 @@ pub struct AngleLimit {
 #[derive(
     Default, Reflect, Clone, Copy, Serialize, Deserialize, Hash, PartialEq, Eq, PartialOrd, Ord,
 )]
+#[reflect(Hash)]
 pub struct BodyId {
     uuid: Uuid,
 }

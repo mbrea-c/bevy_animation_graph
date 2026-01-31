@@ -40,10 +40,10 @@ fn main() {
     .add_systems(
         Update,
         (
+            camera_follow_ragdoll,
             find_target,
             update_params,
             update_animation_player,
-            camera_follow_ragdoll,
         )
             .chain(),
     );
@@ -61,7 +61,33 @@ struct Params {
     pub position: Vec3,
     pub velocity: Vec3,
 
-    pub ragdoll_mode: bool,
+    pub ragdoll_mode: RagdollMode,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum RagdollMode {
+    NoRagdoll,
+    PartialRagdoll,
+    FullRagdoll,
+}
+
+impl RagdollMode {
+    pub fn state(&self) -> String {
+        match self {
+            RagdollMode::NoRagdoll => "ok",
+            RagdollMode::PartialRagdoll => "wounded",
+            RagdollMode::FullRagdoll => "dead",
+        }
+        .into()
+    }
+
+    pub fn next(&self) -> Self {
+        match self {
+            RagdollMode::NoRagdoll => RagdollMode::PartialRagdoll,
+            RagdollMode::PartialRagdoll => RagdollMode::FullRagdoll,
+            RagdollMode::FullRagdoll => RagdollMode::NoRagdoll,
+        }
+    }
 }
 
 impl Default for Params {
@@ -74,7 +100,7 @@ impl Default for Params {
             position: Vec3::ZERO,
             real_speed: 0.,
             velocity: Vec3::ZERO,
-            ragdoll_mode: false,
+            ragdoll_mode: RagdollMode::NoRagdoll,
         }
     }
 }
@@ -215,14 +241,10 @@ fn update_animation_player(
     }
 
     if keyboard_input.just_pressed(KeyCode::KeyT) {
-        params.ragdoll_mode = !params.ragdoll_mode;
+        params.ragdoll_mode = params.ragdoll_mode.next();
     }
 
-    if params.ragdoll_mode {
-        text.0 = "Ragdoll enabled".into();
-    } else {
-        text.0 = "Ragdoll disabled".into();
-    }
+    text.0 = format!("Ragdoll mode: {:?}", params.ragdoll_mode);
 
     if keyboard_input.pressed(KeyCode::ArrowUp) {
         params.speed += 1.5 * time.delta_secs();
@@ -231,11 +253,7 @@ fn update_animation_player(
         params.speed -= 1.5 * time.delta_secs();
     }
     player.send_event(AnimationEvent::TransitionToStateLabel(
-        if params.ragdoll_mode {
-            "dead".into()
-        } else {
-            "ok".into()
-        },
+        params.ragdoll_mode.state(),
     ));
 
     player.set_input_data("target_speed", params.real_speed.into());
@@ -258,7 +276,7 @@ fn camera_follow_ragdoll(
         if body_label.0.as_str() == "stomach" {
             cam_transform.translation = body_pos.0 + Vec3::new(3., 9., 3.);
 
-            if params.ragdoll_mode {
+            if params.ragdoll_mode == RagdollMode::FullRagdoll {
                 human_transform.translation = body_pos.0;
                 params.position = body_pos.0;
             }

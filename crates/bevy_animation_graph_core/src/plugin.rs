@@ -1,8 +1,5 @@
 #[cfg(feature = "physics_avian")]
-use avian3d::{
-    dynamics::{integrator::IntegrationSystems, solver::schedule::SubstepSolverSystems},
-    prelude::{PhysicsSchedule, PhysicsSystems, SolverSystems, SubstepSchedule},
-};
+use avian3d::prelude::PhysicsSystems;
 use bevy::{
     app::{App, Plugin, PreUpdate},
     asset::AssetApp,
