@@ -1,6 +1,14 @@
 (
     states: [
         (
+            id: "6fdc6f33-f2b4-4b40-8dc2-b327a5fbe014",
+            label: "dead",
+            graph: "animation_graphs/fsm_state_dead.animgraph.ron",
+            state_transition: Some((
+                kind: Immediate,
+            )),
+        ),
+        (
             id: "36d52369-2c7e-4034-9c7e-74c9c3cef3be",
             label: "ok",
             graph: "animation_graphs/fsm_state_ok.animgraph.ron",
@@ -12,14 +20,6 @@
             id: "1d1b3961-4e30-4ad7-a62f-db69763b1b46",
             label: "wounded",
             graph: "animation_graphs/fsm_state_wounded.animgraph.ron",
-            state_transition: Some((
-                kind: Immediate,
-            )),
-        ),
-        (
-            id: "6fdc6f33-f2b4-4b40-8dc2-b327a5fbe014",
-            label: "dead",
-            graph: "animation_graphs/fsm_state_dead.animgraph.ron",
             state_transition: Some((
                 kind: Immediate,
             )),

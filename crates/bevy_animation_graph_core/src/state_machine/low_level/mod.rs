@@ -146,14 +146,17 @@ impl LowLevelStateMachine {
     pub fn add_transition(&mut self, transition: LowLevelTransition) {
         self.transitions
             .insert(transition.id.clone(), transition.clone());
-        if matches!(transition.id, LowLevelTransitionId::Start(_)) {
-            let vec = self
-                .transitions_by_hl_state_pair
-                .entry((transition.hl_source.clone(), transition.hl_target.clone()))
-                .or_default();
-            vec.push(transition.id.clone());
-            // Direct transitions should come first
-            vec.sort_by_key(|id| self.transitions.get(id).unwrap().transition_type);
+        match transition.id {
+            LowLevelTransitionId::Start(_) | LowLevelTransitionId::Immediate(_) => {
+                let vec = self
+                    .transitions_by_hl_state_pair
+                    .entry((transition.hl_source.clone(), transition.hl_target.clone()))
+                    .or_default();
+                vec.push(transition.id.clone());
+                // Direct transitions should come first
+                vec.sort_by_key(|id| self.transitions.get(id).unwrap().transition_type);
+            }
+            _ => {}
         }
     }
 

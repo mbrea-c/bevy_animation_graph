@@ -8,12 +8,12 @@
                     value: (
                         default_mode: Some(Kinematic),
                         mode_overrides: {},
-                        default_readback: Some(false),
+                        default_readback: Some(true),
                         readback_overrides: {},
                     ),
                 ),
             },
-            should_debug: false,
+            should_debug: true,
         ),
     ],
     edges_inverted: {

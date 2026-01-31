@@ -1,3 +1,8 @@
+#[cfg(feature = "physics_avian")]
+use avian3d::{
+    dynamics::{integrator::IntegrationSystems, solver::schedule::SubstepSolverSystems},
+    prelude::{PhysicsSchedule, PhysicsSystems, SolverSystems, SubstepSchedule},
+};
 use bevy::{
     app::{App, Plugin, PreUpdate},
     asset::AssetApp,
@@ -12,7 +17,8 @@ use bevy::{
 #[cfg(feature = "physics_avian")]
 use crate::physics_systems_avian::{
     read_back_poses_avian, spawn_missing_ragdolls_avian, update_ragdoll_rigidbodies,
-    update_ragdolls_avian,
+    update_ragdolls_avian, update_relative_kinematic_body_velocities,
+    update_relative_kinematic_position_based_body_velocities,
 };
 use crate::{
     animated_scene::{
@@ -67,6 +73,7 @@ impl Plugin for AnimationGraphCorePlugin {
             (
                 AnimationGraphSet::PrePhysics,
                 AnimationGraphSet::PostPhysics,
+                AnimationGraphSet::Final,
             )
                 .chain(),
         );
@@ -78,38 +85,12 @@ impl Plugin for AnimationGraphCorePlugin {
 
         #[cfg(feature = "physics_avian")]
         {
-            use avian3d::{
-                dynamics::{
-                    integrator::IntegrationSystems, solver::schedule::SubstepSolverSystems,
-                },
-                prelude::{PhysicsSchedule, PhysicsSystems, SolverSystems, SubstepSchedule},
-            };
-
-            use crate::physics_systems_avian::{
-                update_relative_kinematic_body_velocities,
-                update_relative_kinematic_position_based_body_velocities,
-            };
-
             app.configure_sets(
                 self.physics_schedule,
                 (
                     AnimationGraphSet::PrePhysics.before(PhysicsSystems::First),
                     AnimationGraphSet::PostPhysics.after(PhysicsSystems::Last),
                 ),
-            );
-
-            app.add_systems(
-                PhysicsSchedule,
-                update_relative_kinematic_position_based_body_velocities
-                    .after(SolverSystems::PreSubstep)
-                    .before(SolverSystems::Substep),
-            );
-
-            app.add_systems(
-                SubstepSchedule,
-                update_relative_kinematic_body_velocities
-                    .after(SubstepSolverSystems::SolveConstraints)
-                    .before(IntegrationSystems::Position),
             );
 
             self.register_physics_types(app);
@@ -127,6 +108,10 @@ impl Plugin for AnimationGraphCorePlugin {
                 update_ragdoll_rigidbodies,
                 #[cfg(feature = "physics_avian")]
                 update_ragdolls_avian,
+                #[cfg(feature = "physics_avian")]
+                update_relative_kinematic_position_based_body_velocities,
+                #[cfg(feature = "physics_avian")]
+                update_relative_kinematic_body_velocities,
             )
                 .chain()
                 .in_set(AnimationGraphSet::PrePhysics),
