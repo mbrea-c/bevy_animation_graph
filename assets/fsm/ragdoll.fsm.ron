@@ -1,0 +1,51 @@
+(
+    states: [
+        (
+            id: "36d52369-2c7e-4034-9c7e-74c9c3cef3be",
+            label: "ok",
+            graph: "animation_graphs/fsm_state_ok.animgraph.ron",
+            state_transition: Some((
+                kind: Immediate,
+            )),
+        ),
+        (
+            id: "1d1b3961-4e30-4ad7-a62f-db69763b1b46",
+            label: "wounded",
+            graph: "animation_graphs/fsm_state_wounded.animgraph.ron",
+            state_transition: Some((
+                kind: Immediate,
+            )),
+        ),
+        (
+            id: "6fdc6f33-f2b4-4b40-8dc2-b327a5fbe014",
+            label: "dead",
+            graph: "animation_graphs/fsm_state_dead.animgraph.ron",
+            state_transition: Some((
+                kind: Immediate,
+            )),
+        ),
+    ],
+    transitions: [],
+    start_state: "36d52369-2c7e-4034-9c7e-74c9c3cef3be",
+    node_spec: (
+        input_times: [],
+        input_data: {},
+        output_time: true,
+        output_data: {
+            "ragdoll_config": RagdollConfig,
+        },
+        input_order: {},
+        output_order: {
+            Data("ragdoll_config"): 1,
+            Time: 0,
+        },
+    ),
+    editor_metadata: (
+        states: {
+            "0484ff57-f4b6-4097-a28c-b6c9bfa98a21": (-282.58203, -26.628906),
+            "1d1b3961-4e30-4ad7-a62f-db69763b1b46": (13.7890625, -85.328125),
+            "36d52369-2c7e-4034-9c7e-74c9c3cef3be": (-219.58203, -89.55859),
+            "6fdc6f33-f2b4-4b40-8dc2-b327a5fbe014": (-98.21094, 53.121094),
+        },
+    ),
+)

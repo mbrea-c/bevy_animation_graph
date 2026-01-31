@@ -697,23 +697,9 @@ impl AnimationGraph {
             SourcePin::NodeData(node_id, node_pin) => {
                 let key = ctx.state_key;
 
-                if !ctx.node_caches().is_updated(node_id.to_owned(), key) {
+                if !ctx.node_caches().is_update_started(node_id.to_owned(), key) {
                     let node = &self.nodes[node_id];
-                    let should_debug = node.should_debug;
-
-                    {
-                        let _node_update_span = info_span!(
-                            "anim_node_update",
-                            name = format!("{}", node_id.uuid().hyphenated())
-                        )
-                        .entered();
-                        node.update(
-                            ctx.create_node_context(node_id, self)
-                                .with_debugging(should_debug),
-                        )?;
-                    }
-
-                    ctx.node_caches_mut().mark_updated(node_id.to_owned(), key);
+                    self.node_update_wrapper(node, &mut ctx)?;
                 }
 
                 ctx.node_caches()
@@ -768,7 +754,7 @@ impl AnimationGraph {
                     let node = &self.nodes[node_id];
                     let should_debug = node.should_debug;
                     node.duration(
-                        ctx.create_node_context(node_id, self)
+                        ctx.create_node_context(*node_id, self)
                             .with_debugging(should_debug),
                     )?;
                     ctx.node_caches().get_duration(node_id.clone(), key)?
@@ -785,7 +771,7 @@ impl AnimationGraph {
     pub fn get_time_update(
         &self,
         source_pin: SourcePin,
-        ctx: GraphContext,
+        mut ctx: GraphContext,
     ) -> Result<TimeUpdate, GraphError> {
         let Some(target_pin) = self.edges.get(&source_pin) else {
             return Err(GraphError::MissingEdgeToSource(source_pin));
@@ -793,21 +779,28 @@ impl AnimationGraph {
 
         let key = ctx.state_key;
 
-        match target_pin {
+        let time_update = match target_pin {
             TargetPin::NodeData(_, _) => {
                 panic!("Incompatible pins connected: {source_pin:?} --> {target_pin:?}")
             }
             TargetPin::OutputData(_) => {
                 panic!("Incompatible pins connected: {source_pin:?} --> {target_pin:?}")
             }
-            TargetPin::NodeTime(target_node, target_pin) => ctx
-                .node_caches()
-                .get_input_time_update(target_node.clone(), key, target_pin.clone()),
+            TargetPin::NodeTime(node_id, target_pin) => {
+                if !ctx.node_caches().is_update_started(node_id.to_owned(), key) {
+                    let node = &self.nodes[node_id];
+                    self.node_update_wrapper(node, &mut ctx)?;
+                }
+                ctx.node_caches()
+                    .get_input_time_update(*node_id, key, target_pin.clone())?
+            }
             TargetPin::OutputTime => match ctx.context().query_output_time.get(key) {
-                Some(update) => Ok(update),
-                None => ctx.io.get_time_fwd(ctx.clone()),
+                Some(update) => update,
+                None => ctx.io.get_time_fwd(ctx.clone())?,
             },
-        }
+        };
+
+        Ok(time_update)
     }
 
     pub fn query(
@@ -862,4 +855,30 @@ impl AnimationGraph {
         Ok(outputs)
     }
     // ----------------------------------------------------------------------------------------
+
+    fn node_update_wrapper(
+        &self,
+        node: &AnimationNode,
+        ctx: &mut GraphContext,
+    ) -> Result<(), GraphError> {
+        let key = ctx.state_key;
+
+        ctx.node_caches_mut().mark_update_started(node.id, key);
+
+        {
+            let _node_update_span = info_span!(
+                "anim_node_update",
+                name = format!("{}", node.id.uuid().hyphenated())
+            )
+            .entered();
+            node.update(
+                ctx.create_node_context(node.id, self)
+                    .with_debugging(node.should_debug),
+            )?;
+        }
+
+        ctx.node_caches_mut().mark_updated(node.id, key);
+
+        Ok(())
+    }
 }

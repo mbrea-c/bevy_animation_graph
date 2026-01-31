@@ -119,7 +119,6 @@ pub struct AnimationNode {
     pub name: String,
     #[deref]
     pub inner: DynNodeLike,
-    // #[reflect(ignore)] // manual reflect impl (see below)
     pub should_debug: bool,
 }
 

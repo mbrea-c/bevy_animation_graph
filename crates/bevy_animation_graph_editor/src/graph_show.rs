@@ -5,7 +5,7 @@ use bevy_animation_graph::core::{
     context::{
         graph_context::GraphState,
         node_states::StateKey,
-        spec_context::{NodeInput, NodeOutput, SpecResources},
+        spec_context::{IoSpec, NodeInput, NodeOutput, SpecContext, SpecResources},
     },
     edge_data::DataSpec,
     errors::GraphError,
@@ -470,7 +470,7 @@ impl GraphReprSpec {
         &mut self,
         graph: &AnimationGraph,
         indices: &GraphIndices,
-        ctx: SpecResources,
+        resources: SpecResources,
         graph_context: Option<&GraphState>,
     ) -> Option<()> {
         for node in graph.nodes.values() {
@@ -498,7 +498,9 @@ impl GraphReprSpec {
             let mut input_tmp_store: Vec<(PinId, PinSpec)> = vec![];
             let mut output_tmp_store: Vec<(PinId, PinSpec)> = vec![];
 
-            let node_spec = node.new_spec(ctx).ok()?;
+            let mut node_spec = IoSpec::<String>::default();
+            let ctx = SpecContext::new(resources, &mut node_spec);
+            let _ = node.spec(ctx);
 
             for input in node_spec.sorted_inputs().into_iter() {
                 match input {

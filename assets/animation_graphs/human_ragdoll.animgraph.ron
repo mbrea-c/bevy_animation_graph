@@ -1,8 +1,18 @@
 (
     nodes: [
         (
-            id: "a0be6dce-5208-44c8-adeb-53c3b48a8cb6",
-            name: "",
+            id: "525e57c8-2acd-43e5-a788-0be33905a253",
+            name: "ragdoll_config_fsm",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::FsmNode": (
+                    fsm: "fsm/ragdoll.fsm.ron",
+                ),
+            },
+            should_debug: true,
+        ),
+        (
+            id: "017606cd-5fcf-4650-a159-6f6e73fc9a1a",
+            name: "human_base",
             inner: {
                 "bevy_animation_graph_builtin_nodes::graph_node::GraphNode": (
                     graph: "animation_graphs/human.animgraph.ron",
@@ -11,47 +21,62 @@
             should_debug: false,
         ),
         (
-            id: "5dae7c8b-a650-4604-8d6d-646074f464a3",
-            name: "",
+            id: "d3f9be56-ea53-49bf-aefd-c991c78c3b83",
+            name: "replicate_time",
             inner: {
-                "bevy_animation_graph::builtin_nodes::ConstRagdollConfig": (
-                    value: (
-                        default_mode: None,
-                        mode_overrides: {},
-                        default_readback: None,
-                        readback_overrides: {},
-                    ),
+                "bevy_animation_graph::builtin_nodes::ReplicateTimeNode": (
+                    extra_count: 1,
                 ),
             },
             should_debug: false,
         ),
     ],
     edges_inverted: {
-        NodeData("a0be6dce-5208-44c8-adeb-53c3b48a8cb6", "target_speed"): InputData(Passthrough("target_speed")),
-        NodeData("a0be6dce-5208-44c8-adeb-53c3b48a8cb6", "target_direction"): InputData(Passthrough("target_direction")),
+        OutputData("pose"): NodeData("017606cd-5fcf-4650-a159-6f6e73fc9a1a", "pose"),
+        OutputTime: NodeTime("d3f9be56-ea53-49bf-aefd-c991c78c3b83"),
+        NodeTime("d3f9be56-ea53-49bf-aefd-c991c78c3b83", "master"): NodeTime("017606cd-5fcf-4650-a159-6f6e73fc9a1a"),
+        NodeData("017606cd-5fcf-4650-a159-6f6e73fc9a1a", "target_speed"): InputData(Passthrough("target_speed")),
+        OutputData("ragdoll_config"): NodeData("525e57c8-2acd-43e5-a788-0be33905a253", "ragdoll_config"),
+        NodeData("017606cd-5fcf-4650-a159-6f6e73fc9a1a", "target_direction"): InputData(Passthrough("target_direction")),
+        NodeData("525e57c8-2acd-43e5-a788-0be33905a253", "driver events"): InputData(Passthrough("user_events")),
+        NodeTime("d3f9be56-ea53-49bf-aefd-c991c78c3b83", "slave_0"): NodeTime("525e57c8-2acd-43e5-a788-0be33905a253"),
     },
     io_spec: (
         input_times: [],
         input_data: {
             Passthrough("target_direction"): Vec3,
             Passthrough("target_speed"): F32,
+            Passthrough("user_events"): EventQueue,
         },
-        output_time: false,
-        output_data: {},
+        output_time: true,
+        output_data: {
+            "pose": Pose,
+            "ragdoll_config": RagdollConfig,
+        },
         input_order: {
             Data(Passthrough("target_speed")): 1,
             Data(Passthrough("target_direction")): 0,
+            Data(Passthrough("user_events")): 2,
         },
-        output_order: {},
+        output_order: {
+            Data("ragdoll_config"): 2,
+            Data("pose"): 0,
+            Time: 1,
+        },
     ),
-    default_data: {},
+    default_data: {
+        Passthrough("user_events"): EventQueue((
+            events: [],
+        )),
+    },
     editor_metadata: (
         node_positions: {
-            "a0be6dce-5208-44c8-adeb-53c3b48a8cb6": (191.49219, 399.4297),
-            "5dae7c8b-a650-4604-8d6d-646074f464a3": (192.83984, 666.6992),
+            "017606cd-5fcf-4650-a159-6f6e73fc9a1a": (235.78906, -32.01953),
+            "d3f9be56-ea53-49bf-aefd-c991c78c3b83": (402.15234, 115.07031),
+            "525e57c8-2acd-43e5-a788-0be33905a253": (236.26563, 263.76953),
         },
-        input_position: (30.949219, 421.6797),
-        output_position: (507.83984, 431.6211),
+        input_position: (-40.609375, 115.5),
+        output_position: (647.9531, 101.83203),
         input_param_order: {},
         input_time_order: {},
         output_data_order: {},

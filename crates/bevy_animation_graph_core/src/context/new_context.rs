@@ -65,7 +65,7 @@ impl<'a> GraphContext<'a> {
     /// passing the context down to a node.
     pub fn create_node_context(
         &self,
-        node_id: &'a NodeId,
+        node_id: NodeId,
         graph: &'a AnimationGraph,
     ) -> NodeContext<'a> {
         NodeContext {
@@ -157,7 +157,7 @@ impl<'a> GraphContext<'a> {
 
 #[derive(Clone)]
 pub struct NodeContext<'a> {
-    pub node_id: &'a NodeId,
+    pub node_id: NodeId,
     pub graph: &'a AnimationGraph,
     pub graph_context: GraphContext<'a>,
 }
@@ -268,6 +268,10 @@ impl<'a> NodeContext<'a> {
 
     pub fn with_temp_state_key(mut self) -> Self {
         self.graph_context = self.graph_context.with_temp_state_key();
+        let new_key = self.graph_context.state_key;
+        self.graph_context
+            .node_caches_mut()
+            .mark_update_started(self.node_id, new_key);
         self
     }
 

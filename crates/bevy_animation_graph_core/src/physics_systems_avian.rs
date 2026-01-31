@@ -148,6 +148,8 @@ pub fn update_ragdoll_rigidbodies(
                 .cloned()
                 .unwrap_or_default();
 
+            println!("{:?}", config);
+
             for body in ragdoll.bodies.values() {
                 let Some(body_entity) = spawned_ragdoll.bodies.get(&body.id) else {
                     continue;
@@ -196,6 +198,8 @@ pub fn update_ragdolls_avian(
             let rb_targets =
                 write_pose_to_ragdoll(pose, skeleton, ragdoll, bone_map, pose_fallback);
             let root_transform = pose_fallback.compute_root_global_transform_to_rigidbody(skeleton);
+
+            println!("{:?}", root_transform);
 
             for body_target in rb_targets.bodies {
                 let Some(body_entity) = spawned_ragdoll.bodies.get(&body_target.body_id) else {

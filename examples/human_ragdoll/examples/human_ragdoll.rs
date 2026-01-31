@@ -5,7 +5,7 @@ use std::f32::consts::PI;
 
 use avian3d::{
     PhysicsPlugins,
-    prelude::{Collider, Position, RigidBody},
+    prelude::{Collider, PhysicsDebugPlugin, Position, RigidBody},
 };
 use bevy::{color::palettes::css::GREEN, light::CascadeShadowConfigBuilder, prelude::*};
 use bevy_animation_graph::{
@@ -13,9 +13,11 @@ use bevy_animation_graph::{
     core::{
         animated_scene::{AnimatedSceneHandle, AnimatedSceneInstance},
         animation_graph_player::AnimationGraphPlayer,
+        edge_data::events::AnimationEvent,
         ragdoll::definition::BodyLabel,
     },
 };
+use bevy_inspector_egui::bevy_egui;
 
 fn main() {
     let mut app = App::new();
@@ -25,6 +27,9 @@ fn main() {
     }))
     .add_plugins(PhysicsPlugins::new(FixedPostUpdate))
     .add_plugins(AnimationGraphPlugin::from_physics_schedule(FixedPostUpdate))
+    .add_plugins(PhysicsDebugPlugin::default())
+    .add_plugins(bevy_egui::EguiPlugin::default())
+    .add_plugins(bevy_inspector_egui::quick::WorldInspectorPlugin::default())
     .insert_resource(AmbientLight {
         color: Color::WHITE,
         brightness: 0.1,
@@ -225,6 +230,13 @@ fn update_animation_player(
     if keyboard_input.pressed(KeyCode::ArrowDown) {
         params.speed -= 1.5 * time.delta_secs();
     }
+    player.send_event(AnimationEvent::TransitionToStateLabel(
+        if params.ragdoll_mode {
+            "dead".into()
+        } else {
+            "ok".into()
+        },
+    ));
 
     player.set_input_data("target_speed", params.real_speed.into());
     player.set_input_data(

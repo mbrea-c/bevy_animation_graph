@@ -1,0 +1,46 @@
+(
+    nodes: [
+        (
+            id: "01963dfc-bcf1-4871-8e90-b404c0e78c71",
+            name: "",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::ConstRagdollConfig": (
+                    value: (
+                        default_mode: Some(Dynamic),
+                        mode_overrides: {},
+                        default_readback: Some(true),
+                        readback_overrides: {},
+                    ),
+                ),
+            },
+            should_debug: true,
+        ),
+    ],
+    edges_inverted: {
+        OutputData("ragdoll_config"): NodeData("01963dfc-bcf1-4871-8e90-b404c0e78c71", "out"),
+    },
+    io_spec: (
+        input_times: [],
+        input_data: {},
+        output_time: false,
+        output_data: {
+            "ragdoll_config": RagdollConfig,
+        },
+        input_order: {},
+        output_order: {
+            Data("ragdoll_config"): 0,
+        },
+    ),
+    default_data: {},
+    editor_metadata: (
+        node_positions: {
+            "01963dfc-bcf1-4871-8e90-b404c0e78c71": (243.69531, 221.13672),
+        },
+        input_position: (71.63281, 129.77344),
+        output_position: (439.98828, 224.66797),
+        input_param_order: {},
+        input_time_order: {},
+        output_data_order: {},
+        output_pose_order: {},
+    ),
+)

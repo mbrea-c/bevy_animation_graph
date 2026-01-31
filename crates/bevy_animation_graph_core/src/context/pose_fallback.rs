@@ -79,6 +79,7 @@ impl PoseFallbackContext<'_> {
     }
 }
 
+#[derive(Debug)]
 pub enum RootOffsetResult {
     FromRigidbody(Entity, Transform),
     FromRoot(Transform),

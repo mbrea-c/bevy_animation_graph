@@ -17,6 +17,7 @@ use crate::{
     loop_node::LoopNode,
     padding::PaddingNode,
     ragdoll::const_ragdoll_config::ConstRagdollConfig,
+    replicate_time::ReplicateTimeNode,
     rotation_node::RotationNode,
     speed_node::SpeedNode,
     twoboneik_node::TwoBoneIKNode,
@@ -40,6 +41,7 @@ pub mod loop_node;
 pub mod padding;
 pub mod quat;
 pub mod ragdoll;
+pub mod replicate_time;
 pub mod rotation_node;
 pub mod speed_node;
 pub mod twoboneik_node;
@@ -63,6 +65,7 @@ impl BuiltinNodesPlugin {
             .register_type::<BlendNode>()
             .register_type::<BlendSpaceNode>()
             .register_type::<FlipLRNode>()
+            .register_type::<ReplicateTimeNode>()
             .register_type::<GraphNode>()
             .register_type::<LoopNode>()
             .register_type::<PaddingNode>()

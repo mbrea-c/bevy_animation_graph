@@ -20,6 +20,9 @@ pub struct NodeCache {
     /// Time updates sent back to nodes via "input time" pins
     pub input_time_updates: HashMap<(StateKey, PinId), TimeUpdate>,
     pub duration: HashMap<StateKey, DurationData>,
+    /// Whether the node update is started
+    pub update_started: HashSet<StateKey>,
+    /// Whether the node update is completed
     pub updated: HashSet<StateKey>,
 }
 
@@ -126,6 +129,16 @@ impl NodeCaches {
 
     pub fn mark_updated(&mut self, node_id: NodeId, key: StateKey) {
         self.cache_mut(node_id).updated.insert(key);
+    }
+
+    pub fn is_update_started(&self, node_id: NodeId, key: StateKey) -> bool {
+        self.caches
+            .get(&node_id)
+            .is_some_and(|c| c.update_started.contains(&key))
+    }
+
+    pub fn mark_update_started(&mut self, node_id: NodeId, key: StateKey) {
+        self.cache_mut(node_id).update_started.insert(key);
     }
 
     fn cache_mut(&mut self, node_id: NodeId) -> &mut NodeCache {
