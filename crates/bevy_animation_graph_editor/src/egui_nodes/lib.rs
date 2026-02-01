@@ -1240,9 +1240,10 @@ impl NodesContext {
                     .end_pin_index
                     .is_some_and(|idx| self.frame_state.hovered_pin_index != Some(idx));
 
-                if snapping_pin_changed && self.frame_state.snap_link_idx.is_some() {
+                if snapping_pin_changed && let Some(snap_link_idx) = self.frame_state.snap_link_idx
+                {
                     self.begin_link_detach(
-                        self.frame_state.snap_link_idx.unwrap(),
+                        snap_link_idx,
                         self.state
                             .click_interaction_state
                             .link_creation
