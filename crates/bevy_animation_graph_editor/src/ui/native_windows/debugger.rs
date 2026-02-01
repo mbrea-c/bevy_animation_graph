@@ -4,23 +4,24 @@ use bevy::{
     math::Vec3,
     prelude::{Handle, Image, In, Query, Transform, World},
 };
-use bevy_animation_graph::{
-    core::pose::Pose,
-    prelude::{
-        AnimatedScene, AnimatedSceneHandle, AnimationGraphPlayer, DataValue, node_states::StateKey,
-    },
+use bevy_animation_graph::core::{
+    animated_scene::{AnimatedScene, AnimatedSceneHandle},
+    animation_graph_player::AnimationGraphPlayer,
+    context::node_states::StateKey,
+    edge_data::DataValue,
+    pose::Pose,
 };
 use egui_dock::egui;
 
 use crate::ui::{
     OverrideSceneAnimation, PartOfSubScene, SubSceneConfig, SubSceneSyncAction,
-    global_state::{
+    native_windows::{EditorWindowContext, NativeEditorWindowExtension},
+    state_management::global::{
         active_graph_context::ActiveContexts,
         active_graph_node::{ActiveGraphNode, SetActiveGraphNode},
         active_scene::ActiveScene,
         get_global_state,
     },
-    native_windows::{EditorWindowContext, NativeEditorWindowExtension},
     utils::{self, orbit_camera_scene_show, using_inspector_env},
 };
 
@@ -98,7 +99,7 @@ impl NativeEditorWindowExtension for DebuggerWindow {
         let Some(val) = new_pin_id.and_then(|pin_id| {
             graph_context
                 .node_caches
-                .get_output_data(active_node.node.clone(), StateKey::Default, pin_id.clone())
+                .get_output_data(active_node.node, StateKey::Default, pin_id.clone())
                 .ok()
         }) else {
             return;

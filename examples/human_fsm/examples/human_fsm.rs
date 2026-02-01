@@ -1,12 +1,17 @@
 extern crate bevy;
 extern crate bevy_animation_graph;
 
-use bevy::light::CascadeShadowConfigBuilder;
-use bevy::prelude::*;
-use bevy_animation_graph::core::animated_scene::AnimatedSceneInstance;
-use bevy_animation_graph::core::edge_data::AnimationEvent;
-use bevy_animation_graph::prelude::*;
 use std::f32::consts::PI;
+
+use bevy::{light::CascadeShadowConfigBuilder, prelude::*};
+use bevy_animation_graph::{
+    AnimationGraphPlugin,
+    core::{
+        animated_scene::{AnimatedSceneHandle, AnimatedSceneInstance},
+        animation_graph_player::AnimationGraphPlayer,
+        edge_data::events::AnimationEvent,
+    },
+};
 
 fn main() {
     App::new()
@@ -119,15 +124,15 @@ fn keyboard_animation_control(
     }
 
     if keyboard_input.pressed(KeyCode::ArrowUp) {
-        player.send_event(AnimationEvent::TransitionToState("run".into()));
+        player.send_event(AnimationEvent::TransitionToStateLabel("run".into()));
     }
     if keyboard_input.pressed(KeyCode::ArrowDown) {
-        player.send_event(AnimationEvent::TransitionToState("walk".into()));
+        player.send_event(AnimationEvent::TransitionToStateLabel("walk".into()));
     }
 
     if params.direction == Vec3::ZERO {
         params.direction = Vec3::Z;
     }
 
-    player.set_input_parameter("target_speed", params.speed.into());
+    player.set_input_data("target_speed", params.speed.into());
 }

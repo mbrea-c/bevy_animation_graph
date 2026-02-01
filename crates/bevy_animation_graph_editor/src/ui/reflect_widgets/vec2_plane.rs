@@ -5,9 +5,8 @@ use bevy_inspector_egui::reflect_inspector::InspectorUi;
 use egui::Widget;
 use egui_dock::egui;
 
-use crate::ui::utils::popup::CustomPopup;
-
 use super::{EguiInspectorExtension, MakeBuffer, WidgetHash};
+use crate::ui::utils::popup::CustomPopup;
 
 pub struct Vec2PlaneInspector;
 

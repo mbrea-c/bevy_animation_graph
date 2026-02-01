@@ -1,11 +1,16 @@
 extern crate bevy;
 extern crate bevy_animation_graph;
 
-use bevy::light::CascadeShadowConfigBuilder;
-use bevy::prelude::*;
-use bevy_animation_graph::core::animated_scene::AnimatedSceneInstance;
-use bevy_animation_graph::prelude::*;
 use std::f32::consts::PI;
+
+use bevy::{light::CascadeShadowConfigBuilder, prelude::*};
+use bevy_animation_graph::{
+    AnimationGraphPlugin,
+    core::{
+        animated_scene::{AnimatedSceneHandle, AnimatedSceneInstance},
+        animation_graph_player::AnimationGraphPlayer,
+    },
+};
 
 fn main() {
     App::new()
@@ -138,6 +143,6 @@ fn keyboard_animation_control(
             (Quat::from_rotation_y(-1. * time.delta_secs()) * params.direction).normalize();
     }
 
-    player.set_input_parameter("target_speed", params.speed.into());
-    player.set_input_parameter("target_direction", params.direction.into());
+    player.set_input_data("target_speed", params.speed.into());
+    player.set_input_data("target_direction", params.direction.into());
 }

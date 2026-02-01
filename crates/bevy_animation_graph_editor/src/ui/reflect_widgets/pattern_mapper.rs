@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use bevy_animation_graph::prelude::{config::PatternMapper, serial::PatternMapperSerial};
+use bevy_animation_graph::core::symmetry::{config::PatternMapper, serial::PatternMapperSerial};
 use bevy_inspector_egui::reflect_inspector::InspectorUi;
 use egui_dock::egui;
 

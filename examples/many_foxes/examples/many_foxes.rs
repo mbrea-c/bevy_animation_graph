@@ -13,15 +13,11 @@ use bevy::{
     window::{PresentMode, WindowResolution},
     winit::{UpdateMode, WinitSettings},
 };
-use bevy_animation_graph::prelude::{AnimatedSceneHandle, AnimationGraphPlugin};
+use bevy_animation_graph::{AnimationGraphPlugin, core::animated_scene::AnimatedSceneHandle};
 
 #[derive(FromArgs, Resource)]
 /// `many_foxes` stress test
 struct Args {
-    /// whether all foxes run in sync.
-    #[argh(switch)]
-    sync: bool,
-
     /// total number of foxes.
     #[argh(option, default = "1000")]
     count: usize,
@@ -32,7 +28,6 @@ struct Foxes {
     count: usize,
     speed: f32,
     moving: bool,
-    sync: bool,
 }
 
 fn main() {
@@ -71,24 +66,16 @@ fn main() {
             count: args.count,
             speed: 2.0,
             moving: true,
-            sync: args.sync,
         })
         .add_systems(Startup, setup)
         .add_systems(
             Update,
             (
-                setup_scene_once_loaded,
                 keyboard_animation_control,
                 update_fox_rings.after(keyboard_animation_control),
             ),
         )
         .run();
-}
-
-#[derive(Resource)]
-struct Animations {
-    node_indices: Vec<AnimationNodeIndex>,
-    graph: Handle<AnimationGraph>,
 }
 
 const RING_SPACING: f32 = 2.0;
@@ -218,30 +205,6 @@ fn setup(
     println!("  - arrow up / down: speed up / slow down animation playback");
     println!("  - arrow left / right: seek backward / forward");
     println!("  - return: change animation");
-}
-
-// Once the scene is loaded, start the animation
-fn setup_scene_once_loaded(
-    animations: Res<Animations>,
-    foxes: Res<Foxes>,
-    mut commands: Commands,
-    mut player: Query<(Entity, &mut AnimationPlayer)>,
-    mut done: Local<bool>,
-) {
-    if !*done && player.iter().len() == foxes.count {
-        for (entity, mut player) in &mut player {
-            commands
-                .entity(entity)
-                .insert(AnimationGraphHandle(animations.graph.clone()))
-                .insert(AnimationTransitions::new());
-
-            let playing_animation = player.play(animations.node_indices[0]).repeat();
-            if !foxes.sync {
-                playing_animation.seek_to(entity.index() as f32 / 10.0);
-            }
-        }
-        *done = true;
-    }
 }
 
 fn update_fox_rings(

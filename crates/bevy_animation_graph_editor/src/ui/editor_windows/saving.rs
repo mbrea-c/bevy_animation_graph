@@ -4,12 +4,11 @@ use bevy::{
     asset::{AssetPath, UntypedAssetId},
     prelude::World,
 };
-use bevy_animation_graph::{
-    core::{
-        ragdoll::{bone_mapping::RagdollBoneMap, definition::Ragdoll},
-        state_machine::high_level::StateMachine,
-    },
-    prelude::{AnimationGraph, GraphClip},
+use bevy_animation_graph::core::{
+    animation_clip::GraphClip,
+    animation_graph::AnimationGraph,
+    ragdoll::{bone_mapping::RagdollBoneMap, definition::Ragdoll},
+    state_machine::high_level::StateMachine,
 };
 use egui_dock::egui;
 

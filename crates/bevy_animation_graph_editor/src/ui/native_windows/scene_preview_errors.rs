@@ -1,5 +1,7 @@
 use bevy::prelude::World;
-use bevy_animation_graph::prelude::{AnimatedSceneInstance, AnimationGraphPlayer};
+use bevy_animation_graph::core::{
+    animated_scene::AnimatedSceneInstance, animation_graph_player::AnimationGraphPlayer,
+};
 use egui_dock::egui;
 
 use crate::ui::{

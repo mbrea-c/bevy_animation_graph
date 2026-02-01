@@ -1,3 +1,9 @@
+use core::default::Default;
+use std::{
+    any::{Any, TypeId},
+    hash::{Hash, Hasher},
+};
+
 use bevy::{
     app::Plugin,
     ecs::{prelude::AppTypeRegistry, resource::Resource},
@@ -8,18 +14,13 @@ use bevy::{
 use bevy_animation_graph::core::{
     animation_clip::EntityPath,
     animation_graph::PinId,
-    edge_data::{BoneMask, DataSpec, DataValue},
+    edge_data::{DataSpec, DataValue},
 };
 use bevy_inspector_egui::{
     egui,
     inspector_egui_impls::InspectorEguiImpl,
     reflect_inspector::{InspectorUi, ProjectorReflect},
     restricted_world_view::RestrictedWorldView,
-};
-use core::default::Default;
-use std::{
-    any::{Any, TypeId},
-    hash::{Hash, Hasher},
 };
 
 use super::reflect_widgets;
@@ -98,7 +99,6 @@ impl Plugin for BetterInspectorPlugin {
         let type_registry = &mut type_registry;
 
         add_no_many::<String>(type_registry, string_mut, string_readonly);
-        add_no_many::<BoneMask>(type_registry, bone_mask_ui_mut, todo_readonly_ui);
         add_no_many::<HashMap<EntityPath, f32>>(
             type_registry,
             better_hashmap::<EntityPath, f32>,
@@ -225,67 +225,6 @@ fn string_readonly(
 ) {
     let value = value.downcast_ref::<String>().unwrap();
     ui.label(value);
-}
-
-pub fn bone_mask_ui_mut(
-    value: &mut dyn Any,
-    ui: &mut egui::Ui,
-    _options: &dyn Any,
-    id: egui::Id,
-    mut env: InspectorUi<'_, '_>,
-) -> bool {
-    let value = value.downcast_mut::<BoneMask>().unwrap();
-    let (curr_val, curr_label) = if matches!(value, BoneMask::Positive { .. }) {
-        (0, "Positive".to_string())
-    } else {
-        (1, "Negative".to_string())
-    };
-
-    let mut hasher = std::collections::hash_map::DefaultHasher::new();
-    hasher.write_u64(unsafe { std::mem::transmute_copy(&id) });
-    hasher.write_usize(0);
-    let bones_id = egui::Id::new(Hasher::finish(&hasher));
-
-    let mut new_val = curr_val;
-
-    egui::ComboBox::new(id, "Mask type")
-        .selected_text(curr_label)
-        .show_ui(ui, |ui| {
-            ui.selectable_value(&mut new_val, 0, "Positive")
-                .on_hover_ui(|ui| {
-                    ui.label("Bones not in the bone mask are given a weight of 0.");
-                });
-            ui.selectable_value(&mut new_val, 1, "Negative")
-                .on_hover_ui(|ui| {
-                    ui.label("Bones not in the bone mask are given a weight of 1.");
-                });
-        });
-    if new_val != curr_val {
-        match new_val {
-            0 => {
-                *value = BoneMask::Positive {
-                    bones: Default::default(),
-                };
-                *value = BoneMask::Negative {
-                    bones: Default::default(),
-                };
-            }
-            1 => {}
-            _ => unreachable!(),
-        }
-        return true;
-    }
-
-    let bones = match value {
-        BoneMask::Positive { bones } => bones,
-        BoneMask::Negative { bones } => bones,
-    };
-
-    ui.horizontal(|ui| {
-        ui.label("Bones");
-        env.ui_for_reflect_with_options(bones, ui, bones_id, &())
-    })
-    .inner
 }
 
 pub fn better_hashmap<

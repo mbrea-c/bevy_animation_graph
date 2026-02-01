@@ -8,19 +8,17 @@ use bevy::{
     platform::collections::HashMap,
     transform::components::Transform,
 };
-use bevy_animation_graph::{
-    core::{
-        animation_clip::EntityPath,
-        ragdoll::{
-            bone_mapping::{BodyMapping, BodyWeight, BoneMapping, RagdollBoneMap},
-            definition::{
-                AngleLimit, Body, BodyId, Collider, ColliderId, Joint, JointId, JointVariant,
-                Ragdoll, SymmetrySuffixes,
-            },
+use bevy_animation_graph::core::{
+    animation_clip::EntityPath,
+    ragdoll::{
+        bone_mapping::{BodyMapping, BodyWeight, BoneMapping, RagdollBoneMap},
+        definition::{
+            AngleLimit, Body, BodyId, Collider, ColliderId, Joint, JointId, JointVariant, Ragdoll,
+            SymmetrySuffixes,
         },
-        skeleton::Skeleton,
     },
-    prelude::config::SymmertryMode,
+    skeleton::Skeleton,
+    symmetry::config::SymmertryMode,
 };
 
 use crate::ui::actions::{ActionContext, DynamicAction, run_handler, saving::DirtyAssets};

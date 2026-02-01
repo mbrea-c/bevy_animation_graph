@@ -8,7 +8,7 @@ use egui_notify::Toasts;
 
 use crate::ui::{
     actions::{EditorAction, PushQueue},
-    core::{Buffers, EditorWindowExtension, EguiWindow, LegacyEditorWindowContext},
+    core::{EditorWindowExtension, EguiWindow, GlobalBuffers, LegacyEditorWindowContext},
     editor_windows::ragdoll_editor::RagdollEditorWindow,
     native_windows::{
         EditorWindowContext, NativeEditorWindow, NativeEditorWindowExtension,
@@ -106,7 +106,7 @@ pub struct EditorViewContext<'a> {
     pub view_entity: Entity,
     pub notifications: &'a mut Toasts,
     pub command_queue: &'a mut CommandQueue,
-    pub buffers: &'a mut Buffers,
+    pub buffers: &'a mut GlobalBuffers,
 
     // For legacy windows
     pub windows: &'a mut Windows,
@@ -188,7 +188,7 @@ impl egui_dock::TabViewer for TabViewer<'_> {
                     view_entity: self.context.view_entity,
                     notifications: self.context.notifications,
                     command_queue: self.context.command_queue,
-                    buffers: self.context.buffers,
+                    buffers: self.context.buffers.for_window(window.entity),
                     editor_actions: self.context.editor_actions,
                 };
 

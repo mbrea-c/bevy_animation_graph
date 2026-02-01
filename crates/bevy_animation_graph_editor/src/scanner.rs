@@ -1,9 +1,11 @@
-use crate::Cli;
-use bevy::{asset::LoadedUntypedAsset, platform::collections::HashSet, prelude::*};
 use std::{
     fs, io,
     path::{Path, PathBuf},
 };
+
+use bevy::{asset::LoadedUntypedAsset, platform::collections::HashSet, prelude::*};
+
+use crate::Cli;
 
 pub struct ScannerPlugin;
 impl Plugin for ScannerPlugin {
@@ -11,9 +13,8 @@ impl Plugin for ScannerPlugin {
         app.insert_resource(PersistedAssetHandles {
             loaded_paths: HashSet::default(),
         })
-        .add_message::<RescanAssets>()
-        .add_systems(Startup, core_setup)
-        .add_systems(Update, asset_reload);
+        .add_observer(asset_reload)
+        .add_systems(Startup, core_setup);
     }
 }
 
@@ -24,38 +25,33 @@ pub struct PersistedAssetHandles {
     pub loaded_paths: HashSet<Handle<LoadedUntypedAsset>>,
 }
 
-#[derive(Message)]
+#[derive(Event)]
 pub struct RescanAssets;
 
-pub fn core_setup(
-    mut evw_rescan_events: MessageWriter<RescanAssets>,
-    mut gizmo_config: ResMut<GizmoConfigStore>,
-) {
-    evw_rescan_events.write(RescanAssets);
+pub fn core_setup(mut gizmo_config: ResMut<GizmoConfigStore>, mut commands: Commands) {
+    commands.trigger(RescanAssets);
 
     let config = gizmo_config.config_mut::<DefaultGizmoConfigGroup>().0;
     config.depth_bias = -1.;
 }
 
 pub fn asset_reload(
-    mut reload_events: MessageReader<RescanAssets>,
+    _: On<RescanAssets>,
     asset_server: Res<AssetServer>,
     mut persisted_asset_handles: ResMut<PersistedAssetHandles>,
     cli: Res<Cli>,
 ) {
-    if reload_events.read().next().is_some() {
-        visit_dirs(&cli.asset_source, &mut |path| {
-            let relative_path = path.strip_prefix(&cli.asset_source).unwrap().to_owned();
-            let loaded = asset_server.load_untyped(relative_path);
-            persisted_asset_handles.loaded_paths.insert(loaded);
-        })
-        .unwrap_or_else(|err| {
-            panic!(
-                "Failed to load asset path {:?}: {:?}",
-                cli.asset_source, err
-            )
-        });
-    }
+    visit_dirs(&cli.asset_source, &mut |path| {
+        let relative_path = path.strip_prefix(&cli.asset_source).unwrap().to_owned();
+        let loaded = asset_server.load_untyped(relative_path);
+        persisted_asset_handles.loaded_paths.insert(loaded);
+    })
+    .unwrap_or_else(|err| {
+        panic!(
+            "Failed to load asset path {:?}: {:?}",
+            cli.asset_source, err
+        )
+    });
 }
 
 // one possible implementation of walking a directory only visiting files

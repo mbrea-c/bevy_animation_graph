@@ -2,14 +2,13 @@ use bevy::{asset::Handle, prelude::World};
 use egui_dock::egui;
 
 use crate::ui::{
-    actions::graph::CreateGraphAction,
     generic_widgets::asset_picker::AssetPicker,
-    global_state::{
+    native_windows::{EditorWindowContext, NativeEditorWindowExtension},
+    state_management::global::{
         active_graph::{ActiveGraph, SetActiveGraph},
         get_global_state,
         inspector_selection::{InspectorSelection, SetInspectorSelection},
     },
-    native_windows::{EditorWindowContext, NativeEditorWindowExtension},
 };
 
 #[derive(Debug)]
@@ -34,10 +33,6 @@ impl NativeEditorWindowExtension for GraphPickerWindow {
             ctx.trigger(SetInspectorSelection {
                 selection: InspectorSelection::ActiveGraph,
             })
-        }
-
-        if ui.button("New Graph").clicked() {
-            ctx.editor_actions.dynamic(CreateGraphAction);
         }
     }
 

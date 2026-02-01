@@ -1,5 +1,5 @@
 use bevy::ecs::{reflect::AppTypeRegistry, world::World};
-use bevy_animation_graph::prelude::AnimationNode;
+use bevy_animation_graph::core::animation_node::AnimationNode;
 
 use crate::ui::node_editors::{ReflectEditable, reflect_editor::ReflectNodeEditor};
 

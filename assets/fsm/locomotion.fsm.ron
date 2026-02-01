@@ -1,43 +1,70 @@
 (
     states: [
         (
-            id: "walk",
+            id: "505e7d48-bbdb-440b-ad3f-5886d332b291",
+            label: "walk",
             graph: "animation_graphs/walk.animgraph.ron",
-            global_transition: Some((
-                duration: 1.0,
-                graph: "animation_graphs/walk_to_run.animgraph.ron",
+            state_transition: Some((
+                kind: Graph(
+                    graph: "animation_graphs/blend_transition.animgraph.ron",
+                    timed: Some(1.0),
+                ),
             )),
         ),
         (
-            id: "run",
+            id: "505e7d48-bbdb-440b-ad3f-5886d332b292",
+            label: "run",
             graph: "animation_graphs/run.animgraph.ron",
-            global_transition: None,
+            state_transition: None,
         ),
     ],
     transitions: [
         (
-            id: Direct("slow_down"),
-            source: "run",
-            target: "walk",
-            duration: 1.0,
-            graph: "animation_graphs/walk_to_run.animgraph.ron",
+            id: "505e7d48-bbdb-440b-ad3f-5886d332b294",
+            source: "505e7d48-bbdb-440b-ad3f-5886d332b291",
+            target: "505e7d48-bbdb-440b-ad3f-5886d332b292",
+            data: (
+                kind: Graph(
+                    graph: "animation_graphs/blend_transition.animgraph.ron",
+                    timed: Some(1.0),
+                ),
+            ),
         ),
         (
-            id: Direct("speed_up"),
-            source: "walk",
-            target: "run",
-            duration: 1.0,
-            graph: "animation_graphs/walk_to_run.animgraph.ron",
+            id: "505e7d48-bbdb-440b-ad3f-5886d332b293",
+            source: "505e7d48-bbdb-440b-ad3f-5886d332b292",
+            target: "505e7d48-bbdb-440b-ad3f-5886d332b291",
+            data: (
+                kind: Graph(
+                    graph: "animation_graphs/blend_transition.animgraph.ron",
+                    timed: Some(1.0),
+                ),
+            ),
         ),
     ],
-    start_state: "run",
-    input_data: {
-        "speed": F32(1.0),
-    },
-    extra: (
+    start_state: "505e7d48-bbdb-440b-ad3f-5886d332b291",
+    node_spec: (
+        input_times: [],
+        input_data: {
+            "speed": F32,
+        },
+        output_time: true,
+        output_data: {
+            "pose": Pose,
+        },
+        input_order: {
+            Data("speed"): 0,
+        },
+        output_order: {
+            Time: 0,
+            Data("pose"): 1,
+        },
+    ),
+    editor_metadata: (
         states: {
-            "walk": (334.10522, 309.52664),
-            "run": (552.15, 310.6519),
+            "505e7d48-bbdb-440b-ad3f-5886d332b291": (300.0, 230.0),
+            "68a39708-7e0a-47b9-a943-995cb158c092": (143.0117, -15.183594),
+            "505e7d48-bbdb-440b-ad3f-5886d332b292": (1.4636974, 171.30792),
         },
     ),
 )

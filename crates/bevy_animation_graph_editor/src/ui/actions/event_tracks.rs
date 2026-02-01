@@ -10,15 +10,17 @@ use bevy::{
     platform::collections::HashMap,
 };
 use bevy_animation_graph::{
-    core::event_track::{EventTrack, TrackItem, TrackItemValue},
-    nodes::EventMarkupNode,
-    prelude::{AnimationGraph, GraphClip},
+    builtin_nodes::event_markup_node::EventMarkupNode,
+    core::{
+        animation_clip::GraphClip,
+        animation_graph::AnimationGraph,
+        event_track::{EventTrack, TrackItem, TrackItemValue},
+    },
 };
 use uuid::Uuid;
 
-use crate::ui::native_windows::event_track_editor::TargetTracks;
-
 use super::saving::DirtyAssets;
+use crate::ui::native_windows::event_track_editor::TargetTracks;
 
 pub enum EventTrackAction {
     NewEvent(NewEventAction),

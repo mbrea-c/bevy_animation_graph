@@ -1,0 +1,56 @@
+(
+    nodes: [
+        (
+            id: "d8f44a29-a50e-474f-a4cd-d606020c0041",
+            name: "",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::FsmNode": (
+                    fsm: "fsm/locomotion.fsm.ron",
+                ),
+            },
+            should_debug: true,
+        ),
+    ],
+    edges_inverted: {
+        OutputData("pose"): NodeData("d8f44a29-a50e-474f-a4cd-d606020c0041", "pose"),
+        OutputTime: NodeTime("d8f44a29-a50e-474f-a4cd-d606020c0041"),
+        NodeData("d8f44a29-a50e-474f-a4cd-d606020c0041", "driver events"): InputData(Passthrough("user_events")),
+        NodeData("d8f44a29-a50e-474f-a4cd-d606020c0041", "speed"): InputData(Passthrough("speed")),
+    },
+    io_spec: (
+        input_times: [],
+        input_data: {
+            Passthrough("speed"): F32,
+            Passthrough("user_events"): EventQueue,
+        },
+        output_time: true,
+        output_data: {
+            "pose": Pose,
+        },
+        input_order: {
+            Data(Passthrough("user_events")): 0,
+            Data(Passthrough("speed")): 1,
+        },
+        output_order: {
+            Time: 0,
+            Data("pose"): 1,
+        },
+    ),
+    default_data: {
+        Passthrough("speed"): F32(2.0),
+        Passthrough("user_events"): EventQueue((
+            events: [],
+        )),
+    },
+    editor_metadata: (
+        node_positions: {
+            "d8f44a29-a50e-474f-a4cd-d606020c0041": (197.41016, 36.628906),
+        },
+        input_position: (18.671875, 36.902344),
+        output_position: (366.78906, 38.53125),
+        input_param_order: {},
+        input_time_order: {},
+        output_data_order: {},
+        output_pose_order: {},
+    ),
+)

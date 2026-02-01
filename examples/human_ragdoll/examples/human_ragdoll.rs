@@ -1,15 +1,23 @@
 extern crate bevy;
 extern crate bevy_animation_graph;
 
-use avian3d::PhysicsPlugins;
-use avian3d::prelude::{Collider, Position, RigidBody};
-use bevy::color::palettes::css::GREEN;
-use bevy::light::CascadeShadowConfigBuilder;
-use bevy::prelude::*;
-use bevy_animation_graph::core::animated_scene::AnimatedSceneInstance;
-use bevy_animation_graph::core::ragdoll::definition::BodyLabel;
-use bevy_animation_graph::prelude::*;
 use std::f32::consts::PI;
+
+use avian3d::{
+    PhysicsPlugins,
+    prelude::{Collider, PhysicsDebugPlugin, Position, RigidBody},
+};
+use bevy::{color::palettes::css::GREEN, light::CascadeShadowConfigBuilder, prelude::*};
+use bevy_animation_graph::{
+    AnimationGraphPlugin,
+    core::{
+        animated_scene::{AnimatedSceneHandle, AnimatedSceneInstance},
+        animation_graph_player::AnimationGraphPlayer,
+        edge_data::events::AnimationEvent,
+        ragdoll::definition::BodyLabel,
+    },
+};
+use bevy_inspector_egui::bevy_egui;
 
 fn main() {
     let mut app = App::new();
@@ -19,6 +27,9 @@ fn main() {
     }))
     .add_plugins(PhysicsPlugins::new(FixedPostUpdate))
     .add_plugins(AnimationGraphPlugin::from_physics_schedule(FixedPostUpdate))
+    .add_plugins(PhysicsDebugPlugin::default())
+    .add_plugins(bevy_egui::EguiPlugin::default())
+    .add_plugins(bevy_inspector_egui::quick::WorldInspectorPlugin::default())
     .insert_resource(AmbientLight {
         color: Color::WHITE,
         brightness: 0.1,
@@ -29,10 +40,10 @@ fn main() {
     .add_systems(
         Update,
         (
+            camera_follow_ragdoll,
             find_target,
             update_params,
             update_animation_player,
-            camera_follow_ragdoll,
         )
             .chain(),
     );
@@ -50,7 +61,33 @@ struct Params {
     pub position: Vec3,
     pub velocity: Vec3,
 
-    pub ragdoll_mode: bool,
+    pub ragdoll_mode: RagdollMode,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum RagdollMode {
+    NoRagdoll,
+    PartialRagdoll,
+    FullRagdoll,
+}
+
+impl RagdollMode {
+    pub fn state(&self) -> String {
+        match self {
+            RagdollMode::NoRagdoll => "ok",
+            RagdollMode::PartialRagdoll => "wounded",
+            RagdollMode::FullRagdoll => "dead",
+        }
+        .into()
+    }
+
+    pub fn next(&self) -> Self {
+        match self {
+            RagdollMode::NoRagdoll => RagdollMode::PartialRagdoll,
+            RagdollMode::PartialRagdoll => RagdollMode::FullRagdoll,
+            RagdollMode::FullRagdoll => RagdollMode::NoRagdoll,
+        }
+    }
 }
 
 impl Default for Params {
@@ -63,7 +100,7 @@ impl Default for Params {
             position: Vec3::ZERO,
             real_speed: 0.,
             velocity: Vec3::ZERO,
-            ragdoll_mode: false,
+            ragdoll_mode: RagdollMode::NoRagdoll,
         }
     }
 }
@@ -204,14 +241,10 @@ fn update_animation_player(
     }
 
     if keyboard_input.just_pressed(KeyCode::KeyT) {
-        params.ragdoll_mode = !params.ragdoll_mode;
+        params.ragdoll_mode = params.ragdoll_mode.next();
     }
 
-    if params.ragdoll_mode {
-        text.0 = "Ragdoll enabled".into();
-    } else {
-        text.0 = "Ragdoll disabled".into();
-    }
+    text.0 = format!("Ragdoll mode: {:?}", params.ragdoll_mode);
 
     if keyboard_input.pressed(KeyCode::ArrowUp) {
         params.speed += 1.5 * time.delta_secs();
@@ -219,9 +252,12 @@ fn update_animation_player(
     if keyboard_input.pressed(KeyCode::ArrowDown) {
         params.speed -= 1.5 * time.delta_secs();
     }
+    player.send_event(AnimationEvent::TransitionToStateLabel(
+        params.ragdoll_mode.state(),
+    ));
 
-    player.set_input_parameter("target_speed", params.real_speed.into());
-    player.set_input_parameter(
+    player.set_input_data("target_speed", params.real_speed.into());
+    player.set_input_data(
         "target_direction",
         (Quat::from_rotation_y(-params.angle) * Vec3::X).into(),
     );
@@ -240,7 +276,7 @@ fn camera_follow_ragdoll(
         if body_label.0.as_str() == "stomach" {
             cam_transform.translation = body_pos.0 + Vec3::new(3., 9., 3.);
 
-            if params.ragdoll_mode {
+            if params.ragdoll_mode == RagdollMode::FullRagdoll {
                 human_transform.translation = body_pos.0;
                 params.position = body_pos.0;
             }

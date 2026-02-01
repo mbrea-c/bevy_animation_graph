@@ -6,15 +6,16 @@ use bevy::{
     math::Vec3,
     prelude::{Transform, World},
 };
-use bevy_animation_graph::prelude::{
-    AnimatedScene, AnimatedSceneHandle, AnimatedSceneInstance, AnimationGraphPlayer,
+use bevy_animation_graph::core::{
+    animated_scene::{AnimatedScene, AnimatedSceneHandle, AnimatedSceneInstance},
+    animation_graph_player::AnimationGraphPlayer,
 };
 use egui_dock::egui;
 
 use crate::ui::{
     PartOfSubScene, PreviewScene, SubSceneConfig, SubSceneSyncAction,
-    global_state::{ClearGlobalState, active_scene::ActiveScene, get_global_state},
     native_windows::{EditorWindowContext, NativeEditorWindowExtension},
+    state_management::global::{ClearGlobalState, active_scene::ActiveScene, get_global_state},
     utils::orbit_camera_scene_show,
 };
 

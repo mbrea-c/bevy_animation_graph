@@ -1,0 +1,62 @@
+(
+    nodes: [
+        (
+            id: "f87834ac-f2bf-4a06-8986-e58ca5522b2e",
+            name: "New node",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::BlendNode": (
+                    mode: LinearInterpolate,
+                    sync_mode: Absolute,
+                ),
+            },
+            should_debug: false,
+        ),
+    ],
+    edges_inverted: {
+        NodeData("f87834ac-f2bf-4a06-8986-e58ca5522b2e", "pose_b"): InputData(FromFsmTarget("pose")),
+        NodeData("f87834ac-f2bf-4a06-8986-e58ca5522b2e", "factor"): InputData(FsmBuiltin(PercentThroughDuration)),
+        OutputData("pose"): NodeData("f87834ac-f2bf-4a06-8986-e58ca5522b2e", "pose"),
+        OutputTime: NodeTime("f87834ac-f2bf-4a06-8986-e58ca5522b2e"),
+        NodeTime("f87834ac-f2bf-4a06-8986-e58ca5522b2e", "time_b"): InputTime(FromFsmTarget("time")),
+        NodeTime("f87834ac-f2bf-4a06-8986-e58ca5522b2e", "time_a"): InputTime(FromFsmSource("time")),
+        NodeData("f87834ac-f2bf-4a06-8986-e58ca5522b2e", "pose_a"): InputData(FromFsmSource("pose")),
+    },
+    io_spec: (
+        input_times: [
+            FromFsmSource("time"),
+            FromFsmTarget("time"),
+        ],
+        input_data: {
+            FromFsmSource("pose"): Pose,
+            FromFsmTarget("pose"): Pose,
+            FsmBuiltin(PercentThroughDuration): F32,
+        },
+        output_time: true,
+        output_data: {
+            "pose": Pose,
+        },
+        input_order: {
+            Data(FsmBuiltin(PercentThroughDuration)): 0,
+            Data(FromFsmSource("pose")): 1,
+            Time(FromFsmSource("time")): 2,
+            Data(FromFsmTarget("pose")): 3,
+            Time(FromFsmTarget("time")): 4,
+        },
+        output_order: {
+            Data("pose"): 0,
+            Time: 1,
+        },
+    ),
+    default_data: {},
+    editor_metadata: (
+        node_positions: {
+            "f87834ac-f2bf-4a06-8986-e58ca5522b2e": (196.65625, 130.64063),
+        },
+        input_position: (7.1523438, 102.41016),
+        output_position: (375.33984, 133.71094),
+        input_param_order: {},
+        input_time_order: {},
+        output_data_order: {},
+        output_pose_order: {},
+    ),
+)

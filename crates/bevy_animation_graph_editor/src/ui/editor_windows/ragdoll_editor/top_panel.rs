@@ -1,7 +1,7 @@
 use bevy::{asset::Handle, ecs::world::World};
-use bevy_animation_graph::{
-    core::ragdoll::{bone_mapping::RagdollBoneMap, definition::Ragdoll},
-    prelude::AnimatedScene,
+use bevy_animation_graph::core::{
+    animated_scene::AnimatedScene,
+    ragdoll::{bone_mapping::RagdollBoneMap, definition::Ragdoll},
 };
 
 use crate::ui::{

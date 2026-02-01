@@ -1,9 +1,9 @@
 use bevy::ecs::{
     component::Component,
     entity::Entity,
-    event::Event,
+    event::{EntityEvent, Event},
     query::With,
-    system::command::trigger,
+    system::{Commands, command::trigger},
     world::{CommandQueue, World},
 };
 use egui_dock::egui;
@@ -16,6 +16,7 @@ use crate::ui::{
 };
 
 pub mod animation_clip_preview;
+pub mod asset_creation;
 pub mod debugger;
 pub mod event_sender;
 pub mod event_track_editor;
@@ -43,6 +44,8 @@ pub struct EditorWindowContext<'a> {
 impl EditorWindowContext<'_> {
     pub fn make_queue(&self) -> OwnedQueue {
         OwnedQueue {
+            window_entity: self.window_entity,
+            view_entity: self.view_entity,
             command_queue: CommandQueue::default(),
         }
     }
@@ -53,11 +56,25 @@ impl EditorWindowContext<'_> {
 }
 
 pub struct OwnedQueue {
+    pub window_entity: Entity,
+    #[allow(dead_code)]
+    pub view_entity: Entity,
     pub command_queue: CommandQueue,
 }
 
 impl OwnedQueue {
     pub fn trigger<'b>(&mut self, event: impl Event<Trigger<'b>: Default>) {
+        self.command_queue.push(trigger(event));
+    }
+
+    pub fn trigger_window<'b>(&mut self, mut event: impl EntityEvent<Trigger<'b>: Default>) {
+        *event.event_target_mut() = self.window_entity;
+        self.command_queue.push(trigger(event));
+    }
+
+    #[allow(dead_code)]
+    pub fn trigger_view<'b>(&mut self, mut event: impl EntityEvent<Trigger<'b>: Default>) {
+        *event.event_target_mut() = self.view_entity;
         self.command_queue.push(trigger(event));
     }
 }
@@ -67,6 +84,18 @@ pub struct WindowState;
 
 impl<'a> EditorWindowContext<'a> {
     pub fn trigger<'b>(&mut self, event: impl Event<Trigger<'b>: Default>) {
+        self.command_queue.push(trigger(event));
+    }
+
+    #[allow(dead_code)]
+    pub fn trigger_window<'b>(&mut self, mut event: impl EntityEvent<Trigger<'b>: Default>) {
+        *event.event_target_mut() = self.window_entity;
+        self.command_queue.push(trigger(event));
+    }
+
+    #[allow(dead_code)]
+    pub fn trigger_view<'b>(&mut self, mut event: impl EntityEvent<Trigger<'b>: Default>) {
+        *event.event_target_mut() = self.view_entity;
         self.command_queue.push(trigger(event));
     }
 
@@ -137,6 +166,28 @@ impl NativeEditorWindow {
         };
 
         ext.init(world, &ctx);
+
+        Self {
+            window: Box::new(ext),
+            entity,
+        }
+    }
+
+    pub fn create_cmd<T: NativeEditorWindowExtension + Copy>(
+        commands: &mut Commands,
+        view_entity: Entity,
+        ext: T,
+    ) -> Self {
+        let entity = commands.spawn((WindowState,)).id();
+
+        let ctx = EditorWindowRegistrationContext {
+            window: entity,
+            view: view_entity,
+        };
+
+        commands.queue(move |world: &mut World| {
+            ext.init(world, &ctx);
+        });
 
         Self {
             window: Box::new(ext),

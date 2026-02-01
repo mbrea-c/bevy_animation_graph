@@ -1,0 +1,59 @@
+(
+    nodes: [
+        (
+            id: "228aefd6-1746-4daa-97ad-0ffa56377393",
+            name: "",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::ConstRagdollConfig": (
+                    value: (
+                        default_mode: Some(Kinematic),
+                        mode_overrides: {
+                            (
+                                uuid: "505e7d48-bbdb-440b-ad3f-5886d332b291",
+                            ): Kinematic,
+                            (
+                                uuid: "505e7d48-bbdb-440b-ad3f-5886d332b295",
+                            ): Dynamic,
+                            (
+                                uuid: "505e7d48-bbdb-440b-ad3f-5886d332b294",
+                            ): Dynamic,
+                            (
+                                uuid: "af34b4e3-8c43-4246-93e7-37c135d7c1bd",
+                            ): Dynamic,
+                        },
+                        default_readback: Some(true),
+                        readback_overrides: {},
+                    ),
+                ),
+            },
+            should_debug: false,
+        ),
+    ],
+    edges_inverted: {
+        OutputData("ragdoll_config"): NodeData("228aefd6-1746-4daa-97ad-0ffa56377393", "out"),
+    },
+    io_spec: (
+        input_times: [],
+        input_data: {},
+        output_time: false,
+        output_data: {
+            "ragdoll_config": RagdollConfig,
+        },
+        input_order: {},
+        output_order: {
+            Data("ragdoll_config"): 0,
+        },
+    ),
+    default_data: {},
+    editor_metadata: (
+        node_positions: {
+            "228aefd6-1746-4daa-97ad-0ffa56377393": (216.76172, 188.24219),
+        },
+        input_position: (29.316406, 193.73828),
+        output_position: (437.09766, 184.02344),
+        input_param_order: {},
+        input_time_order: {},
+        output_data_order: {},
+        output_pose_order: {},
+    ),
+)

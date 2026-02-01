@@ -5,7 +5,6 @@
 
 pub mod clip_preview;
 pub mod event_tracks;
-pub mod fsm;
 pub mod graph;
 pub mod ragdoll;
 pub mod saving;
@@ -22,14 +21,12 @@ use bevy::{
     log::error,
 };
 use event_tracks::{EventTrackAction, handle_event_track_action};
-use fsm::{FsmAction, handle_fsm_action};
 use graph::{GraphAction, handle_graph_action};
 use saving::{SaveAction, handle_save_action};
 use window::WindowAction;
 
-use crate::ui::native_views::EditorViewUiState;
-
 use super::{UiState, core::ViewAction, windows::WindowId};
+use crate::ui::native_views::EditorViewUiState;
 
 #[derive(Resource, Default)]
 pub struct PendingActions {
@@ -64,7 +61,6 @@ pub enum EditorAction {
     Save(SaveAction),
     EventTrack(EventTrackAction),
     Graph(GraphAction),
-    Fsm(FsmAction),
     Dynamic(Box<dyn DynamicAction>),
 }
 
@@ -89,7 +85,6 @@ pub fn handle_editor_action(world: &mut World, action: EditorAction, ctx: &mut A
         EditorAction::Save(action) => handle_save_action(world, action),
         EditorAction::EventTrack(action) => handle_event_track_action(world, action),
         EditorAction::Graph(action) => handle_graph_action(world, action),
-        EditorAction::Fsm(action) => handle_fsm_action(world, action),
         EditorAction::Dynamic(action) => action.handle(world, ctx),
     }
 }

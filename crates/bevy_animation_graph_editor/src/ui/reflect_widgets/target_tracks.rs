@@ -2,14 +2,14 @@ use std::any::Any;
 
 use bevy::asset::{AssetId, Assets, Handle};
 use bevy_animation_graph::{
-    core::animation_graph::NodeId, nodes::EventMarkupNode, prelude::AnimationGraph,
+    builtin_nodes::event_markup_node::EventMarkupNode,
+    core::animation_graph::{AnimationGraph, NodeId},
 };
 use bevy_inspector_egui::reflect_inspector::InspectorUi;
 use egui_dock::egui;
 
-use crate::{impl_widget_hash_from_hash, ui::native_windows::event_track_editor::TargetTracks};
-
 use super::{EguiInspectorExtension, MakeBuffer};
+use crate::{impl_widget_hash_from_hash, ui::native_windows::event_track_editor::TargetTracks};
 
 #[derive(Default)]
 pub struct TargetTracksInspector;
@@ -64,7 +64,7 @@ impl EguiInspectorExtension for TargetTracksInspector {
                     let (mut current_handle, mut current_node) =
                         if let Some(TargetTracks::GraphNode { graph, node }) = &mut buffer.selected
                         {
-                            (graph.clone(), node.clone())
+                            (graph.clone(), *node)
                         } else {
                             (Handle::default(), NodeId::default())
                         };
@@ -87,7 +87,7 @@ impl EguiInspectorExtension for TargetTracksInspector {
                     if changed_handle || nodes_changed {
                         buffer.selected = Some(TargetTracks::GraphNode {
                             graph: current_handle.clone(),
-                            node: current_node.clone(),
+                            node: current_node,
                         });
                         if graphs
                             .map(|g| validate(&g, current_handle.id(), &current_node))
@@ -134,15 +134,15 @@ fn combo_box_nodes(ui: &mut egui::Ui, current: &mut NodeId, graph: &AnimationGra
         .nodes
         .values()
         .filter(|n| n.inner.as_any().downcast_ref::<EventMarkupNode>().is_some())
-        .map(|n| n.name.clone())
+        .map(|n| (n.id, n.name.clone()))
         .collect::<Vec<_>>();
 
-    valid_node_ids.sort();
+    valid_node_ids.sort_by_key(|(_, n)| n.clone());
 
     egui::ComboBox::from_id_salt("Select node id for event markup")
         .show_ui(ui, |ui| {
-            for n in valid_node_ids {
-                ui.selectable_value(current, n.clone(), n);
+            for (node_id, node_name) in valid_node_ids {
+                ui.selectable_value(current, node_id, node_name);
             }
         })
         .response

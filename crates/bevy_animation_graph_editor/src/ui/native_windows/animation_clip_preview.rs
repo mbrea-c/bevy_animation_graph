@@ -1,28 +1,29 @@
 use bevy::prelude::World;
 use bevy_animation_graph::{
-    nodes::EventMarkupNode,
-    prelude::{AnimatedSceneInstance, AnimationGraphPlayer},
+    builtin_nodes::event_markup_node::EventMarkupNode,
+    core::{animated_scene::AnimatedSceneInstance, animation_graph_player::AnimationGraphPlayer},
 };
 use egui_dock::egui;
 
+use super::{
+    EditorWindowRegistrationContext, event_track_editor::TargetTracks,
+    scene_preview::ScenePreviewConfig,
+};
 use crate::ui::{
     PartOfSubScene, PreviewScene,
     actions::clip_preview::{
         ClipPreviewScenes, CreateClipPreview, CreateTrackNodePreview, NodePreviewKey,
         NodePreviewScenes,
     },
-    global_state::register_if_missing,
     native_windows::{EditorWindowContext, NativeEditorWindowExtension},
     reflect_widgets::wrap_ui::using_wrap_ui,
-    utils::orbit_camera_scene_show,
-    view_state::clip_preview::{
-        ClipPreviewTimingOrder, ClipPreviewViewState, SetClipPreviewBaseScene, SetElapsedTime,
+    state_management::{
+        global::register_if_missing,
+        view::clip_preview::{
+            ClipPreviewTimingOrder, ClipPreviewViewState, SetClipPreviewBaseScene, SetElapsedTime,
+        },
     },
-};
-
-use super::{
-    EditorWindowRegistrationContext, event_track_editor::TargetTracks,
-    scene_preview::ScenePreviewConfig,
+    utils::orbit_camera_scene_show,
 };
 
 #[derive(Debug, Default)]
@@ -80,7 +81,7 @@ impl NativeEditorWindowExtension for ClipPreviewWindow {
             TargetTracks::GraphNode { graph, node } => {
                 let key = NodePreviewKey {
                     graph: graph.id(),
-                    node_id: node.clone(),
+                    node_id: node,
                     pose_pin: EventMarkupNode::OUT_POSE.into(),
                 };
 

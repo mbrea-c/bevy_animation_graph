@@ -2,16 +2,19 @@ use std::any::TypeId;
 
 use bevy::{
     asset::{AssetId, Assets, Handle},
-    ecs::reflect::AppTypeRegistry,
+    ecs::{observer::On, reflect::AppTypeRegistry, system::Commands},
     prelude::World,
     reflect::{TypeRegistry, prelude::ReflectDefault},
     utils::default,
 };
-use bevy_animation_graph::{
-    core::state_machine::high_level::StateMachine,
-    prelude::{AnimationGraph, AnimationNode, ReflectNodeLike, SpecContext},
+use bevy_animation_graph::core::{
+    animation_graph::{AnimationGraph, NodeId},
+    animation_node::{AnimationNode, ReflectNodeLike, dyn_node_like::DynNodeLike},
+    context::spec_context::SpecResources,
+    state_machine::high_level::StateMachine,
 };
 use egui_dock::egui;
+use uuid::Uuid;
 
 use crate::{
     egui_nodes::lib::{GraphChange as EguiGraphChange, NodesContext},
@@ -25,15 +28,18 @@ use crate::{
             },
         },
         generic_widgets::animation_node::AnimationNodeWidget,
-        global_state::{
-            active_graph::ActiveGraph,
-            active_graph_context::ActiveContexts,
-            active_graph_node::{ActiveGraphNode, SetActiveGraphNode},
-            get_global_state,
-            inspector_selection::{InspectorSelection, SetInspectorSelection},
-        },
         native_windows::{EditorWindowContext, NativeEditorWindowExtension},
-        utils::{self, popup::CustomPopup},
+        state_management::{
+            global::{
+                active_graph::{ActiveGraph, SetActiveGraph},
+                active_graph_context::ActiveContexts,
+                active_graph_node::{ActiveGraphNode, SetActiveGraphNode},
+                get_global_state,
+                inspector_selection::{InspectorSelection, SetInspectorSelection},
+            },
+            window::buffers::ClearBuffers,
+        },
+        utils::{self, dummy_node, popup::CustomPopup},
     },
 };
 
@@ -55,11 +61,20 @@ pub struct GraphEditBuffer {
 }
 
 impl NativeEditorWindowExtension for GraphEditorWindow {
+    fn init(&self, world: &mut World, ctx: &super::EditorWindowRegistrationContext) {
+        let window = ctx.window;
+        world.add_observer(move |_: On<SetActiveGraph>, mut commands: Commands| {
+            commands.trigger(ClearBuffers(window));
+        });
+    }
+
     fn ui(&self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
         let Some(active_graph) = get_global_state::<ActiveGraph>(world).cloned() else {
             ui.centered_and_justified(|ui| ui.label("Select a graph to edit!"));
             return;
         };
+
+        let mut queue = ctx.make_queue();
 
         let buffer_id = ui.id().with("Graph editor nodes context buffer");
         let buffer = ctx
@@ -79,7 +94,7 @@ impl NativeEditorWindowExtension for GraphEditorWindow {
             buffer
         };
 
-        let result =
+        let _: Option<()> =
             world.resource_scope::<Assets<AnimationGraph>, _>(|world, mut graph_assets| {
                 world.resource_scope::<Assets<StateMachine>, _>(|world, fsm_assets| {
                     world.resource_scope::<GraphIndicesMap, _>(|world, graph_indices_map| {
@@ -95,89 +110,99 @@ impl NativeEditorWindowExtension for GraphEditorWindow {
                             return None;
                         };
 
-                        {
-                            let spec_context = SpecContext {
-                                graph_assets: &graph_assets,
-                                fsm_assets: &fsm_assets,
-                            };
+                        let spec_resources = SpecResources {
+                            graph_assets: &graph_assets,
+                            fsm_assets: &fsm_assets,
+                        };
 
-                            let maybe_graph_context = get_global_state::<ActiveContexts>(world)
-                                .and_then(|s| s.by_asset.get(&active_graph.handle.id().untyped()))
-                                .and_then(|(entity, id)| {
-                                    Some((
-                                        id,
-                                        utils::get_specific_animation_graph_player(world, *entity)?,
-                                    ))
-                                })
-                                .and_then(|(id, p)| Some(id).zip(p.get_context_arena()))
-                                .and_then(|(id, ca)| ca.get_context(*id));
+                        let maybe_graph_context = get_global_state::<ActiveContexts>(world)
+                            .and_then(|s| s.by_asset.get(&active_graph.handle.id().untyped()))
+                            .and_then(|(entity, id)| {
+                                Some((
+                                    id,
+                                    utils::get_specific_animation_graph_player(world, *entity)?,
+                                ))
+                            })
+                            .and_then(|(id, p)| Some(id).zip(p.get_context_arena()))
+                            .and_then(|(id, ca)| ca.get_context(*id));
 
-                            let nodes = GraphReprSpec::from_graph(
-                                graph,
-                                graph_indices,
-                                spec_context,
-                                maybe_graph_context,
-                            );
+                        let Some(nodes) = GraphReprSpec::from_graph(
+                            graph,
+                            graph_indices,
+                            spec_resources,
+                            maybe_graph_context,
+                        ) else {
+                            ctx.editor_actions.push(EditorAction::Graph(
+                                GraphAction::GenerateIndices(GenerateIndices {
+                                    graph: active_graph.handle.id(),
+                                }),
+                            ));
+                            return None;
+                        };
 
-                            buffer.nodes_context.show(nodes.nodes, nodes.edges, ui);
-                            buffer.nodes_context.get_changes().clone()
-                        }
-                        .into_iter()
-                        .map(|c| {
-                            convert_graph_change(c, graph_indices, active_graph.handle.clone())
-                        })
-                        .for_each(|action| ctx.editor_actions.push(EditorAction::Graph(action)));
+                        buffer.nodes_context.show(nodes.nodes, nodes.edges, ui);
+                        buffer
+                            .nodes_context
+                            .get_changes()
+                            .clone()
+                            .into_iter()
+                            .map(|c| {
+                                convert_graph_change(c, graph_indices, active_graph.handle.clone())
+                            })
+                            .for_each(|action| {
+                                ctx.editor_actions.push(EditorAction::Graph(action))
+                            });
 
-                        // --- Update selection for node inspector.
-                        // --- And enable debug render for latest node selected only
-                        // ----------------------------------------------------------------
+                        // Update selection for node inspector.
+                        // And enable debug render for latest node selected only
 
                         let graph = graph_assets.get_mut(&active_graph.handle).unwrap();
                         for (_, node) in graph.nodes.iter_mut() {
                             node.should_debug = false;
                         }
-                        if let Some(selected_node) = buffer
-                            .nodes_context
-                            .get_selected_nodes()
-                            .iter()
-                            .rev()
-                            .find(|id| **id > 1)
-                            && *selected_node > 1
+                        if let Some(selected_node) =
+                            buffer.nodes_context.get_selected_nodes().iter().next_back()
                         {
-                            let node_name =
-                                graph_indices.node_indices.name(*selected_node).unwrap();
-                            graph.nodes.get_mut(node_name).unwrap().should_debug = true;
-                            if let Some(active_node) = get_global_state::<ActiveGraphNode>(world)
-                                && let Some(InspectorSelection::ActiveNode) =
-                                    get_global_state::<InspectorSelection>(world)
-                                && &active_node.node == node_name
-                                && active_node.handle == active_graph.handle
-                            {
-                                // pass
-                            } else {
-                                return Some((
-                                    SetActiveGraphNode {
+                            if *selected_node > 1 {
+                                let node_id =
+                                    graph_indices.node_indices.name(*selected_node).unwrap();
+                                graph.nodes.get_mut(&node_id).unwrap().should_debug = true;
+                                if let Some(active_node) =
+                                    get_global_state::<ActiveGraphNode>(world)
+                                    && let Some(InspectorSelection::ActiveNode) =
+                                        get_global_state::<InspectorSelection>(world)
+                                    && active_node.node == node_id
+                                    && active_node.handle == active_graph.handle
+                                {
+                                    // pass
+                                } else {
+                                    queue.trigger(SetActiveGraphNode {
                                         new: ActiveGraphNode {
                                             handle: active_graph.handle.clone(),
-                                            node: node_name.clone(),
+                                            node: node_id,
                                             selected_pin: None,
                                         },
-                                    },
-                                    SetInspectorSelection {
+                                    });
+                                    queue.trigger(SetInspectorSelection {
                                         selection: InspectorSelection::ActiveNode,
-                                    },
-                                ));
+                                    });
+                                }
+                            } else if !matches!(
+                                get_global_state::<InspectorSelection>(world),
+                                Some(InspectorSelection::ActiveGraph)
+                            ) {
+                                queue.trigger(SetInspectorSelection {
+                                    selection: InspectorSelection::ActiveGraph,
+                                });
                             }
                         }
-                        // ----------------------------------------------------------------
+
                         None
                     })
                 })
             });
-        if let Some((set_active_graph_node, set_inspector_selection)) = result {
-            ctx.trigger(set_active_graph_node);
-            ctx.trigger(set_inspector_selection);
-        }
+
+        ctx.consume_queue(queue);
 
         let available_size = ui.available_size();
         let (id, rect) = ui.allocate_space(available_size);
@@ -198,10 +223,18 @@ impl NativeEditorWindowExtension for GraphEditorWindow {
     }
 }
 
-#[derive(Default)]
 pub struct NodeCreationBuffer {
     pub node_type_search: String,
     pub node: AnimationNode,
+}
+
+impl Default for NodeCreationBuffer {
+    fn default() -> Self {
+        Self {
+            node_type_search: "".into(),
+            node: dummy_node(),
+        }
+    }
 }
 
 impl GraphEditorWindow {
@@ -280,7 +313,7 @@ impl GraphEditorWindow {
                     let inner = node_like
                         .get_boxed(reflect_default.default())
                         .map_err(|_| "default-created value is not a `NodeLike`")?;
-                    buffer.node.inner = inner;
+                    buffer.node.inner = DynNodeLike::new_boxed(inner);
                     Ok::<_, &str>(())
                 })();
             }
@@ -305,10 +338,12 @@ impl GraphEditorWindow {
                     if submit_response.clicked()
                         && let Some(active_graph) = get_global_state::<ActiveGraph>(world)
                     {
+                        let mut node = buffer.node.clone();
+                        node.id = NodeId::from(Uuid::new_v4());
                         ctx.editor_actions
                             .push(EditorAction::Graph(GraphAction::CreateNode(CreateNode {
                                 graph: active_graph.handle.clone(),
-                                node: buffer.node.clone(),
+                                node,
                             })));
                     }
                 });
@@ -397,7 +432,7 @@ pub fn convert_graph_change(
                 let node_id = graph_indices.node_indices.name(node_id).unwrap();
                 GraphAction::MoveNode(MoveNode {
                     graph: graph_handle,
-                    node: node_id.into(),
+                    node: node_id,
                     new_pos: delta,
                 })
             }
@@ -409,7 +444,7 @@ pub fn convert_graph_change(
                 let node_id = graph_indices.node_indices.name(node_id).unwrap();
                 GraphAction::RemoveNode(RemoveNode {
                     graph: graph_handle,
-                    node: node_id.into(),
+                    node: node_id,
                 })
             }
         }

@@ -1,7 +1,8 @@
-use super::pin::PinSpec;
 use bevy_egui::egui;
 use bevy_inspector_egui::bevy_egui;
 use derivative::Derivative;
+
+use super::pin::PinSpec;
 
 #[derive(Default, Debug, Clone)]
 /// The Style of a Node. If feilds are None then the Context style is used

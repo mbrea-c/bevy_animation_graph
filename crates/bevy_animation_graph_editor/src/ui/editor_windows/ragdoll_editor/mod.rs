@@ -4,16 +4,14 @@ use bevy::{
     prelude::World,
     utils::default,
 };
-use bevy_animation_graph::{
-    core::{
-        id::BoneId,
-        ragdoll::{
-            bone_mapping::{BodyMapping, BoneMapping, BoneWeight, RagdollBoneMap},
-            definition::{Body, BodyId, Collider, ColliderId, Joint, JointId, Ragdoll},
-        },
-        skeleton::Skeleton,
+use bevy_animation_graph::core::{
+    animated_scene::AnimatedScene,
+    id::BoneId,
+    ragdoll::{
+        bone_mapping::{BodyMapping, BoneMapping, BoneWeight, RagdollBoneMap},
+        definition::{Body, BodyId, Collider, ColliderId, Joint, JointId, Ragdoll},
     },
-    prelude::AnimatedScene,
+    skeleton::Skeleton,
 };
 use egui_dock::egui;
 

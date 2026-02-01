@@ -1,48 +1,58 @@
 (
     nodes: [
         (
-            name: "wiggle",
+            id: "6bef8762-2966-4e0d-89b6-868130b741e3",
+            name: "",
             inner: {
-                "bevy_animation_graph::nodes::clip_node::ClipNode": (
+                "bevy_animation_graph::builtin_nodes::LoopNode": (
+                    interpolation_period: 0.0,
+                ),
+            },
+            should_debug: false,
+        ),
+        (
+            id: "12fbd521-18dc-4f31-88ff-b1a7778dd1ea",
+            name: "",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::ClipNode": (
                     clip: "animations/snake_wiggle.anim.ron",
                     override_duration: None,
                     override_interpolation: None,
                 ),
             },
-        ),
-        (
-            name: "loop",
-            inner: {
-                "bevy_animation_graph::nodes::loop_node::LoopNode": (
-                    interpolation_period: 0.0,
-                ),
-            },
+            should_debug: false,
         ),
     ],
     edges_inverted: {
-        NodeData("loop", "pose"): NodeData("wiggle", "pose"),
-        NodeTime("loop", "time"): NodeTime("wiggle"),
-        OutputData("pose"): NodeData("loop", "pose"),
-        OutputTime: NodeTime("loop"),
+        NodeData("6bef8762-2966-4e0d-89b6-868130b741e3", "pose"): NodeData("12fbd521-18dc-4f31-88ff-b1a7778dd1ea", "pose"),
+        OutputData("pose"): NodeData("6bef8762-2966-4e0d-89b6-868130b741e3", "pose"),
+        OutputTime: NodeTime("6bef8762-2966-4e0d-89b6-868130b741e3"),
+        NodeTime("6bef8762-2966-4e0d-89b6-868130b741e3", "time"): NodeTime("12fbd521-18dc-4f31-88ff-b1a7778dd1ea"),
     },
-    default_parameters: {},
-    input_times: {},
-    output_parameters: {
-        "pose": Pose,
-    },
-    output_time: Some(()),
-    extra: (
-        node_positions: {
-            "wiggle": (111.69232, 188.30771),
-            "loop": (279.69232, 191.0769),
+    io_spec: (
+        input_times: [],
+        input_data: {},
+        output_time: true,
+        output_data: {
+            "pose": Pose,
         },
-        input_position: (-80.30768, 187.38464),
-        output_position: (458.7693, 188.30766),
+        input_order: {},
+        output_order: {
+            Data("pose"): 2,
+            Time: 3,
+        },
+    ),
+    default_data: {},
+    editor_metadata: (
+        node_positions: {
+            "6bef8762-2966-4e0d-89b6-868130b741e3": (377.6953, 229.57031),
+            "12fbd521-18dc-4f31-88ff-b1a7778dd1ea": (206.21484, 217.86719),
+        },
+        input_position: (24.582031, 226.35547),
+        output_position: (536.6367, 229.59766),
         input_param_order: {},
         input_time_order: {},
-        output_data_order: {
-            "pose": 0,
-        },
+        output_data_order: {},
         output_pose_order: {},
     ),
 )

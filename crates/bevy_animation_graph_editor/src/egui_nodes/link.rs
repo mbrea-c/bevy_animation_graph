@@ -1,8 +1,9 @@
-use super::pin::PinType;
 use bevy_egui::egui;
 use bevy_inspector_egui::bevy_egui;
 use derivative::Derivative;
 use egui::epaint::PathShape;
+
+use super::pin::PinType;
 
 #[derive(Debug, Default, Clone)]
 pub struct LinkStyleArgs {

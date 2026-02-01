@@ -1,16 +1,16 @@
 use bevy::{asset::Assets, ecs::world::World};
 use bevy_animation_graph::{
+    builtin_nodes::ragdoll::const_ragdoll_config::ConstRagdollConfig,
     core::{ragdoll::definition::Ragdoll, skeleton::Skeleton},
-    nodes::const_ragdoll_config::ConstRagdollConfig,
 };
 use egui::Widget;
 
 use crate::ui::{
     generic_widgets::ragdoll_config::RagdollConfigWidget,
-    global_state::{
+    node_editors::{Editable, NodeEditor},
+    state_management::global::{
         active_ragdoll::ActiveRagdoll, active_skeleton::ActiveSkeleton, get_global_state,
     },
-    node_editors::{Editable, NodeEditor},
 };
 
 pub struct RagdollConfigNodeEditor;

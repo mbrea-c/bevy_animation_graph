@@ -9,13 +9,13 @@ use bevy::{
     utils::default,
 };
 use bevy_animation_graph::{
+    builtin_nodes::event_markup_node::EventMarkupNode,
     core::{
-        animation_graph::NodeId,
-        edge_data::AnimationEvent,
+        animation_clip::GraphClip,
+        animation_graph::{AnimationGraph, NodeId},
+        edge_data::events::AnimationEvent,
         event_track::{EventTrack, TrackItem, TrackItemValue},
     },
-    nodes::EventMarkupNode,
-    prelude::{AnimationGraph, GraphClip},
 };
 use egui_dock::egui;
 use uuid::Uuid;
@@ -29,10 +29,10 @@ use crate::ui::{
         EditorWindowContext, EditorWindowRegistrationContext, NativeEditorWindowExtension,
     },
     reflect_widgets::{submittable::Submittable, wrap_ui::using_wrap_ui},
-    utils::popup::CustomPopup,
-    view_state::clip_preview::{
+    state_management::view::clip_preview::{
         ClipPreviewTimingOrder, ClipPreviewViewState, SetOrder, SetTargetTracks,
     },
+    utils::popup::CustomPopup,
 };
 
 #[derive(Debug)]

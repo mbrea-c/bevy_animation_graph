@@ -8,14 +8,18 @@ use bevy::{
     platform::collections::HashMap,
 };
 use bevy_animation_graph::{
-    core::animation_graph::{NodeId, PinId, SourcePin, TargetPin},
-    nodes::ClipNode,
-    prelude::{AnimatedScene, AnimationGraph, AnimationNode, DataSpec, GraphClip},
+    builtin_nodes::clip_node::ClipNode,
+    core::{
+        animated_scene::AnimatedScene,
+        animation_clip::GraphClip,
+        animation_graph::{AnimationGraph, NodeId, PinId, SourcePin, TargetPin},
+        animation_node::AnimationNode,
+        edge_data::DataSpec,
+    },
 };
 
-use crate::ui::actions::ActionContext;
-
 use super::{DynamicAction, run_handler};
+use crate::ui::actions::ActionContext;
 
 #[derive(Resource, Default)]
 pub struct ClipPreviewScenes {
@@ -61,19 +65,18 @@ impl CreateClipPreview {
         }
 
         let mut new_graph = AnimationGraph::new();
-        new_graph.add_node(AnimationNode::new(
-            "clip",
-            Box::new(ClipNode::new(action.clip.clone(), None, None)),
-        ));
+        let clip_node = AnimationNode::new("clip", ClipNode::new(action.clip.clone(), None, None));
+        let clip_node_id = clip_node.id;
+        new_graph.add_node(clip_node);
 
-        new_graph.add_output_parameter("pose", DataSpec::Pose);
+        new_graph.add_output_data("pose".into(), DataSpec::Pose);
         new_graph.add_output_time();
 
         new_graph.add_edge(
-            SourcePin::NodeData("clip".into(), ClipNode::OUT_POSE.into()),
+            SourcePin::NodeData(clip_node_id, ClipNode::OUT_POSE.into()),
             TargetPin::OutputData("pose".into()),
         );
-        new_graph.add_edge(SourcePin::NodeTime("clip".into()), TargetPin::OutputTime);
+        new_graph.add_edge(SourcePin::NodeTime(clip_node_id), TargetPin::OutputTime);
 
         let graph_handle = graph_assets.add(new_graph);
 
@@ -121,18 +124,18 @@ impl CreateTrackNodePreview {
 
         let mut new_graph = existing_graph.clone();
 
-        new_graph.add_output_parameter("pose", DataSpec::Pose);
+        new_graph.add_output_data("pose".into(), DataSpec::Pose);
         new_graph.add_output_time();
 
         new_graph.add_edge(
             SourcePin::NodeData(
-                action.preview_key.node_id.clone(),
+                action.preview_key.node_id,
                 action.preview_key.pose_pin.clone(),
             ),
             TargetPin::OutputData("pose".into()),
         );
         new_graph.add_edge(
-            SourcePin::NodeTime(action.preview_key.node_id.clone()),
+            SourcePin::NodeTime(action.preview_key.node_id),
             TargetPin::OutputTime,
         );
 

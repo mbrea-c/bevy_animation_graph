@@ -3,11 +3,11 @@ use egui_dock::egui;
 
 use crate::ui::{
     generic_widgets::asset_picker::AssetPicker,
-    global_state::{
+    native_windows::{EditorWindowContext, NativeEditorWindowExtension},
+    state_management::global::{
         active_scene::{ActiveScene, SetActiveScene},
         get_global_state,
     },
-    native_windows::{EditorWindowContext, NativeEditorWindowExtension},
 };
 
 #[derive(Debug)]

@@ -1,26 +1,27 @@
+use std::path::PathBuf;
+
+use bevy::{asset::UntypedAssetId, platform::collections::HashMap, prelude::*};
+use bevy_animation_graph::core::{
+    animation_clip::{GraphClip, loader::GraphClipSerial},
+    animation_graph::{AnimationGraph, serial::AnimationGraphSerializer},
+    ragdoll::{
+        bone_mapping::RagdollBoneMap, bone_mapping_loader::RagdollBoneMapSerial,
+        definition::Ragdoll,
+    },
+    state_machine::high_level::{StateMachine, serial::StateMachineSerial},
+};
+
 use crate::{
     Cli,
     ui::{
         UiState,
         core::EguiWindow,
         editor_windows::saving::{SaveWindow, SaveWindowAssetMeta},
-        global_state::{ClearGlobalState, active_fsm::ActiveFsm, active_graph::ActiveGraph},
-    },
-};
-use bevy::{asset::UntypedAssetId, platform::collections::HashMap, prelude::*};
-use bevy_animation_graph::{
-    core::{
-        animation_clip::loader::GraphClipSerial,
-        animation_graph::{AnimationGraph, serial::AnimationGraphSerializer},
-        ragdoll::{
-            bone_mapping::RagdollBoneMap, bone_mapping_loader::RagdollBoneMapSerial,
-            definition::Ragdoll,
+        state_management::global::{
+            ClearGlobalState, active_fsm::ActiveFsm, active_graph::ActiveGraph,
         },
-        state_machine::high_level::{StateMachine, serial::StateMachineSerial},
     },
-    prelude::GraphClip,
 };
-use std::path::PathBuf;
 
 /// Assets that have been modified in the editor but not yet saved
 #[derive(Resource, Default)]
@@ -127,7 +128,16 @@ pub fn handle_save_fsm(
     mut commands: Commands,
 ) {
     let fsm = graph_assets.get(save_fsm.asset_id).unwrap();
-    let graph_serial = StateMachineSerial::from(fsm);
+    let graph_serial = match StateMachineSerial::try_from(fsm) {
+        Ok(serial) => serial,
+        Err(err) => {
+            error!(
+                "Failed to save FSM with id {:?} - Error: {:?}",
+                save_fsm.asset_id, err
+            );
+            return;
+        }
+    };
     let mut final_path = cli.asset_source.clone();
     final_path.push(&save_fsm.virtual_path);
     info!(

@@ -1,23 +1,31 @@
 use core::any::TypeId;
 use std::any::Any;
 
-use crate::ui::ecs_utils::get_view_state;
-use crate::ui::global_state;
-use crate::ui::native_views::{EditorView, EditorViewContext, EditorViewUiState};
-use crate::ui::native_windows::{NativeEditorWindow, NativeEditorWindowExtension};
-use bevy::ecs::world::CommandQueue;
-use bevy::platform::collections::HashMap;
-use bevy::prelude::*;
+use bevy::{
+    ecs::{system::command::trigger, world::CommandQueue},
+    platform::collections::HashMap,
+    prelude::*,
+};
 use bevy_egui::{EguiContext, PrimaryEguiContext};
 use bevy_inspector_egui::{bevy_egui, egui};
 use egui_dock::egui::Color32;
 use egui_notify::{Anchor, Toasts};
 
-use super::actions::saving::SaveAction;
-use super::actions::{EditorAction, PendingActions, PushQueue};
-
 pub use super::windows::EditorWindowExtension;
-use super::windows::{WindowId, Windows};
+use super::{
+    actions::{EditorAction, PendingActions, PushQueue, saving::SaveAction},
+    windows::{WindowId, Windows},
+};
+use crate::ui::{
+    ecs_utils::get_view_state,
+    native_views::{EditorView, EditorViewContext, EditorViewUiState},
+    native_windows::{NativeEditorWindow, NativeEditorWindowExtension},
+    state_management::global::{
+        GlobalState, animation_graph::RequestCreateAnimationGraph, clip::RequestCreateClip,
+        fsm::RequestCreateFsm, ragdoll::RequestCreateRagdoll,
+        ragdoll_bone_map::RequestCreateRagdollBoneMap, skeleton::RequestCreateSkeleton,
+    },
+};
 
 #[derive(Component)]
 pub struct HasLoadedImgLoaders;
@@ -64,7 +72,7 @@ pub struct UiState {
 
     pub(crate) views: Vec<EditorViewUiState>,
     pub(crate) active_view: Option<usize>,
-    pub(crate) buffers: Buffers,
+    pub(crate) buffers: GlobalBuffers,
 }
 
 impl UiState {
@@ -77,7 +85,7 @@ impl UiState {
             views: Vec::new(),
             active_view: Some(0),
             windows: Windows::default(),
-            buffers: Buffers::default(),
+            buffers: GlobalBuffers::default(),
         };
 
         let main_view = EditorViewUiState::animation_graphs(world, "Graph editing");
@@ -90,7 +98,7 @@ impl UiState {
         ui_state.new_native_view(ragdoll_view);
 
         world.insert_resource(ui_state);
-        global_state::GlobalState::init(world);
+        GlobalState::init(world);
     }
 
     pub fn new_native_view(&mut self, state: EditorViewUiState) {
@@ -104,6 +112,8 @@ impl UiState {
         queue: &mut PendingActions,
         command_queue: &mut CommandQueue,
     ) {
+        menu_bar(ctx, command_queue);
+
         if let Some(view_action) = view_selection_bar(world, ctx, self) {
             queue.actions.push(EditorAction::View(view_action));
         }
@@ -130,6 +140,37 @@ impl UiState {
 
         self.notifications.show(ctx);
     }
+}
+
+fn menu_bar(ctx: &mut egui::Context, command_queue: &mut CommandQueue) {
+    egui::TopBottomPanel::top("Application menu bar").show(ctx, |ui| {
+        egui::MenuBar::new().ui(ui, |ui| {
+            ui.menu_button("Assets", |ui| {
+                ui.menu_button("Create", |ui| {
+                    if ui.button("Skeleton").clicked() {
+                        command_queue.push(trigger(RequestCreateSkeleton));
+                    }
+                    if ui.button("Animation").clicked() {
+                        command_queue.push(trigger(RequestCreateClip));
+                    }
+                    if ui.button("Animation graph").clicked() {
+                        command_queue.push(trigger(RequestCreateAnimationGraph));
+                    }
+                    if ui.button("State machine").clicked() {
+                        command_queue.push(trigger(RequestCreateFsm));
+                    }
+                    if ui.button("Ragdoll").clicked() {
+                        command_queue.push(trigger(RequestCreateRagdoll));
+                    }
+                    if ui.button("Ragdoll bone map").clicked() {
+                        command_queue.push(trigger(RequestCreateRagdollBoneMap));
+                    }
+                    ui.disable();
+                    if ui.button("Animated scene").clicked() {}
+                });
+            })
+        });
+    });
 }
 
 pub struct LegacyEditorWindowContext<'a> {
@@ -262,11 +303,32 @@ fn view_button(
 
 pub trait BufferType: Any + Send + Sync + 'static {
     fn any_mut(&mut self) -> &mut dyn Any;
+    fn any_ref(&self) -> &dyn Any;
 }
 
 impl<T: Any + Send + Sync + 'static> BufferType for T {
     fn any_mut(&mut self) -> &mut dyn Any {
         self
+    }
+
+    fn any_ref(&self) -> &dyn Any {
+        self
+    }
+}
+
+/// Buffers are hierarchical
+#[derive(Default)]
+pub struct GlobalBuffers {
+    pub window_buffers: HashMap<Entity, Buffers>,
+}
+
+impl GlobalBuffers {
+    pub fn for_window(&mut self, window: Entity) -> &mut Buffers {
+        self.window_buffers.entry(window).or_default()
+    }
+
+    pub fn clear_for_window(&mut self, window: Entity) {
+        self.window_buffers.remove(&window);
     }
 }
 
@@ -282,6 +344,30 @@ impl Buffers {
         default_provider: impl FnOnce() -> T,
     ) -> &mut T {
         let key = (id, TypeId::of::<T>());
+        self.by_id_and_type
+            .entry(key)
+            .or_insert(Box::new(default_provider()))
+            .as_mut()
+            .any_mut()
+            .downcast_mut::<T>()
+            .expect("There must never be a type mismatch here")
+    }
+
+    pub fn get_mut_or_insert_with_condition<T: BufferType>(
+        &mut self,
+        id: egui::Id,
+        reset_condition: impl FnOnce(&T) -> bool,
+        default_provider: impl FnOnce() -> T,
+    ) -> &mut T {
+        let key = (id, TypeId::of::<T>());
+        if let Some(old_val) = self
+            .by_id_and_type
+            .get(&key)
+            .and_then(|v| v.as_ref().any_ref().downcast_ref::<T>())
+            && reset_condition(old_val)
+        {
+            self.by_id_and_type.remove(&key);
+        }
         self.by_id_and_type
             .entry(key)
             .or_insert(Box::new(default_provider()))

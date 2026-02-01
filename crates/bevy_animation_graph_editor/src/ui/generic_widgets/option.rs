@@ -1,5 +1,6 @@
 pub struct CheapOptionWidget<'a, T> {
     pub value: &'a mut Option<T>,
+    pub checkbox_label: Option<String>,
     pub id_hash: egui::Id,
 }
 
@@ -8,7 +9,13 @@ impl<'a, T> CheapOptionWidget<'a, T> {
         Self {
             value,
             id_hash: egui::Id::new(salt),
+            checkbox_label: None,
         }
+    }
+
+    pub fn with_checkbox_label(mut self, label: Option<String>) -> Self {
+        self.checkbox_label = label;
+        self
     }
 }
 
@@ -29,15 +36,16 @@ where
                     .unwrap_or_default()
             });
 
-            let response = ui
+            let mut response = ui
                 .horizontal(|ui| {
-                    let mut response = ui.add(egui::Checkbox::without_text(&mut check));
+                    if let Some(label) = self.checkbox_label {
+                        ui.label(label);
+                    }
 
-                    response |= ui.add_enabled_ui(check, |ui| show(ui, &mut value)).inner;
-
-                    response
+                    ui.add(egui::Checkbox::without_text(&mut check))
                 })
                 .inner;
+            response |= ui.add_enabled_ui(check, |ui| show(ui, &mut value)).inner;
 
             ui.memory_mut(|mem| mem.data.insert_temp(buffer_id, value.clone()));
 

@@ -1,47 +1,68 @@
 use bevy::{
     asset::Assets,
-    ecs::entity::Entity,
+    ecs::{entity::Entity, observer::On, system::Commands},
     prelude::{AppTypeRegistry, World},
 };
 use bevy_animation_graph::{
-    core::state_machine::high_level::{State, StateMachine, Transition},
-    prelude::{AnimationGraph, AnimationNode, GraphContextId, graph_context::GraphContext},
+    builtin_nodes::fsm_node::FsmNode,
+    core::{
+        animation_graph::AnimationGraph,
+        animation_node::AnimationNode,
+        context::{graph_context::GraphState, graph_context_arena::GraphContextId},
+        state_machine::high_level::{DirectTransition, State, StateMachine},
+    },
 };
-use bevy_inspector_egui::reflect_inspector::InspectorUi;
+use egui::Widget;
 use egui_dock::egui;
 
+use super::EditorWindowRegistrationContext;
 use crate::ui::{
     actions::{
         EditorAction,
-        fsm::{
-            CreateState, CreateTransition, FsmAction, FsmProperties, UpdateProperties, UpdateState,
-            UpdateTransition,
-        },
-        graph::{
-            EditNode, GraphAction, RenameNode, UpdateInputData, UpdateInputTimes, UpdateOutputData,
-            UpdateOutputTime,
-        },
+        graph::{EditNode, GraphAction, RenameNode, UpdateDefaultData, UpdateGraphSpec},
     },
-    egui_inspector_impls::OrderedMap,
-    global_state::{
-        active_fsm::ActiveFsm,
-        active_fsm_state::ActiveFsmState,
-        active_fsm_transition::ActiveFsmTransition,
-        active_graph::ActiveGraph,
-        active_graph_context::{ActiveContexts, SetActiveContext},
-        active_graph_node::ActiveGraphNode,
-        get_global_state,
-        inspector_selection::InspectorSelection,
+    generic_widgets::{
+        data_value::DataValueWidget,
+        fsm::{
+            direct_transition::DirectTransitionWidget, state::StateWidget,
+            state_id_mut::StateIdWidget,
+        },
+        graph_input_pin::GraphInputPinWidget,
+        hashmap::HashMapWidget,
+        io_spec::IoSpecWidget,
     },
     native_windows::{EditorWindowContext, NativeEditorWindowExtension},
     node_editors::{ReflectEditable, reflect_editor::ReflectNodeEditor},
-    utils::{self, using_inspector_env, with_assets_all},
+    state_management::{
+        global::{
+            active_fsm::ActiveFsm,
+            active_fsm_state::ActiveFsmState,
+            active_fsm_transition::ActiveFsmTransition,
+            active_graph::ActiveGraph,
+            active_graph_context::{ActiveContexts, SetActiveContext},
+            active_graph_node::ActiveGraphNode,
+            fsm::{SetFsmNodeSpec, SetFsmStartState, UpdateDirectTransition, UpdateState},
+            get_global_state,
+            inspector_selection::{InspectorSelection, SetInspectorSelection},
+        },
+        window::buffers::ClearBuffers,
+    },
+    utils::{self, with_assets_all},
 };
 
 #[derive(Debug)]
 pub struct InspectorWindow;
 
 impl NativeEditorWindowExtension for InspectorWindow {
+    fn init(&self, world: &mut World, ctx: &EditorWindowRegistrationContext) {
+        let window = ctx.window;
+        world.add_observer(
+            move |_: On<SetInspectorSelection>, mut commands: Commands| {
+                commands.trigger(ClearBuffers(window));
+            },
+        );
+    }
+
     fn ui(&self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
         let inspector_selection = get_global_state::<InspectorSelection>(world)
             .cloned()
@@ -89,9 +110,11 @@ fn node_inspector(
 
             let node_buffer_id = ui.id().with("graph node buffer");
 
-            let node_buffer = ctx
-                .buffers
-                .get_mut_or_insert_with(node_buffer_id, || node.clone());
+            let node_buffer = ctx.buffers.get_mut_or_insert_with_condition(
+                node_buffer_id,
+                |n: &AnimationNode| n.id != active_node.node,
+                || node.clone(),
+            );
 
             let response = ui.text_edit_singleline(&mut node_buffer.name);
             let mut clear = false;
@@ -100,7 +123,7 @@ fn node_inspector(
                 ctx.editor_actions
                     .push(EditorAction::Graph(GraphAction::RenameNode(RenameNode {
                         graph: active_node.handle.clone(),
-                        node: active_node.node.clone(),
+                        node: active_node.node,
                         new_name: node_buffer.name.clone(),
                     })));
                 clear = true;
@@ -124,7 +147,7 @@ fn node_inspector(
                 ctx.editor_actions
                     .push(EditorAction::Graph(GraphAction::EditNode(EditNode {
                         graph: active_node.handle.clone(),
-                        node: node.name.clone(),
+                        node: node.id,
                         new_inner: node_buffer.inner.clone(),
                     })));
                 clear = true;
@@ -152,18 +175,21 @@ fn state_inspector(
     with_assets_all(world, [active_state.handle.id()], |world, [fsm]| {
         let state = fsm.states.get(&active_state.state)?;
 
-        using_inspector_env(world, |mut env| {
-            let mut copy = state.clone();
-            let changed = env.ui_for_reflect(&mut copy, ui);
-            if changed {
-                ctx.editor_actions
-                    .push(EditorAction::Fsm(FsmAction::UpdateState(UpdateState {
-                        fsm: active_state.handle.clone(),
-                        state_id: active_state.state.clone(),
-                        new_state: copy,
-                    })));
-            }
-        });
+        let buffer_id = ui.id().with("state buffer");
+        let buffer = ctx.buffers.get_mut_or_insert_with_condition(
+            buffer_id,
+            |v: &State| v.id != active_state.state,
+            || state.clone(),
+        );
+
+        let r = ui.add(StateWidget::new_salted(buffer, world, "state widget"));
+        if r.changed() {
+            let state = buffer.clone();
+            ctx.trigger(UpdateState {
+                fsm: active_state.handle.clone(),
+                state,
+            });
+        }
 
         Some(())
     })
@@ -182,20 +208,26 @@ fn transition_inspector(
     with_assets_all(world, [active_transition.handle.id()], |world, [fsm]| {
         let transition = fsm.transitions.get(&active_transition.transition)?;
 
-        using_inspector_env(world, |mut env| {
-            let mut copy = transition.clone();
-            let changed = env.ui_for_reflect(&mut copy, ui);
-            if changed {
-                ctx.editor_actions
-                    .push(EditorAction::Fsm(FsmAction::UpdateTransition(
-                        UpdateTransition {
-                            fsm: active_transition.handle.clone(),
-                            transition_id: active_transition.transition.clone(),
-                            new_transition: copy,
-                        },
-                    )));
-            }
-        });
+        let buffer_id = ui.id().with("transition buffer");
+        let buffer = ctx.buffers.get_mut_or_insert_with_condition(
+            buffer_id,
+            |v: &DirectTransition| v.id != transition.id,
+            || transition.clone(),
+        );
+
+        let r = ui.add(
+            DirectTransitionWidget::new(buffer, world)
+                .salted("state widget")
+                .with_fsm(Some(fsm)),
+        );
+        if r.changed() {
+            let transition = buffer.clone();
+            ctx.trigger(UpdateDirectTransition {
+                fsm: active_transition.handle.clone(),
+                transition,
+            });
+        }
+
         Some(())
     })
     .flatten()
@@ -212,106 +244,58 @@ fn graph_inspector(
 
     let active_graph = get_global_state::<ActiveGraph>(world)?.clone();
 
-    world.resource_scope::<Assets<AnimationGraph>, _>(|world, graph_assets| {
+    world.resource_scope::<Assets<AnimationGraph>, _>(|_, graph_assets| {
         let graph = graph_assets.get(&active_graph.handle)?;
 
-        using_inspector_env(world, |mut env| {
-            let mut input_data_changed = false;
-            let mut output_data_changed = false;
-            let mut input_times_changed = false;
-            let mut output_time_changed = false;
+        let graph_spec_buffer = ctx
+            .buffers
+            .get_mut_or_insert_with(ui.id().with("graph_spec"), || graph.io_spec.clone());
 
-            let mut input_data = OrderedMap {
-                order: graph.extra.input_param_order.clone(),
-                values: graph.default_parameters.clone(),
-            };
-
-            ui.collapsing("Default input data", |ui| {
-                input_data_changed = env.ui_for_reflect_with_options(
-                    &mut input_data,
-                    ui,
-                    ui.id().with("default input data"),
-                    &(),
-                );
+        let spec_response = IoSpecWidget::new_salted(graph_spec_buffer, "graph_spec_widget")
+            .show(ui, |ui, i| {
+                GraphInputPinWidget::new_salted(i, "graph input pin edit").ui(ui)
             });
 
-            let mut output_data = OrderedMap {
-                order: graph.extra.output_data_order.clone(),
-                values: graph.output_parameters.clone(),
-            };
-            ui.collapsing("Output data", |ui| {
-                output_data_changed = env.ui_for_reflect_with_options(
-                    &mut output_data,
-                    ui,
-                    ui.id().with("output data"),
-                    &(),
-                );
+        if spec_response.changed() {
+            ctx.editor_actions
+                .push(EditorAction::Graph(GraphAction::UpdateGraphSpec(
+                    UpdateGraphSpec {
+                        graph: active_graph.handle.clone(),
+                        new_spec: graph_spec_buffer.clone(),
+                    },
+                )));
+        }
+
+        let default_values_buffer = ctx
+            .buffers
+            .get_mut_or_insert_with(ui.id().with("graph_default_values"), || {
+                graph.default_data.clone()
             });
 
-            let mut input_times = OrderedMap {
-                order: graph.extra.input_time_order.clone(),
-                values: graph.input_times.clone(),
-            };
-            ui.collapsing("Input times", |ui| {
-                input_times_changed = env.ui_for_reflect_with_options(
-                    &mut input_times,
-                    ui,
-                    ui.id().with("input times"),
-                    &(),
-                );
-            });
+        ui.heading("Default data");
 
-            let mut output_time = graph.output_time;
+        let default_values_response =
+            HashMapWidget::new_salted(default_values_buffer, "graph_default_values").ui(
+                ui,
+                |ui, key| {
+                    ui.add(GraphInputPinWidget::new_salted(
+                        key,
+                        "default value graph input pin",
+                    ))
+                },
+                |ui, key| ui.label(format!("{:?}", key)),
+                |ui, value| ui.add(DataValueWidget::new_salted(value, "default value widget")),
+            );
 
-            ui.collapsing("Output time", |ui| {
-                output_time_changed = env.ui_for_reflect_with_options(
-                    &mut output_time,
-                    ui,
-                    ui.id().with("output time"),
-                    &(),
-                );
-            });
-
-            if input_data_changed {
-                ctx.editor_actions
-                    .push(EditorAction::Graph(GraphAction::UpdateInputData(
-                        UpdateInputData {
-                            graph: active_graph.handle.clone(),
-                            input_data,
-                        },
-                    )));
-            }
-
-            if output_data_changed {
-                ctx.editor_actions
-                    .push(EditorAction::Graph(GraphAction::UpdateOutputData(
-                        UpdateOutputData {
-                            graph: active_graph.handle.clone(),
-                            output_data,
-                        },
-                    )));
-            }
-
-            if input_times_changed {
-                ctx.editor_actions
-                    .push(EditorAction::Graph(GraphAction::UpdateInputTimes(
-                        UpdateInputTimes {
-                            graph: active_graph.handle.clone(),
-                            input_times,
-                        },
-                    )));
-            }
-
-            if output_time_changed {
-                ctx.editor_actions
-                    .push(EditorAction::Graph(GraphAction::UpdateOutputTime(
-                        UpdateOutputTime {
-                            graph: active_graph.handle.clone(),
-                            output_time,
-                        },
-                    )));
-            }
-        });
+        if default_values_response.changed() {
+            ctx.editor_actions
+                .push(EditorAction::Graph(GraphAction::UpdateDefaultData(
+                    UpdateDefaultData {
+                        graph: active_graph.handle.clone(),
+                        input_data: default_values_buffer.clone(),
+                    },
+                )));
+        }
 
         Some(())
     })
@@ -328,88 +312,52 @@ fn fsm_inspector(
 
     let active_fsm = get_global_state::<ActiveFsm>(world)?.clone();
 
-    world.resource_scope::<Assets<StateMachine>, _>(|world, fsm_assets| {
+    world.resource_scope::<Assets<StateMachine>, _>(|_, fsm_assets| {
+        // We should make sure to include the fsm id in the buffer id salt to avoid reusing buffers
+        // when active FSM changes
+        let buffer_id = |ui: &mut egui::Ui, s: &str| ui.id().with(s).with(active_fsm.handle.id());
+
         let fsm = fsm_assets.get(&active_fsm.handle)?;
+        let spec_buffer = ctx
+            .buffers
+            .get_mut_or_insert_with(buffer_id(ui, "fsm input spec"), || fsm.node_spec.clone());
 
-        using_inspector_env(world, |mut env| {
-            let mut new_properties = FsmProperties::from(fsm);
+        let spec_response = IoSpecWidget::new_salted(spec_buffer, "fsm input spec widget")
+            .show(ui, |ui, i| ui.text_edit_singleline(i));
 
-            let changed = env.ui_for_reflect_with_options(
-                &mut new_properties,
-                ui,
-                ui.id().with("fsm properties inspector"),
-                &(),
-            );
-            if changed {
-                ctx.editor_actions
-                    .push(EditorAction::Fsm(FsmAction::UpdateProperties(
-                        UpdateProperties {
-                            fsm: active_fsm.handle.clone(),
-                            new_properties,
-                        },
-                    )));
-            }
+        if spec_response.changed() {
+            let new = spec_buffer.clone();
+            ctx.trigger(SetFsmNodeSpec {
+                fsm: active_fsm.handle.clone(),
+                new,
+            });
+        }
 
-            if let Some(state) = add_state_ui(ui, &mut env, ctx) {
-                ctx.editor_actions
-                    .push(EditorAction::Fsm(FsmAction::CreateState(CreateState {
-                        fsm: active_fsm.handle.clone(),
-                        state,
-                    })));
-            }
+        let start_state_buffer = ctx
+            .buffers
+            .get_mut_or_insert_with(buffer_id(ui, "fsm start state"), || fsm.start_state);
 
-            if let Some(transition) = add_transition_ui(ui, &mut env, ctx) {
-                ctx.editor_actions
-                    .push(EditorAction::Fsm(FsmAction::CreateTransition(
-                        CreateTransition {
-                            fsm: active_fsm.handle.clone(),
-                            transition,
-                        },
-                    )));
-            }
-        });
+        let r = ui
+            .horizontal(|ui| {
+                ui.label("start state:");
+                ui.add(
+                    StateIdWidget::new(start_state_buffer)
+                        .salted("fsm start state")
+                        .with_fsm(Some(fsm)),
+                )
+            })
+            .inner;
+
+        if r.changed() {
+            let new = *start_state_buffer;
+            ctx.trigger(SetFsmStartState {
+                fsm: active_fsm.handle.clone(),
+                new,
+            });
+        }
+
         Some(())
     })
-}
-
-fn add_transition_ui(
-    ui: &mut egui::Ui,
-    env: &mut InspectorUi,
-    ctx: &mut EditorWindowContext,
-) -> Option<Transition> {
-    ui.push_id("fsm add transition", |ui| {
-        ui.separator();
-        ui.label("Transition creation");
-        let buffer = ctx
-            .buffers
-            .get_mut_or_insert_with(ui.id(), Transition::default);
-        env.ui_for_reflect_with_options(buffer, ui, egui::Id::new("Transition creation"), &());
-        if ui.button("Create transition").clicked() {
-            Some(buffer.clone())
-        } else {
-            None
-        }
-    })
-    .inner
-}
-
-fn add_state_ui(
-    ui: &mut egui::Ui,
-    env: &mut InspectorUi,
-    ctx: &mut EditorWindowContext,
-) -> Option<State> {
-    ui.push_id("fsm add state", |ui| {
-        ui.separator();
-        ui.label("State creation");
-        let buffer = ctx.buffers.get_mut_or_insert_with(ui.id(), State::default);
-        env.ui_for_reflect_with_options(buffer, ui, egui::Id::new("State creation"), &());
-        if ui.button("Create state").clicked() {
-            Some(buffer.clone())
-        } else {
-            None
-        }
-    })
-    .inner
 }
 
 fn select_graph_context(
@@ -473,7 +421,7 @@ fn select_graph_context_fsm(
             return false;
         };
         graph
-            .contains_state_machine(active_fsm.handle.id())
+            .contains_node_that::<FsmNode>(|n| n.fsm == active_fsm.handle)
             .is_some()
     });
 
@@ -514,7 +462,7 @@ fn select_graph_context_fsm(
 
 fn list_graph_contexts(
     world: &World,
-    filter: impl Fn(&GraphContext) -> bool,
+    filter: impl Fn(&GraphState) -> bool,
 ) -> Vec<(Entity, GraphContextId)> {
     let players = utils::iter_animation_graph_players(world);
     players

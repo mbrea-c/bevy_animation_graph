@@ -1,0 +1,54 @@
+(
+    nodes: [
+        (
+            id: "daaf4e30-ffbd-4aac-aba6-41c6ab29b249",
+            name: "",
+            inner: {
+                "bevy_animation_graph_builtin_nodes::graph_node::GraphNode": (
+                    graph: "animation_graphs/human.animgraph.ron",
+                ),
+            },
+            should_debug: false,
+        ),
+        (
+            id: "50867795-dab9-4bbe-8a78-78deee63ecc2",
+            name: "",
+            inner: {
+                "editor_as_a_plugin::MyCustomNode": (),
+            },
+            should_debug: false,
+        ),
+    ],
+    edges_inverted: {
+        OutputData("pose"): NodeData("50867795-dab9-4bbe-8a78-78deee63ecc2", "pose"),
+        NodeTime("50867795-dab9-4bbe-8a78-78deee63ecc2", "time"): NodeTime("daaf4e30-ffbd-4aac-aba6-41c6ab29b249"),
+        OutputTime: NodeTime("50867795-dab9-4bbe-8a78-78deee63ecc2"),
+        NodeData("50867795-dab9-4bbe-8a78-78deee63ecc2", "pose"): NodeData("daaf4e30-ffbd-4aac-aba6-41c6ab29b249", "pose"),
+    },
+    io_spec: (
+        input_times: [],
+        input_data: {},
+        output_time: true,
+        output_data: {
+            "pose": Pose,
+        },
+        input_order: {},
+        output_order: {
+            Data("pose"): 1,
+            Time: 2,
+        },
+    ),
+    default_data: {},
+    editor_metadata: (
+        node_positions: {
+            "daaf4e30-ffbd-4aac-aba6-41c6ab29b249": (97.40234, -41.777344),
+            "50867795-dab9-4bbe-8a78-78deee63ecc2": (285.03516, -14.1484375),
+        },
+        input_position: (-74.109375, 3.6054688),
+        output_position: (455.5547, -6.5),
+        input_param_order: {},
+        input_time_order: {},
+        output_data_order: {},
+        output_pose_order: {},
+    ),
+)
