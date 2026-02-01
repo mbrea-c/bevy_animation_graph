@@ -96,8 +96,8 @@ pub(crate) fn spawn_animated_scenes(
             continue;
         };
 
-        let processed_scene = if animscn.processed_scene.is_some() {
-            animscn.processed_scene.as_ref().unwrap()
+        let processed_scene = if let Some(val) = animscn.processed_scene.as_ref() {
+            val
         } else if is_scene_ready_to_process(animscn, &scenes, &skeletons) {
             let Some(scene) = scenes
                 .get(&animscn.source)
