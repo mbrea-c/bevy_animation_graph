@@ -703,7 +703,7 @@ impl AnimationGraph {
                 }
 
                 ctx.node_caches()
-                    .get_output_data(node_id.clone(), key, node_pin.clone())?
+                    .get_output_data(*node_id, key, node_pin.clone())?
             }
             SourcePin::InputData(graph_input_pin) => ctx
                 .io
@@ -748,7 +748,7 @@ impl AnimationGraph {
             SourcePin::NodeTime(node_id) => {
                 let key = ctx.state_key;
 
-                if let Ok(dur) = ctx.node_caches().get_duration(node_id.clone(), key) {
+                if let Ok(dur) = ctx.node_caches().get_duration(*node_id, key) {
                     dur
                 } else {
                     let node = &self.nodes[node_id];
@@ -757,7 +757,7 @@ impl AnimationGraph {
                         ctx.create_node_context(*node_id, self)
                             .with_debugging(should_debug),
                     )?;
-                    ctx.node_caches().get_duration(node_id.clone(), key)?
+                    ctx.node_caches().get_duration(*node_id, key)?
                 }
             }
             SourcePin::InputTime(pin_id) => {

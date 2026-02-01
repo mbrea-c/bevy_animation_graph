@@ -150,7 +150,7 @@ impl LowLevelStateMachine {
             LowLevelTransitionId::Start(_) | LowLevelTransitionId::Immediate(_) => {
                 let vec = self
                     .transitions_by_hl_state_pair
-                    .entry((transition.hl_source.clone(), transition.hl_target.clone()))
+                    .entry((transition.hl_source, transition.hl_target))
                     .or_default();
                 vec.push(transition.id.clone());
                 // Direct transitions should come first
@@ -191,7 +191,7 @@ impl LowLevelStateMachine {
                     if let Some(hl_target_state_id) = self
                         .hl_states_by_label
                         .get(&label)
-                        .and_then(|states| states.get(0))
+                        .and_then(|states| states.first())
                         && let LowLevelStateId::HlState(hl_curr_state_id) = fsm_state.state.clone()
                         && let Some(transition) = self
                             .transitions_by_hl_state_pair
@@ -223,7 +223,7 @@ impl LowLevelStateMachine {
                         .get(&fsm_state.state)
                         .and_then(|s| s.hl_transition.as_ref())
                         && let Some(transition) = self.transitions.get(&LowLevelTransitionId::End(
-                            hl_transition_data.hl_transition_id.clone(),
+                            hl_transition_data.hl_transition_id,
                         ))
                     {
                         *fsm_state = FSMState {
@@ -275,7 +275,7 @@ impl LowLevelStateMachine {
             .resources
             .animation_graph_assets
             .get(&state.graph)
-            .ok_or_else(|| GraphError::GraphAssetMissing)?;
+            .ok_or(GraphError::GraphAssetMissing)?;
 
         let mut io_overrides = IoOverrides::default();
 
@@ -334,16 +334,16 @@ impl LowLevelStateMachine {
         self.states
             .get(state)
             .and_then(|s| s.hl_transition.as_ref())
-            .map(|t| LowLevelStateId::HlState(t.source.clone()))
-            .ok_or_else(|| GraphError::FSMCurrentStateMissing)
+            .map(|t| LowLevelStateId::HlState(t.source))
+            .ok_or(GraphError::FSMCurrentStateMissing)
     }
 
     fn get_target(&self, state: &LowLevelStateId) -> Result<LowLevelStateId, GraphError> {
         self.states
             .get(state)
             .and_then(|s| s.hl_transition.as_ref())
-            .map(|t| LowLevelStateId::HlState(t.target.clone()))
-            .ok_or_else(|| GraphError::FSMCurrentStateMissing)
+            .map(|t| LowLevelStateId::HlState(t.target))
+            .ok_or(GraphError::FSMCurrentStateMissing)
     }
 }
 

@@ -103,12 +103,12 @@ impl From<&mut GraphContextArena> for GraphContextArenaRef {
 
 impl GraphContextArenaRef {
     #[allow(clippy::mut_from_ref)]
-    pub fn as_mut(&self) -> &mut GraphContextArena {
+    pub fn get_mut(&self) -> &mut GraphContextArena {
         unsafe { self.context.as_mut().unwrap() }
     }
 
     #[allow(clippy::mut_from_ref)]
-    pub fn as_ref(&self) -> &GraphContextArena {
+    pub fn get_ref(&self) -> &GraphContextArena {
         unsafe { self.context.as_ref().unwrap() }
     }
 }

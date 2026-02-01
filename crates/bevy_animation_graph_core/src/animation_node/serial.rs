@@ -22,6 +22,7 @@ pub struct AnimationNodeDeserializer {
 }
 
 impl AnimationNodeDeserializer {
+    #[allow(clippy::result_large_err)]
     pub fn finish_deserialize<'a, 'b>(
         &self,
         type_registry: &'a TypeRegistry,
@@ -40,7 +41,7 @@ impl AnimationNodeDeserializer {
         Ok(AnimationNode {
             id: self.id,
             name: self.name.clone(),
-            inner: inner,
+            inner,
             should_debug: self.should_debug,
         })
     }

@@ -127,7 +127,7 @@ impl GraphIoEnv for IoOverrides {
     fn get_time_fwd(&self, _: GraphContext) -> Result<TimeUpdate, GraphError> {
         self.time
             .clone()
-            .ok_or_else(|| GraphError::TimeUpdateMissingBack(TargetPin::OutputTime))
+            .ok_or(GraphError::TimeUpdateMissingBack(TargetPin::OutputTime))
     }
 }
 

@@ -10,14 +10,11 @@ pub(crate) fn uuid_wrapper(input: TokenStream) -> TokenStream {
         return error(&input, "UuidWrapper only works on structs.");
     };
 
-    let Some((uuid_field_idx, uuid_field)) =
-        data_struct.fields.iter().enumerate().find(|(_, field)| {
-            field
-                .attrs
-                .iter()
-                .find(|attr| attr.path().is_ident("uuid"))
-                .is_some()
-        })
+    let Some((uuid_field_idx, uuid_field)) = data_struct
+        .fields
+        .iter()
+        .enumerate()
+        .find(|(_, field)| field.attrs.iter().any(|attr| attr.path().is_ident("uuid")))
     else {
         return error(
             &input,

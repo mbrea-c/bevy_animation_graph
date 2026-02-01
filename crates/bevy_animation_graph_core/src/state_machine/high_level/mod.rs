@@ -107,11 +107,11 @@ pub struct StateMachine {
 impl StateMachine {
     pub fn add_state(&mut self, state: State) {
         self.editor_metadata.state_added(state.id);
-        self.states.insert(state.id.clone(), state);
+        self.states.insert(state.id, state);
     }
 
     pub fn add_transition_unchecked(&mut self, transition: DirectTransition) {
-        self.transitions.insert(transition.id.clone(), transition);
+        self.transitions.insert(transition.id, transition);
     }
 
     pub fn add_transition_from_ui(
@@ -159,7 +159,7 @@ impl StateMachine {
             ));
         }
 
-        self.states.insert(new_state.id.clone(), new_state);
+        self.states.insert(new_state.id, new_state);
 
         self.update_low_level_fsm();
 
@@ -206,8 +206,7 @@ impl StateMachine {
             ));
         }
 
-        self.transitions
-            .insert(new_transition.id.clone(), new_transition);
+        self.transitions.insert(new_transition.id, new_transition);
 
         self.update_low_level_fsm();
         Ok(())
@@ -232,7 +231,7 @@ impl StateMachine {
     pub fn update_low_level_fsm(&mut self) {
         let mut llfsm = LowLevelStateMachine::new();
 
-        llfsm.start_state = Some(LowLevelStateId::HlState(self.start_state.clone()));
+        llfsm.start_state = Some(LowLevelStateId::HlState(self.start_state));
         llfsm.node_spec = self.node_spec.clone();
 
         for state in self.states.values() {
@@ -243,7 +242,7 @@ impl StateMachine {
                 .push(state.id);
 
             llfsm.add_state(low_level::LowLevelState {
-                id: LowLevelStateId::HlState(state.id.clone()),
+                id: LowLevelStateId::HlState(state.id),
                 graph: state.graph.clone(),
                 hl_transition: None,
             });
@@ -371,7 +370,6 @@ impl FsmEditorMetadata {
 
     /// Add default position for new node if not already there
     pub fn state_added(&mut self, node_id: StateId) {
-        let node_id = node_id.into();
         if !self.states.contains_key(&node_id) {
             self.states.insert(node_id, Vec2::ZERO);
         }

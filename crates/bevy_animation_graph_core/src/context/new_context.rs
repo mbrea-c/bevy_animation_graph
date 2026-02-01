@@ -83,7 +83,7 @@ impl<'a> GraphContext<'a> {
     /// Return a mutable reference to the [`GraphState`]
     pub fn context_mut(&mut self) -> &mut GraphState {
         self.context_arena
-            .as_mut()
+            .get_mut()
             .get_context_mut(self.context_id)
             .unwrap()
     }
@@ -91,7 +91,7 @@ impl<'a> GraphContext<'a> {
     /// Return a reference to the [`GraphState`]
     pub fn context(&self) -> &GraphState {
         self.context_arena
-            .as_ref()
+            .get_ref()
             .get_context(self.context_id)
             .unwrap()
     }
@@ -170,7 +170,7 @@ impl<'a> NodeContext<'a> {
 
     /// Request an input parameter from the graph
     pub fn data_back(&self, pin_id: impl Into<PinId>) -> Result<DataValue, GraphError> {
-        let target_pin = TargetPin::NodeData(self.node_id.clone(), pin_id.into());
+        let target_pin = TargetPin::NodeData(self.node_id, pin_id.into());
         self.graph.get_data(target_pin, self.graph_context.clone())
     }
 
@@ -181,12 +181,12 @@ impl<'a> NodeContext<'a> {
         self.graph_context
             .context_mut()
             .node_caches
-            .set_output_data(self.node_id.clone(), key, pin_id.into(), data.into());
+            .set_output_data(self.node_id, key, pin_id.into(), data.into());
     }
 
     /// Request the duration of an input pose pin.
     pub fn duration_back(&self, pin_id: impl Into<PinId>) -> Result<DurationData, GraphError> {
-        let target_pin = TargetPin::NodeTime(self.node_id.clone(), pin_id.into());
+        let target_pin = TargetPin::NodeTime(self.node_id, pin_id.into());
         self.graph
             .get_duration(target_pin, self.graph_context.clone())
     }
@@ -194,11 +194,10 @@ impl<'a> NodeContext<'a> {
     /// Sets the duration of the current node with current settings.
     pub fn set_duration_fwd(&mut self, duration: DurationData) {
         let key = self.graph_context.state_key;
-        self.graph_context.context_mut().node_caches.set_duration(
-            self.node_id.clone(),
-            key,
-            duration,
-        );
+        self.graph_context
+            .context_mut()
+            .node_caches
+            .set_duration(self.node_id, key, duration);
     }
 
     /// Sets the duration of the current node with current settings.
@@ -207,7 +206,7 @@ impl<'a> NodeContext<'a> {
         self.graph_context
             .context_mut()
             .node_caches
-            .set_input_time_update(self.node_id.clone(), key, pin_id.into(), time_update);
+            .set_input_time_update(self.node_id, key, pin_id.into(), time_update);
     }
 
     /// Sets the time state of the current node.
@@ -216,12 +215,12 @@ impl<'a> NodeContext<'a> {
         self.graph_context
             .context_mut()
             .node_states
-            .set_time(self.node_id.clone(), key, time);
+            .set_time(self.node_id, key, time);
     }
 
     /// Request the cached time update query from the current frame
     pub fn time_update_fwd(&self) -> Result<TimeUpdate, GraphError> {
-        let source_pin = SourcePin::NodeTime(self.node_id.clone());
+        let source_pin = SourcePin::NodeTime(self.node_id);
         self.graph
             .get_time_update(source_pin, self.graph_context.clone())
     }
@@ -231,7 +230,7 @@ impl<'a> NodeContext<'a> {
         self.graph_context
             .context()
             .node_states
-            .get_last_time(self.node_id.clone())
+            .get_last_time(self.node_id)
     }
 
     /// Request the cached timestamp of the output animation in the last frame
@@ -240,14 +239,12 @@ impl<'a> NodeContext<'a> {
         self.graph_context
             .context_mut()
             .node_states
-            .get_time(self.node_id.clone(), key)
+            .get_time(self.node_id, key)
     }
 
     pub fn state<T: GraphStateType>(&self) -> Result<&T, GraphError> {
         let key = self.graph_context.state_key;
-        self.graph_context
-            .node_states()
-            .get::<T>(self.node_id.clone(), key)
+        self.graph_context.node_states().get::<T>(self.node_id, key)
     }
 
     pub fn state_mut<T: GraphStateType + Default>(&mut self) -> Result<&mut T, GraphError> {
@@ -259,11 +256,9 @@ impl<'a> NodeContext<'a> {
         default: impl FnOnce() -> T,
     ) -> Result<&mut T, GraphError> {
         let key = self.graph_context.state_key;
-        self.graph_context.node_states_mut().get_mut_or_insert_with(
-            self.node_id.clone(),
-            key,
-            default,
-        )
+        self.graph_context
+            .node_states_mut()
+            .get_mut_or_insert_with(self.node_id, key, default)
     }
 
     pub fn with_temp_state_key(mut self) -> Self {
@@ -295,7 +290,7 @@ impl<'a> NodeContext<'a> {
             context_id: self
                 .graph_context
                 .context_arena
-                .as_mut()
+                .get_mut()
                 .get_sub_context_or_insert_default(subctx_id, subgraph_id),
             ..self.graph_context.clone()
         }

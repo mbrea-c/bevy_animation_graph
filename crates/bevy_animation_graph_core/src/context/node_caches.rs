@@ -37,7 +37,7 @@ impl NodeCaches {
     }
 
     pub fn get_duration(&self, node_id: NodeId, key: StateKey) -> Result<DurationData, GraphError> {
-        let error = || GraphError::DurationMissing(SourcePin::NodeTime(node_id.clone()));
+        let error = || GraphError::DurationMissing(SourcePin::NodeTime(node_id));
 
         self.caches
             .get(&node_id)
@@ -56,7 +56,7 @@ impl NodeCaches {
         key: StateKey,
         pin: PinId,
     ) -> Result<DataValue, GraphError> {
-        let error = || GraphError::OutputMissing(SourcePin::NodeData(node_id.clone(), pin.clone()));
+        let error = || GraphError::OutputMissing(SourcePin::NodeData(node_id, pin.clone()));
 
         self.caches
             .get(&node_id)
@@ -74,7 +74,7 @@ impl NodeCaches {
         node_id: NodeId,
         key: StateKey,
     ) -> Result<TimeUpdate, GraphError> {
-        let error = || GraphError::TimeUpdateMissingFwd(SourcePin::NodeTime(node_id.clone()));
+        let error = || GraphError::TimeUpdateMissingFwd(SourcePin::NodeTime(node_id));
 
         self.caches
             .get(&node_id)
@@ -95,8 +95,7 @@ impl NodeCaches {
         key: StateKey,
         pin: PinId,
     ) -> Result<TimeUpdate, GraphError> {
-        let error =
-            || GraphError::TimeUpdateMissingBack(TargetPin::NodeTime(node_id.clone(), pin.clone()));
+        let error = || GraphError::TimeUpdateMissingBack(TargetPin::NodeTime(node_id, pin.clone()));
 
         self.caches
             .get(&node_id)

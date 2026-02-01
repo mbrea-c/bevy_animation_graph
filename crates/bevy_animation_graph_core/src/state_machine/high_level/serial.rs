@@ -22,7 +22,7 @@ impl TryFrom<&State> for StateSerial {
 
     fn try_from(value: &State) -> Result<Self, Self::Error> {
         Ok(Self {
-            id: value.id.clone(),
+            id: value.id,
             label: value.label.clone(),
             graph: value
                 .graph
@@ -194,7 +194,7 @@ impl TryFrom<&StateMachine> for StateMachineSerial {
         Ok(Self {
             states,
             transitions,
-            start_state: value.start_state.clone(),
+            start_state: value.start_state,
             editor_metadata: value.editor_metadata.clone(),
             node_spec: value.node_spec.clone(),
         })
