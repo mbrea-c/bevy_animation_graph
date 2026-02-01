@@ -49,7 +49,7 @@ impl NodeLike for TwoBoneIKNode {
             .skeleton_assets
             .get(&pose.skeleton)
         else {
-            return Err(GraphError::SkeletonMissing(ctx.node_id.clone()));
+            return Err(GraphError::SkeletonMissing(ctx.node_id));
         };
 
         if let (Some(bone_id), Some(parent_path), Some(grandparent_path)) = (

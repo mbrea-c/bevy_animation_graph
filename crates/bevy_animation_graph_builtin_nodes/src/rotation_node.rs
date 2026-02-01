@@ -105,7 +105,7 @@ impl NodeLike for RotationNode {
             .skeleton_assets
             .get(&pose.skeleton)
         else {
-            return Err(GraphError::SkeletonMissing(ctx.node_id.clone()));
+            return Err(GraphError::SkeletonMissing(ctx.node_id));
         };
 
         if !pose.paths.contains_key(&target) {
