@@ -118,7 +118,7 @@ impl NativeEditorWindowExtension for FsmEditorWindow {
     }
 }
 
-#[derive(Component, Clone)]
+#[derive(Component, Clone, Default)]
 pub struct FsmEditorWindowState {
     pub selected_states: HashSet<StateId>,
     pub selected_transitions: HashSet<DirectTransitionId>,
@@ -133,16 +133,6 @@ impl RegisterStateComponent for FsmEditorWindowState {
             .observe(ClearSelections::observe)
             .observe(SelectStates::observe)
             .observe(SelectTransitions::observe);
-    }
-}
-
-impl Default for FsmEditorWindowState {
-    fn default() -> Self {
-        Self {
-            selected_states: Default::default(),
-            selected_transitions: Default::default(),
-            style: Default::default(),
-        }
     }
 }
 
@@ -529,6 +519,7 @@ impl FsmEditorWindowState {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn draw_direct_transition(
         &self,
         ui: &mut egui::Ui,

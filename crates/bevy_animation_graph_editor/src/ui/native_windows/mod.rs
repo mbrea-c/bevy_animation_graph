@@ -67,16 +67,13 @@ impl OwnedQueue {
         self.command_queue.push(trigger(event));
     }
 
-    pub fn trigger_window<'b>(
-        &mut self,
-        mut event: impl Event<Trigger<'b>: Default> + EntityEvent,
-    ) {
+    pub fn trigger_window<'b>(&mut self, mut event: impl EntityEvent<Trigger<'b>: Default>) {
         *event.event_target_mut() = self.window_entity;
         self.command_queue.push(trigger(event));
     }
 
     #[allow(dead_code)]
-    pub fn trigger_view<'b>(&mut self, mut event: impl Event<Trigger<'b>: Default> + EntityEvent) {
+    pub fn trigger_view<'b>(&mut self, mut event: impl EntityEvent<Trigger<'b>: Default>) {
         *event.event_target_mut() = self.view_entity;
         self.command_queue.push(trigger(event));
     }
@@ -91,16 +88,13 @@ impl<'a> EditorWindowContext<'a> {
     }
 
     #[allow(dead_code)]
-    pub fn trigger_window<'b>(
-        &mut self,
-        mut event: impl Event<Trigger<'b>: Default> + EntityEvent,
-    ) {
+    pub fn trigger_window<'b>(&mut self, mut event: impl EntityEvent<Trigger<'b>: Default>) {
         *event.event_target_mut() = self.window_entity;
         self.command_queue.push(trigger(event));
     }
 
     #[allow(dead_code)]
-    pub fn trigger_view<'b>(&mut self, mut event: impl Event<Trigger<'b>: Default> + EntityEvent) {
+    pub fn trigger_view<'b>(&mut self, mut event: impl EntityEvent<Trigger<'b>: Default>) {
         *event.event_target_mut() = self.view_entity;
         self.command_queue.push(trigger(event));
     }

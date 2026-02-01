@@ -123,7 +123,7 @@ fn node_inspector(
                 ctx.editor_actions
                     .push(EditorAction::Graph(GraphAction::RenameNode(RenameNode {
                         graph: active_node.handle.clone(),
-                        node: active_node.node.clone(),
+                        node: active_node.node,
                         new_name: node_buffer.name.clone(),
                     })));
                 clear = true;
@@ -335,7 +335,7 @@ fn fsm_inspector(
 
         let start_state_buffer = ctx
             .buffers
-            .get_mut_or_insert_with(buffer_id(ui, "fsm start state"), || fsm.start_state.clone());
+            .get_mut_or_insert_with(buffer_id(ui, "fsm start state"), || fsm.start_state);
 
         let r = ui
             .horizontal(|ui| {
@@ -349,7 +349,7 @@ fn fsm_inspector(
             .inner;
 
         if r.changed() {
-            let new = start_state_buffer.clone();
+            let new = *start_state_buffer;
             ctx.trigger(SetFsmStartState {
                 fsm: active_fsm.handle.clone(),
                 new,
@@ -421,7 +421,7 @@ fn select_graph_context_fsm(
             return false;
         };
         graph
-            .contains_node_that::<FsmNode>(|n| &n.fsm == &active_fsm.handle)
+            .contains_node_that::<FsmNode>(|n| n.fsm == active_fsm.handle)
             .is_some()
     });
 

@@ -81,7 +81,7 @@ impl NativeEditorWindowExtension for ClipPreviewWindow {
             TargetTracks::GraphNode { graph, node } => {
                 let key = NodePreviewKey {
                     graph: graph.id(),
-                    node_id: node.clone(),
+                    node_id: node,
                     pose_pin: EventMarkupNode::OUT_POSE.into(),
                 };
 

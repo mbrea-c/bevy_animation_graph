@@ -42,9 +42,7 @@ where
                         ui.label(label);
                     }
 
-                    let response = ui.add(egui::Checkbox::without_text(&mut check));
-
-                    response
+                    ui.add(egui::Checkbox::without_text(&mut check))
                 })
                 .inner;
             response |= ui.add_enabled_ui(check, |ui| show(ui, &mut value)).inner;

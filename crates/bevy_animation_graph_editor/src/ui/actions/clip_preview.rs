@@ -129,13 +129,13 @@ impl CreateTrackNodePreview {
 
         new_graph.add_edge(
             SourcePin::NodeData(
-                action.preview_key.node_id.clone(),
+                action.preview_key.node_id,
                 action.preview_key.pose_pin.clone(),
             ),
             TargetPin::OutputData("pose".into()),
         );
         new_graph.add_edge(
-            SourcePin::NodeTime(action.preview_key.node_id.clone()),
+            SourcePin::NodeTime(action.preview_key.node_id),
             TargetPin::OutputTime,
         );
 

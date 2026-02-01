@@ -94,9 +94,9 @@ impl From<&GraphInputPin> for GraphInputPinType {
     }
 }
 
-impl ToString for GraphInputPinType {
-    fn to_string(&self) -> String {
-        format!("{:?}", self)
+impl std::fmt::Display for GraphInputPinType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", self)
     }
 }
 

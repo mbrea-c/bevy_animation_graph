@@ -99,7 +99,7 @@ impl NativeEditorWindowExtension for DebuggerWindow {
         let Some(val) = new_pin_id.and_then(|pin_id| {
             graph_context
                 .node_caches
-                .get_output_data(active_node.node.clone(), StateKey::Default, pin_id.clone())
+                .get_output_data(active_node.node, StateKey::Default, pin_id.clone())
                 .ok()
         }) else {
             return;

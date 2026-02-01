@@ -364,10 +364,9 @@ impl Buffers {
             .by_id_and_type
             .get(&key)
             .and_then(|v| v.as_ref().any_ref().downcast_ref::<T>())
+            && reset_condition(old_val)
         {
-            if reset_condition(old_val) {
-                self.by_id_and_type.remove(&key);
-            }
+            self.by_id_and_type.remove(&key);
         }
         self.by_id_and_type
             .entry(key)

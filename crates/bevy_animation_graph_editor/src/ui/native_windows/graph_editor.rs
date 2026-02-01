@@ -160,12 +160,8 @@ impl NativeEditorWindowExtension for GraphEditorWindow {
                         for (_, node) in graph.nodes.iter_mut() {
                             node.should_debug = false;
                         }
-                        if let Some(selected_node) = buffer
-                            .nodes_context
-                            .get_selected_nodes()
-                            .iter()
-                            .rev()
-                            .next()
+                        if let Some(selected_node) =
+                            buffer.nodes_context.get_selected_nodes().iter().next_back()
                         {
                             if *selected_node > 1 {
                                 let node_id =
@@ -191,15 +187,13 @@ impl NativeEditorWindowExtension for GraphEditorWindow {
                                         selection: InspectorSelection::ActiveNode,
                                     });
                                 }
-                            } else {
-                                if !matches!(
-                                    get_global_state::<InspectorSelection>(world),
-                                    Some(InspectorSelection::ActiveGraph)
-                                ) {
-                                    queue.trigger(SetInspectorSelection {
-                                        selection: InspectorSelection::ActiveGraph,
-                                    });
-                                }
+                            } else if !matches!(
+                                get_global_state::<InspectorSelection>(world),
+                                Some(InspectorSelection::ActiveGraph)
+                            ) {
+                                queue.trigger(SetInspectorSelection {
+                                    selection: InspectorSelection::ActiveGraph,
+                                });
                             }
                         }
 
@@ -438,7 +432,7 @@ pub fn convert_graph_change(
                 let node_id = graph_indices.node_indices.name(node_id).unwrap();
                 GraphAction::MoveNode(MoveNode {
                     graph: graph_handle,
-                    node: node_id.into(),
+                    node: node_id,
                     new_pos: delta,
                 })
             }
@@ -450,7 +444,7 @@ pub fn convert_graph_change(
                 let node_id = graph_indices.node_indices.name(node_id).unwrap();
                 GraphAction::RemoveNode(RemoveNode {
                     graph: graph_handle,
-                    node: node_id.into(),
+                    node: node_id,
                 })
             }
         }

@@ -183,9 +183,7 @@ impl<'a, I: Clone + std::fmt::Debug + Eq + std::hash::Hash + Default + Send + Sy
         show_i: impl Fn(&mut egui::Ui, &mut I) -> egui::Response,
         input: &mut I,
     ) -> egui::Response {
-        let response = show_i(ui, input);
-
-        response
+        show_i(ui, input)
     }
 
     fn show_input_data(
@@ -341,17 +339,17 @@ impl<'a, I: Clone + std::fmt::Debug + Eq + std::hash::Hash + Default + Send + Sy
             }
             response |= down_response;
 
-            if let Some(_) = move_up {
+            if move_up.is_some() {
                 response.mark_changed();
                 move_up_callback(self);
             }
 
-            if let Some(_) = move_down {
+            if move_down.is_some() {
                 response.mark_changed();
                 move_down_callback(self);
             }
 
-            if let Some(_) = delete {
+            if delete.is_some() {
                 response.mark_changed();
                 delete_callback(self);
             }
