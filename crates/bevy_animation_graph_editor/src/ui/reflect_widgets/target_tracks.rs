@@ -64,7 +64,7 @@ impl EguiInspectorExtension for TargetTracksInspector {
                     let (mut current_handle, mut current_node) =
                         if let Some(TargetTracks::GraphNode { graph, node }) = &mut buffer.selected
                         {
-                            (graph.clone(), node.clone())
+                            (graph.clone(), *node)
                         } else {
                             (Handle::default(), NodeId::default())
                         };
@@ -87,7 +87,7 @@ impl EguiInspectorExtension for TargetTracksInspector {
                     if changed_handle || nodes_changed {
                         buffer.selected = Some(TargetTracks::GraphNode {
                             graph: current_handle.clone(),
-                            node: current_node.clone(),
+                            node: current_node,
                         });
                         if graphs
                             .map(|g| validate(&g, current_handle.id(), &current_node))

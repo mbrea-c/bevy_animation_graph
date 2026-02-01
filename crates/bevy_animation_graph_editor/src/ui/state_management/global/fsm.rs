@@ -74,7 +74,7 @@ pub struct SetFsmStartState {
 impl SetFsmStartState {
     pub fn observe(input: On<SetFsmStartState>, mut fsm_context: FsmContext) {
         fsm_context.provide_mut(&input.fsm, |fsm| {
-            fsm.set_start_state(input.new.clone());
+            fsm.set_start_state(input.new);
         });
     }
 }
