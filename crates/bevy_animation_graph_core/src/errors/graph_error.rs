@@ -1,7 +1,11 @@
 use bevy::prelude::*;
 use thiserror::Error;
 
-use crate::animation_graph::{GraphInputPin, NodeId, SourcePin, TargetPin};
+use crate::{
+    animation_clip::EntityPath,
+    animation_graph::{GraphInputPin, NodeId, SourcePin, TargetPin},
+    id::BoneId,
+};
 
 /// Possible errors that can be produced by graph evaluation
 #[non_exhaustive]
@@ -62,6 +66,14 @@ pub enum GraphError {
     FsmAssetMissing,
     #[error("Requested a graph asset that doesn't exist")]
     GraphAssetMissing,
+
+    // Symmetry errors
+    #[error("Symmetrical bone {0} does not exist")]
+    SymmetryNoMatchForBone(EntityPath),
+
+    // Skeleton/bone mapping errors
+    #[error("Bone id {0:?} does not map to an entity path")]
+    BoneIdHasNoPath(BoneId),
 }
 
 pub type GraphResult<T> = Result<T, GraphError>;

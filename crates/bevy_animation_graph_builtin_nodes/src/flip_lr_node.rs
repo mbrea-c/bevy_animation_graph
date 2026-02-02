@@ -51,7 +51,7 @@ impl NodeLike for FlipLRNode {
         else {
             return Err(GraphError::SkeletonMissing(ctx.node_id));
         };
-        let flipped_pose = flip_pose(&in_pose, &self.config, skeleton);
+        let flipped_pose = flip_pose(&in_pose, &self.config, skeleton)?;
         ctx.set_data_fwd(Self::OUT_POSE, flipped_pose);
 
         Ok(())

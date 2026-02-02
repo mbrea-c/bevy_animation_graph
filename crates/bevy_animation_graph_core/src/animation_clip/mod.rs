@@ -80,6 +80,12 @@ impl EntityPath {
     }
 }
 
+impl std::fmt::Display for EntityPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.to_slashed_string())
+    }
+}
+
 struct InterpretEscapedString<'a> {
     s: std::str::Chars<'a>,
 }
