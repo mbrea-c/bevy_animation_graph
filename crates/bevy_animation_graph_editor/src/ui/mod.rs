@@ -11,6 +11,7 @@ pub mod node_editors;
 pub mod reflect_widgets;
 pub mod scenes;
 pub mod state_management;
+pub mod style;
 pub mod utils;
 pub mod windows;
 

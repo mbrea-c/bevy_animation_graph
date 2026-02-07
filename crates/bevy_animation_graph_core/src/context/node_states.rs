@@ -53,6 +53,15 @@ impl NodeState {
         self.upcoming_time.clear();
     }
 
+    pub fn get_all_upcoming_states<T: GraphStateType>(
+        &self,
+    ) -> Result<impl Iterator<Item = &T>, GraphError> {
+        Ok(self.upcoming_state.values().filter_map(|s| {
+            let v: &dyn Any = s.value.as_ref();
+            v.downcast_ref::<T>()
+        }))
+    }
+
     pub fn get_state<T: GraphStateType>(&self, key: StateKey) -> Result<&T, GraphError> {
         self.upcoming_state
             .get(&key)
@@ -118,6 +127,16 @@ impl NodeStates {
         for node_state in self.states.values_mut() {
             node_state.next_frame();
         }
+    }
+
+    pub fn get_all_upcoming_states<T: GraphStateType>(
+        &self,
+        node_id: NodeId,
+    ) -> Result<impl Iterator<Item = &T>, GraphError> {
+        self.states
+            .get(&node_id)
+            .ok_or(GraphError::MissingStateValue)
+            .and_then(|n| n.get_all_upcoming_states())
     }
 
     pub fn get<T: GraphStateType>(&self, node_id: NodeId, key: StateKey) -> Result<&T, GraphError> {

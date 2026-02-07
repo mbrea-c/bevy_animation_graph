@@ -633,6 +633,7 @@ dependencies = [
  "bevy-inspector-egui",
  "bevy_animation_graph",
  "bevy_egui",
+ "bitflags 2.10.0",
  "clap",
  "derivative",
  "egui",

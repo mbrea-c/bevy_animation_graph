@@ -78,7 +78,7 @@ pub enum FsmBuiltinPin {
 
 /// Stateful data associated with an FSM node
 #[derive(Reflect, Debug, Clone)]
-pub struct FSMState {
+pub struct FsmState {
     pub state: LowLevelStateId,
     pub state_entered_time: f32,
 }
@@ -166,7 +166,7 @@ impl LowLevelStateMachine {
         mut ctx: NodeContext,
     ) -> Result<(), GraphError> {
         let time = ctx.time();
-        let fsm_state = ctx.state_mut_or_else(|| FSMState {
+        let fsm_state = ctx.state_mut_or_else(|| FsmState {
             state: self.start_state.clone().unwrap(),
             state_entered_time: time,
         })?;
@@ -181,7 +181,7 @@ impl LowLevelStateMachine {
                             .and_then(|ids| ids.iter().next())
                             .and_then(|id| self.transitions.get(id))
                     {
-                        *fsm_state = FSMState {
+                        *fsm_state = FsmState {
                             state: transition.target.clone(),
                             state_entered_time: time,
                         };
@@ -199,7 +199,7 @@ impl LowLevelStateMachine {
                             .and_then(|ids| ids.iter().next())
                             .and_then(|id| self.transitions.get(id))
                     {
-                        *fsm_state = FSMState {
+                        *fsm_state = FsmState {
                             state: transition.target.clone(),
                             state_entered_time: time,
                         };
@@ -211,7 +211,7 @@ impl LowLevelStateMachine {
                         .get(&LowLevelTransitionId::Start(transition_id))
                         && fsm_state.state == transition.source
                     {
-                        *fsm_state = FSMState {
+                        *fsm_state = FsmState {
                             state: transition.target.clone(),
                             state_entered_time: time,
                         };
@@ -226,7 +226,7 @@ impl LowLevelStateMachine {
                             hl_transition_data.hl_transition_id,
                         ))
                     {
-                        *fsm_state = FSMState {
+                        *fsm_state = FsmState {
                             state: transition.target.clone(),
                             state_entered_time: time,
                         };
@@ -258,8 +258,12 @@ impl LowLevelStateMachine {
             .data_back(Self::DRIVER_EVENT_QUEUE)?
             .into_event_queue()?;
 
+        // First we handle external events (e.g. user requests to change state)
         self.handle_event_queue(event_queue, ctx.clone())?;
+        // Then we trigger a graph update on active graphs
         let inner_eq = self.update_graph(ctx.clone())?;
+        // Graph update may generate internal FSM events, we handle those too.
+        // e.g. A state itself can request to trigger a transition
         self.handle_event_queue(inner_eq, ctx)?;
 
         Ok(())
@@ -268,7 +272,7 @@ impl LowLevelStateMachine {
     /// Updates underlying animation graphs for active states.
     pub fn update_graph(&self, mut ctx: NodeContext) -> Result<EventQueue, GraphError> {
         let time = ctx.time();
-        let fsm_state = ctx.state::<FSMState>()?;
+        let fsm_state = ctx.state::<FsmState>()?;
         let state = self.states.get(&fsm_state.state).unwrap();
         let graph = ctx
             .graph_context

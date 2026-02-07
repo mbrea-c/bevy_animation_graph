@@ -2,7 +2,7 @@
     nodes: [
         (
             id: "d8f44a29-a50e-474f-a4cd-d606020c0041",
-            name: "",
+            name: "fsm_node",
             inner: {
                 "bevy_animation_graph::builtin_nodes::FsmNode": (
                     fsm: "fsm/locomotion.fsm.ron",

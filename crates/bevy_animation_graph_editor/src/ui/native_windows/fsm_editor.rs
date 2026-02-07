@@ -8,8 +8,11 @@ use bevy::{
     platform::collections::{HashMap, HashSet},
     prelude::World,
 };
-use bevy_animation_graph::core::state_machine::high_level::{
-    DirectTransition, DirectTransitionId, State, StateId, StateMachine,
+use bevy_animation_graph::core::state_machine::{
+    high_level::{
+        DirectTransition, DirectTransitionId, State, StateId, StateMachine, TransitionId,
+    },
+    low_level::{FsmState, LowLevelStateId},
 };
 use egui_dock::egui;
 use uuid::Uuid;
@@ -25,6 +28,7 @@ use crate::ui::{
         active_fsm::ActiveFsm,
         active_fsm_state::{ActiveFsmState, SetActiveFsmState},
         active_fsm_transition::{ActiveFsmTransition, SetActiveFsmTransition},
+        active_graph_context::{ActiveContexts, ensure_active_context_selected_if_available},
         fsm::{
             CreateDirectTransition, CreateState, DeleteDirectTransitions, DeleteStates, MoveStates,
         },
@@ -32,7 +36,8 @@ use crate::ui::{
         inspector_selection::{InspectorSelection, SetInspectorSelection},
         register_if_missing,
     },
-    utils::popup::CustomPopup,
+    style::{StyleEngine, StyleModifiers, StyleObject, StyleRule, path_stroke, rgb, rgba},
+    utils::{self, popup::CustomPopup},
 };
 
 pub struct FsmEditBuffer {
@@ -66,6 +71,42 @@ impl NativeEditorWindowExtension for FsmEditorWindow {
             return;
         };
 
+        ctx.queue_context(|_, queue| {
+            ensure_active_context_selected_if_available(
+                world,
+                active_fsm.handle.id().untyped(),
+                |st| {
+                    utils::find_fsm_node_in_graph(world, st.get_graph_id(), active_fsm.handle.id())
+                        .is_some()
+                },
+                queue,
+            );
+        });
+
+        let maybe_fsm_state = get_global_state::<ActiveContexts>(world)
+            .and_then(|s| s.by_asset.get(&active_fsm.handle.id().untyped()))
+            .and_then(|(entity, id)| {
+                Some((
+                    id,
+                    utils::get_specific_animation_graph_player(world, *entity)?,
+                ))
+            })
+            .and_then(|(id, p)| Some(id).zip(p.get_context_arena()))
+            .and_then(|(id, ca)| ca.get_context(*id))
+            .and_then(|st| {
+                let fsm_node_id = utils::find_fsm_node_in_graph(
+                    world,
+                    st.get_graph_id(),
+                    active_fsm.handle.id(),
+                )?;
+
+                st.node_states
+                    .get_all_upcoming_states::<FsmState>(fsm_node_id)
+                    .ok()
+            })
+            .and_then(|mut iter| iter.next())
+            .cloned();
+
         let outer_rect = ui.available_rect_before_wrap();
 
         let mut queue = ctx.make_queue();
@@ -77,7 +118,15 @@ impl NativeEditorWindowExtension for FsmEditorWindow {
         world.resource_scope::<Assets<StateMachine>, _>(|_, fsm_assets| {
             let fsm = fsm_assets.get(&active_fsm.handle)?;
 
-            window_state.draw_fsm(ui, fsm, buffer, &mut queue, window, &active_fsm.handle);
+            window_state.draw_fsm(
+                ui,
+                fsm,
+                buffer,
+                &mut queue,
+                window,
+                &active_fsm.handle,
+                maybe_fsm_state.as_ref(),
+            );
 
             Some(())
         });
@@ -118,11 +167,11 @@ impl NativeEditorWindowExtension for FsmEditorWindow {
     }
 }
 
-#[derive(Component, Clone, Default)]
+#[derive(Component, Clone)]
 pub struct FsmEditorWindowState {
     pub selected_states: HashSet<StateId>,
     pub selected_transitions: HashSet<DirectTransitionId>,
-    pub style: FsmEditorStyle,
+    pub style_engine: StyleEngine,
 }
 
 impl RegisterStateComponent for FsmEditorWindowState {
@@ -145,6 +194,7 @@ impl FsmEditorWindowState {
         queue: &mut OwnedQueue,
         window: Entity,
         fsm_handle: &Handle<StateMachine>,
+        maybe_state: Option<&FsmState>,
     ) -> egui::Response {
         let FsmEditBuffer {
             scene_rect,
@@ -184,17 +234,22 @@ impl FsmEditorWindowState {
                     });
                 }
 
-                self.draw_direct_transitions(ui, fsm, queue, fsm_handle);
-                self.draw_states(ui, fsm, queue, fsm_handle);
+                self.draw_direct_transitions(ui, fsm, queue, fsm_handle, maybe_state);
+                self.draw_states(ui, fsm, queue, fsm_handle, maybe_state);
             })
             .response
     }
 
     fn draw_editor_background(&self, ui: &mut egui::Ui, rect: egui::Rect) {
+        let style = self
+            .style_engine
+            .evaluate::<EditorGridStyle>(StyleModifiers::empty(), &HashSet::new());
+
         let separation_int = 40;
         let separation = separation_int as f32;
 
-        ui.painter().rect_filled(rect, 0., self.style.bg);
+        ui.painter()
+            .rect_filled(rect, 0., style.bg.unwrap_or_default());
 
         let start_x = rect.left().div_euclid(separation) as i32;
         let end_x = (rect.right().div_euclid(separation) + separation) as i32;
@@ -207,7 +262,7 @@ impl FsmEditorWindowState {
                 ],
                 egui::Stroke {
                     width: 1.,
-                    color: self.style.bg_grid,
+                    color: style.grid.unwrap_or_default(),
                 },
             );
         }
@@ -223,20 +278,24 @@ impl FsmEditorWindowState {
                 ],
                 egui::Stroke {
                     width: 2.,
-                    color: self.style.bg_grid,
+                    color: style.grid.unwrap_or_default(),
                 },
             );
         }
     }
 
     fn draw_selection_box(&self, ui: &mut egui::Ui, rect: egui::Rect) {
+        let style = self
+            .style_engine
+            .evaluate::<SelectionBoxStyle>(StyleModifiers::empty(), &HashSet::new());
+
         ui.painter().rect(
             rect,
             0.,
-            self.style.selection_box_fill,
+            style.fill.unwrap_or_default(),
             egui::Stroke {
                 width: 1.,
-                color: self.style.selection_box_border,
+                color: style.border.unwrap_or_default(),
             },
             egui::StrokeKind::Middle,
         );
@@ -301,6 +360,7 @@ impl FsmEditorWindowState {
         fsm: &StateMachine,
         queue: &mut OwnedQueue,
         fsm_handle: &Handle<StateMachine>,
+        maybe_state: Option<&FsmState>,
     ) {
         for state in fsm.states.values() {
             let pos = fsm
@@ -316,6 +376,7 @@ impl FsmEditorWindowState {
                 fsm.start_state == state.id,
                 queue,
                 fsm_handle,
+                maybe_state,
             );
         }
     }
@@ -345,6 +406,7 @@ impl FsmEditorWindowState {
         fsm: &StateMachine,
         queue: &mut OwnedQueue,
         fsm_handle: &Handle<StateMachine>,
+        maybe_state: Option<&FsmState>,
     ) {
         let direct_transitions = Self::collapse_direct_transitions(fsm);
         for transitions in direct_transitions.values() {
@@ -373,6 +435,7 @@ impl FsmEditorWindowState {
                     transitions.len(),
                     queue,
                     fsm_handle,
+                    maybe_state,
                 );
             }
         }
@@ -402,6 +465,7 @@ impl FsmEditorWindowState {
         is_start_state: bool,
         queue: &mut OwnedQueue,
         fsm: &Handle<StateMachine>,
+        maybe_state: Option<&FsmState>,
     ) -> egui::Response {
         let rect = Self::state_rect(pos);
 
@@ -443,15 +507,30 @@ impl FsmEditorWindowState {
                 });
             }
         }
+        let mut modifiers = StyleModifiers::empty();
+        let mut classes = HashSet::new();
+        if state_response.hovered() {
+            modifiers |= StyleModifiers::HOVERED;
+        }
+        if self.selected_states.contains(&state.id) {
+            modifiers |= StyleModifiers::SELECTED;
+        }
+        if let Some(stateful_data) = maybe_state
+            && let LowLevelStateId::HlState(active_state_id) = &stateful_data.state
+            && *active_state_id == state.id
+        {
+            classes.insert("active".into());
+        }
 
-        let hovered = state_response.hovered();
-        let selected = self.selected_states.contains(&state.id);
+        let style = self
+            .style_engine
+            .evaluate::<FsmStateStyle>(modifiers, &classes);
 
         ui.painter().rect(
             rect,
             10.,
-            self.style.state_bg.get(hovered, selected),
-            self.style.state_border.get(hovered, selected),
+            style.bg.unwrap_or_default(),
+            style.border.unwrap_or_default(),
             egui::StrokeKind::Outside,
         );
         if is_start_state {
@@ -459,7 +538,7 @@ impl FsmEditorWindowState {
                 rect.shrink(5.),
                 10.,
                 egui::Color32::TRANSPARENT,
-                self.style.state_border.get(false, false),
+                style.border.unwrap_or_default(),
                 egui::StrokeKind::Outside,
             );
         }
@@ -530,6 +609,7 @@ impl FsmEditorWindowState {
         total_transitions_for_state_pair: usize,
         queue: &mut OwnedQueue,
         fsm: &Handle<StateMachine>,
+        maybe_state: Option<&FsmState>,
     ) {
         let TransitionDrawData {
             start,
@@ -569,6 +649,28 @@ impl FsmEditorWindowState {
             });
         }
 
+        let mut modifiers = StyleModifiers::empty();
+        let mut classes = HashSet::new();
+
+        if hovered {
+            modifiers |= StyleModifiers::HOVERED;
+        }
+        if selected {
+            modifiers |= StyleModifiers::SELECTED;
+        }
+
+        if let Some(LowLevelStateId::HlTransition(TransitionId::Direct(
+            active_direct_transition_id,
+        ))) = maybe_state.map(|s| &s.state)
+            && *active_direct_transition_id == transition_id
+        {
+            classes.insert("active".into());
+        }
+
+        let style = self
+            .style_engine
+            .evaluate::<FsmTransitionStyle>(modifiers, &classes);
+
         ui.painter().add(egui::epaint::PathShape {
             points: vec![
                 egui_pos2(start + normal * 2.),
@@ -577,7 +679,7 @@ impl FsmEditorWindowState {
                 egui_pos2(shaft_end + normal * 2.),
             ],
             closed: true,
-            fill: self.style.transition_bg.get(hovered, selected),
+            fill: style.bg.unwrap_or_default(),
             stroke: egui::epaint::PathStroke::new(0., egui::Color32::TRANSPARENT),
         });
 
@@ -588,7 +690,7 @@ impl FsmEditorWindowState {
                 egui_pos2(shaft_end + normal * 5.),
             ],
             closed: true,
-            fill: self.style.transition_bg.get(hovered, selected),
+            fill: style.bg.unwrap_or_default(),
             stroke: egui::epaint::PathStroke::new(0., egui::Color32::TRANSPARENT),
         });
 
@@ -606,7 +708,7 @@ impl FsmEditorWindowState {
             closed: true,
             fill: egui::Color32::TRANSPARENT,
             stroke: path_stroke(
-                self.style.transition_border.get(hovered, selected),
+                style.border.unwrap_or_default(),
                 egui::epaint::StrokeKind::Middle,
             ),
         });
@@ -806,122 +908,162 @@ impl SelectTransitions {
     }
 }
 
-#[derive(Clone)]
-pub struct StyleProp<T> {
-    base: T,
-    hovered: Option<T>,
-    selected: Option<T>,
-    hovered_and_selected: Option<T>,
+#[derive(Default, Clone)]
+pub struct EditorGridStyle {
+    pub bg: Option<egui::Color32>,
+    pub grid: Option<egui::Color32>,
 }
 
-impl<T: Clone> StyleProp<T> {
-    pub fn get(&self, hovered: bool, selected: bool) -> T {
-        if hovered && selected {
-            self.hovered_and_selected
-                .as_ref()
-                .or(self.selected.as_ref())
-                .or(self.hovered.as_ref())
-                .unwrap_or(&self.base)
-                .clone()
-        } else if hovered {
-            self.hovered.as_ref().unwrap_or(&self.base).clone()
-        } else if selected {
-            self.selected.as_ref().unwrap_or(&self.base).clone()
-        } else {
-            self.base.clone()
+impl StyleObject for EditorGridStyle {
+    fn merge(&self, other: &Self) -> Self {
+        Self {
+            bg: other.bg.clone().or(self.bg.clone()),
+            grid: other.grid.clone().or(self.grid.clone()),
+        }
+    }
+
+    fn base() -> Self {
+        Self {
+            bg: Some(rgb(38, 38, 46)),
+            grid: Some(rgba(89, 89, 89, 128)),
         }
     }
 }
 
-#[derive(Clone)]
-pub struct FsmEditorStyle {
-    pub bg: egui::Color32,
-    pub bg_grid: egui::Color32,
-
-    pub selection_box_fill: egui::Color32,
-    pub selection_box_border: egui::Color32,
-
-    pub state_bg: StyleProp<egui::Color32>,
-    pub state_border: StyleProp<egui::Stroke>,
-    pub transition_bg: StyleProp<egui::Color32>,
-    pub transition_border: StyleProp<egui::Stroke>,
+#[derive(Default, Clone)]
+pub struct SelectionBoxStyle {
+    pub fill: Option<egui::Color32>,
+    pub border: Option<egui::Color32>,
 }
 
-impl Default for FsmEditorStyle {
+impl StyleObject for SelectionBoxStyle {
+    fn merge(&self, other: &Self) -> Self {
+        Self {
+            fill: other.fill.clone().or(self.fill.clone()),
+            border: other.border.clone().or(self.border.clone()),
+        }
+    }
+
+    fn base() -> Self {
+        Self {
+            fill: Some(rgba(40, 70, 200, 90)),
+            border: Some(rgb(40, 70, 200)),
+        }
+    }
+}
+
+#[derive(Default, Clone)]
+pub struct FsmStateStyle {
+    pub bg: Option<egui::Color32>,
+    pub border: Option<egui::Stroke>,
+}
+
+impl StyleObject for FsmStateStyle {
+    fn merge(&self, other: &Self) -> Self {
+        Self {
+            bg: other.bg.clone().or(self.bg.clone()),
+            border: other.border.clone().or(self.border.clone()),
+        }
+    }
+
+    fn base() -> Self {
+        Self {
+            bg: Some(rgb(50, 50, 50)),
+            border: Some(egui::Stroke {
+                width: 1.,
+                color: rgb(89, 89, 89),
+            }),
+        }
+    }
+}
+
+#[derive(Default, Clone)]
+pub struct FsmTransitionStyle {
+    pub bg: Option<egui::Color32>,
+    pub border: Option<egui::Stroke>,
+}
+
+impl StyleObject for FsmTransitionStyle {
+    fn merge(&self, other: &Self) -> Self {
+        Self {
+            bg: other.bg.clone().or(self.bg.clone()),
+            border: other.border.clone().or(self.border.clone()),
+        }
+    }
+
+    fn base() -> Self {
+        Self {
+            bg: Some(rgba(160, 160, 160, 128)),
+            border: Some(egui::Stroke {
+                width: 1.,
+                color: rgb(89, 89, 89),
+            }),
+        }
+    }
+}
+
+impl Default for FsmEditorWindowState {
     fn default() -> Self {
-        let state_bg = rgb(50, 50, 50);
-        let state_hovered_bg = rgb(75, 75, 75);
-        let state_border = egui::Stroke {
-            width: 1.,
-            color: rgb(89, 89, 89),
-        };
-        let state_selected_border = egui::Stroke {
-            width: 4.,
-            color: rgb(100, 100, 200),
-        };
+        let mut style_engine = StyleEngine::default();
 
-        let transition_bg = rgba(160, 160, 160, 128);
-        let transition_hovered_bg = rgba(160, 160, 160, 255);
+        let active_bg = rgb(30, 110, 20);
 
-        let transition_border = egui::Stroke {
-            width: 0.,
-            color: rgb(89, 89, 89),
-        };
-        let transition_selected_border = egui::Stroke {
-            width: 2.,
-            color: rgb(100, 100, 200),
-        };
+        style_engine
+            .add_rule(
+                StyleRule::val(FsmStateStyle {
+                    bg: Some(rgb(75, 75, 75)),
+                    ..Default::default()
+                })
+                .with_modifiers(StyleModifiers::HOVERED),
+            )
+            .add_rule(
+                StyleRule::val(FsmStateStyle {
+                    border: Some(egui::Stroke {
+                        width: 4.,
+                        color: rgb(100, 100, 200),
+                    }),
+                    ..Default::default()
+                })
+                .with_modifiers(StyleModifiers::SELECTED),
+            )
+            .add_rule(
+                StyleRule::val(FsmStateStyle {
+                    bg: Some(active_bg),
+                    ..Default::default()
+                })
+                .with_class("active"),
+            );
+
+        style_engine
+            .add_rule(
+                StyleRule::val(FsmTransitionStyle {
+                    bg: Some(rgba(160, 160, 160, 255)),
+                    ..Default::default()
+                })
+                .with_modifiers(StyleModifiers::HOVERED),
+            )
+            .add_rule(
+                StyleRule::val(FsmTransitionStyle {
+                    border: Some(egui::Stroke {
+                        width: 2.,
+                        color: rgb(100, 100, 200),
+                    }),
+                    ..Default::default()
+                })
+                .with_modifiers(StyleModifiers::SELECTED),
+            )
+            .add_rule(
+                StyleRule::val(FsmTransitionStyle {
+                    bg: Some(active_bg),
+                    ..Default::default()
+                })
+                .with_class("active"),
+            );
 
         Self {
-            bg: rgb(38, 38, 46),
-            bg_grid: rgba(89, 89, 89, 128),
-
-            selection_box_fill: rgba(40, 70, 200, 90),
-            selection_box_border: rgb(40, 70, 200),
-
-            state_bg: StyleProp {
-                base: state_bg,
-                hovered: Some(state_hovered_bg),
-                selected: None,
-                hovered_and_selected: None,
-            },
-
-            state_border: StyleProp {
-                base: state_border,
-                hovered: None,
-                selected: Some(state_selected_border),
-                hovered_and_selected: None,
-            },
-
-            transition_bg: StyleProp {
-                base: transition_bg,
-                hovered: Some(transition_hovered_bg),
-                selected: None,
-                hovered_and_selected: None,
-            },
-
-            transition_border: StyleProp {
-                base: transition_border,
-                hovered: None,
-                selected: Some(transition_selected_border),
-                hovered_and_selected: None,
-            },
+            selected_states: Default::default(),
+            selected_transitions: Default::default(),
+            style_engine,
         }
-    }
-}
-
-fn rgb(r: u8, g: u8, b: u8) -> egui::Color32 {
-    egui::Color32::from_rgb(r, g, b)
-}
-
-fn rgba(r: u8, g: u8, b: u8, a: u8) -> egui::Color32 {
-    egui::Color32::from_rgba_unmultiplied(r, g, b, a)
-}
-
-fn path_stroke(stroke: egui::Stroke, kind: egui::epaint::StrokeKind) -> egui::epaint::PathStroke {
-    egui::epaint::PathStroke {
-        width: stroke.width,
-        color: egui::epaint::ColorMode::Solid(stroke.color),
-        kind,
     }
 }

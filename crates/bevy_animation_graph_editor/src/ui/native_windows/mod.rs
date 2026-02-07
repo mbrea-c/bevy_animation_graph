@@ -50,6 +50,13 @@ impl EditorWindowContext<'_> {
         }
     }
 
+    pub fn queue_context<T>(&mut self, f: impl FnOnce(&mut Self, &mut OwnedQueue) -> T) -> T {
+        let mut queue = self.make_queue();
+        let out = f(self, &mut queue);
+        self.consume_queue(queue);
+        out
+    }
+
     pub fn consume_queue(&mut self, mut queue: OwnedQueue) {
         self.command_queue.append(&mut queue.command_queue);
     }

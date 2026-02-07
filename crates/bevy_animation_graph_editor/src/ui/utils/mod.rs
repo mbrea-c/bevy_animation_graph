@@ -11,7 +11,7 @@ use bevy::{
     render::render_resource::Extent3d,
 };
 use bevy_animation_graph::{
-    builtin_nodes::dummy_node::DummyNode,
+    builtin_nodes::{dummy_node::DummyNode, fsm_node::FsmNode},
     core::{
         animated_scene::AnimatedSceneInstance,
         animation_graph::{AnimationGraph, NodeId, PinMap},
@@ -115,6 +115,17 @@ pub(crate) fn get_specific_animation_graph_player(
 ) -> Option<&AnimationGraphPlayer> {
     let mut query = world.try_query::<&AnimationGraphPlayer>()?;
     query.get(world, entity).ok()
+}
+
+pub(crate) fn find_fsm_node_in_graph(
+    world: &World,
+    graph: AssetId<AnimationGraph>,
+    fsm: AssetId<StateMachine>,
+) -> Option<NodeId> {
+    world
+        .resource::<Assets<AnimationGraph>>()
+        .get(graph)
+        .and_then(|graph| graph.contains_node_that::<FsmNode>(|node| node.fsm.id() == fsm))
 }
 
 pub(crate) fn iter_animation_graph_players(world: &World) -> Vec<(Entity, &AnimationGraphPlayer)> {
