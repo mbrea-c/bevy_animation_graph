@@ -88,7 +88,7 @@ impl NativeEditorWindowExtension for CreateAnimWindow {
     }
 
     fn display_name(&self) -> String {
-        "Create state machine".to_string()
+        "Create animation metadata".to_string()
     }
 }
 
