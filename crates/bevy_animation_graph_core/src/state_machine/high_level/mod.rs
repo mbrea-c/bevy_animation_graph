@@ -302,7 +302,7 @@ impl StateMachine {
                     llfsm.add_transition(LowLevelTransition {
                         id: LowLevelTransitionId::Immediate(transition_id),
                         source: LowLevelStateId::HlState(transition.source),
-                        target: LowLevelStateId::HlTransition(transition_id),
+                        target: LowLevelStateId::HlState(transition.target),
                         transition_type: LowLevelTransitionType::Direct,
                         hl_source: transition.source,
                         hl_target: transition.target,
