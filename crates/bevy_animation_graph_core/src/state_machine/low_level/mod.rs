@@ -1,7 +1,7 @@
 use std::{borrow::Cow, cmp::Ordering, collections::VecDeque};
 
 use bevy::{
-    asset::{Asset, Handle},
+    asset::{Asset, AssetId, Handle},
     log::warn,
     platform::collections::HashMap,
     reflect::Reflect,
@@ -22,6 +22,7 @@ use crate::{
         events::{AnimationEvent, EventQueue, SampledEvent},
     },
     errors::GraphError,
+    state_machine::high_level::StateId,
 };
 
 #[derive(Reflect, Debug, Clone, PartialEq, Eq, Hash)]
@@ -103,6 +104,8 @@ pub struct LowLevelState {
 #[derive(Reflect, Debug, Clone)]
 pub struct LowLevelTransition {
     pub id: LowLevelTransitionId,
+    pub ignore_external: bool,
+    pub reset_target_state: bool,
     pub source: LowLevelStateId,
     pub target: LowLevelStateId,
     pub transition_type: LowLevelTransitionType,
@@ -125,8 +128,8 @@ pub struct LowLevelStateMachine {
 }
 
 impl LowLevelStateMachine {
-    pub const DRIVER_EVENT_QUEUE: &'static str = "driver events";
-    pub const DRIVER_TIME: &'static str = "driver time";
+    pub const DRIVER_EVENT_QUEUE: &'static str = "driver_events";
+    pub const DRIVER_TIME: &'static str = "driver_time";
 
     pub fn new() -> Self {
         Self {
@@ -160,9 +163,44 @@ impl LowLevelStateMachine {
         }
     }
 
+    fn find_hl_transition_start(
+        &self,
+        from_hl_state: StateId,
+        to_hl_state: StateId,
+        allow_external: bool,
+    ) -> Option<&LowLevelTransition> {
+        self.transitions_by_hl_state_pair
+            .get(&(from_hl_state, to_hl_state))
+            .iter()
+            .flat_map(|ids| ids.iter().filter_map(|id| self.transitions.get(id)))
+            .filter(|transition| !(transition.ignore_external && allow_external))
+            .next()
+    }
+
+    fn trigger_transition(
+        &self,
+        transition: &LowLevelTransition,
+        time: f32,
+        fsm_state: &mut FsmState,
+        should_clear: &mut Option<(AssetId<AnimationGraph>, LowLevelStateId)>,
+    ) {
+        if transition.reset_target_state
+            && let ll_target_state_id = LowLevelStateId::HlState(transition.hl_target)
+            && let Some(target_state) = self.states.get(&ll_target_state_id)
+        {
+            *should_clear = Some((target_state.graph.id(), ll_target_state_id));
+        }
+        *fsm_state = FsmState {
+            state: transition.target.clone(),
+            state_entered_time: time,
+        };
+    }
+
     fn handle_event_queue(
         &self,
         event_queue: EventQueue,
+        // whether the event queue consists of external or internal events
+        is_external: bool,
         mut ctx: NodeContext,
     ) -> Result<(), GraphError> {
         let time = ctx.time();
@@ -171,20 +209,19 @@ impl LowLevelStateMachine {
             state_entered_time: time,
         })?;
 
+        let mut should_clear: Option<(AssetId<AnimationGraph>, LowLevelStateId)> = None;
+
         for event in event_queue.events {
             match event.event {
                 AnimationEvent::TransitionToState(hl_target_state_id) => {
                     if let LowLevelStateId::HlState(hl_curr_state_id) = fsm_state.state.clone()
-                        && let Some(transition) = self
-                            .transitions_by_hl_state_pair
-                            .get(&(hl_curr_state_id, hl_target_state_id))
-                            .and_then(|ids| ids.iter().next())
-                            .and_then(|id| self.transitions.get(id))
+                        && let Some(transition) = self.find_hl_transition_start(
+                            hl_curr_state_id,
+                            hl_target_state_id,
+                            is_external,
+                        )
                     {
-                        *fsm_state = FsmState {
-                            state: transition.target.clone(),
-                            state_entered_time: time,
-                        };
+                        self.trigger_transition(transition, time, fsm_state, &mut should_clear);
                     }
                 }
                 AnimationEvent::TransitionToStateLabel(label) => {
@@ -193,16 +230,13 @@ impl LowLevelStateMachine {
                         .get(&label)
                         .and_then(|states| states.first())
                         && let LowLevelStateId::HlState(hl_curr_state_id) = fsm_state.state.clone()
-                        && let Some(transition) = self
-                            .transitions_by_hl_state_pair
-                            .get(&(hl_curr_state_id, *hl_target_state_id))
-                            .and_then(|ids| ids.iter().next())
-                            .and_then(|id| self.transitions.get(id))
+                        && let Some(transition) = self.find_hl_transition_start(
+                            hl_curr_state_id,
+                            *hl_target_state_id,
+                            is_external,
+                        )
                     {
-                        *fsm_state = FsmState {
-                            state: transition.target.clone(),
-                            state_entered_time: time,
-                        };
+                        self.trigger_transition(transition, time, fsm_state, &mut should_clear);
                     }
                 }
                 AnimationEvent::Transition(transition_id) => {
@@ -211,10 +245,7 @@ impl LowLevelStateMachine {
                         .get(&LowLevelTransitionId::Start(transition_id))
                         && fsm_state.state == transition.source
                     {
-                        *fsm_state = FsmState {
-                            state: transition.target.clone(),
-                            state_entered_time: time,
-                        };
+                        self.trigger_transition(transition, time, fsm_state, &mut should_clear);
                     }
                 }
                 AnimationEvent::EndTransition => {
@@ -226,14 +257,17 @@ impl LowLevelStateMachine {
                             hl_transition_data.hl_transition_id,
                         ))
                     {
-                        *fsm_state = FsmState {
-                            state: transition.target.clone(),
-                            state_entered_time: time,
-                        };
+                        self.trigger_transition(transition, time, fsm_state, &mut should_clear);
                     }
                 }
-                AnimationEvent::StringId(_) => {}
+                _ => {}
             }
+        }
+
+        if let Some((graph, state)) = should_clear {
+            ctx.create_child_context(graph, Some(state))
+                .node_states_mut()
+                .clear();
         }
 
         Ok(())
@@ -259,12 +293,12 @@ impl LowLevelStateMachine {
             .into_event_queue()?;
 
         // First we handle external events (e.g. user requests to change state)
-        self.handle_event_queue(event_queue, ctx.clone())?;
+        self.handle_event_queue(event_queue, true, ctx.clone())?;
         // Then we trigger a graph update on active graphs
         let inner_eq = self.update_graph(ctx.clone())?;
         // Graph update may generate internal FSM events, we handle those too.
         // e.g. A state itself can request to trigger a transition
-        self.handle_event_queue(inner_eq, ctx)?;
+        self.handle_event_queue(inner_eq, false, ctx)?;
 
         Ok(())
     }

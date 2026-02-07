@@ -61,6 +61,10 @@ impl TryLoad<State> for StateSerial {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct TransitionDataSerial {
     pub kind: TransitionKindSerial,
+    #[serde(default)]
+    pub ignore_external_events: bool,
+    #[serde(default)]
+    pub reset_target_state: bool,
 }
 
 impl TryFrom<&TransitionData> for TransitionDataSerial {
@@ -69,6 +73,8 @@ impl TryFrom<&TransitionData> for TransitionDataSerial {
     fn try_from(value: &TransitionData) -> Result<Self, Self::Error> {
         Ok(Self {
             kind: TransitionKindSerial::try_from(&value.kind)?,
+            ignore_external_events: value.ignore_external_events,
+            reset_target_state: value.reset_target_state,
         })
     }
 }
@@ -82,6 +88,8 @@ impl TryLoad<TransitionData> for TransitionDataSerial {
     ) -> Result<TransitionData, Self::Error> {
         Ok(TransitionData {
             kind: self.kind.try_load(load_context)?,
+            ignore_external_events: self.ignore_external_events,
+            reset_target_state: self.reset_target_state,
         })
     }
 }

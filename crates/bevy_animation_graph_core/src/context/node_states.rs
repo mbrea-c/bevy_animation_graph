@@ -175,4 +175,8 @@ impl NodeStates {
             .map(|n| n.get_last_time())
             .unwrap_or(0.)
     }
+
+    pub fn clear(&mut self) {
+        self.states.clear();
+    }
 }

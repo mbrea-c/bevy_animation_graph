@@ -38,7 +38,7 @@
         NodeData("017606cd-5fcf-4650-a159-6f6e73fc9a1a", "target_speed"): InputData(Passthrough("target_speed")),
         OutputData("ragdoll_config"): NodeData("525e57c8-2acd-43e5-a788-0be33905a253", "ragdoll_config"),
         NodeData("017606cd-5fcf-4650-a159-6f6e73fc9a1a", "target_direction"): InputData(Passthrough("target_direction")),
-        NodeData("525e57c8-2acd-43e5-a788-0be33905a253", "driver events"): InputData(Passthrough("user_events")),
+        NodeData("525e57c8-2acd-43e5-a788-0be33905a253", "driver_events"): InputData(Passthrough("user_events")),
         NodeTime("d3f9be56-ea53-49bf-aefd-c991c78c3b83", "slave_0"): NodeTime("525e57c8-2acd-43e5-a788-0be33905a253"),
     },
     io_spec: (

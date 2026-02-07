@@ -6,7 +6,7 @@ use crate::{
     chain_node::ChainNode,
     clip_node::ClipNode,
     dummy_node::DummyNode,
-    event_queue::fire_event::FireEventNode,
+    event_queue::{fire_event::FireEventNode, map_events::MapEventsNode},
     f32::{
         abs_f32::AbsF32, add_f32::AddF32, clamp_f32::ClampF32, compare_f32::CompareF32,
         div_f32::DivF32, mul_f32::MulF32, sub_f32::SubF32,
@@ -85,6 +85,7 @@ impl BuiltinNodesPlugin {
             .register_type::<RotationArcNode>()
             // event queue
             .register_type::<FireEventNode>()
+            .register_type::<MapEventsNode>()
             // ragdoll
             .register_type::<ConstRagdollConfig>();
     }

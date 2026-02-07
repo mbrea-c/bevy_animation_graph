@@ -14,7 +14,10 @@ use bevy_animation_graph_core::{
     animation_graph::TimeUpdate,
     animation_node::{NodeLike, ReflectNodeLike},
     context::{new_context::NodeContext, spec_context::SpecContext},
-    edge_data::{DataSpec, DataValue, events::EventQueue},
+    edge_data::{
+        DataSpec, DataValue,
+        events::{AnimationEvent, EventQueue, SampledEvent},
+    },
     errors::GraphError,
     event_track::sample_tracks,
     id::BoneId,
@@ -100,12 +103,9 @@ impl NodeLike for ClipNode {
         let time = self.update_time(&ctx, &time_update)?;
         ctx.set_time(time);
 
-        // Sample events and publish
-        let events = sample_tracks(clip.event_tracks.values(), time);
-        ctx.set_data_fwd(
-            Self::OUT_EVENT_QUEUE,
-            DataValue::EventQueue(EventQueue::with_events(events)),
-        );
+        // Sample events
+        let mut event_queue =
+            EventQueue::with_events(sample_tracks(clip.event_tracks.values(), time));
 
         let mut out_pose = Pose {
             timestamp: time,
@@ -113,12 +113,16 @@ impl NodeLike for ClipNode {
             ..Pose::default()
         };
 
-        let time = time.clamp(0., clip_duration);
+        if time > clip_duration {
+            event_queue.add_event(SampledEvent::instant(AnimationEvent::AnimationClipFinished));
+        }
+
+        let clamped_time = time.clamp(0., clip_duration);
 
         for (bone_id, curves) in &clip.curves {
             let mut bone_pose = BonePose::default();
             for curve in curves {
-                let value = sample_animation_curve(curve, time);
+                let value = sample_animation_curve(curve, clamped_time);
                 match value {
                     CurveValue::Translation(t) => bone_pose.translation = Some(t),
                     CurveValue::Rotation(r) => bone_pose.rotation = Some(r),
@@ -129,6 +133,7 @@ impl NodeLike for ClipNode {
             out_pose.add_bone(bone_pose, BoneId::from(*bone_id));
         }
 
+        ctx.set_data_fwd(Self::OUT_EVENT_QUEUE, DataValue::EventQueue(event_queue));
         ctx.set_data_fwd(Self::OUT_POSE, DataValue::Pose(out_pose));
 
         Ok(())
