@@ -2,11 +2,13 @@
 
 # Default values
 CUSTOM_DIR=""
+ASSETS_DIR="./assets"
 
 # Parse command-line options
-while getopts ":c:" opt; do
+while getopts ":c:a:" opt; do
     case "${opt}" in
     c) CUSTOM_DIR="${OPTARG}" ;; # -c <path>
+    a) ASSETS_DIR="${OPTARG}" ;; # -a <path>
     *)
         echo "Invalid option: -${opt}" >&2
         exit 1
@@ -20,7 +22,7 @@ if [ -z "$CUSTOM_DIR" ]; then
 else
     MIGRATION_DIR_RELPATH="$CUSTOM_DIR"
 fi
-CURRENT_ASSETS_RELPATH="./assets"
+CURRENT_ASSETS_RELPATH="$ASSETS_DIR"
 
 MIGRATION_DIR="$(realpath "$MIGRATION_DIR_RELPATH")"
 CURRENT_ASSETS_DIR="$(realpath "$CURRENT_ASSETS_RELPATH")"
