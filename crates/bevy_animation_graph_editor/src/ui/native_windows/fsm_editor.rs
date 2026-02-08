@@ -186,6 +186,7 @@ impl RegisterStateComponent for FsmEditorWindowState {
 }
 
 impl FsmEditorWindowState {
+    #[allow(clippy::too_many_arguments)]
     fn draw_fsm(
         &self,
         ui: &mut egui::Ui,
@@ -457,6 +458,7 @@ impl FsmEditorWindowState {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn draw_state(
         &self,
         ui: &mut egui::Ui,
@@ -917,8 +919,8 @@ pub struct EditorGridStyle {
 impl StyleObject for EditorGridStyle {
     fn merge(&self, other: &Self) -> Self {
         Self {
-            bg: other.bg.clone().or(self.bg.clone()),
-            grid: other.grid.clone().or(self.grid.clone()),
+            bg: other.bg.or(self.bg),
+            grid: other.grid.or(self.grid),
         }
     }
 
@@ -939,8 +941,8 @@ pub struct SelectionBoxStyle {
 impl StyleObject for SelectionBoxStyle {
     fn merge(&self, other: &Self) -> Self {
         Self {
-            fill: other.fill.clone().or(self.fill.clone()),
-            border: other.border.clone().or(self.border.clone()),
+            fill: other.fill.or(self.fill),
+            border: other.border.or(self.border),
         }
     }
 
@@ -961,8 +963,8 @@ pub struct FsmStateStyle {
 impl StyleObject for FsmStateStyle {
     fn merge(&self, other: &Self) -> Self {
         Self {
-            bg: other.bg.clone().or(self.bg.clone()),
-            border: other.border.clone().or(self.border.clone()),
+            bg: other.bg.or(self.bg),
+            border: other.border.or(self.border),
         }
     }
 
@@ -986,8 +988,8 @@ pub struct FsmTransitionStyle {
 impl StyleObject for FsmTransitionStyle {
     fn merge(&self, other: &Self) -> Self {
         Self {
-            bg: other.bg.clone().or(self.bg.clone()),
-            border: other.border.clone().or(self.border.clone()),
+            bg: other.bg.or(self.bg),
+            border: other.border.or(self.border),
         }
     }
 

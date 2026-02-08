@@ -173,8 +173,7 @@ impl LowLevelStateMachine {
             .get(&(from_hl_state, to_hl_state))
             .iter()
             .flat_map(|ids| ids.iter().filter_map(|id| self.transitions.get(id)))
-            .filter(|transition| !(transition.ignore_external && allow_external))
-            .next()
+            .find(|transition| !(transition.ignore_external && allow_external))
     }
 
     fn trigger_transition(
