@@ -26,7 +26,6 @@ jobs:
             ~/.cargo/registry/index/
             ~/.cargo/registry/cache/
             ~/.cargo/git/db/
-            target/
           key: ${{ runner.os }}-cargo-test-${{ hashFiles('**/Cargo.toml') }}
       - name: Install stable toolchain
         uses: dtolnay/rust-toolchain@stable
