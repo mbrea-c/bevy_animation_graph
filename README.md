@@ -10,6 +10,11 @@ _Editor crate:_
 
 # Bevy Animation Graph
 
+> **_NOTICE:_** If you're currently using version `0.8.0` or lower, note that
+> `0.9.0` has introduced a number of breaking changes. Check out the
+> [migration guide](https://mbrea-c.github.io/bevy_animation_graph/migration_guides/0.8_to_0.9.html)
+> for upgrading.
+
 ## Motivation
 
 Animation graphs are an essential tool for managing the complexity present in
@@ -26,6 +31,8 @@ editor to create your animation graphs and state machines.
 _NOTE: This project is separate from the animation graphs introduced in
 `bevy_animation` in version 0.14._
 
+![example usage screenshot](locomotion_graph.png)
+
 ## Current Features
 
 - Animation graphs are assets. They can be loaded from asset files, or created
@@ -40,7 +47,11 @@ _NOTE: This project is separate from the animation graphs introduced in
   - Visual ragdoll editing in the editor.
   - Support for _partial ragdolls_, where some bones are simulated and others
     kinematically driven by a target animation pose.
-- Available nodes include:
+- Support for custom nodes written in Rust.
+  - Users can create their own editor binary by adding the editor plugin and
+    registering their additional custom nodes in the Bevy type registry. The
+    editor will automatically pick up all registered nodes.
+- Available built-in nodes include:
   - Animation chaining (i.e. play one node after another).
   - Two-bone inverse kinematics.
   - Looping.
@@ -56,10 +67,6 @@ _NOTE: This project is separate from the animation graphs introduced in
 - Nesting animation graphs as nodes within other graphs.
 - Animation synchronization using event tracks.
 - Output from graph nodes is cached to avoid unnecessary computations.
-- Support for custom nodes written in Rust.
-  - Users can create their own editor binary by adding the editor plugin and
-    registering their additional custom nodes in the Bevy type registry. The
-    editor will automatically pick up all registered nodes.
 
 ## Planned Features
 
@@ -74,76 +81,69 @@ _NOTE: This project is separate from the animation graphs introduced in
 
 ## Installation
 
-This project is divided in two crates:
+### Library
 
-- [bevy_animation_graph](https://crates.io/crates/bevy_animation_graph) is the
-  library part of this project. This should be added as a dependency to your
-  project in order to use animation graphs. To install the latest published
-  version from crates.io run
+[bevy_animation_graph](https://crates.io/crates/bevy_animation_graph) is the
+library part of this project. This should be added as a dependency to your
+project in order to use animation graphs. To install the latest published
+version from crates.io run
 
-  ```bash
-  cargo add bevy_animation_graph
-  ```
+```bash
+cargo add bevy_animation_graph
+```
 
-  or manually add the latest version to your `Cargo.toml`.
+or manually add the latest version to your `Cargo.toml`.
 
-  To install the latest git master, add the following to `Cargo.toml`
+To install the latest git master, add the following to `Cargo.toml`:
 
-  ```toml
-  # ...
-  [dependencies]
-  # ...
-  bevy_animation_graph = { git = "https://github.com/mbrea-c/bevy_animation_graph.git" }
-  # ...
-  ```
+```toml
+# ...
+[dependencies]
+# ...
+bevy_animation_graph = { git = "https://github.com/mbrea-c/bevy_animation_graph.git" }
+# ...
+```
 
-- [bevy_animation_graph_editor](https://crates.io/crates/bevy_animation_graph_editor)
-  is the editor. You can install like you would install any other rust binary:
+### Editor
 
-  ```bash
-  # for the latest crates.io version
-  cargo install bevy_animation_graph_editor
-  # for the latest master
-  cargo install --git https://github.com/mbrea-c/bevy_animation_graph bevy_animation_graph_editor
-  # for the version from a local workspace
-  cargo install --path <PATH_TO_WORKSPACE> bevy_animation_graph_editor
+[bevy_animation_graph_editor](https://crates.io/crates/bevy_animation_graph_editor)
+is the editor. You can install like you would install any other rust binary:
 
-  # use the --force flag to force reinstall
-  ```
+```bash
+# for the latest crates.io version
+cargo install bevy_animation_graph_editor
+# for the latest master
+cargo install --git https://github.com/mbrea-c/bevy_animation_graph bevy_animation_graph_editor
+# for the version from a local workspace
+cargo install --path <PATH_TO_WORKSPACE> bevy_animation_graph_editor
 
-## Version table
+# use the --force flag to force reinstall
+```
 
-| `bevy` | `bevy_animation_graph` | 
-| ------ | ---------------------- | 
-| 0.17 | master | 
-| 0.17 | 0.8 | 
-| 0.16 | 0.7 |
-| 0.15 | 0.6 |
-| 0.14 | 0.5 |
-| 0.13 | 0.4 |
-| 0.13 | 0.3 |
-| 0.12 | 0.2 |
+Alternatively, I recommend taking a look at the
+[editor as a plugin example](https://github.com/mbrea-c/bevy_animation_graph/blob/master/examples/editor_as_a_plugin/examples/editor_as_a_plugin.rs)
+in order to set up your own editor binary in your crate/workspace, consuming the
+same library version as your game. This will let you register custom animation
+graph nodes, which are a powerful feature of this crate.
 
-## Usage and examples
+## Getting started
 
-The documentation in [docs.rs](https://docs.rs/bevy_animation_graph) contains an
-introduction of the library and editor and an explanation of a simple animation
-graph example. See also the video below for a demonstration of editor usage.
+Check out the tutorials in the
+[work in progress book](https://sarahihme.github.io/initial_book_bevy_animation_graph/)
+(many thanks to @SarahIhme for getting this started!).
 
-Examples are included in the [examples](examples/) directory.
+Additional, up to date examples are included in the
+[examples](https://github.com/mbrea-c/bevy_animation_graph/tree/master/examples)
+directory.
 
-### Screenshots
+The following resources may also be useful, but they are somewhat out of date:
 
-![Locomotion graph example](locomotion_graph.png)
-
-### Editor usage demonstration video
-
-**NOTE: This video was taken with the last version of the crate. A lot has
-changed since then!**
-
-In YouTube:
-
-[![Demo](https://img.youtube.com/vi/q-JBSQJIcX0/hqdefault.jpg)](https://www.youtube.com/watch?v=q-JBSQJIcX0)
+- The documentation in [docs.rs](https://docs.rs/bevy_animation_graph) contains
+  an introduction of the library and editor and an explanation of a simple
+  animation graph example. See also the video below for a demonstration of
+  editor usage.
+- There is an outdated
+  [usage video walkthrough](https://www.youtube.com/watch?v=q-JBSQJIcX0).
 
 ## Contributing or getting help
 
@@ -177,6 +177,20 @@ an issue I will probably implement it quickly. PRs are also welcome.
 
 For larger features, it's better to start by opening an issue for discussion or
 pinging me in the Bevy discord.
+
+## Version table
+
+| `bevy` | `bevy_animation_graph` | 
+| ------ | ---------------------- | 
+| 0.17 | master | 
+| 0.17 | 0.9 | 
+| 0.17 | 0.8 | 
+| 0.16 | 0.7 | 
+| 0.15 | 0.6 | 
+| 0.14 | 0.5 | 
+| 0.13 | 0.4 | 
+| 0.13 | 0.3 | 
+| 0.12 | 0.2 |
 
 ## Acknowledgements
 
