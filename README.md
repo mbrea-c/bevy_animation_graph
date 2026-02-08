@@ -10,6 +10,11 @@ _Editor crate:_
 
 # Bevy Animation Graph
 
+> **_NOTICE:_** If you're currently using version `0.8.0` or lower, note that
+> `0.9.0` has introduced a number of breaking changes. Check out the
+> [migration guide](https://mbrea-c.github.io/bevy_animation_graph/migration_guides/0.8_to_0.9.html)
+> for upgrading.
+
 ## Motivation
 
 Animation graphs are an essential tool for managing the complexity present in
@@ -62,7 +67,6 @@ _NOTE: This project is separate from the animation graphs introduced in
 - Nesting animation graphs as nodes within other graphs.
 - Animation synchronization using event tracks.
 - Output from graph nodes is cached to avoid unnecessary computations.
-
 
 ## Planned Features
 
@@ -124,17 +128,22 @@ graph nodes, which are a powerful feature of this crate.
 
 ## Getting started
 
-Check out the tutorials in the [work in progress book](https://sarahihme.github.io/initial_book_bevy_animation_graph/)
-(many thanks to @SarahIhme for getting this started!). 
+Check out the tutorials in the
+[work in progress book](https://sarahihme.github.io/initial_book_bevy_animation_graph/)
+(many thanks to @SarahIhme for getting this started!).
 
-Additional, up to date examples are included in the [examples](https://github.com/mbrea-c/bevy_animation_graph/tree/master/examples) directory.
+Additional, up to date examples are included in the
+[examples](https://github.com/mbrea-c/bevy_animation_graph/tree/master/examples)
+directory.
 
 The following resources may also be useful, but they are somewhat out of date:
 
-* The documentation in [docs.rs](https://docs.rs/bevy_animation_graph) contains an
-  introduction of the library and editor and an explanation of a simple animation
-  graph example. See also the video below for a demonstration of editor usage.
-* There is an outdated [usage video walkthrough](https://www.youtube.com/watch?v=q-JBSQJIcX0).
+- The documentation in [docs.rs](https://docs.rs/bevy_animation_graph) contains
+  an introduction of the library and editor and an explanation of a simple
+  animation graph example. See also the video below for a demonstration of
+  editor usage.
+- There is an outdated
+  [usage video walkthrough](https://www.youtube.com/watch?v=q-JBSQJIcX0).
 
 ## Contributing or getting help
 
@@ -171,19 +180,17 @@ pinging me in the Bevy discord.
 
 ## Version table
 
-
 | `bevy` | `bevy_animation_graph` | 
 | ------ | ---------------------- | 
 | 0.17 | master | 
 | 0.17 | 0.9 | 
 | 0.17 | 0.8 | 
-| 0.16 | 0.7 |
-| 0.15 | 0.6 |
-| 0.14 | 0.5 |
-| 0.13 | 0.4 |
-| 0.13 | 0.3 |
+| 0.16 | 0.7 | 
+| 0.15 | 0.6 | 
+| 0.14 | 0.5 | 
+| 0.13 | 0.4 | 
+| 0.13 | 0.3 | 
 | 0.12 | 0.2 |
-
 
 ## Acknowledgements
 
