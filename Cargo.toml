@@ -3,17 +3,17 @@ members = ["crates/*", "examples/*"]
 resolver = "2"
 
 [workspace.package]
-version = "0.8.0"
+version = "0.9.0"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 edition = "2024"
 repository = "https://github.com/mbrea-c/bevy_animation_graph"
 
 [workspace.dependencies]
-bevy_animation_graph_proc_macros = { version = "0.8.0", path = "./crates/bevy_animation_graph_proc_macros" }
-bevy_animation_graph = { version = "0.8.0", path = "./crates/bevy_animation_graph" }
-bevy_animation_graph_core = { version = "0.8.0", path = "./crates/bevy_animation_graph_core" }
-bevy_animation_graph_builtin_nodes = { version = "0.8.0", path = "./crates/bevy_animation_graph_builtin_nodes" }
+bevy_animation_graph_proc_macros = { version = "0.9.0", path = "./crates/bevy_animation_graph_proc_macros" }
+bevy_animation_graph = { version = "0.9.0", path = "./crates/bevy_animation_graph" }
+bevy_animation_graph_core = { version = "0.9.0", path = "./crates/bevy_animation_graph_core" }
+bevy_animation_graph_builtin_nodes = { version = "0.9.0", path = "./crates/bevy_animation_graph_builtin_nodes" }
 
 bevy = { version = "0.17" }
 avian3d = { version = "0.4" }
