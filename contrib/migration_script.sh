@@ -45,7 +45,7 @@ cd "$MIGRATION_DIR" || exit
 
 if [ -z "$CUSTOM_DIR" ]; then
     (git clone 'https://github.com/mbrea-c/bevy_animation_graph.git' && mv bevy_animation_graph bevy_animation_graph_old && cd bevy_animation_graph_old && git checkout v0.8.0)
-    (git clone 'https://github.com/mbrea-c/bevy_animation_graph.git' && mv bevy_animation_graph bevy_animation_graph_new && cd bevy_animation_graph_new && git checkout refactor_and_fsm_overhaul)
+    (git clone 'https://github.com/mbrea-c/bevy_animation_graph.git' && mv bevy_animation_graph bevy_animation_graph_new && cd bevy_animation_graph_new && git checkout v0.9.0)
 
     (cd bevy_animation_graph_old && cargo build --release)
     (cd bevy_animation_graph_new && cargo build --release)
