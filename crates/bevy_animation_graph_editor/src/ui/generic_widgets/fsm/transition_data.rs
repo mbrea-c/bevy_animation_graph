@@ -30,13 +30,26 @@ impl<'a> egui::Widget for TransitionDataWidget<'a> {
     fn ui(self, ui: &mut egui::Ui) -> egui::Response {
         egui::Grid::new(self.id_hash)
             .show(ui, |ui| {
-                let mut response = ui.label("transition kind:");
+                let mut response = ui.label("ignore external events:");
+                response |= ui.add(egui::Checkbox::without_text(
+                    &mut self.transition_data.ignore_external_events,
+                ));
+                ui.end_row();
+
+                let mut response = ui.label("reset target state:");
+                response |= ui.add(egui::Checkbox::without_text(
+                    &mut self.transition_data.reset_target_state,
+                ));
+                ui.end_row();
+
+                response |= ui.label("transition kind:");
                 let mut tag = match &self.transition_data.kind {
                     TransitionKind::Immediate => TransitionKindTag::Immediate,
                     TransitionKind::Graph { .. } => TransitionKindTag::Graph,
                 };
                 let original = tag;
                 response |= egui::ComboBox::new("transition kind", format!("{:?}", tag))
+                    .selected_text(format!("{:?}", tag))
                     .show_ui(ui, |ui| {
                         let mut val = |t| ui.selectable_value(&mut tag, t, format!("{:?}", t));
                         val(TransitionKindTag::Immediate);

@@ -139,4 +139,8 @@ impl AnimationNode {
         self.spec(ctx)?;
         Ok(spec)
     }
+
+    pub fn inner_ref(&self) -> &dyn NodeLike {
+        self.inner.0.as_ref()
+    }
 }

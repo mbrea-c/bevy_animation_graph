@@ -1,6 +1,8 @@
 pub mod loader;
 pub mod serial;
 
+use std::any::Any;
+
 use bevy::{
     asset::{Asset, ReflectAsset},
     log::info_span,
@@ -509,7 +511,8 @@ impl AnimationGraph {
         self.nodes
             .values()
             .filter_map(|node| {
-                let inner = node.inner.as_any().downcast_ref::<T>()?;
+                let inner_dyn: &dyn Any = node.inner_ref();
+                let inner = inner_dyn.downcast_ref::<T>()?;
                 if f(inner) { Some(node.id) } else { None }
             })
             .next()

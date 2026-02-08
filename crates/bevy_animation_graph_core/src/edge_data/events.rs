@@ -23,6 +23,8 @@ pub enum AnimationEvent {
     Transition(TransitionId),
     EndTransition,
     StringId(String),
+    /// A `ClipNode` will output this event continuously after the clip is finished
+    AnimationClipFinished,
 }
 
 impl Default for AnimationEvent {
@@ -88,5 +90,9 @@ impl EventQueue {
 
     pub fn extend(&mut self, other: EventQueue) {
         self.events.extend(other.events);
+    }
+
+    pub fn add_event(&mut self, event: SampledEvent) {
+        self.events.push(event);
     }
 }

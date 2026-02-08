@@ -30,6 +30,7 @@ avian3d = { workspace = true, optional = true }
 
 rand = "0.9.0"
 uuid = { version = "1.16.0", features = ["v4"] }
+bitflags = "2.10.0"
 
 [features]
 default = ["physics_avian"]

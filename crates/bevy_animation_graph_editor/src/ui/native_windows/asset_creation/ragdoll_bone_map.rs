@@ -66,7 +66,7 @@ impl NativeEditorWindowExtension for CreateRagdollBoneMapWindow {
     }
 
     fn display_name(&self) -> String {
-        "Create ragdoll".to_string()
+        "Create ragdoll bone map".to_string()
     }
 }
 
