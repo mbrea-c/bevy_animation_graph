@@ -13,7 +13,7 @@ fn main() {
             ..default()
         }))
         .add_plugins(AnimationGraphPlugin::default())
-        .insert_resource(AmbientLight {
+        .insert_resource(GlobalAmbientLight {
             color: Color::WHITE,
             brightness: 0.1,
             ..default()

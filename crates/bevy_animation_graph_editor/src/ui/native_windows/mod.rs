@@ -1,7 +1,7 @@
 use bevy::ecs::{
     component::Component,
     entity::Entity,
-    event::{EntityEvent, Event},
+    event::Event,
     query::With,
     system::{Commands, command::trigger},
     world::{CommandQueue, World},
@@ -73,17 +73,6 @@ impl OwnedQueue {
     pub fn trigger<'b>(&mut self, event: impl Event<Trigger<'b>: Default>) {
         self.command_queue.push(trigger(event));
     }
-
-    pub fn trigger_window<'b>(&mut self, mut event: impl EntityEvent<Trigger<'b>: Default>) {
-        *event.event_target_mut() = self.window_entity;
-        self.command_queue.push(trigger(event));
-    }
-
-    #[allow(dead_code)]
-    pub fn trigger_view<'b>(&mut self, mut event: impl EntityEvent<Trigger<'b>: Default>) {
-        *event.event_target_mut() = self.view_entity;
-        self.command_queue.push(trigger(event));
-    }
 }
 
 #[derive(Component)]
@@ -91,18 +80,6 @@ pub struct WindowState;
 
 impl<'a> EditorWindowContext<'a> {
     pub fn trigger<'b>(&mut self, event: impl Event<Trigger<'b>: Default>) {
-        self.command_queue.push(trigger(event));
-    }
-
-    #[allow(dead_code)]
-    pub fn trigger_window<'b>(&mut self, mut event: impl EntityEvent<Trigger<'b>: Default>) {
-        *event.event_target_mut() = self.window_entity;
-        self.command_queue.push(trigger(event));
-    }
-
-    #[allow(dead_code)]
-    pub fn trigger_view<'b>(&mut self, mut event: impl EntityEvent<Trigger<'b>: Default>) {
-        *event.event_target_mut() = self.view_entity;
         self.command_queue.push(trigger(event));
     }
 

@@ -512,8 +512,9 @@ impl RecomputeRagdollSymmetry {
                     continue; // should never be reached
                 };
 
-                let [Some(original_body), Some(mirrored_body)] =
-                    ragdoll.bodies.get_many_mut([&body_id, mirrored_body_id])
+                let [Some(original_body), Some(mirrored_body)] = ragdoll
+                    .bodies
+                    .get_disjoint_mut([&body_id, mirrored_body_id])
                 else {
                     continue; // should never be reached
                 };
@@ -704,7 +705,7 @@ fn mirror_collider(
 
     let [Some(original_collider), Some(mirrored_collider)] = ragdoll
         .colliders
-        .get_many_mut([&original_collider_id, mirrored_collider_id])
+        .get_disjoint_mut([&original_collider_id, mirrored_collider_id])
     else {
         return None;
     };
@@ -739,7 +740,7 @@ fn mirror_joint(
 
     let [Some(original_joint), Some(mirrored_joint)] = ragdoll
         .joints
-        .get_many_mut([&original_joint_id, mirrored_joint_id])
+        .get_disjoint_mut([&original_joint_id, mirrored_joint_id])
     else {
         return None;
     };
@@ -843,7 +844,7 @@ fn mirror_body_mapping(
 
     let [Some(original_mapping), Some(mirror_mapping)] = ragdoll_bone_map
         .bodies_from_bones
-        .get_many_mut([&original_target, mirror_target])
+        .get_disjoint_mut([&original_target, mirror_target])
     else {
         return None;
     };
@@ -888,7 +889,7 @@ fn mirror_bone_mapping(
 
     let [Some(original_mapping), Some(mirror_mapping)] = ragdoll_bone_map
         .bones_from_bodies
-        .get_many_mut([&original_target, &mirror_target])
+        .get_disjoint_mut([&original_target, &mirror_target])
     else {
         return None;
     };

@@ -30,7 +30,7 @@ fn main() {
     .add_plugins(PhysicsDebugPlugin::default())
     .add_plugins(bevy_egui::EguiPlugin::default())
     .add_plugins(bevy_inspector_egui::quick::WorldInspectorPlugin::default())
-    .insert_resource(AmbientLight {
+    .insert_resource(GlobalAmbientLight {
         color: Color::WHITE,
         brightness: 0.1,
         ..default()

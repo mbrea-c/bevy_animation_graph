@@ -7,7 +7,6 @@ use bevy::{
     prelude::*,
 };
 use bevy_egui::{EguiContext, PrimaryEguiContext};
-use bevy_inspector_egui::{bevy_egui, egui};
 use egui_dock::egui::Color32;
 use egui_notify::{Anchor, Toasts};
 

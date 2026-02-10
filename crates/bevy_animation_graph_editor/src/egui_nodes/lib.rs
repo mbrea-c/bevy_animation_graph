@@ -200,7 +200,7 @@ impl NodesContext {
         // This also draws text for attributes
         {
             let ui = &mut ui;
-            let screen_rect = ui.ctx().input(|input| input.screen_rect());
+            let screen_rect = ui.ctx().input(|input| input.viewport_rect());
             ui.set_clip_rect(
                 self.frame_state
                     .canvas_rect_screen_space

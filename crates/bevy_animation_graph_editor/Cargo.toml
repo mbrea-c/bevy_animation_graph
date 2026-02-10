@@ -20,12 +20,12 @@ bevy_animation_graph = { workspace = true }
 clap = { version = "4.4.18", features = ["derive"] }
 serde = { workspace = true }
 
-egui_dock = "0.17"
-egui-notify = { version = "0.20" }
-egui = { version = "0.32" }
-egui_extras = { version = "0.32", features = ["all_loaders"] }
-bevy_egui = { version = "0.37" }
-bevy-inspector-egui = { version = "0.34" }
+egui_dock = { workspace = true }
+egui-notify = { workspace = true }
+egui = { workspace = true }
+egui_extras = { workspace = true }
+bevy_egui = { workspace = true }
+bevy-inspector-egui = { workspace = true }
 avian3d = { workspace = true, optional = true }
 
 rand = "0.9.0"

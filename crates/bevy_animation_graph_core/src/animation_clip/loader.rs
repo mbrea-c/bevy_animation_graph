@@ -2,7 +2,7 @@ use bevy::{
     asset::{AssetLoader, AssetPath, LoadContext, io::Reader},
     gltf::Gltf,
     platform::collections::HashMap,
-    reflect::Reflect,
+    reflect::{Reflect, TypePath},
 };
 use serde::{Deserialize, Serialize};
 
@@ -25,7 +25,7 @@ pub struct GraphClipSerial {
     pub event_tracks: HashMap<String, EventTrack>,
 }
 
-#[derive(Default)]
+#[derive(Default, TypePath)]
 pub struct GraphClipLoader;
 
 impl AssetLoader for GraphClipLoader {

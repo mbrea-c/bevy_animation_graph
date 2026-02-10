@@ -78,7 +78,7 @@ impl NativeEditorWindowExtension for CreateAnimWindow {
                                 event_tracks: Default::default(),
                             },
                         });
-                        queue.trigger_window(CloseWindow::default());
+                        queue.trigger(CloseWindow(queue.window_entity));
                     }
                 });
             });

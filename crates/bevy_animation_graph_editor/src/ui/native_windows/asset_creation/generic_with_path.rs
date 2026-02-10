@@ -30,7 +30,7 @@ impl<W: CreateAssetFromPath + std::fmt::Debug + Send + Sync + 'static> NativeEdi
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Max), |ui| {
                     if ui.button("Create").clicked() {
                         self.create(path.clone(), &mut queue);
-                        queue.trigger_window(CloseWindow::default());
+                        queue.trigger(CloseWindow(queue.window_entity));
                     }
                 });
             });

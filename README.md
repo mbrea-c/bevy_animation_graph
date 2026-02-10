@@ -182,7 +182,8 @@ pinging me in the Bevy discord.
 
 | `bevy` | `bevy_animation_graph` | 
 | ------ | ---------------------- | 
-| 0.17 | master | 
+| 0.18 | master | 
+| 0.18 | 0.10 | 
 | 0.17 | 0.9 | 
 | 0.17 | 0.8 | 
 | 0.16 | 0.7 | 

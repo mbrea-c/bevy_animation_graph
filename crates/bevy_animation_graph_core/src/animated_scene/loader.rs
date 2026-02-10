@@ -1,6 +1,7 @@
 use bevy::{
     asset::{AssetLoader, AssetPath, Handle, LoadContext, io::Reader},
     platform::collections::HashMap,
+    reflect::TypePath,
     scene::Scene,
 };
 use serde::{Deserialize, Serialize};
@@ -30,7 +31,7 @@ pub struct RetargetingSerial {
     bone_path_overrides: HashMap<String, String>,
 }
 
-#[derive(Default)]
+#[derive(Default, TypePath)]
 pub struct AnimatedSceneLoader;
 
 impl AssetLoader for AnimatedSceneLoader {

@@ -114,13 +114,14 @@ pub fn apply_animation_to_targets(
     mut animation_targets: Query<(
         &mut Transform,
         Option<&mut MorphWeights>,
-        &bevy::animation::AnimationTarget,
+        &bevy::animation::AnimationTargetId,
+        &bevy::animation::AnimatedBy,
     )>,
     graph_players: Query<&AnimationGraphPlayer>,
 ) {
-    for (mut target_transform, target_morphs, target) in &mut animation_targets {
-        let target_bone_id = BoneId::from(target.id);
-        let Ok(player) = graph_players.get(target.player) else {
+    for (mut target_transform, target_morphs, target_id, animated_by) in &mut animation_targets {
+        let target_bone_id = BoneId::from(*target_id);
+        let Ok(player) = graph_players.get(animated_by.0) else {
             continue;
         };
         let Some(pose) = player.get_default_output_pose() else {

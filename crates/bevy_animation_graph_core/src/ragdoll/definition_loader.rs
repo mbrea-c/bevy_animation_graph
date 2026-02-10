@@ -1,8 +1,11 @@
-use bevy::asset::{AssetLoader, LoadContext, io::Reader};
+use bevy::{
+    asset::{AssetLoader, LoadContext, io::Reader},
+    reflect::TypePath,
+};
 
 use crate::{errors::AssetLoaderError, ragdoll::definition::Ragdoll};
 
-#[derive(Default)]
+#[derive(Default, TypePath)]
 pub struct RagdollLoader;
 
 impl AssetLoader for RagdollLoader {
