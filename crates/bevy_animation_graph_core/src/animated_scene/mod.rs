@@ -1,7 +1,6 @@
 pub mod loader;
 
 use bevy::{
-    animation::AnimationTarget,
     asset::{Asset, Assets, Handle, ReflectAsset},
     camera::visibility::Visibility,
     ecs::{
@@ -171,23 +170,23 @@ fn process_scene_into_animscn(
     {
         let player_entity_id = entity_mut.id();
 
-        let mut query = scene.world.query::<&mut AnimationTarget>();
+        let mut query = scene.world.query::<(
+            &mut bevy::animation::AnimationTargetId,
+            &bevy::animation::AnimatedBy,
+        )>();
 
-        for mut target in query.iter_mut(&mut scene.world) {
-            if player_entity_id != target.player {
+        for (mut target_id, animated_by) in query.iter_mut(&mut scene.world) {
+            if player_entity_id != animated_by.0 {
                 continue;
             }
 
-            let bone_id = BoneId::from(target.id);
+            let bone_id = BoneId::from(*target_id);
             let Some(mapped_bone_id) =
                 apply_bone_path_overrides(bone_id, skeleton, &retargeting.bone_path_overrides)
             else {
                 continue;
             };
-            *target = AnimationTarget {
-                id: bevy::animation::AnimationTargetId(mapped_bone_id.id()),
-                player: target.player,
-            }
+            *target_id = bevy::animation::AnimationTargetId(mapped_bone_id.id());
         }
     }
 

@@ -1,9 +1,12 @@
-use bevy::asset::{AssetLoader, LoadContext, io::Reader};
+use bevy::{
+    asset::{AssetLoader, LoadContext, io::Reader},
+    reflect::TypePath,
+};
 
 use super::{StateMachine, serial::StateMachineSerial};
 use crate::{errors::AssetLoaderError, utils::loading::TryLoad};
 
-#[derive(Default)]
+#[derive(Default, TypePath)]
 pub struct StateMachineLoader;
 
 impl AssetLoader for StateMachineLoader {

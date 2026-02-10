@@ -474,11 +474,14 @@ impl FsmEditorWindowState {
         let state_response = ui.allocate_rect(rect, egui::Sense::click_and_drag());
 
         if state_response.clicked() {
-            queue.trigger_window(ClearSelections {
-                entity: Entity::PLACEHOLDER,
+            queue.trigger(ClearSelections {
+                entity: queue.window_entity,
             });
 
-            queue.trigger_window(SelectStates::placeholder([state.id].into()));
+            queue.trigger(SelectStates {
+                entity: queue.window_entity,
+                states: [state.id].into(),
+            });
             queue.trigger(SetActiveFsmState {
                 new: ActiveFsmState {
                     handle: fsm.clone(),
@@ -498,10 +501,13 @@ impl FsmEditorWindowState {
                     delta: bevy_vec2_from_vec2(state_response.drag_delta()),
                 });
             } else {
-                queue.trigger_window(ClearSelections {
-                    entity: Entity::PLACEHOLDER,
+                queue.trigger(ClearSelections {
+                    entity: queue.window_entity,
                 });
-                queue.trigger_window(SelectStates::placeholder([state.id].into()));
+                queue.trigger(SelectStates {
+                    entity: queue.window_entity,
+                    states: [state.id].into(),
+                });
                 queue.trigger(MoveStates {
                     fsm: fsm.clone(),
                     states: [state.id].into(),
@@ -636,10 +642,13 @@ impl FsmEditorWindowState {
         let selected = self.selected_transitions.contains(&transition_id);
 
         if hovered && ui.input(|i| i.pointer.button_clicked(egui::PointerButton::Primary)) {
-            queue.trigger_window(ClearSelections {
-                entity: Entity::PLACEHOLDER,
+            queue.trigger(ClearSelections {
+                entity: queue.window_entity,
             });
-            queue.trigger_window(SelectTransitions::placeholder([transition_id].into()));
+            queue.trigger(SelectTransitions {
+                entity: queue.window_entity,
+                transitions: [transition_id].into(),
+            });
             queue.trigger(SetActiveFsmTransition {
                 new: ActiveFsmTransition {
                     handle: fsm.clone(),
@@ -868,13 +877,6 @@ struct SelectStates {
 }
 
 impl SelectStates {
-    pub fn placeholder(states: HashSet<StateId>) -> Self {
-        Self {
-            entity: Entity::PLACEHOLDER,
-            states,
-        }
-    }
-
     pub fn observe(clear: On<SelectStates>, mut state_query: Query<&mut FsmEditorWindowState>) {
         let Ok(mut state) = state_query.get_mut(clear.entity) else {
             return;
@@ -891,13 +893,6 @@ struct SelectTransitions {
 }
 
 impl SelectTransitions {
-    pub fn placeholder(transitions: HashSet<DirectTransitionId>) -> Self {
-        Self {
-            entity: Entity::PLACEHOLDER,
-            transitions,
-        }
-    }
-
     pub fn observe(
         clear: On<SelectTransitions>,
         mut state_query: Query<&mut FsmEditorWindowState>,

@@ -64,7 +64,7 @@ impl NativeEditorWindowExtension for CreateSkeletonWindow {
                                 },
                             },
                         });
-                        queue.trigger_window(CloseWindow::default());
+                        queue.trigger(CloseWindow(queue.window_entity));
                     }
                 });
             });

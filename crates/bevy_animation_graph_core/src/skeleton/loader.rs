@@ -4,6 +4,7 @@ use bevy::{
     ecs::{hierarchy::Children, name::Name},
     gltf::Gltf,
     prelude::{Entity, With, World},
+    reflect::TypePath,
     scene::Scene,
     transform::components::Transform,
 };
@@ -14,7 +15,7 @@ use super::{
 };
 use crate::{animation_clip::EntityPath, errors::AssetLoaderError};
 
-#[derive(Default)]
+#[derive(Default, TypePath)]
 pub struct SkeletonLoader;
 
 impl AssetLoader for SkeletonLoader {

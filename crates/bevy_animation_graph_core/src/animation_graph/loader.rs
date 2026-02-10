@@ -4,7 +4,7 @@ use bevy::{
         reflect::AppTypeRegistry,
         world::{FromWorld, World},
     },
-    reflect::TypeRegistryArc,
+    reflect::{TypePath, TypeRegistryArc},
 };
 
 use crate::{
@@ -12,7 +12,7 @@ use crate::{
     errors::AssetLoaderError,
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, TypePath)]
 pub struct AnimationGraphLoader {
     type_registry: TypeRegistryArc,
 }

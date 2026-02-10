@@ -22,11 +22,8 @@ use bevy_animation_graph::{
         state_machine::high_level::StateMachine,
     },
 };
-use bevy_inspector_egui::{
-    bevy_egui::EguiUserTextures,
-    egui,
-    reflect_inspector::{Context, InspectorUi},
-};
+use bevy_egui::EguiUserTextures;
+use bevy_inspector_egui::reflect_inspector::{Context, InspectorUi};
 
 use super::{PartOfSubScene, PreviewScene, SubSceneConfig, provide_texture_for_scene};
 use crate::{
@@ -259,10 +256,10 @@ impl<T: SubSceneConfig> SubSceneConfig for OrbitCameraSceneConfig<T> {
             Camera {
                 // render before the "main pass" camera
                 order: -1,
-                clear_color: ClearColorConfig::Custom(LinearRgba::new(1.0, 1.0, 1.0, 0.0).into()),
-                target: RenderTarget::Image(render_target.clone().into()),
+                clear_color: ClearColorConfig::Custom(LinearRgba::new(0.0, 0.0, 0.0, 1.0).into()),
                 ..default()
             },
+            RenderTarget::Image(render_target.clone().into()),
             // Position based on orbit camera parameters
             orbit_camera_transform(&self.view),
         ));

@@ -1,7 +1,7 @@
 use bevy::{
     asset::{AssetLoader, AssetPath, LoadContext, io::Reader},
     platform::collections::HashMap,
-    reflect::Reflect,
+    reflect::{Reflect, TypePath},
 };
 use serde::{Deserialize, Serialize};
 
@@ -15,7 +15,7 @@ use crate::{
     symmetry::serial::SymmetryConfigSerial,
 };
 
-#[derive(Default)]
+#[derive(Default, TypePath)]
 pub struct RagdollBoneMapLoader;
 
 impl AssetLoader for RagdollBoneMapLoader {
