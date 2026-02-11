@@ -3,9 +3,9 @@ use bevy_animation_graph_core::{
     animation_graph::TimeUpdate,
     animation_node::{NodeLike, ReflectNodeLike},
     context::{new_context::NodeContext, spec_context::SpecContext},
-    edge_data::DataSpec,
+    edge_data::{DataSpec, bone_mask::BoneMask},
     errors::GraphError,
-    interpolation::linear::InterpolateLinear,
+    interpolation::linear::LinearInterpolator,
 };
 
 #[derive(Reflect, Clone, Debug, Default)]
@@ -61,7 +61,7 @@ impl NodeLike for ChainNode {
             return Ok(());
         };
         ctx.set_time_update_back(Self::IN_TIME_A, input);
-        let pose_a = ctx.data_back(Self::IN_POSE_A)?.into_pose()?;
+        let mut pose_a = ctx.data_back(Self::IN_POSE_A)?.into_pose()?;
         let curr_time = pose_a.timestamp;
         ctx.set_time(curr_time);
 
@@ -78,12 +78,17 @@ impl NodeLike for ChainNode {
         } else {
             ctx.set_time_update_back(Self::IN_TIME_B, TimeUpdate::Absolute(0.0));
             let pose_2 = ctx.data_back(Self::IN_POSE_B)?.into_pose()?;
-            let mut out_pose = pose_a.interpolate_linear(
+            let interpolator = LinearInterpolator {
+                bone_mask: BoneMask::all(),
+            };
+
+            interpolator.interpolate_pose(
+                &mut pose_a,
                 &pose_2,
                 (curr_time - duration_1) / self.interpolation_period,
             );
-            out_pose.timestamp = curr_time;
-            ctx.set_data_fwd(Self::OUT_POSE, out_pose);
+            pose_a.timestamp = curr_time;
+            ctx.set_data_fwd(Self::OUT_POSE, pose_a);
         }
 
         Ok(())

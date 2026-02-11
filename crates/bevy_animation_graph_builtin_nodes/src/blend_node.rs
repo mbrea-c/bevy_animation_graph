@@ -3,9 +3,12 @@ use bevy_animation_graph_core::{
     animation_graph::TimeUpdate,
     animation_node::{NodeLike, ReflectNodeLike},
     context::{new_context::NodeContext, spec_context::SpecContext},
-    edge_data::DataSpec,
+    edge_data::{DataSpec, DataValue, bone_mask::BoneMask},
     errors::GraphError,
-    interpolation::linear::InterpolateLinear,
+    interpolation::{
+        additive::AdditiveInterpolator, difference::DifferenceInterpolator,
+        linear::LinearInterpolator,
+    },
     pose::Pose,
 };
 use serde::{Deserialize, Serialize};
@@ -37,6 +40,7 @@ pub enum BlendSyncMode {
 pub struct BlendNode {
     pub mode: BlendMode,
     pub sync_mode: BlendSyncMode,
+    pub use_bone_mask: bool,
 }
 
 impl BlendNode {
@@ -47,11 +51,8 @@ impl BlendNode {
     pub const IN_POSE_B: &'static str = "pose_b";
     pub const IN_TIME_B: &'static str = "time_b";
     pub const IN_EVENT_B: &'static str = "events_b";
+    pub const IN_BONE_MASK: &'static str = "bone_mask";
     pub const OUT_POSE: &'static str = "pose";
-
-    pub fn new(mode: BlendMode, sync_mode: BlendSyncMode) -> Self {
-        Self { mode, sync_mode }
-    }
 }
 
 impl NodeLike for BlendNode {
@@ -108,22 +109,34 @@ impl NodeLike for BlendNode {
             }
         };
 
-        let in_frame_2: Pose = ctx.data_back(Self::IN_POSE_B)?.into_pose()?;
+        let in_frame_2 = ctx.data_back(Self::IN_POSE_B)?.into_pose()?;
+        let bone_mask = ctx
+            .data_back(Self::IN_BONE_MASK)
+            .unwrap_or_else(|_| DataValue::BoneMask(BoneMask::all()))
+            .into_bone_mask()?;
 
-        let out = match self.mode {
+        let mut base = in_frame_1;
+        let overlay = in_frame_2;
+
+        match self.mode {
             BlendMode::LinearInterpolate => {
+                let interpolator = LinearInterpolator { bone_mask };
                 let alpha = ctx.data_back(Self::FACTOR)?.as_f32()?;
-                in_frame_1.interpolate_linear(&in_frame_2, alpha)
+                interpolator.interpolate_pose(&mut base, &overlay, alpha);
             }
             BlendMode::Additive => {
+                let interpolator = AdditiveInterpolator { bone_mask };
                 let alpha = ctx.data_back(Self::FACTOR)?.as_f32()?;
-                in_frame_1.additive_blend(&in_frame_2, alpha)
+                interpolator.interpolate_pose(&mut base, &overlay, alpha);
             }
-            BlendMode::Difference => in_frame_1.difference(&in_frame_2),
+            BlendMode::Difference => {
+                let interpolator = DifferenceInterpolator { bone_mask };
+                interpolator.interpolate_pose(&mut base, &overlay);
+            }
         };
 
-        ctx.set_time(out.timestamp);
-        ctx.set_data_fwd(Self::OUT_POSE, out);
+        ctx.set_time(base.timestamp);
+        ctx.set_data_fwd(Self::OUT_POSE, base);
 
         Ok(())
     }
@@ -131,6 +144,10 @@ impl NodeLike for BlendNode {
     fn spec(&self, mut ctx: SpecContext) -> Result<(), GraphError> {
         // Input
         ctx.add_input_data(Self::FACTOR, DataSpec::F32);
+
+        if self.use_bone_mask {
+            ctx.add_input_data(Self::IN_BONE_MASK, DataSpec::BoneMask);
+        }
 
         ctx.add_input_data(Self::IN_POSE_A, DataSpec::Pose);
         if matches!(&self.sync_mode, BlendSyncMode::EventTrack(_)) {
