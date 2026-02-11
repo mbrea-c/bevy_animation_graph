@@ -50,27 +50,47 @@ impl BonePose {
     }
 
     pub fn additive_blend(&self, other: &BonePose, alpha: f32) -> Self {
-        Self {
-            rotation: either_or_mix(self.rotation, other.rotation, |a, b| {
-                additive_blend_quat(a, b, alpha)
-            }),
-            translation: either_or_mix(self.translation, other.translation, |a, b| a + alpha * b),
-            scale: either_or_mix(self.scale, other.scale, |a, b| a + alpha * b),
-            weights: either_or_mix(self.weights.clone(), other.weights.clone(), |a, b| {
-                a.into_iter().zip(b).map(|(a, b)| a + alpha * b).collect()
-            }),
-        }
+        let mut result = self.clone();
+        result.additive_blend_mut(other, alpha);
+        result
     }
 
+    pub fn additive_blend_mut(&mut self, other: &BonePose, alpha: f32) {
+        self.rotation = either_or_mix(self.rotation, other.rotation, |a, b| {
+            additive_blend_quat(a, b, alpha)
+        });
+        self.translation = either_or_mix(self.translation, other.translation, |a, b| a + alpha * b);
+        self.scale = either_or_mix(self.scale, other.scale, |a, b| a + alpha * b);
+        self.weights = either_or_mix(self.weights.clone(), other.weights.clone(), |a, b| {
+            a.into_iter().zip(b).map(|(a, b)| a + alpha * b).collect()
+        });
+    }
+
+    pub fn linear_blend_mut(&mut self, other: &BonePose, alpha: f32) {
+        self.rotation = either_or_mix(self.rotation, other.rotation, |a, b| a.slerp(b, alpha));
+        self.translation =
+            either_or_mix(self.translation, other.translation, |a, b| a.lerp(b, alpha));
+        self.scale = either_or_mix(self.scale, other.scale, |a, b| a.lerp(b, alpha));
+        self.weights = either_or_mix(self.weights.clone(), other.weights.clone(), |a, b| {
+            a.iter()
+                .zip(b)
+                .map(|(old, new)| (new - old) * alpha)
+                .collect()
+        });
+    }
+
+    pub fn difference_mut(&mut self, other: &BonePose) {
+        self.rotation = either_or_mix(self.rotation, other.rotation, |a, b| b * a.inverse());
+        self.translation = either_or_mix(self.translation, other.translation, |a, b| b - a);
+        self.scale = either_or_mix(self.scale, other.scale, |a, b| b - a);
+        self.weights = either_or_mix(self.weights.clone(), other.weights.clone(), |a, b| {
+            a.into_iter().zip(b).map(|(a, b)| b - a).collect()
+        });
+    }
     pub fn difference(&self, other: &BonePose) -> Self {
-        Self {
-            rotation: either_or_mix(self.rotation, other.rotation, |a, b| b * a.inverse()),
-            translation: either_or_mix(self.translation, other.translation, |a, b| b - a),
-            scale: either_or_mix(self.scale, other.scale, |a, b| b - a),
-            weights: either_or_mix(self.weights.clone(), other.weights.clone(), |a, b| {
-                a.into_iter().zip(b).map(|(a, b)| b - a).collect()
-            }),
-        }
+        let mut result = self.clone();
+        result.difference_mut(other);
+        result
     }
 
     pub fn linear_add(&self, other: &BonePose) -> Self {
@@ -131,10 +151,10 @@ pub struct Pose {
 }
 
 impl Pose {
-    pub fn add_bone(&mut self, pose: BonePose, path: BoneId) {
+    pub fn add_bone(&mut self, pose: BonePose, bone_id: BoneId) {
         let id = self.bones.len();
         self.bones.insert(id, pose);
-        self.paths.insert(path, id);
+        self.paths.insert(bone_id, id);
     }
 
     pub fn additive_blend(&self, other: &Pose, alpha: f32) -> Self {
