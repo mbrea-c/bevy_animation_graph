@@ -15,14 +15,6 @@ pub struct BoneMask {
 }
 
 impl BoneMask {
-    pub fn bone_weight(&self, bone_id: &BoneId) -> f32 {
-        let default = match self.base {
-            BoneMaskType::Positive => 0.,
-            BoneMaskType::Negative => 1.,
-        };
-        self.weights.get(bone_id).copied().unwrap_or(default)
-    }
-
     pub fn all() -> Self {
         Self {
             paths: Default::default(),
@@ -37,6 +29,50 @@ impl BoneMask {
             weights: Default::default(),
             base: BoneMaskType::Positive,
         }
+    }
+
+    pub fn bone_weight(&self, bone_id: &BoneId) -> f32 {
+        let default = match self.base {
+            BoneMaskType::Positive => 0.,
+            BoneMaskType::Negative => 1.,
+        };
+        self.weights.get(bone_id).copied().unwrap_or(default)
+    }
+
+    pub fn base(&self) -> BoneMaskType {
+        self.base
+    }
+
+    pub fn set_base(&mut self, base: BoneMaskType) {
+        self.base = base;
+    }
+
+    pub fn get_paths(&self) -> &HashMap<BoneId, EntityPath> {
+        &self.paths
+    }
+
+    pub fn get_weights(&self) -> &HashMap<BoneId, f32> {
+        &self.weights
+    }
+
+    pub fn add_bone_weight(&mut self, bone_id: BoneId, path: EntityPath, weight: f32) {
+        self.paths.insert(bone_id, path);
+        self.weights.insert(bone_id, weight);
+    }
+
+    pub fn update_bone_weight(&mut self, bone_id: BoneId, new_weight: f32) {
+        if let Some(weight) = self.weights.get_mut(&bone_id) {
+            *weight = new_weight;
+        }
+    }
+
+    pub fn remove_bone_weight(&mut self, bone_id: BoneId) {
+        self.paths.remove(&bone_id);
+        self.weights.remove(&bone_id);
+    }
+
+    pub fn contains_bone(&self, bone_id: BoneId) -> bool {
+        self.weights.contains_key(&bone_id)
     }
 }
 

@@ -1,13 +1,18 @@
-use bevy_animation_graph::core::edge_data::{DataSpec, DataValue};
+use bevy_animation_graph::core::{
+    edge_data::{DataSpec, DataValue},
+    skeleton::Skeleton,
+};
 
 use crate::ui::generic_widgets::{
     bone_mask::BoneMaskWidget, entity_path::EntityPathWidget, picker::PickerWidget,
-    quat::QuatWidget, ragdoll_config::RagdollConfigWidget, vec2::Vec2Widget, vec3::Vec3Widget,
+    popup::PopupWidget, quat::QuatWidget, ragdoll_config::RagdollConfigWidget, vec2::Vec2Widget,
+    vec3::Vec3Widget,
 };
 
 pub struct DataValueWidget<'a> {
     pub data_value: &'a mut DataValue,
     pub id_hash: egui::Id,
+    pub skeleton: Option<&'a Skeleton>,
 }
 
 impl<'a> DataValueWidget<'a> {
@@ -15,7 +20,13 @@ impl<'a> DataValueWidget<'a> {
         Self {
             data_value,
             id_hash: egui::Id::new(salt),
+            skeleton: None,
         }
+    }
+
+    pub fn with_skeleton(mut self, skeleton: Option<&'a Skeleton>) -> Self {
+        self.skeleton = skeleton;
+        self
     }
 }
 
@@ -67,7 +78,9 @@ impl<'a> egui::Widget for DataValueWidget<'a> {
                     response |= ui.add(EntityPathWidget::new_salted(entity_path, "entity path"));
                 }
                 DataValue::BoneMask(bone_mask) => {
-                    response |= ui.add(BoneMaskWidget::new_salted(bone_mask, "bone mask"));
+                    response |= PopupWidget::new_salted("bone mask popup").ui(ui, |ui| {
+                        ui.add(BoneMaskWidget::new(bone_mask).with_skeleton(self.skeleton))
+                    });
                 }
                 DataValue::Pose(_) => {
                     response |= ui.label("Pose value editing not supported");

@@ -3,6 +3,7 @@ use bevy_animation_graph::core::animation_clip::EntityPath;
 pub struct EntityPathWidget<'a> {
     pub entity_path: &'a mut EntityPath,
     pub id_hash: egui::Id,
+    pub options: Vec<&'a EntityPath>,
 }
 
 impl<'a> EntityPathWidget<'a> {
@@ -10,7 +11,14 @@ impl<'a> EntityPathWidget<'a> {
         Self {
             entity_path,
             id_hash: egui::Id::new(salt),
+            options: Vec::new(),
         }
+    }
+
+    pub fn with_options(mut self, options: impl IntoIterator<Item = &'a EntityPath>) -> Self {
+        self.options.extend(options);
+        self.options.sort();
+        self
     }
 }
 
@@ -38,10 +46,39 @@ impl<'a> egui::Widget for EntityPathWidget<'a> {
                     .clone()
             });
 
-            let response = ui.text_edit_singleline(&mut buffer.value);
+            let response = ui.add(
+                egui::TextEdit::singleline(&mut buffer.value).min_size(egui::Vec2::new(350., 0.)),
+            );
 
-            if response.changed() {
-                *self.entity_path = EntityPath::from_slashed_string(buffer.value.clone());
+            let top_k = self
+                .options
+                .iter()
+                .filter(|opt| opt.to_slashed_string().starts_with(&buffer.value))
+                .take(10)
+                .collect::<Vec<_>>();
+
+            if !top_k.is_empty() && response.has_focus() {
+                response.show_tooltip_ui(|ui| {
+                    for opt in top_k {
+                        let slashed = opt.to_slashed_string();
+                        let Some(rest) = slashed.strip_prefix(&buffer.value) else {
+                            continue;
+                        };
+
+                        ui.horizontal(|ui| {
+                            ui.spacing_mut().item_spacing = egui::Vec2::ZERO;
+                            ui.label(egui::RichText::new(&buffer.value).strong());
+                            ui.label(egui::RichText::new(rest));
+                        });
+                    }
+                });
+            }
+
+            if response.changed()
+                && let Some(new_path) =
+                    EntityPath::from_slashed_string_if_safe(buffer.value.clone())
+            {
+                *self.entity_path = new_path;
             }
 
             ui.memory_mut(|mem| mem.data.insert_temp(buffer_id, buffer));
