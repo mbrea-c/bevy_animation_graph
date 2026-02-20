@@ -35,7 +35,7 @@ where
         edit_value: impl FnMut(&mut egui::Ui, &mut V) -> egui::Response,
     ) -> egui::Response {
         ui.push_id(self.id_hash, |ui| {
-            let response = HashLikeWidget::new_salted(
+            HashLikeWidget::new_salted(
                 &mut HashMapEditable {
                     map: self.map,
                     edit_key,
@@ -43,9 +43,7 @@ where
                 },
                 "hash like editable",
             )
-            .ui(ui);
-
-            response
+            .ui(ui)
         })
         .inner
     }
@@ -132,10 +130,10 @@ where
         let buffer_id = Self::buffer_id(ui);
 
         ui.memory_mut(|mem| {
-            if let Some(old_buffer) = mem.data.get_temp::<Self>(buffer_id) {
-                if !old_buffer.should_clean_up(new_key) {
-                    return old_buffer;
-                }
+            if let Some(old_buffer) = mem.data.get_temp::<Self>(buffer_id)
+                && !old_buffer.should_clean_up(new_key)
+            {
+                return old_buffer;
             }
 
             Self {

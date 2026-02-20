@@ -141,10 +141,10 @@ impl<K: PartialEq + Clone + Send + Sync + 'static> HashLikeBuffer<K> {
         let buffer_id = Self::buffer_id(ui);
 
         ui.memory_mut(|mem| {
-            if let Some(old_buffer) = mem.data.get_temp::<HashLikeBuffer<K>>(buffer_id) {
-                if !old_buffer.should_clean_up(hashlike) {
-                    return old_buffer;
-                }
+            if let Some(old_buffer) = mem.data.get_temp::<HashLikeBuffer<K>>(buffer_id)
+                && !old_buffer.should_clean_up(hashlike)
+            {
+                return old_buffer;
             }
 
             let mut keys: Vec<K> = hashlike.keys().cloned().collect();
@@ -189,10 +189,10 @@ where
         let buffer_id = Self::buffer_id(ui);
 
         ui.memory_mut(|mem| {
-            if let Some(old_buffer) = mem.data.get_temp::<Self>(buffer_id) {
-                if !old_buffer.should_clean_up(hashlike) {
-                    return old_buffer;
-                }
+            if let Some(old_buffer) = mem.data.get_temp::<Self>(buffer_id)
+                && !old_buffer.should_clean_up(hashlike)
+            {
+                return old_buffer;
             }
 
             Self {

@@ -93,10 +93,10 @@ fn with_bone_buffer(
 
     if let Some(mut buffer) = ui.memory_mut(|mem| {
         // Cleanup if mismatched
-        if let Some(old_buffer) = mem.data.get_temp::<BoneBuffer>(buffer_id) {
-            if old_buffer.original == bone_id {
-                return Some(old_buffer);
-            }
+        if let Some(old_buffer) = mem.data.get_temp::<BoneBuffer>(buffer_id)
+            && old_buffer.original == bone_id
+        {
+            return Some(old_buffer);
         }
 
         if let Some(entity_path) = map_id_to_path(bone_id, skeleton, additional_bones) {
