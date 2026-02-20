@@ -1,0 +1,126 @@
+(
+    nodes: [
+        (
+            id: "d29a0d85-c468-42ac-97b5-70e603f4c48b",
+            name: "",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::ClipNode": (
+                    clip: "animations/human_wave.anim.ron",
+                    override_duration: None,
+                    override_interpolation: None,
+                ),
+            },
+            should_debug: false,
+        ),
+        (
+            id: "a79919b4-a8fd-47dc-b3b4-044aeda71465",
+            name: "",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::BlendNode": (
+                    mode: LinearInterpolate,
+                    sync_mode: Absolute,
+                    use_bone_mask: true,
+                ),
+            },
+            should_debug: false,
+        ),
+        (
+            id: "e944fc09-bc51-44c8-ade0-700d0c2ff943",
+            name: "",
+            inner: {
+                "bevy_animation_graph_builtin_nodes::graph_node::GraphNode": (
+                    graph: "animation_graphs/human.animgraph.ron",
+                ),
+            },
+            should_debug: false,
+        ),
+    ],
+    edges_inverted: {
+        OutputData("pose"): NodeData("a79919b4-a8fd-47dc-b3b4-044aeda71465", "pose"),
+        NodeTime("a79919b4-a8fd-47dc-b3b4-044aeda71465", "time_a"): NodeTime("e944fc09-bc51-44c8-ade0-700d0c2ff943"),
+        OutputTime: NodeTime("a79919b4-a8fd-47dc-b3b4-044aeda71465"),
+        NodeData("a79919b4-a8fd-47dc-b3b4-044aeda71465", "factor"): InputData(Passthrough("1")),
+        NodeData("a79919b4-a8fd-47dc-b3b4-044aeda71465", "pose_a"): NodeData("e944fc09-bc51-44c8-ade0-700d0c2ff943", "pose"),
+        NodeData("a79919b4-a8fd-47dc-b3b4-044aeda71465", "bone_mask"): InputData(Passthrough("arm_bone_mask")),
+        NodeTime("a79919b4-a8fd-47dc-b3b4-044aeda71465", "time_b"): NodeTime("d29a0d85-c468-42ac-97b5-70e603f4c48b"),
+        NodeData("a79919b4-a8fd-47dc-b3b4-044aeda71465", "pose_b"): NodeData("d29a0d85-c468-42ac-97b5-70e603f4c48b", "pose"),
+    },
+    io_spec: (
+        input_times: [],
+        input_data: {
+            Passthrough("arm_bone_mask"): BoneMask,
+            Passthrough("1"): F32,
+        },
+        output_time: true,
+        output_data: {
+            "pose": Pose,
+        },
+        input_order: {
+            Data(Passthrough("1")): 0,
+            Data(Passthrough("arm_bone_mask")): 1,
+        },
+        output_order: {
+            Data("pose"): 0,
+            Time: 1,
+        },
+    ),
+    default_data: {
+        Passthrough("arm_bone_mask"): BoneMask((
+            weights: {
+                [
+                    "metarig",
+                    "spine",
+                    "spine.001",
+                    "spine.002",
+                    "spine.003",
+                    "shoulder.R",
+                ]: 1.0,
+                [
+                    "metarig",
+                    "spine",
+                    "spine.001",
+                    "spine.002",
+                    "spine.003",
+                    "shoulder.R",
+                    "upper_arm.R",
+                ]: 1.0,
+                [
+                    "metarig",
+                    "spine",
+                    "spine.001",
+                    "spine.002",
+                    "spine.003",
+                    "shoulder.R",
+                    "upper_arm.R",
+                    "forearm.R",
+                    "hand.R",
+                ]: 1.0,
+                [
+                    "metarig",
+                    "spine",
+                    "spine.001",
+                    "spine.002",
+                    "spine.003",
+                    "shoulder.R",
+                    "upper_arm.R",
+                    "forearm.R",
+                ]: 1.0,
+            },
+            base: Positive,
+        )),
+        Passthrough("1"): F32(1.0),
+    },
+    editor_metadata: (
+        node_positions: {
+            "d29a0d85-c468-42ac-97b5-70e603f4c48b": (-7.1992188, 163.83984),
+            "a79919b4-a8fd-47dc-b3b4-044aeda71465": (276.1836, -3.6289063),
+            "e944fc09-bc51-44c8-ade0-700d0c2ff943": (-12.246094, -208.08594),
+        },
+        input_position: (-253.52344, -15.2421875),
+        output_position: (937.8711, -182.1914),
+        input_param_order: {},
+        input_time_order: {},
+        output_data_order: {},
+        output_pose_order: {},
+    ),
+)
