@@ -7,7 +7,7 @@ pub struct DifferenceInterpolator {
 impl DifferenceInterpolator {
     pub fn interpolate_pose(&self, base: &mut Pose, overlay: &Pose) {
         for (bone_id, bone_index) in overlay.paths.iter() {
-            if self.bone_mask.bone_weight(&bone_id) == 0. {
+            if self.bone_mask.bone_weight(bone_id) == 0. {
                 continue;
             }
 

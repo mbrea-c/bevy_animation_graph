@@ -23,7 +23,7 @@ pub struct LinearInterpolator {
 impl LinearInterpolator {
     pub fn interpolate_pose(&self, base: &mut Pose, overlay: &Pose, f: f32) {
         for (bone_id, bone_index) in overlay.paths.iter() {
-            if self.bone_mask.bone_weight(&bone_id) == 0. {
+            if self.bone_mask.bone_weight(bone_id) == 0. {
                 continue;
             }
 
