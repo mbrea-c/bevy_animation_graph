@@ -123,6 +123,11 @@ impl Skeleton {
         self.id_to_path.keys().cloned()
     }
 
+    /// Iterate through all of the entity paths in this skeleton
+    pub fn iter_paths(&self) -> impl Iterator<Item = &EntityPath> {
+        self.id_to_path.values()
+    }
+
     fn indent(f: &mut std::fmt::Formatter<'_>, level: u32) -> std::fmt::Result {
         if level == 0 {
             return Ok(());

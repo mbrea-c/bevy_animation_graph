@@ -9,6 +9,7 @@ use bevy_animation_graph::{
         animation_graph::AnimationGraph,
         animation_node::AnimationNode,
         context::{graph_context::GraphState, graph_context_arena::GraphContextId},
+        skeleton::Skeleton,
         state_machine::high_level::{DirectTransition, State, StateMachine},
     },
 };
@@ -41,6 +42,7 @@ use crate::ui::{
             active_graph::ActiveGraph,
             active_graph_context::{ActiveContexts, SetActiveContext},
             active_graph_node::ActiveGraphNode,
+            active_skeleton::ActiveSkeleton,
             fsm::{SetFsmNodeSpec, SetFsmStartState, UpdateDirectTransition, UpdateState},
             get_global_state,
             inspector_selection::{InspectorSelection, SetInspectorSelection},
@@ -243,8 +245,9 @@ fn graph_inspector(
     select_graph_context(world, ui, ctx);
 
     let active_graph = get_global_state::<ActiveGraph>(world)?.clone();
+    let maybe_active_skeleton = get_global_state::<ActiveSkeleton>(world).cloned();
 
-    world.resource_scope::<Assets<AnimationGraph>, _>(|_, graph_assets| {
+    world.resource_scope::<Assets<AnimationGraph>, _>(|world, graph_assets| {
         let graph = graph_assets.get(&active_graph.handle)?;
 
         let graph_spec_buffer = ctx
@@ -274,8 +277,15 @@ fn graph_inspector(
 
         ui.heading("Default data");
 
-        let default_values_response =
-            HashMapWidget::new_salted(default_values_buffer, "graph_default_values").ui(
+        let maybe_skeleton = world
+            .get_resource::<Assets<Skeleton>>()
+            .and_then(|skeleton_assets| {
+                maybe_active_skeleton.and_then(|skn_handle| skeleton_assets.get(&skn_handle.handle))
+            });
+
+        let default_values_response = HashMapWidget::new(default_values_buffer)
+            .salted("graph_default_values")
+            .ui(
                 ui,
                 |ui, key| {
                     ui.add(GraphInputPinWidget::new_salted(
@@ -283,8 +293,12 @@ fn graph_inspector(
                         "default value graph input pin",
                     ))
                 },
-                |ui, key| ui.label(format!("{:?}", key)),
-                |ui, value| ui.add(DataValueWidget::new_salted(value, "default value widget")),
+                |ui, value| {
+                    ui.add(
+                        DataValueWidget::new_salted(value, "default value widget")
+                            .with_skeleton(maybe_skeleton),
+                    )
+                },
             );
 
         if default_values_response.changed() {

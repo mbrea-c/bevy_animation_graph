@@ -3,9 +3,9 @@ use bevy_animation_graph_core::{
     animation_graph::TimeUpdate,
     animation_node::{NodeLike, ReflectNodeLike},
     context::{new_context::NodeContext, spec_context::SpecContext},
-    edge_data::DataSpec,
+    edge_data::{DataSpec, bone_mask::BoneMask},
     errors::GraphError,
-    interpolation::linear::InterpolateLinear,
+    interpolation::linear::LinearInterpolator,
 };
 
 /// This node pads the duration of an animation with a configurable period where
@@ -59,7 +59,12 @@ impl NodeLike for PaddingNode {
             // ctx.clear_temp_cache(Self::IN_POSE);
             let old_time = pose.timestamp;
             let alpha = ((pose.timestamp - duration) / self.interpolation_period).clamp(0., 1.);
-            pose = pose.interpolate_linear(&start_pose, alpha);
+
+            let interpolator = LinearInterpolator {
+                bone_mask: BoneMask::all(),
+            };
+
+            interpolator.interpolate_pose(&mut pose, &start_pose, alpha);
             pose.timestamp = old_time;
         }
 

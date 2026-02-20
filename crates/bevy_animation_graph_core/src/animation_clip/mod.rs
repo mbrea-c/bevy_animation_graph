@@ -27,7 +27,7 @@ pub enum Interpolation {
 }
 
 /// Path to an entity, with [`Name`]s. Each entity in a path must have a name.
-#[derive(Reflect, Clone, Debug, Hash, PartialEq, Eq, Default)]
+#[derive(Reflect, Clone, Debug, Hash, PartialEq, Eq, Default, PartialOrd, Ord)]
 #[reflect(Default, Serialize, Deserialize)]
 pub struct EntityPath {
     /// Parts of the path
@@ -73,6 +73,12 @@ impl EntityPath {
                 .map(Name::new)
                 .collect(),
         }
+    }
+
+    /// Only returns Some if it can roundtrip back to string
+    pub fn from_slashed_string_if_safe(path: String) -> Option<Self> {
+        let converted = Self::from_slashed_string(path.clone());
+        (converted.to_slashed_string() == path).then_some(converted)
     }
 
     pub fn id(&self) -> id::BoneId {

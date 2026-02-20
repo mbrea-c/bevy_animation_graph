@@ -7,6 +7,7 @@
                 "bevy_animation_graph::builtin_nodes::BlendNode": (
                     mode: LinearInterpolate,
                     sync_mode: Absolute,
+                    use_bone_mask: false,
                 ),
             },
             should_debug: false,
@@ -30,6 +31,7 @@
                 "bevy_animation_graph::builtin_nodes::BlendNode": (
                     mode: Difference,
                     sync_mode: Absolute,
+                    use_bone_mask: false,
                 ),
             },
             should_debug: false,
@@ -119,12 +121,11 @@
             should_debug: false,
         ),
         (
-            id: "82b72c1e-ac41-4778-b5e2-b8d7d2ab2860",
-            name: "wave_additive",
+            id: "b3d1c53f-1a14-4a75-b2c7-62bbe8eef87c",
+            name: "chain run",
             inner: {
-                "bevy_animation_graph::builtin_nodes::BlendNode": (
-                    mode: Additive,
-                    sync_mode: NoSync,
+                "bevy_animation_graph::builtin_nodes::ChainNode": (
+                    interpolation_period: 0.5,
                 ),
             },
             should_debug: false,
@@ -152,11 +153,13 @@
             should_debug: false,
         ),
         (
-            id: "b3d1c53f-1a14-4a75-b2c7-62bbe8eef87c",
-            name: "chain run",
+            id: "82b72c1e-ac41-4778-b5e2-b8d7d2ab2860",
+            name: "wave_additive",
             inner: {
-                "bevy_animation_graph::builtin_nodes::ChainNode": (
-                    interpolation_period: 0.5,
+                "bevy_animation_graph::builtin_nodes::BlendNode": (
+                    mode: Additive,
+                    sync_mode: NoSync,
+                    use_bone_mask: false,
                 ),
             },
             should_debug: false,
@@ -187,7 +190,7 @@
                     override_interpolation: None,
                 ),
             },
-            should_debug: true,
+            should_debug: false,
         ),
         (
             id: "23d698d3-f10f-46db-9562-7aa39e754553",
@@ -299,17 +302,17 @@
             "ae04ba83-7b08-4eaf-a552-09b7fa10e54d": (66.21484, -236.3125),
             "11960072-0e9c-4f59-af64-ee7f82247bcb": (885.22266, -141.2539),
             "13af4c51-1ab5-4f1d-a9d3-fc53c50e4a38": (-85.3125, -113.33594),
-            "82b72c1e-ac41-4778-b5e2-b8d7d2ab2860": (721.76953, -58.65625),
+            "b3d1c53f-1a14-4a75-b2c7-62bbe8eef87c": (79.66797, 116.296875),
             "d8636d07-9e62-4413-b3bb-761fc8461ae0": (-219.4336, 221.21094),
             "84b0b602-cb74-429d-8825-5b4bb730ca93": (434.14844, -27.535156),
-            "b3d1c53f-1a14-4a75-b2c7-62bbe8eef87c": (79.66797, 116.296875),
+            "82b72c1e-ac41-4778-b5e2-b8d7d2ab2860": (721.76953, -58.65625),
             "3f82e055-c95e-483f-a182-5d125ee5431c": (505.4922, -350.09766),
             "9a66fcae-9d35-48e6-b993-54fe42511df8": (570.3086, -45.046875),
             "a7e8c955-64dd-4f48-8925-22d1580eb855": (-196.65234, 582.8086),
             "23d698d3-f10f-46db-9562-7aa39e754553": (12.769531, -633.27734),
             "0ddfb1a3-4248-4be3-ace3-98e20841ccf3": (-224.76953, -292.48047),
         },
-        input_position: (-318.57813, -611.8594),
+        input_position: (-305.52734, -629.5156),
         output_position: (1033.3398, -141.3164),
         input_param_order: {},
         input_time_order: {},

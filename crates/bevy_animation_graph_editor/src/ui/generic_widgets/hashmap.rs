@@ -1,6 +1,8 @@
-use std::{cmp::Ordering, hash::Hash};
+use std::hash::Hash;
 
 use bevy::platform::collections::HashMap;
+
+use crate::ui::generic_widgets::hash_like::{HashLikeEditable, HashLikeWidget};
 
 pub struct HashMapWidget<'a, K, V> {
     pub map: &'a mut HashMap<K, V>,
@@ -8,85 +10,145 @@ pub struct HashMapWidget<'a, K, V> {
 }
 
 impl<'a, K, V> HashMapWidget<'a, K, V> {
-    pub fn new_salted(map: &'a mut HashMap<K, V>, salt: impl std::hash::Hash) -> Self {
+    pub fn new(map: &'a mut HashMap<K, V>) -> Self {
         Self {
             map,
-            id_hash: egui::Id::new(salt),
+            id_hash: egui::Id::new("hash map"),
+        }
+    }
+
+    pub fn salted(mut self, salt: impl std::hash::Hash) -> Self {
+        self.id_hash = egui::Id::new(salt);
+        self
+    }
+}
+
+impl<'a, K, V> HashMapWidget<'a, K, V>
+where
+    K: Default + PartialOrd + Eq + Clone + Hash + Send + Sync + Ord + 'static,
+    V: Default + Send + Sync + Clone + 'static,
+{
+    pub fn ui(
+        self,
+        ui: &mut egui::Ui,
+        edit_key: impl FnMut(&mut egui::Ui, &mut K) -> egui::Response,
+        edit_value: impl FnMut(&mut egui::Ui, &mut V) -> egui::Response,
+    ) -> egui::Response {
+        ui.push_id(self.id_hash, |ui| {
+            HashLikeWidget::new_salted(
+                &mut HashMapEditable {
+                    map: self.map,
+                    edit_key,
+                    edit_value,
+                },
+                "hash like editable",
+            )
+            .ui(ui)
+        })
+        .inner
+    }
+}
+
+pub struct HashMapEditable<'a, K, V, F, G> {
+    map: &'a mut HashMap<K, V>,
+    edit_key: F,
+    edit_value: G,
+}
+
+impl<'a, K, V, F, G> HashLikeEditable<K, V> for HashMapEditable<'a, K, V, F, G>
+where
+    K: Hash + Eq + Clone + Send + Sync + 'static,
+    F: FnMut(&mut egui::Ui, &mut K) -> egui::Response,
+    G: FnMut(&mut egui::Ui, &mut V) -> egui::Response,
+{
+    fn get(&self, key: &K) -> Option<&V> {
+        self.map.get(key)
+    }
+
+    fn keys<'b>(&'b self) -> impl Iterator<Item = &'b K>
+    where
+        K: 'b,
+    {
+        self.map.keys()
+    }
+
+    fn add_new_value(&mut self, key: K, value: V, (): ()) {
+        self.map.insert(key, value);
+    }
+
+    fn delete_existing_key(&mut self, key: &K) {
+        self.map.remove(key);
+    }
+
+    fn edit_new_key(&mut self, ui: &mut egui::Ui, key: &mut K, (): &mut ()) -> egui::Response {
+        (self.edit_key)(ui, key)
+    }
+
+    fn edit_new_value(&mut self, ui: &mut egui::Ui, value: &mut V, (): &mut ()) -> egui::Response {
+        (self.edit_value)(ui, value)
+    }
+
+    fn edit_existing_key(&mut self, ui: &mut egui::Ui, key: &mut K) -> egui::Response {
+        let mut buffer = KeyBuffer::from_ui(ui, key);
+        let response = (self.edit_key)(ui, &mut buffer.buffer);
+        buffer.write_back(ui);
+
+        if response.changed() && !self.map.contains_key(&buffer.buffer) {
+            *key = buffer.buffer.clone();
+            if let Some(value) = self.map.remove(key) {
+                self.map.insert(key.clone(), value);
+            }
+        }
+
+        response
+    }
+
+    fn edit_existing_value_for(&mut self, ui: &mut egui::Ui, key: &K) -> egui::Response {
+        if let Some(value) = self.map.get_mut(key) {
+            (self.edit_value)(ui, value)
+        } else {
+            ui.label("key does not exist")
         }
     }
 }
 
-impl<'a, K, V> HashMapWidget<'a, K, V> {
-    pub fn ui(
-        self,
-        ui: &mut egui::Ui,
-        mut edit_key: impl FnMut(&mut egui::Ui, &mut K) -> egui::Response,
-        mut show_key: impl FnMut(&mut egui::Ui, &K) -> egui::Response,
-        mut edit_value: impl FnMut(&mut egui::Ui, &mut V) -> egui::Response,
-    ) -> egui::Response
-    where
-        K: Default + PartialOrd + Eq + Clone + Hash + Send + Sync + 'static,
-        V: Default,
-    {
-        ui.push_id(self.id_hash, |ui| {
-            let mut response = ui.allocate_response(egui::Vec2::ZERO, egui::Sense::hover());
+#[derive(Clone, Default)]
+pub struct KeyBuffer<K> {
+    buffer: K,
+    original: K,
+}
 
-            let vertical_response = ui.vertical(|ui| {
-                let mut delete = None;
+impl<K> KeyBuffer<K>
+where
+    K: PartialEq + Clone + Send + Sync + 'static,
+{
+    pub fn should_clean_up(&self, new_key: &K) -> bool {
+        &self.original != new_key
+    }
 
-                let mut keys: Vec<_> = self.map.keys().cloned().collect();
-                keys.sort_by(|l, r| l.partial_cmp(r).unwrap_or(Ordering::Equal));
+    pub fn from_ui(ui: &mut egui::Ui, new_key: &K) -> Self {
+        let buffer_id = Self::buffer_id(ui);
 
-                egui::Grid::new(self.id_hash.with("hashmap grid")).show(ui, |ui| {
-                    for key in keys {
-                        let entry = self.map.entry(key.clone());
-                        ui.push_id(key.clone(), |ui| {
-                            ui.horizontal(|ui| {
-                                if ui.button("🗙").clicked() {
-                                    delete = Some(key.clone());
-                                    response.mark_changed();
-                                }
-                                response |= show_key(ui, entry.key());
-                            });
-                        });
+        ui.memory_mut(|mem| {
+            if let Some(old_buffer) = mem.data.get_temp::<Self>(buffer_id)
+                && !old_buffer.should_clean_up(new_key)
+            {
+                return old_buffer;
+            }
 
-                        ui.push_id(key, |ui| {
-                            response |= edit_value(ui, entry.or_insert_with(|| V::default()));
-                        });
-
-                        ui.end_row();
-                    }
-
-                    let key_cache_id = ui.id().with("cache key");
-
-                    let mut key_cache = ui.memory_mut(|mem| {
-                        mem.data.get_temp_mut_or_default::<K>(key_cache_id).clone()
-                    });
-
-                    ui.horizontal(|ui| {
-                        if ui.button("+").clicked() {
-                            self.map.insert(key_cache.clone(), V::default());
-                            response.mark_changed();
-                        }
-
-                        edit_key(ui, &mut key_cache);
-                    });
-
-                    ui.memory_mut(|mem| mem.data.insert_temp(key_cache_id, key_cache));
-
-                    ui.label("<New item>");
-                    ui.end_row();
-                });
-
-                if let Some(key) = delete {
-                    self.map.remove(&key);
-                }
-            });
-
-            response |= vertical_response.response;
-
-            response
+            Self {
+                buffer: new_key.clone(),
+                original: new_key.clone(),
+            }
         })
-        .inner
+    }
+
+    pub fn write_back(&self, ui: &mut egui::Ui) {
+        let buffer_id = Self::buffer_id(ui);
+        ui.memory_mut(|mem| mem.data.insert_temp(buffer_id, self.clone()));
+    }
+
+    pub fn buffer_id(ui: &egui::Ui) -> egui::Id {
+        ui.id().with("hashmap existing key buffer")
     }
 }

@@ -5,11 +5,8 @@ use bevy_animation_graph::core::{
 use egui::Checkbox;
 
 use crate::ui::generic_widgets::{
-    body_id::{BodyIdReadonlyWidget, BodyIdWidget},
-    body_mode::BodyModeWidget,
-    bone_id::{BoneIdReadonlyWidget, BoneIdWidget},
-    hashmap::HashMapWidget,
-    option::CheapOptionWidget,
+    body_id::BodyIdWidget, body_mode::BodyModeWidget, bone_id::BoneIdWidget,
+    hashmap::HashMapWidget, option::CheapOptionWidget,
 };
 
 pub struct RagdollConfigWidget<'a> {
@@ -67,48 +64,34 @@ impl<'a> egui::Widget for RagdollConfigWidget<'a> {
                     });
 
                     response |= ui.heading("Readback overrides");
-                    response |= HashMapWidget::new_salted(
-                        &mut self.config.readback_overrides,
-                        "readback overrides",
-                    )
-                    .ui(
-                        ui,
-                        |ui, key| {
-                            ui.add(
-                                BoneIdWidget::new_salted(key, "bone id edit")
-                                    .with_skeleton(self.skeleton),
-                            )
-                        },
-                        |ui, key| {
-                            ui.add(
-                                BoneIdReadonlyWidget::new_salted(key, "bone id readonly")
-                                    .with_skeleton(self.skeleton),
-                            )
-                        },
-                        |ui, value| ui.add(egui::Checkbox::without_text(value)),
-                    );
+                    response |= HashMapWidget::new(&mut self.config.readback_overrides)
+                        .salted("readback overrides")
+                        .ui(
+                            ui,
+                            |ui, key| {
+                                ui.add(
+                                    BoneIdWidget::new_salted(key, "bone id edit")
+                                        .with_skeleton(self.skeleton),
+                                )
+                            },
+                            |ui, value| ui.add(egui::Checkbox::without_text(value)),
+                        );
 
                     response |= ui.heading("Body mode overrides");
-                    response |= HashMapWidget::new_salted(
-                        &mut self.config.mode_overrides,
-                        "mode overrides",
-                    )
-                    .ui(
-                        ui,
-                        |ui, key| {
-                            ui.add(
-                                BodyIdWidget::new_salted(key, "body id edit")
-                                    .with_ragdoll(self.ragdoll),
-                            )
-                        },
-                        |ui, key| {
-                            ui.add(
-                                BodyIdReadonlyWidget::new_salted(key, "body id readonly")
-                                    .with_ragdoll(self.ragdoll),
-                            )
-                        },
-                        |ui, value| ui.add(BodyModeWidget::new_salted(value, "body mode picker")),
-                    );
+                    response |= HashMapWidget::new(&mut self.config.mode_overrides)
+                        .salted("mode overrides")
+                        .ui(
+                            ui,
+                            |ui, key| {
+                                ui.add(
+                                    BodyIdWidget::new_salted(key, "body id edit")
+                                        .with_ragdoll(self.ragdoll),
+                                )
+                            },
+                            |ui, value| {
+                                ui.add(BodyModeWidget::new_salted(value, "body mode picker"))
+                            },
+                        );
 
                     response
                 });
