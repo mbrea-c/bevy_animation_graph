@@ -17,17 +17,11 @@ use serde::{Deserialize, Serialize};
 ///
 /// Useful when you synthesize some animations using the graph, but still want some event markup to
 /// apply for synchronization and/or gameplay effects.
-#[derive(Reflect, Clone, Debug, Serialize, Deserialize)]
+#[derive(Reflect, Clone, Debug, Serialize, Deserialize, Default)]
 #[reflect(Default, NodeLike, Serialize, Deserialize)]
 #[type_path = "bevy_animation_graph::builtin_nodes"]
 pub struct EventMarkupNode {
     pub event_tracks: HashMap<String, EventTrack>,
-}
-
-impl Default for EventMarkupNode {
-    fn default() -> Self {
-        Self::new(HashMap::default())
-    }
 }
 
 impl EventMarkupNode {
@@ -36,10 +30,6 @@ impl EventMarkupNode {
     pub const IN_TIME: &'static str = "time";
     pub const OUT_POSE: &'static str = "pose";
     pub const OUT_EVENT_QUEUE: &'static str = "events";
-
-    pub fn new(event_tracks: HashMap<String, EventTrack>) -> Self {
-        Self { event_tracks }
-    }
 }
 
 impl NodeLike for EventMarkupNode {
@@ -74,7 +64,10 @@ impl NodeLike for EventMarkupNode {
 
         ctx.set_time_update_back(Self::IN_TIME, processed_update);
 
-        let in_events = ctx.data_back(Self::IN_EVENT_QUEUE)?.into_event_queue()?;
+        let in_events = ctx
+            .data_back(Self::IN_EVENT_QUEUE)
+            .unwrap_or(EventQueue::default().into())
+            .into_event_queue()?;
         let in_pose = ctx.data_back(Self::IN_POSE)?.into_pose()?;
 
         let sampled_events = EventQueue {
@@ -96,6 +89,7 @@ impl NodeLike for EventMarkupNode {
     fn spec(&self, mut ctx: SpecContext) -> Result<(), GraphError> {
         ctx //
             .add_input_data(Self::IN_POSE, DataSpec::Pose)
+            .add_input_data(Self::IN_EVENT_QUEUE, DataSpec::EventQueue)
             .add_input_time(Self::IN_TIME);
         ctx //
             .add_output_data(Self::OUT_POSE, DataSpec::Pose)

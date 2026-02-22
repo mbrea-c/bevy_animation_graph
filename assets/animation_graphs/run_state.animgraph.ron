@@ -1,0 +1,56 @@
+(
+    nodes: [
+        (
+            id: "d867aa59-2c46-4ee4-95ad-5def9b6beaf9",
+            name: "run",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::LoopNode": (
+                    interpolation_period: 0.0,
+                ),
+            },
+            should_debug: false,
+        ),
+        (
+            id: "3c133591-0de3-4f39-b93d-3d95a4bcfc99",
+            name: "run",
+            inner: {
+                "bevy_animation_graph_builtin_nodes::graph_node::GraphNode": (
+                    graph: "animation_graphs/run.animgraph.ron",
+                ),
+            },
+            should_debug: false,
+        ),
+    ],
+    edges_inverted: {
+        OutputData("pose"): NodeData("d867aa59-2c46-4ee4-95ad-5def9b6beaf9", "pose"),
+        OutputTime: NodeTime("d867aa59-2c46-4ee4-95ad-5def9b6beaf9"),
+        NodeData("d867aa59-2c46-4ee4-95ad-5def9b6beaf9", "pose"): NodeData("3c133591-0de3-4f39-b93d-3d95a4bcfc99", "pose"),
+        NodeTime("d867aa59-2c46-4ee4-95ad-5def9b6beaf9", "time"): NodeTime("3c133591-0de3-4f39-b93d-3d95a4bcfc99"),
+    },
+    io_spec: (
+        input_times: [],
+        input_data: {},
+        output_time: true,
+        output_data: {
+            "pose": Pose,
+        },
+        input_order: {},
+        output_order: {
+            Data("pose"): 0,
+            Time: 1,
+        },
+    ),
+    default_data: {},
+    editor_metadata: (
+        node_positions: {
+            "d867aa59-2c46-4ee4-95ad-5def9b6beaf9": (356.97656, 346.04688),
+            "3c133591-0de3-4f39-b93d-3d95a4bcfc99": (201.22656, 350.21094),
+        },
+        input_position: (0.0, 0.0),
+        output_position: (512.625, 353.57813),
+        input_param_order: {},
+        input_time_order: {},
+        output_data_order: {},
+        output_pose_order: {},
+    ),
+)

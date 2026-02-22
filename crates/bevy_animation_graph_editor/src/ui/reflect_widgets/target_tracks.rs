@@ -134,19 +134,41 @@ fn combo_box_nodes(ui: &mut egui::Ui, current: &mut NodeId, graph: &AnimationGra
         .nodes
         .values()
         .filter(|n| n.inner.as_any().downcast_ref::<EventMarkupNode>().is_some())
-        .map(|n| (n.id, n.name.clone()))
+        .map(|n| {
+            (
+                n.id,
+                if n.name.is_empty() {
+                    format!("{}", n.id.uuid().hyphenated())
+                } else {
+                    n.name.clone()
+                },
+            )
+        })
         .collect::<Vec<_>>();
 
     valid_node_ids.sort_by_key(|(_, n)| n.clone());
 
-    egui::ComboBox::from_id_salt("Select node id for event markup")
+    let selected_name = valid_node_ids
+        .iter()
+        .find(|(id, _)| id == current)
+        .map(|(_, name)| name)
+        .cloned()
+        .unwrap_or("".to_string());
+
+    let mut is_changed = false;
+
+    is_changed |= egui::ComboBox::from_id_salt("Select node id for event markup")
+        .selected_text(selected_name)
         .show_ui(ui, |ui| {
             for (node_id, node_name) in valid_node_ids {
-                ui.selectable_value(current, node_id, node_name);
+                if ui.selectable_value(current, node_id, node_name).changed() {
+                    is_changed = true;
+                }
             }
         })
         .response
-        .changed()
+        .changed();
+    is_changed
 }
 
 fn validate(
