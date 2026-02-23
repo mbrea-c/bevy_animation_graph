@@ -19,7 +19,7 @@ use crate::ui::{
         window::CloseWindowAction,
     },
     core::{EditorWindowExtension, LegacyEditorWindowContext},
-    reflect_widgets::wrap_ui::using_wrap_ui,
+    old_reflect_widgets::wrap_ui::using_wrap_ui,
 };
 
 #[derive(Debug)]

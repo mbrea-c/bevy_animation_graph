@@ -6,7 +6,7 @@ use bevy_animation_graph::core::{
 
 use crate::ui::{
     core::LegacyEditorWindowContext, editor_windows::ragdoll_editor::RagdollEditorAction,
-    reflect_widgets::wrap_ui::using_wrap_ui,
+    old_reflect_widgets::wrap_ui::using_wrap_ui,
 };
 
 pub struct TopPanel<'a, 'b> {

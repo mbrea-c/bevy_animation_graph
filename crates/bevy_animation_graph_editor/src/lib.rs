@@ -20,7 +20,10 @@ use ui::{
     egui_inspector_impls::BetterInspectorPlugin,
 };
 
-use crate::ui::{actions::clip_preview::NodePreviewScenes, node_editors::register_node_editables};
+use crate::ui::{
+    actions::clip_preview::NodePreviewScenes, node_editors::register_node_editables,
+    reflect_lib::default_registry::default_widget_registry,
+};
 
 #[derive(Parser, Resource)]
 struct Cli {
@@ -81,6 +84,7 @@ impl Plugin for AnimationGraphEditorPlugin {
             .insert_resource(GraphIndicesMap::default())
             .insert_resource(ClipPreviewScenes::default())
             .insert_resource(NodePreviewScenes::default())
+            .insert_resource(default_widget_registry())
             .insert_resource(cli);
 
         register_node_editables(app);

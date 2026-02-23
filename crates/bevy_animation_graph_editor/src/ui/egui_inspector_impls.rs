@@ -23,7 +23,7 @@ use bevy_inspector_egui::{
     restricted_world_view::RestrictedWorldView,
 };
 
-use super::reflect_widgets;
+use super::old_reflect_widgets;
 
 #[derive(Clone, Reflect, Debug)]
 pub struct OrderedMap<K, V> {
@@ -67,7 +67,7 @@ impl Plugin for BetterInspectorPlugin {
     fn build(&self, app: &mut App) {
         // This shall replace this plugin in due time
         // Currently using both for legacy reasons (too much effort to migrate everything at once)
-        app.add_plugins(reflect_widgets::plugin::BetterInspectorPlugin);
+        app.add_plugins(old_reflect_widgets::plugin::BetterInspectorPlugin);
 
         app.insert_resource(EguiInspectorBuffers::<
             OrderedMap<PinId, DataValue>,

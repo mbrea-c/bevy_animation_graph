@@ -143,4 +143,8 @@ impl AnimationNode {
     pub fn inner_ref(&self) -> &dyn NodeLike {
         self.inner.0.as_ref()
     }
+
+    pub fn try_inner_downcast_ref<T: 'static>(&self) -> Option<&T> {
+        self.inner_ref().as_any().downcast_ref()
+    }
 }
