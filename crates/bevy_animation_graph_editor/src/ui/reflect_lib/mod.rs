@@ -55,10 +55,12 @@ impl<'a> LayeredRegistry<'a> {
 
 #[derive(Default)]
 pub struct ExternalContexts<'a> {
+    #[allow(dead_code)]
     contexts: HashMap<egui::Id, &'a dyn Any>,
 }
 
 pub struct ReflectWidgetContext<'a> {
+    #[allow(dead_code)]
     external: &'a ExternalContexts<'a>,
     registry: &'a LayeredRegistry<'a>,
     bevy_registry: &'a TypeRegistry,
@@ -115,19 +117,19 @@ impl<'a> ReflectWidgetContext<'a> {
                         response |= self.draw(ui, field);
                     }
                 }
-                TypeInfo::Tuple(tuple_info) => {
+                TypeInfo::Tuple(_tuple_info) => {
                     response |= ui.label("Tuples not implemented yet");
                 }
-                TypeInfo::List(list_info) => {
+                TypeInfo::List(_list_info) => {
                     response |= ui.label("Lists not implemented yet");
                 }
-                TypeInfo::Array(array_info) => {
+                TypeInfo::Array(_array_info) => {
                     response |= ui.label("Arrays not implemented yet");
                 }
-                TypeInfo::Map(map_info) => {
+                TypeInfo::Map(_map_info) => {
                     response |= ui.label("Maps not implemented yet");
                 }
-                TypeInfo::Set(set_info) => {
+                TypeInfo::Set(_set_info) => {
                     response |= ui.label("Sets not implemented yet");
                 }
                 TypeInfo::Enum(enum_info) => {

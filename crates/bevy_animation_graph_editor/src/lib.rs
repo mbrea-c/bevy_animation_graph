@@ -23,6 +23,7 @@ use ui::{
 use crate::ui::{
     actions::clip_preview::NodePreviewScenes, node_editors::register_node_editables,
     reflect_lib::default_registry::default_widget_registry,
+    reflect_widgets::register_reflect_widgets,
 };
 
 #[derive(Parser, Resource)]
@@ -79,12 +80,18 @@ impl Plugin for AnimationGraphEditorPlugin {
 
         UiState::init(app.world_mut());
 
+        // Default widget registry with widgets for primitive types
+        let mut reflect_widget_registry = default_widget_registry();
+
+        // Register editor specific widgets
+        register_reflect_widgets(&mut reflect_widget_registry);
+
         app.insert_resource(PendingActions::default())
             .insert_resource(DirtyAssets::default())
             .insert_resource(GraphIndicesMap::default())
             .insert_resource(ClipPreviewScenes::default())
             .insert_resource(NodePreviewScenes::default())
-            .insert_resource(default_widget_registry())
+            .insert_resource(reflect_widget_registry)
             .insert_resource(cli);
 
         register_node_editables(app);

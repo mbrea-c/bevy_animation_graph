@@ -463,24 +463,21 @@ impl EventTrackEditorState {
             }
         }
 
+        let new_track_buffer = ctx
+            .buffers
+            .get_mut_or_insert_with(ui.id().with("new event buffer"), || "".to_string());
+
         egui::Popup::context_menu(&response)
             .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
             .show(|ui| {
                 ui.menu_button("New track", |ui| {
-                    if let Some(new_track) = using_wrap_ui(world, |mut env| {
-                        env.mutable_buffered(
-                            &Submittable {
-                                value: "".to_string(),
-                            },
-                            ui,
-                            ui.id(),
-                            &(),
-                        )
-                    }) {
+                    ReflectWidgetContext::scope(world, |ctx| ctx.draw(ui, new_track_buffer));
+
+                    if ui.button("submit").clicked() {
                         ctx.editor_actions.push(EditorAction::EventTrack(
                             EventTrackAction::NewTrack(NewTrackAction {
                                 target_tracks: active_tracks.target.clone(),
-                                track_id: new_track.value,
+                                track_id: new_track_buffer.clone(),
                             }),
                         ));
                     }
