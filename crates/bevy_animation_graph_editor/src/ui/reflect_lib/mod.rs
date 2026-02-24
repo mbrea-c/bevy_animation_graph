@@ -143,7 +143,7 @@ impl<'a> ReflectWidgetContext<'a> {
                         |ui| {
                             for variant_name in enum_info.variant_names() {
                                 let has_default_value =
-                                    self.default_variant(*variant_name, enum_info).is_some();
+                                    self.default_variant(variant_name, enum_info).is_some();
 
                                 let variant_response = ui
                                     .add_enabled_ui(has_default_value, |ui| {
@@ -218,9 +218,7 @@ impl<'a> ReflectWidgetContext<'a> {
     }
 
     fn default_variant(&self, variant_name: &str, enum_info: &EnumInfo) -> Option<DynamicEnum> {
-        let Some(variant_info) = enum_info.variant(variant_name) else {
-            return None;
-        };
+        let variant_info = enum_info.variant(variant_name)?;
 
         match variant_info.variant_type() {
             VariantType::Struct => {
@@ -229,19 +227,10 @@ impl<'a> ReflectWidgetContext<'a> {
                 let mut dyn_struct = DynamicStruct::default();
 
                 for field_name in struct_variant_info.field_names() {
-                    let Some(field_info) = struct_variant_info.field(field_name) else {
-                        return None;
-                    };
-                    let Some(field_type_registration) =
-                        self.bevy_registry.get(field_info.type_id())
-                    else {
-                        return None;
-                    };
+                    let field_info = struct_variant_info.field(field_name)?;
+                    let field_type_registration = self.bevy_registry.get(field_info.type_id())?;
 
-                    let Some(reflect_default) = field_type_registration.data::<ReflectDefault>()
-                    else {
-                        return None;
-                    };
+                    let reflect_default = field_type_registration.data::<ReflectDefault>()?;
 
                     dyn_struct.insert_boxed(*field_name, reflect_default.default());
                 }
@@ -254,19 +243,9 @@ impl<'a> ReflectWidgetContext<'a> {
                 let mut dyn_tuple = DynamicTuple::default();
 
                 for field_idx in 0..tuple_variant_info.field_len() {
-                    let Some(field_info) = tuple_variant_info.field_at(field_idx) else {
-                        return None;
-                    };
-                    let Some(field_type_registration) =
-                        self.bevy_registry.get(field_info.type_id())
-                    else {
-                        return None;
-                    };
-
-                    let Some(reflect_default) = field_type_registration.data::<ReflectDefault>()
-                    else {
-                        return None;
-                    };
+                    let field_info = tuple_variant_info.field_at(field_idx)?;
+                    let field_type_registration = self.bevy_registry.get(field_info.type_id())?;
+                    let reflect_default = field_type_registration.data::<ReflectDefault>()?;
 
                     dyn_tuple.insert_boxed(reflect_default.default());
                 }
@@ -280,9 +259,7 @@ impl<'a> ReflectWidgetContext<'a> {
     pub fn scope<T>(world: &'a World, scoped: impl FnOnce(&ReflectWidgetContext) -> T) -> T {
         let contexts = ExternalContexts::default();
 
-        let out = Self::scope_with_context(world, &contexts, scoped);
-
-        out
+        Self::scope_with_context(world, &contexts, scoped)
     }
 
     pub fn scope_with_context<T>(
@@ -299,9 +276,7 @@ impl<'a> ReflectWidgetContext<'a> {
             bevy_registry: &bevy_registry,
         };
 
-        let out = scoped(&ctx);
-
-        out
+        scoped(&ctx)
     }
 }
 
