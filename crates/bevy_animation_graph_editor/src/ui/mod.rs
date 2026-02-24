@@ -8,6 +8,8 @@ pub mod generic_widgets;
 pub mod native_views;
 pub mod native_windows;
 pub mod node_editors;
+pub mod old_reflect_widgets;
+pub mod reflect_lib;
 pub mod reflect_widgets;
 pub mod scenes;
 pub mod state_management;

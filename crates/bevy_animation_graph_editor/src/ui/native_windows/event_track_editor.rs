@@ -28,11 +28,11 @@ use crate::ui::{
     native_windows::{
         EditorWindowContext, EditorWindowRegistrationContext, NativeEditorWindowExtension,
     },
-    reflect_widgets::{submittable::Submittable, wrap_ui::using_wrap_ui},
+    old_reflect_widgets::{submittable::Submittable, wrap_ui::using_wrap_ui},
+    reflect_lib::ReflectWidgetContext,
     state_management::view::clip_preview::{
         ClipPreviewTimingOrder, ClipPreviewViewState, SetOrder, SetTargetTracks,
     },
-    utils::popup::CustomPopup,
 };
 
 #[derive(Debug)]
@@ -226,7 +226,8 @@ impl EventTrackEditorState {
         ctx: &mut EditorWindowContext,
     ) {
         let available_size = ui.available_size();
-        let (_, rect) = ui.allocate_space(available_size);
+        let response = ui.allocate_response(available_size, egui::Sense::click());
+        let rect = response.rect;
 
         let hovered_track_number = ui
             .input(|i| i.pointer.latest_pos())
@@ -304,33 +305,60 @@ impl EventTrackEditorState {
             });
         }
 
-        CustomPopup::new()
-            .with_salt("Create event popup")
-            .with_sense_rect(rect)
-            .with_allow_opening(hovered_track.is_some())
-            .with_save_on_click(hovered_track)
-            .show_if_saved(ui, |ui, last_hovered_track| {
-                ui.menu_button("New event", |ui| {
-                    if let Some(new_item) = using_wrap_ui(world, |mut env| {
-                        env.mutable_buffered(
-                            &Submittable {
-                                value: TrackItemValue::default(),
-                            },
-                            ui,
-                            ui.id(),
-                            &(),
-                        )
-                    }) {
-                        ctx.editor_actions.push(EditorAction::EventTrack(
-                            EventTrackAction::NewEvent(NewEventAction {
+        let buffer_id = ui.id().with("last hovered track");
+
+        if response.clicked_by(egui::PointerButton::Secondary)
+            && let Some(track) = hovered_track
+        {
+            ui.memory_mut(|mem| mem.data.insert_temp(buffer_id, track));
+        }
+
+        let maybe_last_hovered_track = ui.memory_mut(|mem| mem.data.get_temp::<String>(buffer_id));
+
+        let mut popup = egui::Popup::context_menu(&response)
+            .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside);
+
+        if maybe_last_hovered_track.is_none() {
+            popup = popup.open_memory(Some(egui::SetOpenCommand::Bool(false)));
+        }
+
+        let new_event_buffer = ctx
+            .buffers
+            .get_mut_or_insert_with(ui.id().with("new event buffer"), || {
+                TrackItemValue::default()
+            });
+
+        popup.show(|ui| {
+            ui.menu_button("New event", |ui| {
+                let Some(last_hovered_track) = maybe_last_hovered_track else {
+                    return;
+                };
+
+                ReflectWidgetContext::scope(world, |ctx| ctx.draw(ui, new_event_buffer));
+
+                // if let Some(new_item) = using_wrap_ui(world, |mut env| {
+                //     env.mutable_buffered(
+                //         &Submittable {
+                //             value: TrackItemValue::default(),
+                //         },
+                //         ui,
+                //         ui.id(),
+                //         &(),
+                //     )
+                // }) {
+                if ui.button("submit").clicked() {
+                    ctx.editor_actions
+                        .push(EditorAction::EventTrack(EventTrackAction::NewEvent(
+                            NewEventAction {
                                 target_tracks: active_tracks.target.clone(),
                                 track_id: last_hovered_track,
-                                item: TrackItem::new(new_item.value),
-                            }),
-                        ));
-                    }
-                });
+                                item: TrackItem::new(new_event_buffer.clone()),
+                            },
+                        )));
+                }
+                //}
             });
+        });
     }
 
     /// Draw a single event in the track editor window
@@ -405,7 +433,9 @@ impl EventTrackEditorState {
         ctx: &mut EditorWindowContext,
     ) {
         let available_size = ui.available_size();
-        let (_, area_rect) = ui.allocate_space(available_size);
+
+        let response = ui.allocate_response(available_size, egui::Sense::click());
+        let area_rect = response.rect;
 
         for (track_number, track) in active_tracks.tracks.values().enumerate() {
             let pixel_y_start =
@@ -433,27 +463,21 @@ impl EventTrackEditorState {
             }
         }
 
-        CustomPopup::new()
-            .with_salt("Create track popup")
-            .with_sense_rect(area_rect)
-            .with_allow_opening(true)
-            .with_save_on_click(Some(()))
-            .show_if_saved(ui, |ui, ()| {
+        let new_track_buffer = ctx
+            .buffers
+            .get_mut_or_insert_with(ui.id().with("new event buffer"), || "".to_string());
+
+        egui::Popup::context_menu(&response)
+            .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
+            .show(|ui| {
                 ui.menu_button("New track", |ui| {
-                    if let Some(new_track) = using_wrap_ui(world, |mut env| {
-                        env.mutable_buffered(
-                            &Submittable {
-                                value: "".to_string(),
-                            },
-                            ui,
-                            ui.id(),
-                            &(),
-                        )
-                    }) {
+                    ReflectWidgetContext::scope(world, |ctx| ctx.draw(ui, new_track_buffer));
+
+                    if ui.button("submit").clicked() {
                         ctx.editor_actions.push(EditorAction::EventTrack(
                             EventTrackAction::NewTrack(NewTrackAction {
                                 target_tracks: active_tracks.target.clone(),
-                                track_id: new_track.value,
+                                track_id: new_track_buffer.clone(),
                             }),
                         ));
                     }
@@ -700,7 +724,7 @@ impl EventTrackEditorState {
                         if let Some(tracks) = anim_graphs
                             .get(graph.id())
                             .and_then(|g| g.nodes.get(node))
-                            .and_then(|n| n.inner.as_any().downcast_ref::<EventMarkupNode>())
+                            .and_then(|n| n.try_inner_downcast_ref::<EventMarkupNode>())
                             .map(|n| &n.event_tracks)
                         {
                             f(ui, world, ActiveTracks { target, tracks })

@@ -16,7 +16,7 @@ use crate::ui::{
         NodePreviewScenes,
     },
     native_windows::{EditorWindowContext, NativeEditorWindowExtension},
-    reflect_widgets::wrap_ui::using_wrap_ui,
+    old_reflect_widgets::wrap_ui::using_wrap_ui,
     state_management::{
         global::register_if_missing,
         view::clip_preview::{

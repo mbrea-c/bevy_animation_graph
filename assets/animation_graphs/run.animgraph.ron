@@ -1,6 +1,16 @@
 (
     nodes: [
         (
+            id: "262373b6-5b35-4ca2-a508-3c4b3e471fda",
+            name: "",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::EventMarkupNode": (
+                    event_tracks: {},
+                ),
+            },
+            should_debug: false,
+        ),
+        (
             id: "939ac6ef-20da-4151-90e6-11461812b22d",
             name: "",
             inner: {
@@ -35,10 +45,10 @@
             should_debug: false,
         ),
         (
-            id: "ff83768c-bf53-4c36-930e-40433929fcd6",
+            id: "75a8c5f5-28a4-411b-993c-8e3f15b1867f",
             name: "",
             inner: {
-                "bevy_animation_graph::builtin_nodes::LoopNode": (
+                "bevy_animation_graph::builtin_nodes::PaddingNode": (
                     interpolation_period: 0.5,
                 ),
             },
@@ -65,15 +75,18 @@
     ],
     edges_inverted: {
         NodeTime("c16dc0d9-7fb4-40b6-ab59-ee7c4361db1f", "time"): NodeTime("939ac6ef-20da-4151-90e6-11461812b22d"),
-        OutputData("pose"): NodeData("ff83768c-bf53-4c36-930e-40433929fcd6", "pose"),
-        OutputTime: NodeTime("ff83768c-bf53-4c36-930e-40433929fcd6"),
+        NodeData("262373b6-5b35-4ca2-a508-3c4b3e471fda", "pose"): NodeData("75a8c5f5-28a4-411b-993c-8e3f15b1867f", "pose"),
+        NodeData("75a8c5f5-28a4-411b-993c-8e3f15b1867f", "pose"): NodeData("6cb9db31-c8aa-4d7b-a7af-d6a3206c9da8", "pose"),
         NodeData("6cb9db31-c8aa-4d7b-a7af-d6a3206c9da8", "pose_b"): NodeData("c16dc0d9-7fb4-40b6-ab59-ee7c4361db1f", "pose"),
+        NodeTime("75a8c5f5-28a4-411b-993c-8e3f15b1867f", "time"): NodeTime("6cb9db31-c8aa-4d7b-a7af-d6a3206c9da8"),
+        OutputData("pose"): NodeData("262373b6-5b35-4ca2-a508-3c4b3e471fda", "pose"),
+        OutputTime: NodeTime("262373b6-5b35-4ca2-a508-3c4b3e471fda"),
+        OutputData("events"): NodeData("262373b6-5b35-4ca2-a508-3c4b3e471fda", "events"),
         NodeData("c16dc0d9-7fb4-40b6-ab59-ee7c4361db1f", "pose"): NodeData("939ac6ef-20da-4151-90e6-11461812b22d", "pose"),
         NodeData("6cb9db31-c8aa-4d7b-a7af-d6a3206c9da8", "pose_a"): NodeData("5298fece-5bca-4327-802b-70966468855e", "pose"),
         NodeTime("6cb9db31-c8aa-4d7b-a7af-d6a3206c9da8", "time_b"): NodeTime("c16dc0d9-7fb4-40b6-ab59-ee7c4361db1f"),
-        NodeTime("ff83768c-bf53-4c36-930e-40433929fcd6", "time"): NodeTime("6cb9db31-c8aa-4d7b-a7af-d6a3206c9da8"),
+        NodeTime("262373b6-5b35-4ca2-a508-3c4b3e471fda", "time"): NodeTime("75a8c5f5-28a4-411b-993c-8e3f15b1867f"),
         NodeTime("6cb9db31-c8aa-4d7b-a7af-d6a3206c9da8", "time_a"): NodeTime("5298fece-5bca-4327-802b-70966468855e"),
-        NodeData("ff83768c-bf53-4c36-930e-40433929fcd6", "pose"): NodeData("6cb9db31-c8aa-4d7b-a7af-d6a3206c9da8", "pose"),
     },
     io_spec: (
         input_times: [],
@@ -81,24 +94,27 @@
         output_time: true,
         output_data: {
             "pose": Pose,
+            "events": EventQueue,
         },
         input_order: {},
         output_order: {
-            Data("pose"): 5,
-            Time: 6,
+            Data("pose"): 0,
+            Time: 2,
+            Data("events"): 1,
         },
     ),
     default_data: {},
     editor_metadata: (
         node_positions: {
-            "939ac6ef-20da-4151-90e6-11461812b22d": (31.652344, 217.34375),
-            "5298fece-5bca-4327-802b-70966468855e": (136.02344, 34.527344),
-            "6cb9db31-c8aa-4d7b-a7af-d6a3206c9da8": (348.97656, 105.19531),
-            "ff83768c-bf53-4c36-930e-40433929fcd6": (506.47656, 116.41016),
-            "c16dc0d9-7fb4-40b6-ab59-ee7c4361db1f": (180.35156, 221.55078),
+            "262373b6-5b35-4ca2-a508-3c4b3e471fda": (445.35938, 117.71484),
+            "939ac6ef-20da-4151-90e6-11461812b22d": (-183.46875, 221.38672),
+            "5298fece-5bca-4327-802b-70966468855e": (-79.09766, 38.570313),
+            "6cb9db31-c8aa-4d7b-a7af-d6a3206c9da8": (133.85547, 109.23828),
+            "75a8c5f5-28a4-411b-993c-8e3f15b1867f": (287.90234, 113.95703),
+            "c16dc0d9-7fb4-40b6-ab59-ee7c4361db1f": (-34.76953, 225.59375),
         },
         input_position: (132.7539, 482.0586),
-        output_position: (664.27734, 116.890625),
+        output_position: (627.91016, 117.34766),
         input_param_order: {},
         input_time_order: {},
         output_data_order: {},
