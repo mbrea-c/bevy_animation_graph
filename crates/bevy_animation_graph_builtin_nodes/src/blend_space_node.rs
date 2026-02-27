@@ -74,6 +74,12 @@ impl BlendSpaceNode {
     fn vertex_key(&self, id: usize) -> &str {
         &self.points[id].id
     }
+
+    pub fn refresh_triangulation(&mut self) {
+        self.triangulation = Triangulation::from_points_delaunay(
+            self.points.clone().into_iter().map(|x| x.point).collect(),
+        );
+    }
 }
 
 impl NodeLike for BlendSpaceNode {
