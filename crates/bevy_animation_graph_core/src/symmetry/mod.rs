@@ -42,5 +42,6 @@ pub fn flip_pose(
         out.add_bone(channel, new_id);
     }
     out.skeleton = val.skeleton.clone();
+    out.timestamp = val.timestamp.clone();
     Ok(out)
 }
