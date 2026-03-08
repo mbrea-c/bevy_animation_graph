@@ -34,12 +34,24 @@ pub enum BlendSyncMode {
     EventTrack(String),
 }
 
-#[derive(Reflect, Clone, Debug, Default)]
+#[derive(Reflect, Clone, Debug, Default, Serialize, Deserialize)]
+#[reflect(Default)]
+pub enum BlendPrimary {
+    /// Sets the duration to the primary (first) input
+    #[default]
+    First,
+    /// Sets the duration to the input with the higher weight
+    HighestWeight,
+}
+
+#[derive(Reflect, Clone, Debug, Default, Serialize, Deserialize)]
 #[reflect(Default, NodeLike)]
 #[type_path = "bevy_animation_graph::builtin_nodes"]
 pub struct BlendNode {
     pub mode: BlendMode,
     pub sync_mode: BlendSyncMode,
+    #[serde(default)]
+    pub blend_primary: BlendPrimary,
     pub use_bone_mask: bool,
 }
 
@@ -57,11 +69,17 @@ impl BlendNode {
 
 impl NodeLike for BlendNode {
     fn duration(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
+        // determine duration based on main animation input or the one with heighest weight
         let duration_1 = ctx.duration_back(Self::IN_TIME_A)?;
         let duration_2 = ctx.duration_back(Self::IN_TIME_B)?;
-
+        let alpha = match self.blend_primary {
+            BlendPrimary::First => 0.,
+            BlendPrimary::HighestWeight => ctx.data_back(Self::FACTOR)?.as_f32()?,
+        };
         let out_duration = match (duration_1, duration_2) {
-            (Some(duration_1), Some(duration_2)) => Some(duration_1.max(duration_2)),
+            (Some(duration_1), Some(duration_2)) => {
+                Some(if alpha <= 0.5 { duration_1 } else { duration_2 })
+            }
             (Some(duration_1), None) => Some(duration_1),
             (None, Some(duration_2)) => Some(duration_2),
             (None, None) => None,
