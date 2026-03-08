@@ -50,18 +50,10 @@ impl NodeCaches {
         self.cache_mut(node_id).duration.insert(key, duration);
     }
 
-    pub fn get_output_data(
-        &self,
-        node_id: NodeId,
-        key: StateKey,
-        pin: PinId,
-    ) -> Result<DataValue, GraphError> {
-        let error = || GraphError::OutputMissing(SourcePin::NodeData(node_id, pin.clone()));
-
+    pub fn get_output_data(&self, node_id: NodeId, key: StateKey, pin: PinId) -> Option<DataValue> {
         self.caches
             .get(&node_id)
-            .ok_or_else(&error)
-            .and_then(|c| c.output_data.get(&(key, pin.clone())).ok_or_else(&error))
+            .and_then(|c| c.output_data.get(&(key, pin.clone())))
             .cloned()
     }
 

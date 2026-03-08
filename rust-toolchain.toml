@@ -1,0 +1,5 @@
+[toolchain]
+# Pin to old version due to https://github.com/rust-lang/rust-analyzer/issues/21715
+channel = "nightly-2025-12-15"
+components = ["rustfmt", "rust-src"]
+profile = "minimal"

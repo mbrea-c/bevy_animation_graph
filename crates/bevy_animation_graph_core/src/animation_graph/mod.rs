@@ -706,19 +706,17 @@ impl AnimationGraph {
                 }
 
                 ctx.node_caches()
-                    .get_output_data(*node_id, key, node_pin.clone())?
+                    .get_output_data(*node_id, key, node_pin.clone())
+                    .ok_or_else(|| GraphError::OutputMissing {
+                        graph: ctx.context_id,
+                        node: *node_id,
+                        pin: node_pin.clone(),
+                    })?
             }
             SourcePin::InputData(graph_input_pin) => ctx
                 .io
                 .get_data_back(graph_input_pin.clone(), ctx.clone())
-                .or_else(|_| {
-                    self.default_data
-                        .get(graph_input_pin)
-                        .cloned()
-                        .ok_or_else(|| {
-                            GraphError::OutputMissing(SourcePin::InputData(graph_input_pin.clone()))
-                        })
-                })?,
+                .or_else(|e| self.default_data.get(graph_input_pin).cloned().ok_or(e))?,
             SourcePin::NodeTime(_) => {
                 // TODO: Make a graph error
                 panic!("Incompatible pins connected: {source_pin:?} --> {target_pin:?}")
@@ -790,12 +788,20 @@ impl AnimationGraph {
                 panic!("Incompatible pins connected: {source_pin:?} --> {target_pin:?}")
             }
             TargetPin::NodeTime(node_id, target_pin) => {
+                let node = &self.nodes[node_id];
                 if !ctx.node_caches().is_update_started(node_id.to_owned(), key) {
-                    let node = &self.nodes[node_id];
                     self.node_update_wrapper(node, &mut ctx)?;
                 }
                 ctx.node_caches()
-                    .get_input_time_update(*node_id, key, target_pin.clone())?
+                    .get_input_time_update(*node_id, key, target_pin.clone())
+                    .or_else(|e| {
+                        node.try_get_time(
+                            ctx.create_node_context(node.id, self)
+                                .with_debugging(node.should_debug),
+                            target_pin.clone(),
+                        )
+                        .or(Err(e))
+                    })?
             }
             TargetPin::OutputTime => match ctx.context().query_output_time.get(key) {
                 Some(update) => update,

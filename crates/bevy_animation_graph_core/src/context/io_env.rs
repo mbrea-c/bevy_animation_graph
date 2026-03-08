@@ -110,7 +110,7 @@ impl GraphIoEnv for IoOverrides {
         self.data
             .get(&pin_id)
             .cloned()
-            .ok_or_else(|| GraphError::OutputMissing(SourcePin::InputData(pin_id.clone())))
+            .ok_or_else(|| GraphError::MissingGraphInputData(pin_id.clone()))
     }
 
     fn get_duration_back(

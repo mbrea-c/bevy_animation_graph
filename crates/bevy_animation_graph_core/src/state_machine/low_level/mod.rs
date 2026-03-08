@@ -364,7 +364,73 @@ impl LowLevelStateMachine {
             }
         }
 
+        for input_pin in graph.io_spec.iter_input_times() {
+            if let GraphInputPin::Passthrough(pin) = input_pin {
+                let source_pin = SourcePin::InputTime(input_pin.clone());
+                let value = graph.get_time_update(source_pin, sub_ctx.clone())?;
+                ctx.set_time_update_back(pin, value);
+            }
+        }
+
         Ok(driver_event_queue)
+    }
+
+    /// Last-resort type time update fetching.
+    pub fn time_update(&self, mut ctx: NodeContext, pin: PinId) -> Result<TimeUpdate, GraphError> {
+        let time = ctx.time();
+        let fsm_state = ctx.state::<FsmState>()?;
+        let state = self.states.get(&fsm_state.state).unwrap();
+        let graph = ctx
+            .graph_context
+            .resources
+            .animation_graph_assets
+            .get(&state.graph)
+            .ok_or(GraphError::GraphAssetMissing)?;
+
+        let mut io_overrides = IoOverrides::default();
+
+        let elapsed_time = time - fsm_state.state_entered_time;
+
+        io_overrides
+            .data
+            .insert(FsmBuiltinPin::TimeElapsed.into(), elapsed_time.into());
+
+        let mut driver_event_queue = EventQueue::default();
+
+        if let Some(duration) = state.hl_transition.as_ref().and_then(|t| t.timed)
+            && duration > 0.
+        {
+            let percent = elapsed_time / duration;
+            io_overrides
+                .data
+                .insert(FsmBuiltinPin::PercentThroughDuration.into(), percent.into());
+
+            if percent >= 1. {
+                driver_event_queue
+                    .events
+                    .push(SampledEvent::instant(AnimationEvent::EndTransition));
+            }
+        }
+
+        let sub_io_env = LayeredIoEnv(
+            Cow::<IoOverrides>::Owned(io_overrides),
+            Cow::<FsmIoEnv>::Owned(FsmIoEnv {
+                node_context: ctx.clone(),
+                state_machine: self,
+                current_state: state.id.clone(),
+                current_state_role: StateRole::Root,
+                state_stack: [].into(),
+            }),
+        );
+
+        let sub_ctx = ctx
+            .create_child_context(state.graph.id(), Some(state.id.clone()))
+            .with_io(&sub_io_env);
+
+        let source_pin = SourcePin::InputTime(GraphInputPin::Passthrough(pin));
+        let time_update = graph.get_time_update(source_pin, sub_ctx.clone())?;
+
+        Ok(time_update)
     }
 
     fn get_source(&self, state: &LowLevelStateId) -> Result<LowLevelStateId, GraphError> {
