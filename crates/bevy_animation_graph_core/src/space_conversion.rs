@@ -106,6 +106,12 @@ impl SpaceConversionContext<'_> {
         return inverse_global_transform;
     }
 
+    pub fn char_to_global_transform(&self, skeleton: &Skeleton) -> Transform {
+        let root_global_transform = self.pose_fallback.root_global_transform(skeleton).unwrap();
+
+        return root_global_transform.compute_transform();
+    }
+
     pub fn character_transform_of_bone(
         &self,
         pose: &Pose,
