@@ -82,19 +82,7 @@ impl RotationNode {
 }
 
 impl NodeLike for RotationNode {
-    fn duration(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
-        let duration = ctx.duration_back(Self::IN_TIME)?;
-        ctx.set_duration_fwd(duration);
-        Ok(())
-    }
-
     fn update(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
-        // Pull incoming time update
-        let input = ctx.time_update_fwd()?;
-        // Push unchanged time update backwards.
-        // We do this first to ensure that the time update is available for any other nodes that might need it
-        ctx.set_time_update_back(Self::IN_TIME, input);
-
         let target = ctx.data_back(Self::TARGET)?.into_entity_path()?;
         let mut target = target.id();
         let rotation = ctx.data_back(Self::ROTATION)?.as_quat()?;
@@ -196,12 +184,9 @@ impl NodeLike for RotationNode {
         ctx //
             .add_input_data(Self::TARGET, DataSpec::EntityPath)
             .add_input_data(Self::ROTATION, DataSpec::Quat)
-            .add_input_data(Self::IN_POSE, DataSpec::Pose)
-            .add_input_time(Self::IN_TIME);
-
+            .add_input_data(Self::IN_POSE, DataSpec::Pose);
         ctx //
-            .add_output_data(Self::OUT_POSE, DataSpec::Pose)
-            .add_output_time();
+            .add_output_data(Self::OUT_POSE, DataSpec::Pose);
 
         Ok(())
     }

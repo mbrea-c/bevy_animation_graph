@@ -170,12 +170,6 @@ pub fn asset_path(handle: UntypedAssetId, asset_server: &AssetServer) -> AssetPa
     )
 }
 
-pub fn handle_path(handle: UntypedHandle) -> String {
-    handle
-        .path()
-        .map_or("<asset without path>".into(), |p| p.to_string())
-}
-
 pub fn render_image(ui: &mut egui::Ui, world: &mut World, image: &Handle<Image>) -> egui::Response {
     let texture_id =
         world.resource_scope::<EguiUserTextures, egui::TextureId>(|_, user_textures| {

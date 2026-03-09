@@ -336,4 +336,8 @@ impl AnimationGraphPlayer {
     pub fn set_default_output_pose(&mut self, pose: Pose) {
         self.outputs.insert(DEFAULT_OUTPUT_POSE.into(), pose.into());
     }
+
+    pub fn bone_entity(&self, bone_id: BoneId) -> Option<Entity> {
+        self.entity_map.get(&bone_id).copied()
+    }
 }

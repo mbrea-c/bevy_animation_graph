@@ -37,7 +37,7 @@ use crate::ui::{
         register_if_missing,
     },
     style::{StyleEngine, StyleModifiers, StyleObject, StyleRule, path_stroke, rgb, rgba},
-    utils::{self, popup::CustomPopup},
+    utils::{self},
 };
 
 pub struct FsmEditBuffer {
@@ -115,21 +115,25 @@ impl NativeEditorWindowExtension for FsmEditorWindow {
         let buffer_id = ui.id().with("Fsm editor nodes context buffer");
         let buffer = ctx.buffers.get_mut_or_default(buffer_id);
 
-        world.resource_scope::<Assets<StateMachine>, _>(|_, fsm_assets| {
-            let fsm = fsm_assets.get(&active_fsm.handle)?;
+        let Some(scene_response) =
+            world.resource_scope::<Assets<StateMachine>, _>(|_, fsm_assets| {
+                let fsm = fsm_assets.get(&active_fsm.handle)?;
 
-            window_state.draw_fsm(
-                ui,
-                fsm,
-                buffer,
-                &mut queue,
-                window,
-                &active_fsm.handle,
-                maybe_fsm_state.as_ref(),
-            );
+                let r = window_state.draw_fsm(
+                    ui,
+                    fsm,
+                    buffer,
+                    &mut queue,
+                    window,
+                    &active_fsm.handle,
+                    maybe_fsm_state.as_ref(),
+                );
 
-            Some(())
-        });
+                Some(r)
+            })
+        else {
+            return;
+        };
 
         ctx.consume_queue(queue);
 
@@ -151,13 +155,21 @@ impl NativeEditorWindowExtension for FsmEditorWindow {
             });
         }
 
-        CustomPopup::new()
-            .with_salt(ui.id().with("Graph editor right click popup"))
-            .with_sense_rect(outer_rect)
-            .with_allow_opening(true)
-            .with_save_on_click(Some(()))
-            .with_default_size(egui::Vec2::new(500., 300.))
-            .show_if_saved(ui, |ui, ()| {
+        egui::Popup::from_response(&scene_response)
+            .at_pointer_fixed()
+            .width(500.)
+            .close_behavior(egui::PopupCloseBehavior::IgnoreClicks)
+            .open_memory(
+                if ui.input(|i| {
+                    i.pointer.button_clicked(egui::PointerButton::Secondary)
+                        && outer_rect.contains(i.pointer.interact_pos().unwrap_or_default())
+                }) {
+                    Some(egui::SetOpenCommand::Bool(true))
+                } else {
+                    None
+                },
+            )
+            .show(|ui| {
                 creation_popup(ui, world, ctx);
             });
     }
