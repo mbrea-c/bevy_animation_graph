@@ -166,7 +166,17 @@ pub fn handle_path_server(handle: UntypedAssetId, asset_server: &AssetServer) ->
 pub fn asset_path(handle: UntypedAssetId, asset_server: &AssetServer) -> AssetPath<'static> {
     asset_server.get_path(handle).map_or(
         AssetPath::from_path(&PathBuf::from("<asset without path>")).clone_owned(),
-        |p| p.clone_owned(),
+        |p| {
+            // Normalize path separators to forward slashes for cross-platform compatibility.
+            // AssetPath stores a std::path::Path which uses OS-native separators on Windows.
+            let normalized = AssetPath::from_path_buf(PathBuf::from(
+                p.path().to_string_lossy().replace('\\', "/"),
+            ));
+            match p.label() {
+                Some(label) => normalized.with_label(label.to_string()).into_owned(),
+                None => normalized.into_owned(),
+            }
+        },
     )
 }
 
