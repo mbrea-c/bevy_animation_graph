@@ -106,7 +106,9 @@ impl NodeLike for BlendNode {
                 Self::IN_EVENT_A,
                 Self::IN_TIME_B,
                 Self::IN_POSE_B,
-                ctx.data_back(Self::FACTOR)?.as_f32()?,
+                ctx.data_back(Self::FACTOR)
+                    .unwrap_or(DataValue::F32(1.))
+                    .as_f32()?,
             ),
             BlendPrimary::HighestWeight => {
                 if ctx.data_back(Self::FACTOR)?.as_f32()? <= 0.5 {
