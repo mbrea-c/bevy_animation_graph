@@ -60,6 +60,9 @@ impl<'a> egui::Widget for DataValueWidget<'a> {
 
             match self.data_value {
                 DataValue::F32(val) => {
+                    if !val.is_finite() {
+                        *val = 0.0;
+                    }
                     response |= ui.add(egui::DragValue::new(val));
                 }
                 DataValue::Bool(val) => {
