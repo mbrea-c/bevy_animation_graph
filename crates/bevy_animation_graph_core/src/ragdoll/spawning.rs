@@ -100,6 +100,8 @@ pub fn spawn_ragdoll_avian(
     }
 
     for joint in ragdoll.joints.values() {
+        use avian3d::prelude::JointCollisionDisabled;
+
         use crate::ragdoll::definition::{JointLabel, JointVariant};
 
         let joint_entity = match &joint.variant {
@@ -174,7 +176,7 @@ pub fn spawn_ragdoll_avian(
         };
         commands
             .entity(joint_entity)
-            .insert(JointLabel(joint.label.clone()));
+            .insert((JointLabel(joint.label.clone()), JointCollisionDisabled));
         commands.entity(root).add_child(joint_entity);
         spawned.joints.insert(joint.id, joint_entity);
     }
