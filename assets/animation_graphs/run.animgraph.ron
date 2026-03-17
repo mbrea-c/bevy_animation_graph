@@ -1,11 +1,19 @@
 (
     nodes: [
         (
-            id: "262373b6-5b35-4ca2-a508-3c4b3e471fda",
+            id: "c16dc0d9-7fb4-40b6-ab59-ee7c4361db1f",
             name: "",
             inner: {
-                "bevy_animation_graph::builtin_nodes::EventMarkupNode": (
-                    event_tracks: {},
+                "bevy_animation_graph::builtin_nodes::FlipLRNode": (
+                    config: (
+                        name_mapper: Pattern((
+                            key_1: "L",
+                            key_2: "R",
+                            pattern_before: "^.*",
+                            pattern_after: "$",
+                        )),
+                        mode: MirrorX,
+                    ),
                 ),
             },
             should_debug: false,
@@ -55,19 +63,11 @@
             should_debug: false,
         ),
         (
-            id: "c16dc0d9-7fb4-40b6-ab59-ee7c4361db1f",
+            id: "262373b6-5b35-4ca2-a508-3c4b3e471fda",
             name: "",
             inner: {
-                "bevy_animation_graph::builtin_nodes::FlipLRNode": (
-                    config: (
-                        name_mapper: Pattern((
-                            key_1: "L",
-                            key_2: "R",
-                            pattern_before: "^.*",
-                            pattern_after: "$",
-                        )),
-                        mode: MirrorX,
-                    ),
+                "bevy_animation_graph::builtin_nodes::EventMarkupNode": (
+                    event_tracks: {},
                 ),
             },
             should_debug: false,
@@ -77,7 +77,6 @@
         NodeTime("c16dc0d9-7fb4-40b6-ab59-ee7c4361db1f", "time"): NodeTime("939ac6ef-20da-4151-90e6-11461812b22d"),
         NodeData("262373b6-5b35-4ca2-a508-3c4b3e471fda", "pose"): NodeData("75a8c5f5-28a4-411b-993c-8e3f15b1867f", "pose"),
         NodeData("75a8c5f5-28a4-411b-993c-8e3f15b1867f", "pose"): NodeData("6cb9db31-c8aa-4d7b-a7af-d6a3206c9da8", "pose"),
-        NodeData("6cb9db31-c8aa-4d7b-a7af-d6a3206c9da8", "pose_b"): NodeData("c16dc0d9-7fb4-40b6-ab59-ee7c4361db1f", "pose"),
         NodeTime("75a8c5f5-28a4-411b-993c-8e3f15b1867f", "time"): NodeTime("6cb9db31-c8aa-4d7b-a7af-d6a3206c9da8"),
         OutputData("pose"): NodeData("262373b6-5b35-4ca2-a508-3c4b3e471fda", "pose"),
         OutputTime: NodeTime("262373b6-5b35-4ca2-a508-3c4b3e471fda"),
@@ -87,6 +86,7 @@
         NodeTime("6cb9db31-c8aa-4d7b-a7af-d6a3206c9da8", "time_b"): NodeTime("c16dc0d9-7fb4-40b6-ab59-ee7c4361db1f"),
         NodeTime("262373b6-5b35-4ca2-a508-3c4b3e471fda", "time"): NodeTime("75a8c5f5-28a4-411b-993c-8e3f15b1867f"),
         NodeTime("6cb9db31-c8aa-4d7b-a7af-d6a3206c9da8", "time_a"): NodeTime("5298fece-5bca-4327-802b-70966468855e"),
+        NodeData("6cb9db31-c8aa-4d7b-a7af-d6a3206c9da8", "pose_b"): NodeData("c16dc0d9-7fb4-40b6-ab59-ee7c4361db1f", "pose"),
     },
     io_spec: (
         input_times: [],
@@ -106,12 +106,12 @@
     default_data: {},
     editor_metadata: (
         node_positions: {
-            "262373b6-5b35-4ca2-a508-3c4b3e471fda": (445.35938, 117.71484),
+            "c16dc0d9-7fb4-40b6-ab59-ee7c4361db1f": (-34.76953, 225.59375),
             "939ac6ef-20da-4151-90e6-11461812b22d": (-183.46875, 221.38672),
             "5298fece-5bca-4327-802b-70966468855e": (-79.09766, 38.570313),
             "6cb9db31-c8aa-4d7b-a7af-d6a3206c9da8": (133.85547, 109.23828),
             "75a8c5f5-28a4-411b-993c-8e3f15b1867f": (287.90234, 113.95703),
-            "c16dc0d9-7fb4-40b6-ab59-ee7c4361db1f": (-34.76953, 225.59375),
+            "262373b6-5b35-4ca2-a508-3c4b3e471fda": (445.35938, 117.71484),
         },
         input_position: (132.7539, 482.0586),
         output_position: (627.91016, 117.34766),
