@@ -81,9 +81,13 @@ impl<'a> egui::Widget for DataValueWidget<'a> {
                     response |= ui.add(EntityPathWidget::new_salted(entity_path, "entity path"));
                 }
                 DataValue::BoneMask(bone_mask) => {
-                    response |= PopupWidget::new_salted("bone mask popup").ui(ui, |ui| {
-                        ui.add(BoneMaskWidget::new(bone_mask).with_skeleton(self.skeleton))
-                    });
+                    response |= PopupWidget::new_salted("bone mask popup")
+                        .with_max_width(500.)
+                        .ui(ui, |ui| {
+                            ui.add(
+                                BoneMaskWidget::new(bone_mask).with_skeleton(self.skeleton),
+                            )
+                        });
                 }
                 DataValue::Pose(_) => {
                     response |= ui.label("Pose value editing not supported");
