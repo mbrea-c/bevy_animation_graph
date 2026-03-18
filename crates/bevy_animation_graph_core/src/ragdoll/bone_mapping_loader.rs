@@ -13,6 +13,7 @@ use crate::{
         definition::BodyId,
     },
     symmetry::serial::SymmetryConfigSerial,
+    utils::normalize_asset_path,
 };
 
 #[derive(Default, TypePath)]
@@ -76,8 +77,8 @@ impl RagdollBoneMapSerial {
         Some(Self {
             bones_from_bodies: bones_from_bodies.clone(),
             bodies_from_bones: bodies_from_bones.clone(),
-            skeleton: skeleton.path()?.to_owned(),
-            ragdoll: ragdoll.path()?.to_owned(),
+            skeleton: normalize_asset_path(skeleton.path()?.to_owned()),
+            ragdoll: normalize_asset_path(ragdoll.path()?.to_owned()),
             skeleton_symmetry: SymmetryConfigSerial::from_value(skeleton_symmetry),
         })
     }

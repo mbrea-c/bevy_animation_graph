@@ -1,5 +1,33 @@
 use std::{hash::Hash, marker::PhantomData};
 
+/// Creates a child Ui with a fixed width that won't overflow into the parent's
+/// horizontal layout, even if the child content is wider than `col_width`.
+fn fixed_width_column(
+    ui: &mut egui::Ui,
+    id: egui::Id,
+    col_width: f32,
+    add_contents: impl FnOnce(&mut egui::Ui) -> egui::Response,
+) -> egui::Response {
+    let col_rect = egui::Rect::from_min_size(
+        ui.cursor().min,
+        egui::vec2(col_width, ui.max_rect().bottom() - ui.cursor().min.y),
+    );
+    let mut child_ui = ui.new_child(
+        egui::UiBuilder::new()
+            .id_salt(id)
+            .max_rect(col_rect)
+            .layout(*ui.layout()),
+    );
+    let response = add_contents(&mut child_ui);
+    let used_height = child_ui.min_rect().height();
+    // Advance parent cursor by exactly col_width, regardless of child overflow
+    ui.advance_cursor_after_rect(egui::Rect::from_min_size(
+        col_rect.min,
+        egui::vec2(col_width, used_height),
+    ));
+    response
+}
+
 pub struct HashLikeWidget<'a, K, V, C, H> {
     pub map: &'a mut H,
     pub id_hash: egui::Id,
@@ -44,8 +72,8 @@ where
             let mut pending_delete_key_idx = None;
             let mut pending_add_key = None;
 
-            egui::Grid::new(self.id_hash.with("hashmap grid")).show(ui, |ui| {
-                for (idx, key) in buffer.ordering.iter_mut().enumerate() {
+            for (idx, key) in buffer.ordering.iter_mut().enumerate() {
+                ui.horizontal(|ui| {
                     ui.push_id(egui::Id::new(idx).with("delete button"), |ui| {
                         let button_response = ui.button("x");
                         if button_response.clicked() {
@@ -56,23 +84,28 @@ where
                         response |= button_response;
                     });
 
-                    ui.push_id(egui::Id::new(idx).with("edit existing key"), |ui| {
-                        response |= self.map.edit_existing_key(ui, key);
-                    });
+                    let spacing = ui.spacing().item_spacing.x;
+                    let col_width = (ui.available_width() - spacing).max(0.) / 2.0;
 
-                    ui.push_id(egui::Id::new(idx).with("edit existing value"), |ui| {
-                        response |= self.map.edit_existing_value_for(ui, key);
-                    });
+                    response |= fixed_width_column(
+                        ui,
+                        egui::Id::new(idx).with("edit existing key"),
+                        col_width,
+                        |ui| self.map.edit_existing_key(ui, key),
+                    );
+                    response |= fixed_width_column(
+                        ui,
+                        egui::Id::new(idx).with("edit existing value"),
+                        col_width,
+                        |ui| self.map.edit_existing_value_for(ui, key),
+                    );
+                });
+            }
 
-                    ui.end_row();
-                }
+            ui.separator();
 
-                ui.separator();
-                ui.separator();
-                ui.separator();
-                ui.end_row();
-
-                ui.push_id(egui::Id::new(-1).with("create button"), |ui| {
+            ui.horizontal(|ui| {
+                ui.push_id(egui::Id::new(-1i32).with("create button"), |ui| {
                     let button_response = ui.button("+");
                     if button_response.clicked() {
                         pending_add_key = Some(key.clone());
@@ -83,13 +116,21 @@ where
                     response |= button_response;
                 });
 
-                ui.push_id(egui::Id::new(-1).with("edit new key"), |ui| {
-                    response |= self.map.edit_new_key(ui, key, context);
-                });
+                let spacing = ui.spacing().item_spacing.x;
+                let col_width = (ui.available_width() - spacing).max(0.) / 2.0;
 
-                ui.push_id(egui::Id::new(-1).with("edit new value"), |ui| {
-                    response |= self.map.edit_new_value(ui, value, context);
-                });
+                response |= fixed_width_column(
+                    ui,
+                    egui::Id::new(-1i32).with("edit new key"),
+                    col_width,
+                    |ui| self.map.edit_new_key(ui, key, context),
+                );
+                response |= fixed_width_column(
+                    ui,
+                    egui::Id::new(-1i32).with("edit new value"),
+                    col_width,
+                    |ui| self.map.edit_new_value(ui, value, context),
+                );
             });
 
             if let Some(delete_idx) = pending_delete_key_idx {

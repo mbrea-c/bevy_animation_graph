@@ -6,7 +6,7 @@ use crate::{
     context::spec_context::NodeSpec,
     errors::{AssetLoaderError, SavingError},
     state_machine::high_level::{DirectTransition, TransitionData, TransitionKind},
-    utils::loading::TryLoad,
+    utils::{loading::TryLoad, normalize_asset_path},
 };
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -24,11 +24,13 @@ impl TryFrom<&State> for StateSerial {
         Ok(Self {
             id: value.id,
             label: value.label.clone(),
-            graph: value
-                .graph
-                .path()
-                .ok_or(SavingError::MissingAssetPath(value.graph.id().untyped()))?
-                .to_owned(),
+            graph: normalize_asset_path(
+                value
+                    .graph
+                    .path()
+                    .ok_or(SavingError::MissingAssetPath(value.graph.id().untyped()))?
+                    .to_owned(),
+            ),
             state_transition: if let Some(t) = &value.state_transition {
                 Some(TransitionDataSerial::try_from(t)?)
             } else {
@@ -111,10 +113,12 @@ impl TryFrom<&TransitionKind> for TransitionKindSerial {
         Ok(match value {
             TransitionKind::Immediate => Self::Immediate,
             TransitionKind::Graph { graph, timed } => Self::Graph {
-                graph: graph
-                    .path()
-                    .ok_or(SavingError::MissingAssetPath(graph.id().untyped()))?
-                    .to_owned(),
+                graph: normalize_asset_path(
+                    graph
+                        .path()
+                        .ok_or(SavingError::MissingAssetPath(graph.id().untyped()))?
+                        .to_owned(),
+                ),
                 timed: *timed,
             },
         })

@@ -193,9 +193,18 @@ impl<'a, I: Clone + std::fmt::Debug + Eq + std::hash::Hash + Default + Send + Sy
         input: &mut I,
         spec: &mut DataSpec,
     ) -> egui::Response {
-        let mut response = show_i(ui, input);
-        response |= ui.add(DataSpecWidget::new_salted(spec, "data spec widget"));
-
+        let mut response = ui.allocate_response(egui::Vec2::ZERO, egui::Sense::hover());
+        egui_extras::StripBuilder::new(ui)
+            .size(egui_extras::Size::remainder())
+            .size(egui_extras::Size::initial(80.))
+            .horizontal(|mut strip| {
+                strip.cell(|ui| {
+                    response |= show_i(ui, input);
+                });
+                strip.cell(|ui| {
+                    response |= ui.add(DataSpecWidget::new_salted(spec, "data spec widget"));
+                });
+            });
         response
     }
 
@@ -296,9 +305,19 @@ impl<'a, I: Clone + std::fmt::Debug + Eq + std::hash::Hash + Default + Send + Sy
         input: &mut PinId,
         spec: &mut DataSpec,
     ) -> egui::Response {
-        let mut response = ui.add(egui::TextEdit::singleline(input).desired_width(100.));
-        response |= ui.add(DataSpecWidget::new_salted(spec, "data spec widget"));
-
+        let mut response = ui.allocate_response(egui::Vec2::ZERO, egui::Sense::hover());
+        egui_extras::StripBuilder::new(ui)
+            .size(egui_extras::Size::remainder())
+            .size(egui_extras::Size::initial(80.))
+            .horizontal(|mut strip| {
+                strip.cell(|ui| {
+                    response |=
+                        ui.add(egui::TextEdit::singleline(input).desired_width(f32::INFINITY));
+                });
+                strip.cell(|ui| {
+                    response |= ui.add(DataSpecWidget::new_salted(spec, "data spec widget"));
+                });
+            });
         response
     }
 

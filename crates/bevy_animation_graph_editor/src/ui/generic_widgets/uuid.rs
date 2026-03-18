@@ -46,7 +46,8 @@ impl<'a> egui::Widget for UuidWidget<'a> {
             });
 
             let mut response = ui.add(
-                egui::TextEdit::singleline(&mut data.buffer).min_size(egui::Vec2::new(250., 0.)),
+                egui::TextEdit::singleline(&mut data.buffer)
+                    .desired_width(ui.available_width()),
             );
 
             // Mark non-changed; we only consider the response changed if the uuid string is valid
