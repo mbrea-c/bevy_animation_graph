@@ -48,7 +48,9 @@ impl<'a> egui::Widget for GraphInputPinWidget<'a> {
                 GraphInputPin::Passthrough(pin_id)
                 | GraphInputPin::FromFsmSource(pin_id)
                 | GraphInputPin::FromFsmTarget(pin_id) => {
-                    response |= ui.add(egui::TextEdit::singleline(pin_id).desired_width(100.));
+                    response |= ui.add(
+                        egui::TextEdit::singleline(pin_id).desired_width(ui.available_width()),
+                    );
                 }
                 GraphInputPin::FsmBuiltin(fsm_builtin_pin) => {
                     let original = fsm_builtin_pin.clone();
