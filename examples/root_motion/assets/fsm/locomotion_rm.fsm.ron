@@ -1,0 +1,188 @@
+(
+    states: [
+        (
+            id: "a0000001-0000-0000-0000-000000000001",
+            label: "idle",
+            graph: "animation_graphs/locomotion_idle.animgraph.ron",
+            state_transition: None,
+        ),
+        (
+            id: "a0000001-0000-0000-0000-000000000002",
+            label: "walk",
+            graph: "animation_graphs/locomotion_walk.animgraph.ron",
+            state_transition: None,
+        ),
+        (
+            id: "a0000001-0000-0000-0000-000000000003",
+            label: "run",
+            graph: "animation_graphs/locomotion_run.animgraph.ron",
+            state_transition: None,
+        ),
+        (
+            id: "a0000001-0000-0000-0000-000000000004",
+            label: "jump",
+            graph: "animation_graphs/locomotion_jump.animgraph.ron",
+            state_transition: None,
+        ),
+    ],
+    transitions: [
+        // Idle <-> Walk
+        (
+            id: "b0000001-0000-0000-0000-000000000001",
+            source: "a0000001-0000-0000-0000-000000000001",
+            target: "a0000001-0000-0000-0000-000000000002",
+            data: (
+                kind: Graph(
+                    graph: "animation_graphs/blend_transition.animgraph.ron",
+                    timed: Some(0.2),
+                ),
+                ignore_external_events: false,
+                reset_target_state: false,
+            ),
+        ),
+        (
+            id: "b0000001-0000-0000-0000-000000000002",
+            source: "a0000001-0000-0000-0000-000000000002",
+            target: "a0000001-0000-0000-0000-000000000001",
+            data: (
+                kind: Graph(
+                    graph: "animation_graphs/blend_transition.animgraph.ron",
+                    timed: Some(0.2),
+                ),
+                ignore_external_events: false,
+                reset_target_state: false,
+            ),
+        ),
+        // Walk <-> Run (foot-synced)
+        (
+            id: "b0000001-0000-0000-0000-000000000003",
+            source: "a0000001-0000-0000-0000-000000000002",
+            target: "a0000001-0000-0000-0000-000000000003",
+            data: (
+                kind: Graph(
+                    graph: "animation_graphs/blend_transition.animgraph.ron",
+                    timed: Some(0.2),
+                ),
+                ignore_external_events: false,
+                reset_target_state: false,
+            ),
+        ),
+        (
+            id: "b0000001-0000-0000-0000-000000000004",
+            source: "a0000001-0000-0000-0000-000000000003",
+            target: "a0000001-0000-0000-0000-000000000002",
+            data: (
+                kind: Graph(
+                    graph: "animation_graphs/blend_transition.animgraph.ron",
+                    timed: Some(0.2),
+                ),
+                ignore_external_events: false,
+                reset_target_state: false,
+            ),
+        ),
+        // Idle -> Run (direct, for Shift+W from standstill)
+        (
+            id: "b0000001-0000-0000-0000-000000000005",
+            source: "a0000001-0000-0000-0000-000000000001",
+            target: "a0000001-0000-0000-0000-000000000003",
+            data: (
+                kind: Graph(
+                    graph: "animation_graphs/blend_transition.animgraph.ron",
+                    timed: Some(0.2),
+                ),
+                ignore_external_events: false,
+                reset_target_state: false,
+            ),
+        ),
+        // Run -> Idle
+        (
+            id: "b0000001-0000-0000-0000-000000000006",
+            source: "a0000001-0000-0000-0000-000000000003",
+            target: "a0000001-0000-0000-0000-000000000001",
+            data: (
+                kind: Graph(
+                    graph: "animation_graphs/blend_transition.animgraph.ron",
+                    timed: Some(0.2),
+                ),
+                ignore_external_events: false,
+                reset_target_state: false,
+            ),
+        ),
+        // Any -> Jump
+        (
+            id: "b0000001-0000-0000-0000-000000000010",
+            source: "a0000001-0000-0000-0000-000000000001",
+            target: "a0000001-0000-0000-0000-000000000004",
+            data: (
+                kind: Graph(
+                    graph: "animation_graphs/blend_transition.animgraph.ron",
+                    timed: Some(0.15),
+                ),
+                ignore_external_events: false,
+                reset_target_state: true,
+            ),
+        ),
+        (
+            id: "b0000001-0000-0000-0000-000000000011",
+            source: "a0000001-0000-0000-0000-000000000002",
+            target: "a0000001-0000-0000-0000-000000000004",
+            data: (
+                kind: Graph(
+                    graph: "animation_graphs/blend_transition.animgraph.ron",
+                    timed: Some(0.15),
+                ),
+                ignore_external_events: false,
+                reset_target_state: true,
+            ),
+        ),
+        (
+            id: "b0000001-0000-0000-0000-000000000012",
+            source: "a0000001-0000-0000-0000-000000000003",
+            target: "a0000001-0000-0000-0000-000000000004",
+            data: (
+                kind: Graph(
+                    graph: "animation_graphs/blend_transition.animgraph.ron",
+                    timed: Some(0.15),
+                ),
+                ignore_external_events: false,
+                reset_target_state: true,
+            ),
+        ),
+        // Jump -> Idle
+        (
+            id: "b0000001-0000-0000-0000-000000000020",
+            source: "a0000001-0000-0000-0000-000000000004",
+            target: "a0000001-0000-0000-0000-000000000001",
+            data: (
+                kind: Graph(
+                    graph: "animation_graphs/blend_transition.animgraph.ron",
+                    timed: Some(0.2),
+                ),
+                ignore_external_events: false,
+                reset_target_state: false,
+            ),
+        ),
+    ],
+    start_state: "a0000001-0000-0000-0000-000000000001",
+    node_spec: (
+        input_times: [],
+        input_data: {},
+        output_time: true,
+        output_data: {
+            "pose": Pose,
+        },
+        input_order: {},
+        output_order: {
+            Data("pose"): 0,
+            Time: 1,
+        },
+    ),
+    editor_metadata: (
+        states: {
+            "a0000001-0000-0000-0000-000000000001": (100.0, 100.0),
+            "a0000001-0000-0000-0000-000000000002": (400.0, 100.0),
+            "a0000001-0000-0000-0000-000000000003": (100.0, 350.0),
+            "a0000001-0000-0000-0000-000000000004": (400.0, 350.0),
+        },
+    ),
+)
