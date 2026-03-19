@@ -1,0 +1,55 @@
+(
+    nodes: [
+        (
+            id: "20000000-0000-0000-0000-000000000001",
+            name: "Walking Clip",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::ClipNode": (
+                    clip: "animations/mixamo_walking.anim.ron",
+                    override_duration: None,
+                    override_interpolation: None,
+                    root_motion_mode: GroundPlane,
+                    root_motion_bone: Some(["Armature", "mixamorig:Hips"]),
+                ),
+            },
+            should_debug: false,
+        ),
+        (
+            id: "20000000-0000-0000-0000-000000000002",
+            name: "Loop",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::LoopNode": (
+                    interpolation_period: 0.0,
+                ),
+            },
+            should_debug: false,
+        ),
+    ],
+    edges_inverted: {
+        OutputData("pose"): NodeData("20000000-0000-0000-0000-000000000002", "pose"),
+        OutputTime: NodeTime("20000000-0000-0000-0000-000000000002"),
+        NodeData("20000000-0000-0000-0000-000000000002", "pose"): NodeData("20000000-0000-0000-0000-000000000001", "pose"),
+        NodeTime("20000000-0000-0000-0000-000000000002", "time"): NodeTime("20000000-0000-0000-0000-000000000001"),
+    },
+    io_spec: (
+        input_times: [],
+        input_data: {},
+        output_time: true,
+        output_data: { "pose": Pose },
+        input_order: {},
+        output_order: { Data("pose"): 0, Time: 1 },
+    ),
+    default_data: {},
+    editor_metadata: (
+        node_positions: {
+            "20000000-0000-0000-0000-000000000001": (100.0, 150.0),
+            "20000000-0000-0000-0000-000000000002": (350.0, 150.0),
+        },
+        input_position: (-150.0, 150.0),
+        output_position: (600.0, 150.0),
+        input_param_order: {},
+        input_time_order: {},
+        output_data_order: {},
+        output_pose_order: {},
+    ),
+)

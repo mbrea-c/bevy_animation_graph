@@ -5581,6 +5581,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "root_motion"
+version = "0.0.0"
+dependencies = [
+ "bevy",
+ "bevy_animation_graph",
+]
+
+[[package]]
 name = "roxmltree"
 version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
