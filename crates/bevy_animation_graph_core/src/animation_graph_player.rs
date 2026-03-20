@@ -340,4 +340,8 @@ impl AnimationGraphPlayer {
     pub fn bone_entity(&self, bone_id: BoneId) -> Option<Entity> {
         self.entity_map.get(&bone_id).copied()
     }
+
+    pub fn get_spawned_ragdoll(&self) -> Option<&SpawnedRagdoll> {
+        self.spawned_ragdoll.as_ref()
+    }
 }

@@ -95,4 +95,8 @@ impl EventQueue {
     pub fn add_event(&mut self, event: SampledEvent) {
         self.events.push(event);
     }
+
+    pub fn add_instant_event(&mut self, event: AnimationEvent) {
+        self.events.push(SampledEvent::instant(event));
+    }
 }

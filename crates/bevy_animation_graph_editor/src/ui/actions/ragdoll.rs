@@ -530,8 +530,14 @@ impl RecomputeRagdollSymmetry {
                 let mirrored_collider_ids = original_collider_ids
                     .into_iter()
                     .map(|cid| {
-                        mirror_collider(cid, &mut reverse_collider_index, ragdoll)
-                            .expect("Should always succeed")
+                        mirror_collider(
+                            cid,
+                            &mut reverse_collider_index,
+                            ragdoll,
+                            &suffixes,
+                            &SymmertryMode::MirrorX,
+                        )
+                        .expect("Should always succeed")
                     })
                     .collect();
 
@@ -691,6 +697,8 @@ fn mirror_collider(
     original_collider_id: ColliderId,
     reverse_index: &mut HashMap<ColliderId, ColliderId>,
     ragdoll: &mut Ragdoll,
+    suffixes: &SymmetrySuffixes,
+    mode: &SymmertryMode,
 ) -> Option<ColliderId> {
     if !reverse_index.contains_key(&original_collider_id) {
         // Create new
@@ -710,12 +718,20 @@ fn mirror_collider(
         return None;
     };
 
-    mirrored_collider.local_offset = original_collider.local_offset;
+    let original_label = original_collider
+        .label
+        .strip_suffix(&suffixes.original)
+        .unwrap_or(&original_collider.label)
+        .to_owned();
+
+    let mirror_label = format!("{}{}", original_label, suffixes.mirror);
+
+    mirrored_collider.local_offset = mode.apply_isometry_3d(original_collider.local_offset);
     mirrored_collider.shape = original_collider.shape.clone();
     mirrored_collider.layer_membership = original_collider.layer_membership;
     mirrored_collider.layer_filter = original_collider.layer_filter;
     mirrored_collider.override_layers = original_collider.override_layers;
-    mirrored_collider.label = original_collider.label.clone();
+    mirrored_collider.label = mirror_label;
     mirrored_collider.created_from = Some(original_collider_id);
 
     Some(*mirrored_collider_id)
