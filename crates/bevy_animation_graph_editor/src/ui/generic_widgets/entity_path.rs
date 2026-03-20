@@ -46,9 +46,11 @@ impl<'a> egui::Widget for EntityPathWidget<'a> {
                     .clone()
             });
 
-            let response = ui.add(
+            let text_edit_response = ui.add(
                 egui::TextEdit::singleline(&mut buffer.value).min_size(egui::Vec2::new(350., 0.)),
             );
+
+            let mut final_response = text_edit_response.clone();
 
             let top_k = self
                 .options
@@ -57,24 +59,40 @@ impl<'a> egui::Widget for EntityPathWidget<'a> {
                 .take(10)
                 .collect::<Vec<_>>();
 
-            if !top_k.is_empty() && response.has_focus() {
-                response.show_tooltip_ui(|ui| {
+            egui::Popup::menu(&text_edit_response)
+                .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
+                .open_memory(
+                    (!top_k.is_empty() && text_edit_response.has_focus())
+                        .then_some(egui::SetOpenCommand::Bool(true)),
+                )
+                .show(|ui| {
                     for opt in top_k {
                         let slashed = opt.to_slashed_string();
                         let Some(rest) = slashed.strip_prefix(&buffer.value) else {
                             continue;
                         };
 
-                        ui.horizontal(|ui| {
-                            ui.spacing_mut().item_spacing = egui::Vec2::ZERO;
-                            ui.label(egui::RichText::new(&buffer.value).strong());
-                            ui.label(egui::RichText::new(rest));
-                        });
+                        let r = ui
+                            .horizontal(|ui| {
+                                ui.spacing_mut().item_spacing = egui::Vec2::ZERO;
+                                let r = ui.add(
+                                    egui::Button::new((
+                                        egui::RichText::new(&buffer.value).strong(),
+                                        egui::RichText::new(rest),
+                                    ))
+                                    .frame(false),
+                                );
+                                r
+                            })
+                            .inner;
+                        if r.clicked() {
+                            *self.entity_path = (*opt).clone();
+                            final_response.mark_changed();
+                        }
                     }
                 });
-            }
 
-            if response.changed()
+            if text_edit_response.changed()
                 && let Some(new_path) =
                     EntityPath::from_slashed_string_if_safe(buffer.value.clone())
             {
@@ -83,7 +101,7 @@ impl<'a> egui::Widget for EntityPathWidget<'a> {
 
             ui.memory_mut(|mem| mem.data.insert_temp(buffer_id, buffer));
 
-            response
+            final_response
         })
         .inner
     }

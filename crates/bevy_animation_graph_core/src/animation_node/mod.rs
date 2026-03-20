@@ -11,7 +11,7 @@ use bevy::{
 use uuid::Uuid;
 
 use crate::{
-    animation_graph::{NodeId, PinId},
+    animation_graph::{NodeId, PinId, TimeUpdate},
     animation_node::dyn_node_like::DynNodeLike,
     context::{
         new_context::NodeContext,
@@ -29,6 +29,16 @@ pub trait NodeLike: NodeLikeClone + Send + Sync + Debug + Reflect + 'static {
 
     fn update(&self, ctx: NodeContext) -> Result<(), GraphError>;
     fn spec(&self, ctx: SpecContext) -> Result<(), GraphError>;
+
+    /// "Last-resort" method to fetch a time update from a node that hasn't exposed it yet,
+    /// but may already have it ready internally. For example, FSM nodes.
+    fn try_get_time(&self, ctx: NodeContext, pin: PinId) -> Result<TimeUpdate, GraphError> {
+        Err(GraphError::ExtraTimeUpdateNotAvailable {
+            graph: ctx.graph_context.context_id,
+            node: ctx.node_id,
+            pin,
+        })
+    }
 
     /// The name of this node.
     fn display_name(&self) -> String;

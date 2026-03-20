@@ -4,6 +4,7 @@ use egui::Widget;
 
 use crate::ui::{
     generic_widgets::{isometry3d::Isometry3dWidget, u32_flags::U32Flags},
+    reflect_lib::ReflectWidgetContext,
     utils::using_inspector_env,
 };
 
@@ -48,6 +49,10 @@ impl Widget for ColliderInspector<'_> {
                 &mut self.collider.override_layers,
             ));
             ui.end_row();
+
+            response |= ReflectWidgetContext::scope(self.world, |ctx| {
+                ctx.draw(ui, &mut self.collider.mass_mode)
+            });
 
             // TODO: Figure out a better way to handle enum UIs
             response |= ui.label("shape:");

@@ -1,7 +1,7 @@
 use bevy_animation_graph::core::{ragdoll::bone_mapping::BodyMapping, skeleton::Skeleton};
 use egui::Widget;
 
-use crate::ui::generic_widgets::{bone_id::BoneIdWidget, isometry3d::Isometry3dWidget};
+use crate::ui::generic_widgets::{bone_id_via_path::BoneIdWidget, isometry3d::Isometry3dWidget};
 
 pub struct BodyMappingInspector<'a> {
     pub body_mapping: &'a mut BodyMapping,
@@ -20,10 +20,8 @@ impl Widget for BodyMappingInspector<'_> {
 
                 response |= ui.label("target bone:");
                 let mut bone_id = bone.bone.id();
-                response |= ui.add(
-                    BoneIdWidget::new_salted(&mut bone_id, "bone id picker")
-                        .with_skeleton(Some(self.skeleton)),
-                );
+                response |=
+                    ui.add(BoneIdWidget::new(&mut bone_id, self.skeleton).salted("bone id picker"));
                 if let Some(path) = self.skeleton.id_to_path(bone_id) {
                     bone.bone = path;
                 }

@@ -104,7 +104,7 @@ impl NativeEditorWindowExtension for GraphEditorWindow {
                         else {
                             ctx.editor_actions.push(EditorAction::Graph(
                                 GraphAction::GenerateIndices(GenerateIndices {
-                                    graph: active_graph.handle.id(),
+                                    graph: active_graph.handle.clone(),
                                 }),
                             ));
                             return None;
@@ -134,7 +134,7 @@ impl NativeEditorWindowExtension for GraphEditorWindow {
                         ) else {
                             ctx.editor_actions.push(EditorAction::Graph(
                                 GraphAction::GenerateIndices(GenerateIndices {
-                                    graph: active_graph.handle.id(),
+                                    graph: active_graph.handle.clone(),
                                 }),
                             ));
                             return None;

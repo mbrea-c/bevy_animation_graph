@@ -1,6 +1,5 @@
 /target
 .direnv
-.envrc
 post-update.dot
 post-update.pdf
 fixed-post-update.dot

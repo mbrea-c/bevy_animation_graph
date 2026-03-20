@@ -1,11 +1,13 @@
 (
     states: [
         (
-            id: "6fdc6f33-f2b4-4b40-8dc2-b327a5fbe014",
-            label: "dead",
-            graph: "animation_graphs/fsm_state_dead.animgraph.ron",
+            id: "1d1b3961-4e30-4ad7-a62f-db69763b1b46",
+            label: "wounded",
+            graph: "animation_graphs/fsm_state_wounded.animgraph.ron",
             state_transition: Some((
                 kind: Immediate,
+                ignore_external_events: false,
+                reset_target_state: false,
             )),
         ),
         (
@@ -14,14 +16,18 @@
             graph: "animation_graphs/fsm_state_ok.animgraph.ron",
             state_transition: Some((
                 kind: Immediate,
+                ignore_external_events: false,
+                reset_target_state: false,
             )),
         ),
         (
-            id: "1d1b3961-4e30-4ad7-a62f-db69763b1b46",
-            label: "wounded",
-            graph: "animation_graphs/fsm_state_wounded.animgraph.ron",
+            id: "6fdc6f33-f2b4-4b40-8dc2-b327a5fbe014",
+            label: "dead",
+            graph: "animation_graphs/fsm_state_dead.animgraph.ron",
             state_transition: Some((
                 kind: Immediate,
+                ignore_external_events: false,
+                reset_target_state: false,
             )),
         ),
     ],
