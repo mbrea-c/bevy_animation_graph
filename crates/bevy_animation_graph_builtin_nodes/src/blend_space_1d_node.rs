@@ -56,18 +56,21 @@ impl BlendSpace1DNode {
     /// Finds the two surrounding points and returns (index_low, index_high, blend_factor).
     /// The blend factor is 0.0 at the low point and 1.0 at the high point.
     /// If the parameter is outside the range, clamps to the nearest endpoint.
-    fn find_blend_pair(&self, parameter: f32) -> (usize, usize, f32) {
+    /// Returns `None` if there are fewer than 2 points.
+    fn find_blend_pair(&self, parameter: f32) -> Option<(usize, usize, f32)> {
         let n = self.points.len();
-        assert!(n >= 2, "BlendSpace1D requires at least 2 points");
+        if n < 2 {
+            return None;
+        }
 
         // Clamp below the first point
         if parameter <= self.points[0].value {
-            return (0, 0, 0.0);
+            return Some((0, 0, 0.0));
         }
 
         // Clamp above the last point
         if parameter >= self.points[n - 1].value {
-            return (n - 1, n - 1, 0.0);
+            return Some((n - 1, n - 1, 0.0));
         }
 
         // Find the segment containing the parameter
@@ -81,19 +84,21 @@ impl BlendSpace1DNode {
                 } else {
                     0.0
                 };
-                return (i, i + 1, factor);
+                return Some((i, i + 1, factor));
             }
         }
 
         // Fallback (shouldn't reach here with sorted points)
-        (n - 1, n - 1, 0.0)
+        Some((n - 1, n - 1, 0.0))
     }
 }
 
 impl NodeLike for BlendSpace1DNode {
     fn duration(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
         let parameter = ctx.data_back(Self::PARAMETER)?.as_f32()?;
-        let (low, high, factor) = self.find_blend_pair(parameter);
+        let Some((low, high, factor)) = self.find_blend_pair(parameter) else {
+            return Ok(());
+        };
 
         // Return the duration of the higher-weighted input
         let master_idx = if factor <= 0.5 { low } else { high };
@@ -107,7 +112,9 @@ impl NodeLike for BlendSpace1DNode {
     fn update(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
         let input = ctx.time_update_fwd()?;
         let parameter = ctx.data_back(Self::PARAMETER)?.as_f32()?;
-        let (low_idx, high_idx, factor) = self.find_blend_pair(parameter);
+        let Some((low_idx, high_idx, factor)) = self.find_blend_pair(parameter) else {
+            return Ok(());
+        };
 
         let low_key = &self.points[low_idx].id;
         let high_key = &self.points[high_idx].id;
