@@ -10,7 +10,7 @@ use bevy::{
     reflect::prelude::*,
 };
 use bevy_animation_graph_core::{
-    animation_clip::{GraphClip, Interpolation},
+    animation_clip::{EntityPath, GraphClip, Interpolation},
     animation_graph::TimeUpdate,
     animation_node::{NodeLike, ReflectNodeLike},
     context::{new_context::NodeContext, spec_context::SpecContext},
@@ -21,7 +21,7 @@ use bevy_animation_graph_core::{
     errors::GraphError,
     event_track::sample_tracks,
     id::BoneId,
-    pose::{BonePose, Pose},
+    pose::{BonePose, Pose, RootMotionDelta, RootMotionMode},
 };
 
 #[derive(Reflect, Clone, Debug, Default)]
@@ -31,6 +31,10 @@ pub struct ClipNode {
     pub(crate) clip: Handle<GraphClip>,
     pub(crate) override_duration: Option<f32>,
     pub(crate) override_interpolation: Option<Interpolation>,
+    /// Controls whether and how root motion is extracted from this clip.
+    pub(crate) root_motion_mode: RootMotionMode,
+    /// Which bone to use as the root motion source. If `None`, uses the skeleton's root bone.
+    pub(crate) root_motion_bone: Option<EntityPath>,
 }
 
 impl ClipNode {
@@ -46,6 +50,8 @@ impl ClipNode {
             clip,
             override_duration,
             override_interpolation,
+            root_motion_mode: RootMotionMode::Disabled,
+            root_motion_bone: None,
         }
     }
 
@@ -131,6 +137,172 @@ impl NodeLike for ClipNode {
                 }
             }
             out_pose.add_bone(bone_pose, BoneId::from(*bone_id));
+        }
+
+        // --- Root motion extraction ---
+        if self.root_motion_mode != RootMotionMode::Disabled {
+            let root_bone_id = self.root_motion_bone.as_ref().map(|p| p.id()).or_else(|| {
+                ctx.graph_context
+                    .resources
+                    .skeleton_assets
+                    .get(&clip.skeleton)
+                    .map(|s| s.root())
+            });
+
+            if let Some(root_bone_id) = root_bone_id {
+                let target_id = root_bone_id.animation_target_id();
+
+                // Sample root bone at current time (already done above)
+                let current_bone = out_pose.get_bone(root_bone_id);
+                let current_translation = current_bone
+                    .and_then(|b| b.translation)
+                    .unwrap_or(Vec3::ZERO);
+                let current_rotation = current_bone
+                    .and_then(|b| b.rotation)
+                    .unwrap_or(Quat::IDENTITY);
+
+                // Helper: sample root bone translation/rotation at a given time
+                let has_root_curves = clip.curves.contains_key(&target_id);
+                let sample_root_at = |t: f32| -> (Vec3, Quat) {
+                    let mut tr = Vec3::ZERO;
+                    let mut rot = Quat::IDENTITY;
+                    if let Some(curves) = clip.curves.get(&target_id) {
+                        for curve in curves {
+                            let value = sample_animation_curve(curve, t);
+                            match value {
+                                CurveValue::Translation(v) => tr = v,
+                                CurveValue::Rotation(v) => rot = v,
+                                _ => {}
+                            }
+                        }
+                    }
+                    (tr, rot)
+                };
+
+                if !has_root_curves {
+                    bevy::log::warn_once!(
+                        "Root motion: no animation curves found for root bone {:?} \
+                         (target_id={:?}). The clip has {} bone entries.",
+                        self.root_motion_bone,
+                        target_id,
+                        clip.curves.len()
+                    );
+                }
+
+                let prev_time = ctx.prev_time();
+                let clamped_prev_time = prev_time.clamp(0., clip_duration);
+
+                // Determine whether time is flowing forward or backward.
+                // For absolute/event seeks we don't know the true direction,
+                // so we assume forward (can be refined with a heuristic later).
+                let flowing_forward = match time_update {
+                    TimeUpdate::Delta(dt) => dt >= 0.0,
+                    TimeUpdate::Absolute(_) | TimeUpdate::PercentOfEvent { .. } => true,
+                };
+
+                // Compute delta, handling loop wraps correctly.
+                // The wrap detection and delta accumulation depend on the
+                // direction time is flowing.
+                let (mut delta_translation, mut delta_rotation) = if flowing_forward {
+                    if clamped_time < clamped_prev_time - f32::EPSILON {
+                        // Forward wrap: prev -> end, then start -> current
+                        let (end_tr, end_rot) = sample_root_at(clip_duration);
+                        let (prev_tr, prev_rot) = sample_root_at(clamped_prev_time);
+                        let (start_tr, start_rot) = sample_root_at(0.0);
+
+                        let dt1 = end_tr - prev_tr;
+                        let dr1 = prev_rot.inverse() * end_rot;
+                        let dt2 = current_translation - start_tr;
+                        let dr2 = start_rot.inverse() * current_rotation;
+
+                        (dt1 + dt2, dr1 * dr2)
+                    } else {
+                        // Normal forward (no wrap)
+                        let (prev_tr, prev_rot) = sample_root_at(clamped_prev_time);
+                        (
+                            current_translation - prev_tr,
+                            prev_rot.inverse() * current_rotation,
+                        )
+                    }
+                } else {
+                    // Backward playback
+                    if clamped_time > clamped_prev_time + f32::EPSILON {
+                        // Backward wrap: prev -> start, then end -> current
+                        let (start_tr, start_rot) = sample_root_at(0.0);
+                        let (prev_tr, prev_rot) = sample_root_at(clamped_prev_time);
+                        let (end_tr, end_rot) = sample_root_at(clip_duration);
+
+                        let dt1 = start_tr - prev_tr;
+                        let dr1 = prev_rot.inverse() * start_rot;
+                        let dt2 = current_translation - end_tr;
+                        let dr2 = end_rot.inverse() * current_rotation;
+
+                        (dt1 + dt2, dr1 * dr2)
+                    } else {
+                        // Normal backward (no wrap)
+                        let (prev_tr, prev_rot) = sample_root_at(clamped_prev_time);
+                        (
+                            current_translation - prev_tr,
+                            prev_rot.inverse() * current_rotation,
+                        )
+                    }
+                };
+
+                // Get rest pose for zeroing
+                let rest_local = ctx
+                    .graph_context
+                    .resources
+                    .skeleton_assets
+                    .get(&clip.skeleton)
+                    .and_then(|s| s.default_transforms(root_bone_id))
+                    .map(|dt| dt.local);
+                let rest_translation = rest_local.map(|t| t.translation).unwrap_or(Vec3::ZERO);
+                let rest_rotation = rest_local.map(|t| t.rotation).unwrap_or(Quat::IDENTITY);
+
+                // Apply mode filtering and zero root bone in visual pose.
+                match self.root_motion_mode {
+                    RootMotionMode::Full => {
+                        // Use full delta, zero root bone completely
+                        if let Some(bone_idx) = out_pose.paths.get(&root_bone_id).copied() {
+                            out_pose.bones[bone_idx].translation = Some(rest_translation);
+                            out_pose.bones[bone_idx].rotation = Some(rest_rotation);
+                        } else {
+                            bevy::log::warn!(
+                                "Root motion: could not find root bone in pose for zeroing. \
+                                 root_bone_id={:?}, pose has {} bones",
+                                root_bone_id,
+                                out_pose.paths.len()
+                            );
+                        }
+                    }
+                    RootMotionMode::GroundPlane => {
+                        // Extract only XZ translation + Y rotation
+                        // Keep Y translation and XZ rotation in visual pose
+                        delta_translation.y = 0.0;
+
+                        // Extract Y-axis rotation only
+                        let (axis, angle) = delta_rotation.to_axis_angle();
+                        let y_angle = angle * axis.y;
+                        delta_rotation = Quat::from_rotation_y(y_angle);
+
+                        // Zero only XZ translation in the visual pose.
+                        // Keep Y (vertical bob) and full rotation (decomposing and
+                        // removing only Y rotation cleanly is complex).
+                        if let Some(bone_idx) = out_pose.paths.get(&root_bone_id).copied()
+                            && let Some(ref mut t) = out_pose.bones[bone_idx].translation
+                        {
+                            t.x = rest_translation.x;
+                            t.z = rest_translation.z;
+                        }
+                    }
+                    RootMotionMode::Disabled => unreachable!(),
+                }
+
+                out_pose.root_motion = Some(RootMotionDelta {
+                    translation: delta_translation,
+                    rotation: delta_rotation,
+                });
+            }
         }
 
         ctx.set_data_fwd(Self::OUT_EVENT_QUEUE, DataValue::EventQueue(event_queue));

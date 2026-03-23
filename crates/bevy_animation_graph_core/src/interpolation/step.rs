@@ -104,7 +104,85 @@ impl InterpolateStep for Pose {
         }
 
         result.timestamp = self.timestamp;
+        result.skeleton = self.skeleton.clone();
+        // Step interpolation: pick one side's root motion based on threshold
+        result.root_motion = if f < 0.5 {
+            self.root_motion.clone()
+        } else {
+            other.root_motion.clone()
+        };
 
         result
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::pose::RootMotionDelta;
+
+    fn approx_eq_vec3(a: Vec3, b: Vec3, epsilon: f32) -> bool {
+        (a - b).length() < epsilon
+    }
+
+    fn make_pose_with_rm(t: Vec3) -> Pose {
+        Pose {
+            root_motion: Some(RootMotionDelta {
+                translation: t,
+                rotation: Quat::IDENTITY,
+            }),
+            ..Pose::default()
+        }
+    }
+
+    #[test]
+    fn test_step_picks_self_below_half() {
+        let a = make_pose_with_rm(Vec3::new(1.0, 0.0, 0.0));
+        let b = make_pose_with_rm(Vec3::new(0.0, 2.0, 0.0));
+
+        let result = a.interpolate_step(&b, 0.3);
+        let rm = result.root_motion.unwrap();
+        assert!(approx_eq_vec3(
+            rm.translation,
+            Vec3::new(1.0, 0.0, 0.0),
+            1e-5
+        ));
+    }
+
+    #[test]
+    fn test_step_picks_other_at_or_above_half() {
+        let a = make_pose_with_rm(Vec3::new(1.0, 0.0, 0.0));
+        let b = make_pose_with_rm(Vec3::new(0.0, 2.0, 0.0));
+
+        let result = a.interpolate_step(&b, 0.5);
+        let rm = result.root_motion.unwrap();
+        assert!(approx_eq_vec3(
+            rm.translation,
+            Vec3::new(0.0, 2.0, 0.0),
+            1e-5
+        ));
+    }
+
+    #[test]
+    fn test_step_no_root_motion() {
+        let a = Pose::default();
+        let b = Pose::default();
+
+        let result = a.interpolate_step(&b, 0.5);
+        assert!(result.root_motion.is_none());
+    }
+
+    #[test]
+    fn test_step_mixed_root_motion() {
+        let a = make_pose_with_rm(Vec3::new(1.0, 0.0, 0.0));
+        let b = Pose::default();
+
+        // f < 0.5: picks self (has root motion)
+        let result = a.interpolate_step(&b, 0.3);
+        assert!(result.root_motion.is_some());
+
+        // f >= 0.5: picks other (no root motion)
+        let result = a.interpolate_step(&b, 0.7);
+        assert!(result.root_motion.is_none());
     }
 }

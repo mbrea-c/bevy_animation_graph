@@ -83,12 +83,16 @@ impl NodeLike for LoopNode {
             // TODO: How to clear cache? time? pose?
             // ctx.clear_temp_cache(Self::IN_POSE);
             let old_time = pose.timestamp;
+            // Preserve root motion through the blend. Blending root motion deltas
+            // at the loop boundary causes jitter since the start_pose has a zero delta.
+            let root_motion = pose.root_motion.take();
             let alpha = (t - duration) / self.interpolation_period;
             let interpolator = LinearInterpolator {
                 bone_mask: BoneMask::all(),
             };
             interpolator.interpolate_pose(&mut pose, &start_pose, alpha);
             pose.timestamp = old_time;
+            pose.root_motion = root_motion;
         }
 
         let t_extra = curr_time.div_euclid(full_duration) * full_duration;

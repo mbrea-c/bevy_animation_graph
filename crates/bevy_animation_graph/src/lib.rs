@@ -81,6 +81,12 @@
 //!   suffixes to specify which side they are on.
 //! - [`LoopNode`]: Loops an animation input indefinitely.
 //! - [`SpeedNode`]: Adjust the playback speed of an animation input.
+//! - Root Motion: Animation clips can optionally extract root motion data. Configure
+//!   `root_motion_mode` on a [`ClipNode`] to extract the root bone's per-frame displacement.
+//!   The delta is carried through the graph alongside the pose and exposed via the
+//!   [`RootMotionOutput`] component for gameplay systems to consume.
+//!
+//! [`RootMotionOutput`]: crate::core::systems::RootMotionOutput
 //! - [`GraphNode`]: Nested animation graph. The node inputs and outputs match the nested graph's
 //! - [`RotationNode`]: Applies a (quaternion) rotation to a set of bones from the input pose defined using a bone mask.
 //!   inputs and outputs.

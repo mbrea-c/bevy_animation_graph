@@ -1,17 +1,108 @@
 use std::collections::VecDeque;
 
 use bevy::{
-    ecs::prelude::*, gizmos::gizmos::Gizmos, log::info_span, mesh::morph::MorphWeights,
-    platform::collections::HashMap, time::prelude::*, transform::prelude::*,
+    ecs::prelude::*, gizmos::gizmos::Gizmos, log::info_span, math::prelude::*,
+    mesh::morph::MorphWeights, platform::collections::HashMap, reflect::prelude::*,
+    time::prelude::*, transform::prelude::*,
 };
 
 use crate::{
+    animated_scene::AnimatedSceneInstance,
     animation_clip::EntityPath,
     animation_graph::TimeUpdate,
     animation_graph_player::{AnimationGraphPlayer, PlaybackState},
     context::system_resources::SystemResources,
     pose::BoneId,
 };
+
+/// Component that receives root motion deltas each frame from the animation system.
+///
+/// Add this component to an entity with an [`AnimationGraphPlayer`], or to a parent
+/// entity that has an [`AnimatedSceneInstance`] (the common case when using
+/// [`AnimatedSceneHandle`]).
+///
+/// The built-in [`extract_root_motion`] system populates this component each frame
+/// with the root motion delta converted to the entity's local space. The delta accounts
+/// for the player entity's transform (armature scale and rotation).
+///
+/// **The system does NOT apply the delta to the entity's [`Transform`].** Your game
+/// code is responsible for reading the delta and applying it however you see fit
+/// (direct transform manipulation, physics impulse, character controller, etc.).
+///
+/// # Example
+/// ```rust,ignore
+/// fn apply_root_motion(
+///     mut query: Query<(&RootMotionOutput, &mut Transform)>,
+/// ) {
+///     for (rm, mut transform) in &mut query {
+///         let world_delta = transform.rotation * rm.translation_delta;
+///         transform.translation += world_delta;
+///         transform.rotation *= rm.rotation_delta;
+///     }
+/// }
+/// ```
+///
+/// [`AnimatedSceneHandle`]: crate::animated_scene::AnimatedSceneHandle
+#[derive(Component, Default, Reflect)]
+pub struct RootMotionOutput {
+    /// Translation displacement this frame, in the entity's local space.
+    /// Accounts for the armature's scale and rotation.
+    pub translation_delta: Vec3,
+    /// Rotation displacement this frame.
+    pub rotation_delta: Quat,
+}
+
+/// System that extracts root motion data from the animation graph player and
+/// stores it in [`RootMotionOutput`], converted to the entity's local space.
+///
+/// Does **not** apply the delta to the entity's [`Transform`]. That is left
+/// to user code so that the application strategy (direct transform, physics,
+/// character controller) can be chosen freely.
+///
+/// Supports two layouts:
+/// 1. `RootMotionOutput` on the same entity as `AnimationGraphPlayer`
+/// 2. `RootMotionOutput` on a parent entity with `AnimatedSceneInstance` (the player
+///    is on a child entity)
+pub fn extract_root_motion(
+    mut with_player: Query<(&AnimationGraphPlayer, &mut RootMotionOutput)>,
+    mut with_scene: Query<
+        (&AnimatedSceneInstance, &mut RootMotionOutput),
+        Without<AnimationGraphPlayer>,
+    >,
+    players: Query<(&AnimationGraphPlayer, &Transform), Without<RootMotionOutput>>,
+) {
+    // Case 1: RootMotionOutput on the same entity as the player
+    for (player, mut output) in &mut with_player {
+        extract_delta(player, &mut output, &Transform::IDENTITY);
+    }
+
+    // Case 2: RootMotionOutput on a parent entity with AnimatedSceneInstance
+    for (scene, mut output) in &mut with_scene {
+        let Ok((player, player_transform)) = players.get(scene.player_entity()) else {
+            continue;
+        };
+        extract_delta(player, &mut output, player_transform);
+    }
+}
+
+fn extract_delta(
+    player: &AnimationGraphPlayer,
+    output: &mut RootMotionOutput,
+    player_local: &Transform,
+) {
+    if let Some(delta) = player.get_root_motion() {
+        // Convert delta from armature-local space to the output entity's local space.
+        // This handles armature scale (e.g., 0.01 for Mixamo cm-authored models) and
+        // armature rotation (e.g., axis conversion from FBX import).
+        let converted = player_local.rotation * (delta.translation * player_local.scale);
+
+        output.translation_delta = converted;
+        output.rotation_delta = delta.rotation;
+    } else {
+        output.translation_delta = Vec3::ZERO;
+        output.rotation_delta = Quat::IDENTITY;
+    }
+}
 
 fn build_entity_map(root_entity: Entity, resources: &SystemResources) -> HashMap<BoneId, Entity> {
     let mut entity_map = HashMap::default();
