@@ -1,7 +1,7 @@
 ---
 title: Blend Space 1D Node
 authors: ["@baszalmstra"]
-pull_requests: []
+pull_requests: [134]
 ---
 
 A new `BlendSpace1DNode` has been added for single-axis parametric blending. This complements the existing 2D blend space node and is useful for common cases like blending between idle, walk, and run animations based on movement speed.
