@@ -30,7 +30,7 @@ the animations yourself.
 The FBX files need to be merged into a single `.glb` file using Blender (4.0+):
 
 ```bash
-blender --background --python examples/root_motion/convert_mixamo.py -- \
+blender --background --python contrib/convert_mixamo.py -- \
     "path/to/Locomotion Pack" \
     examples/root_motion/assets/models/mixamo_locomotion.glb
 ```

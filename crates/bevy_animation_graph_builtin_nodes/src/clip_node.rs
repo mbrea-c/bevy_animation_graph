@@ -152,12 +152,8 @@ impl NodeLike for ClipNode {
             if let Some(root_bone_id) = root_bone_id {
                 let target_id = root_bone_id.animation_target_id();
 
-                // Use BoneId derived from the AnimationTargetId for pose lookups,
-                // since the pose was populated using BoneId::from(AnimationTargetId).
-                let pose_bone_id = BoneId::from(target_id);
-
                 // Sample root bone at current time (already done above)
-                let current_bone = out_pose.get_bone(pose_bone_id);
+                let current_bone = out_pose.get_bone(root_bone_id);
                 let current_translation = current_bone
                     .and_then(|b| b.translation)
                     .unwrap_or(Vec3::ZERO);
@@ -196,19 +192,24 @@ impl NodeLike for ClipNode {
                 let prev_time = ctx.prev_time();
                 let clamped_prev_time = prev_time.clamp(0., clip_duration);
 
+                // Determine whether time is flowing forward or backward.
+                // For absolute/event seeks we don't know the true direction,
+                // so we assume forward (can be refined with a heuristic later).
+                let flowing_forward = match time_update {
+                    TimeUpdate::Delta(dt) => dt >= 0.0,
+                    TimeUpdate::Absolute(_) | TimeUpdate::PercentOfEvent { .. } => true,
+                };
+
                 // Compute delta, handling loop wraps correctly.
-                // When the animation loops (current time < previous time), the root bone
-                // position resets. We compute the delta in two parts:
-                //   1. From prev_time to end of clip
-                //   2. From start of clip to current_time
-                let (mut delta_translation, mut delta_rotation) =
-                    if clamped_time < clamped_prev_time - 0.001 {
-                        // Loop wrap detected
+                // The wrap detection and delta accumulation depend on the
+                // direction time is flowing.
+                let (mut delta_translation, mut delta_rotation) = if flowing_forward {
+                    if clamped_time < clamped_prev_time - f32::EPSILON {
+                        // Forward wrap: prev -> end, then start -> current
                         let (end_tr, end_rot) = sample_root_at(clip_duration);
                         let (prev_tr, prev_rot) = sample_root_at(clamped_prev_time);
                         let (start_tr, start_rot) = sample_root_at(0.0);
 
-                        // Delta from prev to end + delta from start to current
                         let dt1 = end_tr - prev_tr;
                         let dr1 = prev_rot.inverse() * end_rot;
                         let dt2 = current_translation - start_tr;
@@ -216,13 +217,36 @@ impl NodeLike for ClipNode {
 
                         (dt1 + dt2, dr1 * dr2)
                     } else {
-                        // Normal (no wrap)
+                        // Normal forward (no wrap)
                         let (prev_tr, prev_rot) = sample_root_at(clamped_prev_time);
                         (
                             current_translation - prev_tr,
                             prev_rot.inverse() * current_rotation,
                         )
-                    };
+                    }
+                } else {
+                    // Backward playback
+                    if clamped_time > clamped_prev_time + f32::EPSILON {
+                        // Backward wrap: prev -> start, then end -> current
+                        let (start_tr, start_rot) = sample_root_at(0.0);
+                        let (prev_tr, prev_rot) = sample_root_at(clamped_prev_time);
+                        let (end_tr, end_rot) = sample_root_at(clip_duration);
+
+                        let dt1 = start_tr - prev_tr;
+                        let dr1 = prev_rot.inverse() * start_rot;
+                        let dt2 = current_translation - end_tr;
+                        let dr2 = end_rot.inverse() * current_rotation;
+
+                        (dt1 + dt2, dr1 * dr2)
+                    } else {
+                        // Normal backward (no wrap)
+                        let (prev_tr, prev_rot) = sample_root_at(clamped_prev_time);
+                        (
+                            current_translation - prev_tr,
+                            prev_rot.inverse() * current_rotation,
+                        )
+                    }
+                };
 
                 // Get rest pose for zeroing
                 let rest_local = ctx
@@ -239,7 +263,7 @@ impl NodeLike for ClipNode {
                 match self.root_motion_mode {
                     RootMotionMode::Full => {
                         // Use full delta, zero root bone completely
-                        if let Some(bone_idx) = out_pose.paths.get(&pose_bone_id).copied() {
+                        if let Some(bone_idx) = out_pose.paths.get(&root_bone_id).copied() {
                             out_pose.bones[bone_idx].translation = Some(rest_translation);
                             out_pose.bones[bone_idx].rotation = Some(rest_rotation);
                         } else {
@@ -264,7 +288,7 @@ impl NodeLike for ClipNode {
                         // Zero only XZ translation in the visual pose.
                         // Keep Y (vertical bob) and full rotation (decomposing and
                         // removing only Y rotation cleanly is complex).
-                        if let Some(bone_idx) = out_pose.paths.get(&pose_bone_id).copied()
+                        if let Some(bone_idx) = out_pose.paths.get(&root_bone_id).copied()
                             && let Some(ref mut t) = out_pose.bones[bone_idx].translation
                         {
                             t.x = rest_translation.x;

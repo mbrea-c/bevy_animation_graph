@@ -1,8 +1,10 @@
-## Root Motion Support
+---
+title: Root Motion Support
+authors: ["@baszalmstra"]
+pull_requests: [128]
+---
 
 This PR adds root motion extraction to the animation graph, following the approach discussed in #20 (Esoterica-style: embed root motion in the Pose, extract in ClipNode, let it propagate through the graph naturally).
-
-### What it does
 
 The `ClipNode` can now extract per-frame displacement from the root bone and zero it in the visual pose. The delta is carried through the graph alongside the pose, so blends, transitions, loops, and mirroring all handle it automatically. At the end of the pipeline, an `extract_root_motion` system populates a `RootMotionOutput` component with the delta converted to entity-local space. The system does **not** apply the delta to the entity's Transform. That is left to user code, so you can integrate it with your own movement strategy (direct transform, physics, character controller, etc.).
 
@@ -18,7 +20,7 @@ The design is based on Bobby Anguelov's Esoterica engine, specifically the appro
 
 The `examples/root_motion` directory contains a full locomotion example with an FSM-driven animation graph (idle → walk → run → jump). The walk and run states use GroundPlane root motion, and the jump state auto-transitions back to idle when the clip finishes using a `MapEventsNode`.
 
-The example uses animations from the Mixamo Locomotion Pack. Due to Mixamo's licensing terms, the `.glb` model file cannot be included in the repo. It is gitignored, and users need to download the pack themselves and run a Blender conversion script (`convert_mixamo.py`). The README has step-by-step instructions.
+The example uses animations from the Mixamo Locomotion Pack. Due to Mixamo's licensing terms, the `.glb` model file cannot be included in the repo. It is gitignored, and users need to download the pack themselves and run a Blender conversion script (`contrib/convert_mixamo.py`). The README has step-by-step instructions.
 
 ### Known limitations / future work
 
