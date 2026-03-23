@@ -27,6 +27,7 @@ use crate::{
 };
 
 pub mod blend_node;
+pub mod blend_space_1d_node;
 pub mod blend_space_node;
 pub mod bool;
 pub mod chain_node;
