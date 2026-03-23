@@ -1,7 +1,7 @@
 ---
 title: Boolean Logic Nodes
 authors: ["@baszalmstra"]
-pull_requests: []
+pull_requests: [132]
 ---
 
 Three new boolean logic nodes have been added to complement the existing `ConstBool` node:
