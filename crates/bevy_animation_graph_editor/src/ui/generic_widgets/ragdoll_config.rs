@@ -43,6 +43,7 @@ impl<'a> egui::Widget for RagdollConfigWidget<'a> {
             let mut response = ui.button("Edit");
             let popup_response = egui::Popup::from_toggle_button_response(&response)
                 .close_behavior(egui::PopupCloseBehavior::IgnoreClicks)
+                .width(500.)
                 .show(|ui| {
                     let mut response = ui.heading("Defaults");
                     ui.horizontal(|ui| {
