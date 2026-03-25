@@ -16,7 +16,10 @@ use serde::{
     de::{self, DeserializeSeed, Visitor},
 };
 
-use crate::animation_node::{NodeLike, ReflectNodeLike, dyn_node_like::DynNodeLike};
+use crate::{
+    animation_node::{NodeLike, ReflectNodeLike, dyn_node_like::DynNodeLike},
+    utils::normalize_asset_path,
+};
 
 struct HandleDeserializeProcessor<'a, 'b> {
     load_context: &'a mut LoadContext<'b>,
@@ -265,13 +268,9 @@ impl Serialize for DynNodeLikeSerializer<'_> {
                         "asset handle does not have a path",
                     ));
                 };
-                let Some(path) = path.path().to_str() else {
-                    return Err(serde::ser::Error::custom(
-                        "asset handle has a non-UTF-8 path",
-                    ));
-                };
+                let normalized = normalize_asset_path(path.clone_owned()).to_string();
 
-                serializer.serialize_str(path).map(Ok)
+                serializer.serialize_str(&normalized).map(Ok)
             }
         }
 
