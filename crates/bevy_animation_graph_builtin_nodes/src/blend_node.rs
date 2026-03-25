@@ -34,12 +34,24 @@ pub enum BlendSyncMode {
     EventTrack(String),
 }
 
-#[derive(Reflect, Clone, Debug, Default)]
+#[derive(Reflect, Clone, Debug, Default, Serialize, Deserialize)]
+#[reflect(Default)]
+pub enum BlendPrimary {
+    /// Sets the duration to the primary (first) input
+    #[default]
+    First,
+    /// Sets the duration to the input with the higher weight
+    HighestWeight,
+}
+
+#[derive(Reflect, Clone, Debug, Default, Serialize, Deserialize)]
 #[reflect(Default, NodeLike)]
 #[type_path = "bevy_animation_graph::builtin_nodes"]
 pub struct BlendNode {
     pub mode: BlendMode,
     pub sync_mode: BlendSyncMode,
+    #[serde(default)]
+    pub blend_primary: BlendPrimary,
     pub use_bone_mask: bool,
 }
 
@@ -57,11 +69,17 @@ impl BlendNode {
 
 impl NodeLike for BlendNode {
     fn duration(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
+        // determine duration based on main animation input or the one with heighest weight
         let duration_1 = ctx.duration_back(Self::IN_TIME_A)?;
         let duration_2 = ctx.duration_back(Self::IN_TIME_B)?;
-
+        let alpha = match self.blend_primary {
+            BlendPrimary::First => 0.,
+            BlendPrimary::HighestWeight => ctx.data_back(Self::FACTOR)?.as_f32()?,
+        };
         let out_duration = match (duration_1, duration_2) {
-            (Some(duration_1), Some(duration_2)) => Some(duration_1.max(duration_2)),
+            (Some(duration_1), Some(duration_2)) => {
+                Some(if alpha <= 0.5 { duration_1 } else { duration_2 })
+            }
             (Some(duration_1), None) => Some(duration_1),
             (None, Some(duration_2)) => Some(duration_2),
             (None, None) => None,
@@ -74,21 +92,62 @@ impl NodeLike for BlendNode {
     fn update(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
         let input = ctx.time_update_fwd()?;
 
-        ctx.set_time_update_back(Self::IN_TIME_A, input.clone());
-        let in_frame_1: Pose = ctx.data_back(Self::IN_POSE_A)?.into_pose()?;
+        let (
+            primary_time_id,
+            primary_pose_id,
+            primary_event_id,
+            secondary_time_id,
+            secondary_pose_id,
+            alpha,
+        ) = match self.blend_primary {
+            BlendPrimary::First => (
+                Self::IN_TIME_A,
+                Self::IN_POSE_A,
+                Self::IN_EVENT_A,
+                Self::IN_TIME_B,
+                Self::IN_POSE_B,
+                ctx.data_back(Self::FACTOR)
+                    .unwrap_or(DataValue::F32(1.))
+                    .as_f32()?,
+            ),
+            BlendPrimary::HighestWeight => {
+                if ctx.data_back(Self::FACTOR)?.as_f32()? <= 0.5 {
+                    (
+                        Self::IN_TIME_A,
+                        Self::IN_POSE_A,
+                        Self::IN_EVENT_A,
+                        Self::IN_TIME_B,
+                        Self::IN_POSE_B,
+                        ctx.data_back(Self::FACTOR)?.as_f32()?,
+                    )
+                } else {
+                    (
+                        Self::IN_TIME_B,
+                        Self::IN_POSE_B,
+                        Self::IN_EVENT_B,
+                        Self::IN_TIME_A,
+                        Self::IN_POSE_A,
+                        1. - ctx.data_back(Self::FACTOR)?.as_f32()?,
+                    )
+                }
+            }
+        };
+
+        ctx.set_time_update_back(primary_time_id, input.clone());
+        let in_frame_1: Pose = ctx.data_back(primary_pose_id)?.into_pose()?;
 
         match &self.sync_mode {
             BlendSyncMode::Absolute => {
                 ctx.set_time_update_back(
-                    Self::IN_TIME_B,
+                    secondary_time_id,
                     TimeUpdate::Absolute(in_frame_1.timestamp),
                 );
             }
             BlendSyncMode::NoSync => {
-                ctx.set_time_update_back(Self::IN_TIME_B, input);
+                ctx.set_time_update_back(secondary_time_id, input);
             }
             BlendSyncMode::EventTrack(track_name) => {
-                let event_queue_1 = ctx.data_back(Self::IN_EVENT_A)?.into_event_queue()?;
+                let event_queue_1 = ctx.data_back(primary_event_id)?.into_event_queue()?;
                 if let Some(event) = event_queue_1.events.iter().find(|ev| {
                     ev.track
                         .as_ref()
@@ -96,7 +155,7 @@ impl NodeLike for BlendNode {
                         .unwrap_or(false)
                 }) {
                     ctx.set_time_update_back(
-                        Self::IN_TIME_B,
+                        secondary_time_id,
                         TimeUpdate::PercentOfEvent {
                             percent: event.percentage,
                             event: event.event.clone(),
@@ -104,12 +163,12 @@ impl NodeLike for BlendNode {
                         },
                     );
                 } else {
-                    ctx.set_time_update_back(Self::IN_TIME_B, input);
+                    ctx.set_time_update_back(secondary_time_id, input);
                 }
             }
         };
 
-        let in_frame_2 = ctx.data_back(Self::IN_POSE_B)?.into_pose()?;
+        let in_frame_2 = ctx.data_back(secondary_pose_id)?.into_pose()?;
         let bone_mask = ctx
             .data_back(Self::IN_BONE_MASK)
             .unwrap_or_else(|_| DataValue::BoneMask(BoneMask::all()))
@@ -121,12 +180,10 @@ impl NodeLike for BlendNode {
         match self.mode {
             BlendMode::LinearInterpolate => {
                 let interpolator = LinearInterpolator { bone_mask };
-                let alpha = ctx.data_back(Self::FACTOR)?.as_f32()?;
                 interpolator.interpolate_pose(&mut base, &overlay, alpha);
             }
             BlendMode::Additive => {
                 let interpolator = AdditiveInterpolator { bone_mask };
-                let alpha = ctx.data_back(Self::FACTOR)?.as_f32()?;
                 interpolator.interpolate_pose(&mut base, &overlay, alpha);
             }
             BlendMode::Difference => {
