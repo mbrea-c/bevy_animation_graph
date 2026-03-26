@@ -102,8 +102,7 @@ impl NodeLike for BlendSpace1DNode {
 
         // Return the duration of the higher-weighted input
         let master_idx = if factor <= 0.5 { low } else { high };
-        let master_duration =
-            ctx.duration_back(Self::time_pin_id(&self.points[master_idx].id))?;
+        let master_duration = ctx.duration_back(Self::time_pin_id(&self.points[master_idx].id))?;
 
         ctx.set_duration_fwd(master_duration);
         Ok(())
@@ -127,9 +126,7 @@ impl NodeLike for BlendSpace1DNode {
         };
 
         ctx.set_time_update_back(Self::time_pin_id(primary_key), input.clone());
-        let primary_pose = ctx
-            .data_back(Self::pose_pin_id(primary_key))?
-            .into_pose()?;
+        let primary_pose = ctx.data_back(Self::pose_pin_id(primary_key))?.into_pose()?;
 
         // If both indices are the same, just output the single pose
         if low_idx == high_idx {
