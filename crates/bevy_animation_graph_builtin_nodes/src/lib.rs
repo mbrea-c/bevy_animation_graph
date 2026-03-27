@@ -3,6 +3,7 @@ use bevy::app::{App, Plugin};
 use crate::{
     blend_node::BlendNode,
     blend_space_node::BlendSpaceNode,
+    bool::{and_bool::AndBool, const_bool::ConstBool, not_bool::NotBool, or_bool::OrBool},
     chain_node::ChainNode,
     clip_node::ClipNode,
     dummy_node::DummyNode,
@@ -75,6 +76,11 @@ impl BuiltinNodesPlugin {
             .register_type::<SpeedNode>()
             .register_type::<FsmNode>()
             .register_type::<TwoBoneIKNode>()
+            // bool
+            .register_type::<AndBool>()
+            .register_type::<ConstBool>()
+            .register_type::<NotBool>()
+            .register_type::<OrBool>()
             // f32
             .register_type::<AbsF32>()
             .register_type::<AddF32>()
