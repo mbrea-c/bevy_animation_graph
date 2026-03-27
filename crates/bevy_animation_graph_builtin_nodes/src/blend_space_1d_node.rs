@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 use bevy_animation_graph_core::{
     animation_graph::TimeUpdate,
-    animation_node::{EditProxy, NodeLike, ReflectEditProxy, ReflectNodeLike},
+    animation_node::{NodeLike, ReflectNodeLike},
     context::{new_context::NodeContext, spec_context::SpecContext},
     edge_data::DataSpec,
     errors::GraphError,
@@ -26,7 +26,7 @@ pub struct PointElement1D {
 /// This node is useful, for example, to blend between idle, walk, and run
 /// animations based on movement speed.
 #[derive(Reflect, Clone, Debug, Default)]
-#[reflect(Default, NodeLike, EditProxy)]
+#[reflect(Default, NodeLike)]
 #[type_path = "bevy_animation_graph::builtin_nodes"]
 pub struct BlendSpace1DNode {
     pub sync_mode: BlendSyncMode,
@@ -42,15 +42,15 @@ impl BlendSpace1DNode {
     }
 
     pub fn pose_pin_id(key: &str) -> String {
-        format!("pose {key}")
+        format!("pose_{key}")
     }
 
     pub fn events_pin_id(key: &str) -> String {
-        format!("events {key}")
+        format!("events_{key}")
     }
 
     pub fn time_pin_id(key: &str) -> String {
-        format!("time {key}")
+        format!("time_{key}")
     }
 
     /// Finds the two surrounding points and returns (index_low, index_high, blend_factor).
@@ -209,29 +209,5 @@ impl NodeLike for BlendSpace1DNode {
 
     fn display_name(&self) -> String {
         "∑ Blend space 1D".into()
-    }
-}
-
-#[derive(Clone, Reflect, Serialize, Deserialize)]
-pub struct BlendSpace1DProxy {
-    pub sync_mode: BlendSyncMode,
-    pub points: Vec<PointElement1D>,
-}
-
-impl EditProxy for BlendSpace1DNode {
-    type Proxy = BlendSpace1DProxy;
-
-    fn update_from_proxy(proxy: &Self::Proxy) -> Self {
-        Self {
-            sync_mode: proxy.sync_mode.clone(),
-            points: proxy.points.clone(),
-        }
-    }
-
-    fn make_proxy(&self) -> Self::Proxy {
-        Self::Proxy {
-            sync_mode: self.sync_mode.clone(),
-            points: self.points.clone(),
-        }
     }
 }
