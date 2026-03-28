@@ -3,16 +3,15 @@ use bevy::{
     ecs::component::Component,
     math::{
         Isometry3d, Vec3,
-        primitives::{Capsule3d, Cuboid, Sphere},
+        primitives::{Capsule3d, Cuboid, Measured3d, Sphere},
     },
     platform::collections::HashMap,
     reflect::Reflect,
-    utils::default,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Asset, Debug, Clone, Default, Reflect, Serialize, Deserialize)]
+#[derive(Asset, Debug, Clone, Reflect, Serialize, Deserialize)]
 pub struct Ragdoll {
     pub bodies: HashMap<BodyId, Body>,
     pub colliders: HashMap<ColliderId, Collider>,
@@ -20,6 +19,24 @@ pub struct Ragdoll {
 
     #[serde(default)]
     pub suffixes: SymmetrySuffixes,
+
+    /// Total mass will be divided among all colliders according to the volume of their attached
+    /// colliders.
+    #[serde(default)]
+    pub total_mass: f32,
+}
+
+impl Default for Ragdoll {
+    fn default() -> Self {
+        Self {
+            bodies: Default::default(),
+            colliders: Default::default(),
+            joints: Default::default(),
+            suffixes: Default::default(),
+
+            total_mass: 70.,
+        }
+    }
 }
 
 impl Ragdoll {
@@ -157,8 +174,8 @@ impl Body {
                 uuid: Uuid::new_v4(),
             },
             label: "New body".into(),
-            offset: default(),
-            colliders: default(),
+            offset: Default::default(),
+            colliders: Default::default(),
             default_mode: BodyMode::Kinematic,
 
             use_symmetry: false,
@@ -174,6 +191,13 @@ pub enum BodyMode {
     Dynamic,
 }
 
+#[derive(Reflect, Debug, Clone, Serialize, Deserialize, Default)]
+pub enum ColliderMassMode {
+    Override(f32),
+    #[default]
+    ByVolume,
+}
+
 #[derive(Reflect, Debug, Clone, Serialize, Deserialize)]
 pub struct Collider {
     pub id: ColliderId,
@@ -183,6 +207,10 @@ pub struct Collider {
     pub layer_membership: u32,
     pub layer_filter: u32,
     pub override_layers: bool,
+
+    #[serde(default)]
+    pub mass_mode: ColliderMassMode,
+
     /// Label that will be attached to the created collider in a [`ColliderLabel`] component.
     pub label: String,
     /// If symmetry is enabled and this body was created as the image under the symmetry of another
@@ -199,13 +227,22 @@ impl Collider {
             id: ColliderId {
                 uuid: Uuid::new_v4(),
             },
-            local_offset: default(),
+            local_offset: Default::default(),
             shape: ColliderShape::Cuboid(Cuboid::new(0.2, 0.2, 0.2)),
             layer_membership: 1,
             layer_filter: 1,
             override_layers: false,
             label: "New collider".into(),
             created_from: None,
+            mass_mode: ColliderMassMode::ByVolume,
+        }
+    }
+
+    pub fn volume(&self) -> f32 {
+        match &self.shape {
+            ColliderShape::Sphere(sphere) => sphere.volume(),
+            ColliderShape::Capsule(capsule3d) => capsule3d.volume(),
+            ColliderShape::Cuboid(cuboid) => cuboid.volume(),
         }
     }
 }

@@ -2,8 +2,8 @@ use bevy::ecs::world::World;
 use bevy_animation_graph::core::state_machine::high_level::State;
 
 use crate::ui::generic_widgets::{
-    asset_picker::AssetPicker, fsm::transition_data::TransitionDataWidget,
-    option::CheapOptionWidget,
+    fsm::transition_data::TransitionDataWidget, option::CheapOptionWidget,
+    popup_asset_picker::PopupAssetPicker,
 };
 
 pub struct StateWidget<'a> {
@@ -39,22 +39,11 @@ impl<'a> egui::Widget for StateWidget<'a> {
                 ui.end_row();
 
                 response |= ui.label("graph:");
-                let path = self
-                    .state
-                    .graph
-                    .path()
-                    .map_or("<no asset path>".into(), |ap| ap.to_string());
-                let r = ui.menu_button(path, |ui| {
-                    ui.add(AssetPicker::new_salted(
-                        &mut self.state.graph,
-                        self.world,
-                        ui.id().with("fsm state graph"),
-                    ))
-                });
-                response |= r.response;
-                if r.inner.is_some_and(|r| r.changed()) {
-                    response.mark_changed();
-                }
+                response |= ui.add(PopupAssetPicker::new_salted(
+                    &mut self.state.graph,
+                    self.world,
+                    ui.id().with("fsm state graph"),
+                ));
                 ui.end_row();
 
                 response

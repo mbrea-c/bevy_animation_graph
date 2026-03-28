@@ -97,7 +97,7 @@ pub struct UpdateGraphSpec {
 }
 
 pub struct GenerateIndices {
-    pub graph: AssetId<AnimationGraph>,
+    pub graph: Handle<AnimationGraph>,
 }
 
 pub fn handle_graph_action(world: &mut World, action: GraphAction) {
@@ -280,7 +280,8 @@ pub fn update_node_spec_system(In(action): In<UpdateGraphSpec>, mut provider: Gr
 }
 
 pub fn generate_indices_system(In(action): In<GenerateIndices>, mut provider: GraphAndContext) {
-    provider.generate_indices(action.graph);
+    provider.validate(&action.graph);
+    provider.generate_indices(&action.graph);
 }
 
 fn handle_system_error<Err: Display>(err: Err) {

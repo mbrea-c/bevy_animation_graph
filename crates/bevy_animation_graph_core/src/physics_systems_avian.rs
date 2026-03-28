@@ -119,6 +119,7 @@ pub fn spawn_missing_ragdolls_avian(
                 .find(|ancestor| velocity_check.contains(*ancestor));
 
             let spawned_ragdoll = spawn_ragdoll_avian(
+                entity,
                 ragdoll,
                 global_transform.to_isometry(),
                 simulated_parent,

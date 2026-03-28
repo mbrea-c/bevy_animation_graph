@@ -1,9 +1,8 @@
 use bevy::{ecs::world::World, utils::default};
 use bevy_animation_graph::core::state_machine::high_level::{TransitionData, TransitionKind};
 
-use crate::ui::{
-    generic_widgets::{asset_picker::AssetPicker, option::CheapOptionWidget},
-    utils::handle_path,
+use crate::ui::generic_widgets::{
+    option::CheapOptionWidget, picker::PickerWidget, popup_asset_picker::PopupAssetPicker,
 };
 
 pub struct TransitionDataWidget<'a> {
@@ -48,9 +47,8 @@ impl<'a> egui::Widget for TransitionDataWidget<'a> {
                     TransitionKind::Graph { .. } => TransitionKindTag::Graph,
                 };
                 let original = tag;
-                response |= egui::ComboBox::new("transition kind", format!("{:?}", tag))
-                    .selected_text(format!("{:?}", tag))
-                    .show_ui(ui, |ui| {
+                response |= PickerWidget::new_salted("transition kind")
+                    .ui(ui, format!("{:?}", tag), |ui| {
                         let mut val = |t| ui.selectable_value(&mut tag, t, format!("{:?}", t));
                         val(TransitionKindTag::Immediate);
                         val(TransitionKindTag::Graph);
@@ -77,17 +75,11 @@ impl<'a> egui::Widget for TransitionDataWidget<'a> {
                     TransitionKind::Immediate => {}
                     TransitionKind::Graph { graph, timed } => {
                         response |= ui.label("transition graph:");
-                        let r = ui.menu_button(handle_path(graph.clone().untyped()), |ui| {
-                            ui.add(AssetPicker::new_salted(
-                                graph,
-                                self.world,
-                                "state transition graph handle",
-                            ))
-                        });
-                        response |= r.response;
-                        if r.inner.is_some_and(|r| r.changed()) {
-                            response.mark_changed();
-                        }
+                        response |= ui.add(PopupAssetPicker::new_salted(
+                            graph,
+                            self.world,
+                            "state transition graph handle",
+                        ));
                         ui.end_row();
 
                         response |= ui.label("timed:");

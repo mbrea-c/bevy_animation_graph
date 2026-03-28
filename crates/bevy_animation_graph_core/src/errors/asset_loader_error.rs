@@ -27,7 +27,7 @@ pub enum AssetLoaderError {
     #[error("Animated scene path is incorrect: {0}")]
     AnimatedSceneMissingName(String),
     #[error(
-        "Animated scene missing a root (an exsiting AnimationPlayer). Does your scene root have a `Name`?"
+        "Animated scene missing a root (an exsiting AnimationPlayer). A possible cause is that your source scene does not have any animations."
     )]
     AnimatedSceneMissingRoot,
     #[error("Graph does not satisfy constraints: {0}")]

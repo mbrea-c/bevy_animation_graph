@@ -8,7 +8,7 @@
                     fsm: "fsm/ragdoll.fsm.ron",
                 ),
             },
-            should_debug: true,
+            should_debug: false,
         ),
         (
             id: "017606cd-5fcf-4650-a159-6f6e73fc9a1a",
@@ -71,9 +71,9 @@
     },
     editor_metadata: (
         node_positions: {
+            "525e57c8-2acd-43e5-a788-0be33905a253": (236.26563, 263.76953),
             "017606cd-5fcf-4650-a159-6f6e73fc9a1a": (235.78906, -32.01953),
             "d3f9be56-ea53-49bf-aefd-c991c78c3b83": (402.15234, 115.07031),
-            "525e57c8-2acd-43e5-a788-0be33905a253": (236.26563, 263.76953),
         },
         input_position: (-40.609375, 115.5),
         output_position: (647.9531, 101.83203),
