@@ -83,6 +83,10 @@ impl RotationNode {
 
 impl NodeLike for RotationNode {
     fn update(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
+        if let Ok(input) = ctx.time_update_fwd() {
+            ctx.set_time_update_back(Self::IN_TIME, input);
+        }
+
         let target = ctx.data_back(Self::TARGET)?.into_entity_path()?;
         let mut target = target.id();
         let rotation = ctx.data_back(Self::ROTATION)?.as_quat()?;
@@ -184,9 +188,11 @@ impl NodeLike for RotationNode {
         ctx //
             .add_input_data(Self::TARGET, DataSpec::EntityPath)
             .add_input_data(Self::ROTATION, DataSpec::Quat)
-            .add_input_data(Self::IN_POSE, DataSpec::Pose);
+            .add_input_data(Self::IN_POSE, DataSpec::Pose)
+            .add_input_time(Self::IN_TIME);
         ctx //
-            .add_output_data(Self::OUT_POSE, DataSpec::Pose);
+            .add_output_data(Self::OUT_POSE, DataSpec::Pose)
+            .add_output_time();
 
         Ok(())
     }

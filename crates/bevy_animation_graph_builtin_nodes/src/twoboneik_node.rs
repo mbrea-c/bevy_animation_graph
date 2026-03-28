@@ -36,6 +36,10 @@ impl NodeLike for TwoBoneIKNode {
     }
 
     fn update(&self, mut ctx: NodeContext) -> Result<(), GraphError> {
+        if let Ok(input) = ctx.time_update_fwd() {
+            ctx.set_time_update_back(Self::IN_TIME, input);
+        }
+
         let target = ctx.data_back(Self::TARGETBONE)?.into_entity_path()?;
         let target = target.id();
         let target_pos_char = ctx.data_back(Self::TARGETPOS)?.into_vec3()?;
@@ -122,9 +126,11 @@ impl NodeLike for TwoBoneIKNode {
         ctx //
             .add_input_data(Self::TARGETBONE, DataSpec::EntityPath)
             .add_input_data(Self::TARGETPOS, DataSpec::Vec3)
-            .add_input_data(Self::IN_POSE, DataSpec::Pose);
+            .add_input_data(Self::IN_POSE, DataSpec::Pose)
+            .add_input_time(Self::IN_TIME);
         ctx //
-            .add_output_data(Self::OUT_POSE, DataSpec::Pose);
+            .add_output_data(Self::OUT_POSE, DataSpec::Pose)
+            .add_output_time();
 
         Ok(())
     }
