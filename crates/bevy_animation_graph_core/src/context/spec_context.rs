@@ -523,3 +523,187 @@ struct IoSpecSerial<I: Eq + std::hash::Hash> {
     input_order: HashMap<NodeInputPin<I>, i32>,
     output_order: HashMap<NodeOutputPin, i32>,
 }
+
+#[derive(Reflect, Debug, Clone)]
+pub struct DataOnlySpec<I, V> {
+    specs: HashMap<I, V>,
+    order: HashMap<I, i32>,
+
+    next_order: i32,
+}
+
+impl<I, V> Default for DataOnlySpec<I, V> {
+    fn default() -> Self {
+        Self {
+            specs: Default::default(),
+            order: Default::default(),
+            next_order: Default::default(),
+        }
+    }
+}
+
+impl<K, V> DataOnlySpec<K, V>
+where
+    K: Clone + Eq + std::hash::Hash,
+{
+    pub fn add_data(&mut self, pin_id: K, data_spec: V) {
+        self.specs.insert(pin_id.clone(), data_spec);
+        self.order.insert(pin_id, self.next_order);
+        self.next_order += 1;
+    }
+
+    pub fn input_compare_key(&self, input: &K) -> i32 {
+        self.order.get(input).copied().unwrap_or(i32::MAX)
+    }
+
+    pub fn get_input_data(&self, pin_id: &K) -> Option<&V> {
+        self.specs.get(pin_id)
+    }
+
+    /// Unsorted iterator over keys
+    pub fn keys(&self) -> impl Iterator<Item = &K> {
+        self.specs.keys()
+    }
+
+    /// Unsorted iterator over values
+    pub fn values(&self) -> impl Iterator<Item = &V> {
+        self.specs.values()
+    }
+
+    /// Unsorted iterator
+    pub fn iter(&self) -> impl Iterator<Item = (&K, &V)> {
+        self.specs.iter()
+    }
+
+    /// Sorted vector of inputs
+    pub fn sorted(&self) -> Vec<(&K, &V)>
+    where
+        K: Clone + Eq + std::hash::Hash,
+    {
+        let mut inputs: Vec<_> = self
+            .specs
+            .iter()
+            .map(|(pin_id, data_spec)| (pin_id, data_spec))
+            .collect();
+
+        inputs.sort_by_key(|(k, _)| self.order.get(*k));
+        inputs
+    }
+
+    pub fn len(&self) -> usize {
+        self.order.len()
+    }
+
+    pub fn shift_input_index(&mut self, key: &K, idx_delta: i32)
+    where
+        K: Clone + Eq + std::hash::Hash,
+    {
+        let Some(&current_idx) = self.order.get(key) else {
+            return;
+        };
+
+        let target_idx = current_idx + idx_delta;
+
+        for idx in self.order.values_mut() {
+            if *idx == target_idx {
+                *idx = current_idx;
+            }
+        }
+
+        let Some(idx) = self.order.get_mut(key) else {
+            return;
+        };
+        *idx = target_idx;
+        self.reset_ordering();
+    }
+
+    /// Returns false if the update could not be completed (e.g. if the new key already
+    /// exists!)
+    pub fn update(&mut self, prev_key: &K, new_key: K, new_value: V) -> bool
+    where
+        K: Clone + Eq + std::hash::Hash,
+    {
+        if &new_key != prev_key && self.order.contains_key(&new_key) {
+            return false;
+        }
+
+        let Some(idx) = self.order.remove(prev_key) else {
+            return false;
+        };
+
+        self.specs.remove(prev_key);
+
+        self.order.insert(new_key.clone(), idx);
+
+        self.specs.insert(new_key, new_value);
+
+        true
+    }
+
+    pub fn remove(&mut self, key: &K)
+    where
+        K: Clone + Eq + std::hash::Hash,
+    {
+        self.order.remove(key);
+        self.specs.remove(key);
+        self.reset_ordering();
+    }
+
+    pub fn reset_ordering(&mut self)
+    where
+        K: Clone + std::hash::Hash + Eq,
+    {
+        let mut sorted_inputs: Vec<_> = self.order.iter().collect();
+        sorted_inputs.sort_by_key(|(_, idx)| **idx);
+        self.order = sorted_inputs
+            .into_iter()
+            .enumerate()
+            .map(|(idx, (key, _))| (key.clone(), idx as i32))
+            .collect();
+        self.next_order = self.order.len() as i32;
+    }
+}
+
+impl<I, V> Serialize for DataOnlySpec<I, V>
+where
+    I: Clone + Serialize + Eq + std::hash::Hash,
+    V: Clone + Serialize,
+{
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        DataOnlySpecSerial {
+            data: self.specs.clone(),
+            order: self.order.clone(),
+        }
+        .serialize(serializer)
+    }
+}
+
+impl<'de, I, V> Deserialize<'de> for DataOnlySpec<I, V>
+where
+    I: Deserialize<'de> + Eq + std::hash::Hash,
+    V: Deserialize<'de>,
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let serial = DataOnlySpecSerial::deserialize(deserializer)?;
+
+        let next_input_order = serial.order.values().max().copied().unwrap_or(-1) + 1;
+
+        Ok(Self {
+            specs: serial.data,
+            order: serial.order,
+            next_order: next_input_order,
+        })
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+struct DataOnlySpecSerial<K: Eq + std::hash::Hash, V> {
+    data: HashMap<K, V>,
+    order: HashMap<K, i32>,
+}
