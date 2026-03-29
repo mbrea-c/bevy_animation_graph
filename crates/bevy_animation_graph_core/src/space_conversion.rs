@@ -95,10 +95,18 @@ impl SpaceConversionContext<'_> {
         transform: Transform,
         skeleton: &Skeleton,
     ) -> Transform {
+        self.global_to_char_transform(skeleton) * transform
+    }
+
+    pub fn global_to_char_transform(&self, skeleton: &Skeleton) -> Transform {
         let root_global_transform = self.pose_fallback.root_global_transform(skeleton).unwrap();
-        let inverse_global_transform =
-            Transform::from_matrix(root_global_transform.to_matrix().inverse());
-        inverse_global_transform * transform
+        Transform::from_matrix(root_global_transform.to_matrix().inverse())
+    }
+
+    pub fn char_to_global_transform(&self, skeleton: &Skeleton) -> Transform {
+        let root_global_transform = self.pose_fallback.root_global_transform(skeleton).unwrap();
+
+        root_global_transform.compute_transform()
     }
 
     pub fn character_transform_of_bone(

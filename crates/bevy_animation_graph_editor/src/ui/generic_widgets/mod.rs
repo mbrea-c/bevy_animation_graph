@@ -4,6 +4,7 @@ pub mod asset_picker;
 pub mod body_id;
 pub mod body_mode;
 pub mod bone_id;
+pub mod bone_id_via_path;
 pub mod bone_mask;
 pub mod data_spec_widget;
 pub mod data_value;

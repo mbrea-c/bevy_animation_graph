@@ -3,7 +3,8 @@ use thiserror::Error;
 
 use crate::{
     animation_clip::EntityPath,
-    animation_graph::{GraphInputPin, NodeId, SourcePin, TargetPin},
+    animation_graph::{GraphInputPin, NodeId, PinId, SourcePin, TargetPin},
+    context::graph_context_arena::GraphContextId,
     id::BoneId,
 };
 
@@ -22,13 +23,17 @@ pub enum GraphError {
     MissingEdgeToTarget(TargetPin),
     #[error("Expected an edge connected to the source {0:?}")]
     MissingEdgeToSource(SourcePin),
-    #[error("Node update did not produce output for {0:?}")]
-    OutputMissing(SourcePin),
+    #[error("Node {node:?} update on {graph:?} did not produce output for {pin:?}")]
+    OutputMissing {
+        graph: GraphContextId,
+        node: NodeId,
+        pin: PinId,
+    },
     #[error("Node update did not produce output for {0:?}")]
     DurationMissing(SourcePin),
-    #[error("Time update requested is not cached: {0:?}")]
+    #[error("(Backwards) Time update requested is not cached: {0:?}")]
     TimeUpdateMissingBack(TargetPin),
-    #[error("Time update requested is not cached: {0:?}")]
+    #[error("(Forwards) Time update requested is not cached: {0:?}")]
     TimeUpdateMissingFwd(SourcePin),
     #[error("A parent graph was requested but none is present")]
     MissingParentGraph,
@@ -74,6 +79,22 @@ pub enum GraphError {
     // Skeleton/bone mapping errors
     #[error("Bone id {0:?} does not map to an entity path")]
     BoneIdHasNoPath(BoneId),
+
+    #[error(
+        "Node {node:?} on graph {graph:?} does not have a 'last resort' time update for pin {pin:?}"
+    )]
+    ExtraTimeUpdateNotAvailable {
+        graph: GraphContextId,
+        node: NodeId,
+        pin: PinId,
+    },
+
+    #[error("Unknown error during evaluation of node {node:?} in context {graph:?}: {error}")]
+    UnknownErrorNode {
+        graph: GraphContextId,
+        node: NodeId,
+        error: String,
+    },
 }
 
 pub type GraphResult<T> = Result<T, GraphError>;

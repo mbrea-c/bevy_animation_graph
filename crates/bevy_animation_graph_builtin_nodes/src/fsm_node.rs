@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy_animation_graph_core::{
+    animation_graph::{PinId, TimeUpdate},
     animation_node::{NodeLike, ReflectNodeLike},
     context::{new_context::NodeContext, spec_context::SpecContext},
     edge_data::DataSpec,
@@ -37,6 +38,16 @@ impl NodeLike for FsmNode {
         fsm.get_low_level_fsm().update(ctx)?;
 
         Ok(())
+    }
+
+    fn try_get_time(&self, ctx: NodeContext, pin: PinId) -> Result<TimeUpdate, GraphError> {
+        let fsm = ctx
+            .graph_context
+            .resources
+            .state_machine_assets
+            .get(&self.fsm)
+            .unwrap();
+        fsm.get_low_level_fsm().time_update(ctx, pin)
     }
 
     fn spec(&self, mut ctx: SpecContext) -> Result<(), GraphError> {

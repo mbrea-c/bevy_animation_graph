@@ -97,10 +97,11 @@ impl NativeEditorWindowExtension for DebuggerWindow {
         // Now get the selected value and display it!
 
         let Some(val) = new_pin_id.and_then(|pin_id| {
-            graph_context
-                .node_caches
-                .get_output_data(active_node.node, StateKey::Default, pin_id.clone())
-                .ok()
+            graph_context.node_caches.get_output_data(
+                active_node.node,
+                StateKey::Default,
+                pin_id.clone(),
+            )
         }) else {
             return;
         };

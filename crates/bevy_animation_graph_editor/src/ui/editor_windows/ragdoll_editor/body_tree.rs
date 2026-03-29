@@ -39,6 +39,54 @@ impl BodyTree<'_, '_> {
                     return;
                 };
 
+                let action_handler = |ctx: &mut LegacyEditorWindowContext,
+                                      ragdoll: Handle<Ragdoll>,
+                                      ragdoll_bone_map: Handle<RagdollBoneMap>,
+                                      action| {
+                    match action {
+                        RagdollTreeAction::CreateCollider(body_id) => {
+                            ctx.editor_actions.dynamic(CreateRagdollCollider {
+                                ragdoll: ragdoll.clone(),
+                                collider: Collider::new(),
+                                attach_to: body_id,
+                            })
+                        }
+                        RagdollTreeAction::CreateBody => {
+                            ctx.editor_actions.dynamic(CreateRagdollBody {
+                                ragdoll: ragdoll.clone(),
+                                body: Body::new(),
+                            })
+                        }
+                        RagdollTreeAction::CreateJoint => {
+                            ctx.editor_actions.dynamic(CreateRagdollJoint {
+                                ragdoll: ragdoll.clone(),
+                                joint: Joint::new(),
+                            })
+                        }
+                        RagdollTreeAction::DeleteBody(body_id) => {
+                            ctx.editor_actions.dynamic(DeleteRagdollBody {
+                                ragdoll: ragdoll.clone(),
+                                body_id,
+                            })
+                        }
+                        RagdollTreeAction::DeleteJoint(joint_id) => {
+                            ctx.editor_actions.dynamic(DeleteRagdollJoint {
+                                ragdoll: ragdoll.clone(),
+                                joint_id,
+                            })
+                        }
+                        RagdollTreeAction::DeleteCollider(collider_id) => {
+                            ctx.editor_actions.dynamic(DeleteRagdollCollider {
+                                ragdoll: ragdoll.clone(),
+                                collider_id,
+                            })
+                        }
+                    }
+                    ctx.editor_actions.dynamic(RecomputeRagdollSymmetry {
+                        ragdoll_bone_map: ragdoll_bone_map.clone(),
+                    });
+                };
+
                 // Tree, assemble!
                 let response =
                     Tree::ragdoll_tree(ragdoll).picker_selector(ui, RagdollTreeRenderer {});
@@ -77,51 +125,36 @@ impl BodyTree<'_, '_> {
                         }
 
                         for action in response.actions {
-                            match action {
-                                RagdollTreeAction::CreateCollider(body_id) => {
-                                    self.ctx.editor_actions.dynamic(CreateRagdollCollider {
-                                        ragdoll: self.ragdoll.clone(),
-                                        collider: Collider::new(),
-                                        attach_to: body_id,
-                                    })
-                                }
-                                RagdollTreeAction::CreateBody => {
-                                    self.ctx.editor_actions.dynamic(CreateRagdollBody {
-                                        ragdoll: self.ragdoll.clone(),
-                                        body: Body::new(),
-                                    })
-                                }
-                                RagdollTreeAction::CreateJoint => {
-                                    self.ctx.editor_actions.dynamic(CreateRagdollJoint {
-                                        ragdoll: self.ragdoll.clone(),
-                                        joint: Joint::new(),
-                                    })
-                                }
-                                RagdollTreeAction::DeleteBody(body_id) => {
-                                    self.ctx.editor_actions.dynamic(DeleteRagdollBody {
-                                        ragdoll: self.ragdoll.clone(),
-                                        body_id,
-                                    })
-                                }
-                                RagdollTreeAction::DeleteJoint(joint_id) => {
-                                    self.ctx.editor_actions.dynamic(DeleteRagdollJoint {
-                                        ragdoll: self.ragdoll.clone(),
-                                        joint_id,
-                                    })
-                                }
-                                RagdollTreeAction::DeleteCollider(collider_id) => {
-                                    self.ctx.editor_actions.dynamic(DeleteRagdollCollider {
-                                        ragdoll: self.ragdoll.clone(),
-                                        collider_id,
-                                    })
-                                }
-                            }
-                            self.ctx.editor_actions.dynamic(RecomputeRagdollSymmetry {
-                                ragdoll_bone_map: self.ragdoll_bone_map.clone(),
-                            });
+                            action_handler(
+                                self.ctx,
+                                self.ragdoll.clone(),
+                                self.ragdoll_bone_map.clone(),
+                                action,
+                            );
                         }
                     }
                     TreeResult::None => {}
+                }
+
+                let available_size = ui.available_size();
+                let background_response =
+                    ui.allocate_response(available_size, egui::Sense::click());
+                let mut actions = Vec::new();
+                egui::Popup::context_menu(&background_response).show(|ui| {
+                    if ui.button("Add body").clicked() {
+                        actions.push(RagdollTreeAction::CreateBody);
+                    }
+                    if ui.button("Add joint").clicked() {
+                        actions.push(RagdollTreeAction::CreateJoint);
+                    }
+                });
+                for action in actions {
+                    action_handler(
+                        self.ctx,
+                        self.ragdoll.clone(),
+                        self.ragdoll_bone_map.clone(),
+                        action,
+                    );
                 }
             });
     }
