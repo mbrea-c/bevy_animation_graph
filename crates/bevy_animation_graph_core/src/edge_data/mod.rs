@@ -15,29 +15,6 @@ use crate::{
     ragdoll::configuration::RagdollConfig,
 };
 
-#[derive(Reflect, Clone, Copy, Debug, Serialize, Deserialize, Default)]
-#[reflect(Default)]
-pub struct OptDataSpec {
-    pub spec: DataSpec,
-    pub optional: bool,
-}
-
-impl OptDataSpec {
-    pub fn with_optional(mut self, optional: bool) -> Self {
-        self.optional = optional;
-        self
-    }
-}
-
-impl From<DataSpec> for OptDataSpec {
-    fn from(value: DataSpec) -> Self {
-        Self {
-            spec: value,
-            optional: false,
-        }
-    }
-}
-
 #[derive(Reflect, Default, Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[reflect(Default)]
 pub enum DataSpec {
@@ -115,11 +92,8 @@ impl From<&DataValue> for DataSpec {
     }
 }
 
-impl From<&DataValue> for OptDataSpec {
-    fn from(value: &DataValue) -> Self {
-        Self {
-            spec: value.into(),
-            optional: false,
-        }
-    }
+#[derive(Serialize, Deserialize, Reflect, Clone, Debug)]
+pub struct DataSpecWithOptionalDefault {
+    pub spec: DataSpec,
+    pub default: Option<DataValue>,
 }

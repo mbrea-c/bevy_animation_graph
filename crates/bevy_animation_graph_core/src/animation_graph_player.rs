@@ -89,6 +89,9 @@ pub struct AnimationGraphPlayer {
     pub(crate) outputs: HashMap<PinId, DataValue>,
 
     io_overrides: IoOverrides,
+
+    global_input_data: HashMap<PinId, DataValue>,
+
     /// Error that ocurred during graph evaluation in the last frame
     #[reflect(ignore)]
     error: Option<GraphError>,
@@ -144,6 +147,22 @@ impl AnimationGraphPlayer {
             .cloned()
     }
 
+    /// Configure an input parameter for the animation graph
+    pub fn set_global_input_data(
+        &mut self,
+        input_pin: impl Into<PinId>,
+        value: impl Into<DataValue>,
+    ) {
+        self.global_input_data
+            .insert(input_pin.into(), value.into());
+    }
+
+    /// Return an input parameter for the animation graph
+    pub fn get_global_input_data(&self, input_pin: impl Into<PinId>) -> Option<&DataValue> {
+        let input_pin: PinId = input_pin.into();
+        self.global_input_data.get(&input_pin)
+    }
+
     /// Start playing an animation, resetting state of the player.
     /// This will use a linear blending between the previous and the new animation to make a smooth transition.
     pub fn start(&mut self, handle: Handle<AnimationGraph>) -> &mut Self {
@@ -193,6 +212,7 @@ impl AnimationGraphPlayer {
             root_entity,
             &self.entity_map,
             &mut self.deferred_gizmos,
+            &self.global_input_data,
         ) {
             Ok(outputs) => {
                 self.error = None;
@@ -260,6 +280,7 @@ impl AnimationGraphPlayer {
             root_entity,
             &self.entity_map,
             &mut self.deferred_gizmos,
+            &self.global_input_data,
         )
         .with_debugging(true);
 

@@ -820,6 +820,7 @@ impl AnimationGraph {
         root_entity: Entity,
         entity_map: &HashMap<BoneId, Entity>,
         deferred_gizmos: &mut DeferredGizmos,
+        global_input_data: &HashMap<PinId, DataValue>,
     ) -> Result<HashMap<PinId, DataValue>, GraphError> {
         self.query_with_env(
             time_update,
@@ -829,6 +830,7 @@ impl AnimationGraph {
             root_entity,
             entity_map,
             deferred_gizmos,
+            global_input_data,
         )
     }
 
@@ -842,6 +844,7 @@ impl AnimationGraph {
         root_entity: Entity,
         entity_map: &HashMap<BoneId, Entity>,
         deferred_gizmos: &mut DeferredGizmos,
+        global_input_data: &HashMap<PinId, DataValue>,
     ) -> Result<HashMap<PinId, DataValue>, GraphError> {
         context_arena.next_frame();
 
@@ -853,6 +856,7 @@ impl AnimationGraph {
             root_entity,
             entity_map,
             deferred_gizmos,
+            global_input_data,
         );
         ctx.context_mut().query_output_time = QueryOutputTime::Forced(time_update);
         let mut outputs = HashMap::new();

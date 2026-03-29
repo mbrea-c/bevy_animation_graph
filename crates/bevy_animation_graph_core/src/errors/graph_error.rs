@@ -23,6 +23,10 @@ pub enum GraphError {
     MissingEdgeToTarget(TargetPin),
     #[error("Expected an edge connected to the source {0:?}")]
     MissingEdgeToSource(SourcePin),
+
+    #[error("Requested missing global input with no defaults: {0:?}")]
+    GlobalInputDataMissing(PinId),
+
     #[error("Node {node:?} update on {graph:?} did not produce output for {pin:?}")]
     OutputMissing {
         graph: GraphContextId,
