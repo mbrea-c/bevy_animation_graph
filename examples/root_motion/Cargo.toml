@@ -1,0 +1,8 @@
+[package]
+name = "root_motion"
+publish = false
+edition = { workspace = true }
+
+[dependencies]
+bevy = { workspace = true }
+bevy_animation_graph = { path = "../../crates/bevy_animation_graph" }

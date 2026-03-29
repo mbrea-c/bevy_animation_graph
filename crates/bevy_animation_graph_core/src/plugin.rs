@@ -31,7 +31,7 @@ use crate::{
         bone_mask::BoneMask,
         events::{AnimationEvent, EventQueue, SampledEvent},
     },
-    pose::Pose,
+    pose::{Pose, RootMotionDelta, RootMotionMode},
     ragdoll::{
         bone_mapping::RagdollBoneMap, bone_mapping_loader::RagdollBoneMapLoader,
         definition::Ragdoll, definition_loader::RagdollLoader,
@@ -39,7 +39,10 @@ use crate::{
     skeleton::{Skeleton, loader::SkeletonLoader},
     state_machine::high_level::{StateMachine, loader::StateMachineLoader},
     symmetry::{config::SymmetryConfig, serial::SymmetryConfigSerial},
-    systems::{animation_player, animation_player_deferred_gizmos, apply_animation_to_targets},
+    systems::{
+        RootMotionOutput, animation_player, animation_player_deferred_gizmos,
+        apply_animation_to_targets, extract_root_motion,
+    },
 };
 
 /// Adds animation support to an app
@@ -101,6 +104,7 @@ impl Plugin for AnimationGraphCorePlugin {
                 #[cfg(feature = "physics_avian")]
                 spawn_missing_ragdolls_avian,
                 animation_player,
+                extract_root_motion,
                 #[cfg(feature = "physics_avian")]
                 update_ragdoll_rigidbodies,
                 #[cfg(feature = "physics_avian")]
@@ -177,6 +181,9 @@ impl AnimationGraphCorePlugin {
             .register_type::<AnimationNode>()
             .register_type::<SymmetryConfig>()
             .register_type::<SymmetryConfigSerial>()
+            .register_type::<RootMotionDelta>()
+            .register_type::<RootMotionMode>()
+            .register_type::<RootMotionOutput>()
             .register_type::<()>()
             .register_type_data::<(), ReflectDefault>();
     }

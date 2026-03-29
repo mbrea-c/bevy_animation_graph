@@ -4,7 +4,7 @@ pub mod serial;
 use self::config::SymmetryConfig;
 use crate::{
     errors::GraphError,
-    pose::{BonePose, Pose},
+    pose::{BonePose, Pose, RootMotionDelta},
     skeleton::Skeleton,
 };
 
@@ -42,5 +42,13 @@ pub fn flip_pose(
         out.add_bone(channel, new_id);
     }
     out.skeleton = val.skeleton.clone();
+    out.timestamp = val.timestamp;
+
+    // Mirror root motion using the same symmetry mode as bones
+    out.root_motion = val.root_motion.as_ref().map(|rm| RootMotionDelta {
+        translation: config.mode.apply_position(rm.translation),
+        rotation: config.mode.apply_quat(rm.rotation),
+    });
+
     Ok(out)
 }

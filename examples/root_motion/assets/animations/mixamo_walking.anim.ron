@@ -1,0 +1,7 @@
+(
+    source: GltfNamed(
+        path: "models/mixamo_locomotion.glb",
+        animation_name: "walking",
+    ),
+    skeleton: "skeletons/mixamo.skn.ron",
+)

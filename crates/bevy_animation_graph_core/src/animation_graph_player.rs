@@ -26,7 +26,7 @@ use crate::{
         events::{AnimationEvent, EventQueue, SampledEvent},
     },
     errors::GraphError,
-    pose::{BoneId, Pose},
+    pose::{BoneId, Pose, RootMotionDelta},
     ragdoll::{bone_mapping::RagdollBoneMap, definition::Ragdoll, spawning::SpawnedRagdoll},
     skeleton::Skeleton,
 };
@@ -331,6 +331,11 @@ impl AnimationGraphPlayer {
             AnimationSource::Pose(pose) => Some(pose),
             AnimationSource::None => None,
         }
+    }
+
+    /// Gets the root motion delta from the default output pose, if present.
+    pub fn get_root_motion(&self) -> Option<&RootMotionDelta> {
+        self.get_default_output_pose()?.root_motion.as_ref()
     }
 
     pub fn set_default_output_pose(&mut self, pose: Pose) {

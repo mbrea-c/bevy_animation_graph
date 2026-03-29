@@ -20,6 +20,7 @@ use bevy_animation_graph::{
         context::spec_context::SpecResources,
         edge_data::DataSpec,
         state_machine::high_level::StateMachine,
+        utils::normalize_asset_path,
     },
 };
 use bevy_egui::EguiUserTextures;
@@ -166,7 +167,7 @@ pub fn handle_path_server(handle: UntypedAssetId, asset_server: &AssetServer) ->
 pub fn asset_path(handle: UntypedAssetId, asset_server: &AssetServer) -> AssetPath<'static> {
     asset_server.get_path(handle).map_or(
         AssetPath::from_path(&PathBuf::from("<asset without path>")).clone_owned(),
-        |p| p.clone_owned(),
+        |p| normalize_asset_path(p.clone_owned()),
     )
 }
 

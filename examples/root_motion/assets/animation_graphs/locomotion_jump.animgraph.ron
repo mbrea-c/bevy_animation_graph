@@ -1,0 +1,64 @@
+(
+    nodes: [
+        (
+            id: "40000000-0000-0000-0000-000000000001",
+            name: "Jump Clip",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::ClipNode": (
+                    clip: "animations/mixamo_jump.anim.ron",
+                    override_duration: None,
+                    override_interpolation: None,
+                    root_motion_mode: Disabled,
+                    root_motion_bone: None,
+                ),
+            },
+            should_debug: false,
+        ),
+        (
+            id: "40000000-0000-0000-0000-000000000002",
+            name: "Map Clip Finished to Idle Transition",
+            inner: {
+                "bevy_animation_graph::builtin_nodes::MapEventsNode": (
+                    map_from: AnimationClipFinished,
+                    map_to: TransitionToStateLabel("idle"),
+                ),
+            },
+            should_debug: false,
+        ),
+    ],
+    edges_inverted: {
+        OutputData("pose"): NodeData("40000000-0000-0000-0000-000000000001", "pose"),
+        OutputTime: NodeTime("40000000-0000-0000-0000-000000000001"),
+        // Clip events -> MapEvents -> driver_events output
+        NodeData("40000000-0000-0000-0000-000000000002", "events"): NodeData("40000000-0000-0000-0000-000000000001", "events"),
+        OutputData("driver_events"): NodeData("40000000-0000-0000-0000-000000000002", "events"),
+    },
+    io_spec: (
+        input_times: [],
+        input_data: {},
+        output_time: true,
+        output_data: {
+            "pose": Pose,
+            "driver_events": EventQueue,
+        },
+        input_order: {},
+        output_order: {
+            Data("pose"): 0,
+            Data("driver_events"): 1,
+            Time: 2,
+        },
+    ),
+    default_data: {},
+    editor_metadata: (
+        node_positions: {
+            "40000000-0000-0000-0000-000000000001": (100.0, 150.0),
+            "40000000-0000-0000-0000-000000000002": (350.0, 150.0),
+        },
+        input_position: (-150.0, 150.0),
+        output_position: (600.0, 150.0),
+        input_param_order: {},
+        input_time_order: {},
+        output_data_order: {},
+        output_pose_order: {},
+    ),
+)

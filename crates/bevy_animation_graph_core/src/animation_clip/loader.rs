@@ -7,7 +7,7 @@ use bevy::{
 use serde::{Deserialize, Serialize};
 
 use super::GraphClip;
-use crate::{errors::AssetLoaderError, event_track::EventTrack};
+use crate::{errors::AssetLoaderError, event_track::EventTrack, utils::normalize_asset_path};
 
 #[derive(Reflect, Serialize, Deserialize, Clone, Debug)]
 pub enum GraphClipSource {
@@ -105,7 +105,7 @@ impl TryFrom<&GraphClip> for GraphClipSerial {
 
         Ok(Self {
             source,
-            skeleton: value.skeleton.path().cloned().ok_or(())?,
+            skeleton: normalize_asset_path(value.skeleton.path().cloned().ok_or(())?),
             event_tracks: value.event_tracks.clone(),
         })
     }
