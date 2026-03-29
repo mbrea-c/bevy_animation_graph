@@ -2,8 +2,9 @@ pub mod delaunay;
 pub mod geometry;
 pub mod loading;
 
-use bevy::asset::AssetPath;
 use std::path::PathBuf;
+
+use bevy::asset::AssetPath;
 
 /// Normalize an [`AssetPath`] to use forward slashes, ensuring portability across platforms.
 ///
