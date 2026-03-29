@@ -32,7 +32,7 @@ pub struct BodyTree<'a, 'b> {
 }
 
 impl BodyTree<'_, '_> {
-    pub fn draw(mut self, ui: &mut egui::Ui) {
+    pub fn draw(self, ui: &mut egui::Ui) {
         self.world
             .resource_scope::<Assets<Ragdoll>, _>(|_world, ragdoll_assets| {
                 let Some(ragdoll) = ragdoll_assets.get(&self.ragdoll) else {
@@ -126,7 +126,7 @@ impl BodyTree<'_, '_> {
 
                         for action in response.actions {
                             action_handler(
-                                &mut self.ctx,
+                                self.ctx,
                                 self.ragdoll.clone(),
                                 self.ragdoll_bone_map.clone(),
                                 action,
@@ -150,7 +150,7 @@ impl BodyTree<'_, '_> {
                 });
                 for action in actions {
                     action_handler(
-                        &mut self.ctx,
+                        self.ctx,
                         self.ragdoll.clone(),
                         self.ragdoll_bone_map.clone(),
                         action,

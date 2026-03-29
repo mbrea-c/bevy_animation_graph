@@ -157,9 +157,7 @@ pub fn spawn_ragdoll_avian(
             .get(&body_id)
             .expect("Validation should have caught this");
 
-        let frame = JointFrame::local(joint_pos - body.offset);
-
-        frame
+        JointFrame::local(joint_pos - body.offset)
     };
 
     for joint in ragdoll.joints.values() {

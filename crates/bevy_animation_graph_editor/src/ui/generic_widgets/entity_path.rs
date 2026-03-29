@@ -75,14 +75,13 @@ impl<'a> egui::Widget for EntityPathWidget<'a> {
                         let r = ui
                             .horizontal(|ui| {
                                 ui.spacing_mut().item_spacing = egui::Vec2::ZERO;
-                                let r = ui.add(
+                                ui.add(
                                     egui::Button::new((
                                         egui::RichText::new(&buffer.value).strong(),
                                         egui::RichText::new(rest),
                                     ))
                                     .frame(false),
-                                );
-                                r
+                                )
                             })
                             .inner;
                         if r.clicked() {
