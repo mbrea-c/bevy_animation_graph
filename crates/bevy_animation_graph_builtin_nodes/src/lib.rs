@@ -2,6 +2,7 @@ use bevy::app::{App, Plugin};
 
 use crate::{
     blend_node::BlendNode,
+    blend_space_1d_node::BlendSpace1DNode,
     blend_space_node::BlendSpaceNode,
     chain_node::ChainNode,
     clip_node::ClipNode,
@@ -27,6 +28,7 @@ use crate::{
 };
 
 pub mod blend_node;
+pub mod blend_space_1d_node;
 pub mod blend_space_node;
 pub mod bool;
 pub mod chain_node;
@@ -65,6 +67,7 @@ impl BuiltinNodesPlugin {
             .register_type::<DummyNode>()
             .register_type::<ChainNode>()
             .register_type::<BlendNode>()
+            .register_type::<BlendSpace1DNode>()
             .register_type::<BlendSpaceNode>()
             .register_type::<FlipLRNode>()
             .register_type::<ReplicateTimeNode>()
