@@ -525,14 +525,14 @@ struct IoSpecSerial<I: Eq + std::hash::Hash> {
 }
 
 #[derive(Reflect, Debug, Clone)]
-pub struct DataOnlySpec<I, V> {
-    specs: HashMap<I, V>,
-    order: HashMap<I, i32>,
+pub struct DataOnlySpec<K, V> {
+    specs: HashMap<K, V>,
+    order: HashMap<K, i32>,
 
     next_order: i32,
 }
 
-impl<I, V> Default for DataOnlySpec<I, V> {
+impl<K, V> Default for DataOnlySpec<K, V> {
     fn default() -> Self {
         Self {
             specs: Default::default(),
