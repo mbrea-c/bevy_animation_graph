@@ -1,5 +1,3 @@
-use std::hash::Hash;
-
 pub struct CustomPopup<S> {
     pub save_on_click: Option<S>,
     pub allow_opening: bool,
@@ -24,23 +22,8 @@ where
         }
     }
 
-    pub fn with_salt(mut self, salt: impl Hash) -> Self {
-        self.salt = self.salt.with(salt);
-        self
-    }
-
     pub fn with_save_on_click(mut self, save_on_click: Option<S>) -> Self {
         self.save_on_click = save_on_click;
-        self
-    }
-
-    pub fn with_sense_rect(mut self, allowable_rect: egui::Rect) -> Self {
-        self.sense_rect = allowable_rect;
-        self
-    }
-
-    pub fn with_default_size(mut self, default_size: egui::Vec2) -> Self {
-        self.default_size = default_size;
         self
     }
 

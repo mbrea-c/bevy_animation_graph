@@ -31,8 +31,9 @@ pub enum DataSpec {
     RagdollConfig,
 }
 
-#[derive(Serialize, Deserialize, Reflect, Clone, Debug, ValueWrapper)]
+#[derive(Serialize, Deserialize, Reflect, Clone, Debug, ValueWrapper, PartialEq)]
 #[unwrap_error(error(crate::errors::GraphError), variant(MismatchedDataType))]
+#[reflect(Default)]
 pub enum DataValue {
     #[trivial_copy]
     F32(f32),
@@ -92,7 +93,7 @@ impl From<&DataValue> for DataSpec {
     }
 }
 
-#[derive(Serialize, Deserialize, Reflect, Clone, Debug)]
+#[derive(Serialize, Deserialize, Reflect, Clone, Debug, Default, PartialEq)]
 pub struct DataSpecWithOptionalDefault {
     pub spec: DataSpec,
     pub default: Option<DataValue>,

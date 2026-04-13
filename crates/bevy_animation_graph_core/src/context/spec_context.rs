@@ -594,7 +594,7 @@ where
         self.order.len()
     }
 
-    pub fn shift_input_index(&mut self, key: &K, idx_delta: i32)
+    pub fn shift_index(&mut self, key: &K, idx_delta: i32)
     where
         K: Clone + Eq + std::hash::Hash,
     {

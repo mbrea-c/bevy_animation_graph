@@ -1,4 +1,7 @@
-use bevy::{platform::collections::HashMap, reflect::Reflect};
+use bevy::{
+    platform::collections::HashMap,
+    reflect::{Reflect, prelude::ReflectDefault},
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -11,6 +14,7 @@ use crate::{
 /// * Default readback configuration for skeleton bones (whether bone position is read back from
 ///   the ragdoll), and per-bone overrides.
 #[derive(Reflect, Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[reflect(Default)]
 pub struct RagdollConfig {
     pub default_mode: Option<BodyMode>,
     pub mode_overrides: HashMap<BodyId, BodyMode>,

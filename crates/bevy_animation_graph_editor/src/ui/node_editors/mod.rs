@@ -1,16 +1,20 @@
-pub mod blend_space;
-pub mod ragdoll_config;
-pub mod reflect_editor;
-
 use std::any::Any;
 
 use bevy::{app::App, ecs::world::World, reflect::FromType};
 use bevy_animation_graph::{
     builtin_nodes::{
-        blend_space_node::BlendSpaceNode, ragdoll::const_ragdoll_config::ConstRagdollConfig,
+        blend_space_node::BlendSpaceNode, global_input::GlobalInput,
+        ragdoll::const_ragdoll_config::ConstRagdollConfig,
     },
     core::animation_node::NodeLike,
 };
+
+use crate::ui::node_editors::new_reflect_editor::NewReflectNodeEditor;
+
+pub mod blend_space;
+pub mod new_reflect_editor;
+pub mod ragdoll_config;
+pub mod reflect_editor;
 
 pub trait NodeEditor: 'static {
     type Target: 'static;
@@ -75,7 +79,15 @@ fn reflect_get_editor<T: Editable>(value: &dyn Any) -> Box<dyn DynNodeEditor> {
     Box::new(static_value.get_editor())
 }
 
+impl Editable for GlobalInput {
+    type Editor = NewReflectNodeEditor;
+
+    fn get_editor(&self) -> Self::Editor {
+        NewReflectNodeEditor
+    }
+}
 pub fn register_node_editables(app: &mut App) {
     app.register_type_data::<ConstRagdollConfig, ReflectEditable>();
     app.register_type_data::<BlendSpaceNode, ReflectEditable>();
+    app.register_type_data::<GlobalInput, ReflectEditable>();
 }

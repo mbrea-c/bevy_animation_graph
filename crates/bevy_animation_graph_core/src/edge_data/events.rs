@@ -34,7 +34,7 @@ impl Default for AnimationEvent {
 }
 
 /// Structure containing a sampled event and relevant metadata
-#[derive(Clone, Debug, Reflect, Serialize, Deserialize)]
+#[derive(Clone, Debug, Reflect, Serialize, Deserialize, PartialEq)]
 #[reflect(Default)]
 pub struct SampledEvent {
     /// Event that was sampled
@@ -70,7 +70,7 @@ impl SampledEvent {
 }
 
 /// Sequence of events
-#[derive(Clone, Debug, Reflect, Serialize, Deserialize, Default)]
+#[derive(Clone, Debug, Reflect, Serialize, Deserialize, Default, PartialEq)]
 #[reflect(Default)]
 pub struct EventQueue {
     pub events: Vec<SampledEvent>,

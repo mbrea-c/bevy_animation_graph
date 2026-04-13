@@ -39,7 +39,7 @@ use crate::{
             },
             window::buffers::ClearBuffers,
         },
-        utils::{self, dummy_node, popup::CustomPopup},
+        utils::{self, dummy_node},
     },
 };
 
@@ -94,7 +94,7 @@ impl NativeEditorWindowExtension for GraphEditorWindow {
             buffer
         };
 
-        let _: Option<()> =
+        let Some(response) =
             world.resource_scope::<Assets<AnimationGraph>, _>(|world, mut graph_assets| {
                 world.resource_scope::<Assets<StateMachine>, _>(|world, fsm_assets| {
                     world.resource_scope::<GraphIndicesMap, _>(|world, graph_indices_map| {
@@ -140,7 +140,7 @@ impl NativeEditorWindowExtension for GraphEditorWindow {
                             return None;
                         };
 
-                        buffer.nodes_context.show(nodes.nodes, nodes.edges, ui);
+                        let response = buffer.nodes_context.show(nodes.nodes, nodes.edges, ui);
                         buffer
                             .nodes_context
                             .get_changes()
@@ -197,23 +197,33 @@ impl NativeEditorWindowExtension for GraphEditorWindow {
                             }
                         }
 
-                        None
+                        Some(response)
                     })
                 })
-            });
+            })
+        else {
+            return;
+        };
 
         ctx.consume_queue(queue);
 
-        let available_size = ui.available_size();
-        let (id, rect) = ui.allocate_space(available_size);
-
-        CustomPopup::new()
-            .with_salt(id.with("Graph editor right click popup"))
-            .with_sense_rect(rect)
-            .with_allow_opening(true)
-            .with_save_on_click(Some(()))
-            .with_default_size(egui::Vec2::new(500., 300.))
-            .show_if_saved(ui, |ui, ()| {
+        egui::Popup::from_response(&response)
+            .at_pointer_fixed()
+            .width(500.)
+            .close_behavior(egui::PopupCloseBehavior::IgnoreClicks)
+            .open_memory(
+                if ui.input(|i| {
+                    i.pointer.button_clicked(egui::PointerButton::Secondary)
+                        && response
+                            .rect
+                            .contains(i.pointer.interact_pos().unwrap_or_default())
+                }) {
+                    Some(egui::SetOpenCommand::Bool(true))
+                } else {
+                    None
+                },
+            )
+            .show(|ui| {
                 self.node_creator_popup(ui, world, ctx);
             });
     }
