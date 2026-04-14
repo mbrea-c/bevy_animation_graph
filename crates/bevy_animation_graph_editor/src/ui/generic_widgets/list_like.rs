@@ -34,71 +34,60 @@ where
     pub fn show(mut self, ui: &mut egui::Ui) -> egui::Response {
         ui.push_id(self.id_hash, |ui| {
             ui.vertical(|ui| {
-                let response = egui::Frame::new()
-                    .outer_margin(3.)
-                    .inner_margin(3.)
-                    .corner_radius(3.)
-                    .stroke((1., ui.style().visuals.weak_text_color()))
-                    .show(ui, |ui| {
-                        let mut response = ui.heading("Inputs");
+                let mut response = ui.allocate_response(egui::Vec2::ZERO, egui::Sense::empty());
 
-                        let mut list_buffer = ListBuffer::from_ui(ui, &(), self.value);
-                        let mut pending_events = VecDeque::new();
+                let mut list_buffer = ListBuffer::from_ui(ui, &(), self.value);
+                let mut pending_events = VecDeque::new();
 
-                        for index in 0..self.value.len() {
-                            response |=
-                                self.show_field(ui, index, &mut list_buffer, &mut pending_events);
+                for index in 0..self.value.len() {
+                    response |= self.show_field(ui, index, &mut list_buffer, &mut pending_events);
+                }
+
+                ui.horizontal(|ui| {
+                    if ui.button("+").clicked() {
+                        pending_events.push_back(ListWidgetEvent::AppendDefault);
+                        response.mark_changed();
+                    }
+                    ui.label("Add item");
+                });
+
+                while let Some(event) = pending_events.pop_front() {
+                    let mut itf = IndexTransform::Noop;
+                    match event {
+                        ListWidgetEvent::Shift { index, delta } => {
+                            let new_index = self.value.shift_index(index, delta);
+                            itf = IndexTransform::Shift { index, new_index };
                         }
-
-                        ui.horizontal(|ui| {
-                            if ui.button("+").clicked() {
-                                pending_events.push_back(ListWidgetEvent::AppendDefault);
-                                response.mark_changed();
-                            }
-                            ui.label("Add item");
-                        });
-
-                        while let Some(event) = pending_events.pop_front() {
-                            let mut itf = IndexTransform::Noop;
-                            match event {
-                                ListWidgetEvent::Shift { index, delta } => {
-                                    let new_index = self.value.shift_index(index, delta);
-                                    itf = IndexTransform::Shift { index, new_index };
-                                }
-                                ListWidgetEvent::Removal { index } => {
-                                    self.value.remove(index);
-                                    itf = IndexTransform::Removal { index };
-                                }
-                                ListWidgetEvent::AppendDefault => {
-                                    if let Some(default) = self.value.default() {
-                                        let buffer = L::ItemBuffer::new(ui, &(), default.as_ref());
-                                        self.value.push(&buffer);
-                                    }
-                                }
-                            }
-                            pending_events.retain_mut(|ev| {
-                                if let Some(new) = ev.apply_transform(&itf) {
-                                    *ev = new;
-                                    true
-                                } else {
-                                    false
-                                }
-                            });
-
-                            list_buffer.wants_update = list_buffer
-                                .wants_update
-                                .into_iter()
-                                .filter_map(|i| itf.adjusted(i))
-                                .collect();
-
-                            itf.apply_vec(&mut list_buffer.item_buffers);
+                        ListWidgetEvent::Removal { index } => {
+                            self.value.remove(index);
+                            itf = IndexTransform::Removal { index };
                         }
+                        ListWidgetEvent::AppendDefault => {
+                            if let Some(default) = self.value.default() {
+                                let buffer = L::ItemBuffer::new(ui, &(), default.as_ref());
+                                self.value.push(&buffer);
+                            }
+                        }
+                    }
+                    pending_events.retain_mut(|ev| {
+                        if let Some(new) = ev.apply_transform(&itf) {
+                            *ev = new;
+                            true
+                        } else {
+                            false
+                        }
+                    });
 
-                        CloneBuffer::<L, ()>::save_back(&list_buffer, ui);
+                    list_buffer.wants_update = list_buffer
+                        .wants_update
+                        .into_iter()
+                        .filter_map(|i| itf.adjusted(i))
+                        .collect();
 
-                        response
-                    })
-                    .inner;
+                    itf.apply_vec(&mut list_buffer.item_buffers);
+                }
+
+                CloneBuffer::<L, ()>::save_back(&list_buffer, ui);
 
                 response
             })
@@ -133,11 +122,9 @@ where
                     wants_update.insert(index);
                 }
 
-                if wants_update.contains(&index) {
-                    if self.value.update(index, buffer) {
-                        wants_update.remove(&index);
-                        *buffer = L::ItemBuffer::new(ui, &(), &buffer.value());
-                    }
+                if wants_update.contains(&index) && self.value.update(index, buffer) {
+                    wants_update.remove(&index);
+                    *buffer = L::ItemBuffer::new(ui, &(), &buffer.value());
                 }
 
                 controls_response | item_response

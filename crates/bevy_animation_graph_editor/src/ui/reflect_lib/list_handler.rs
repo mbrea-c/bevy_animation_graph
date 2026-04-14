@@ -54,7 +54,7 @@ impl<'a> ListLike for ReflectList<'a> {
     }
 
     fn update(&mut self, index: usize, buffer: &Self::ItemBuffer) -> bool {
-        if !buffer.0.is_some() {
+        if buffer.0.is_none() {
             return false;
         }
 
@@ -66,7 +66,7 @@ impl<'a> ListLike for ReflectList<'a> {
     }
 
     fn push(&mut self, buffer: &Self::ItemBuffer) {
-        if !buffer.0.is_some() {
+        if buffer.0.is_none() {
             return;
         }
 

@@ -19,7 +19,7 @@ pub fn register_reflect_widgets(registry: &mut WidgetRegistry) {
     registry
         .add(HashMapReflectWidget::<String, String>::default())
         .add(SortedMapReflectWidget::<PinId, DataSpecWithOptionalDefault>::default())
-        .add(DataValueReflectWidget::default())
-        .add(Vec3ReflectWidget::default())
-        .add(RagdollConfigReflectWidget::default());
+        .add(DataValueReflectWidget)
+        .add(Vec3ReflectWidget)
+        .add(RagdollConfigReflectWidget);
 }
