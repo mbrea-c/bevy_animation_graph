@@ -2,12 +2,10 @@ use bevy::prelude::*;
 use bevy_animation_graph_core::{
     animation_graph::PinId,
     animation_node::{NodeLike, ReflectNodeLike},
-    context::{
-        new_context::NodeContext,
-        spec_context::{DataOnlySpec, SpecContext},
-    },
+    context::{new_context::NodeContext, spec_context::SpecContext},
     edge_data::DataSpecWithOptionalDefault,
     errors::GraphError,
+    utils::sorted_map::SortedMap,
 };
 
 /// Exposes global inputs anywhere
@@ -20,7 +18,7 @@ use bevy_animation_graph_core::{
 #[type_path = "bevy_animation_graph::builtin_nodes"]
 pub struct GlobalInput {
     /// Which global inputs to expose in this node, along with an optional default
-    pub values: DataOnlySpec<PinId, DataSpecWithOptionalDefault>,
+    pub values: SortedMap<PinId, DataSpecWithOptionalDefault>,
 }
 
 impl NodeLike for GlobalInput {

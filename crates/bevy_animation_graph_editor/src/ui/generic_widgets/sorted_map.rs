@@ -1,17 +1,17 @@
-use bevy_animation_graph::core::context::spec_context::DataOnlySpec;
+use bevy_animation_graph::core::utils::sorted_map::SortedMap;
 
 use crate::ui::{
     generic_widgets::list_like::{ListLike, ListLikeWidget},
     utils::ui_buffer::{CloneBuffer, SelfContainedBuffer},
 };
 
-pub struct DataOnlySpecWidget<'a, K, V> {
-    pub value: &'a mut DataOnlySpec<K, V>,
+pub struct SortedMapWidget<'a, K, V> {
+    pub value: &'a mut SortedMap<K, V>,
     pub id_hash: egui::Id,
 }
 
-impl<'a, K, V> DataOnlySpecWidget<'a, K, V> {
-    pub fn new(io_spec: &'a mut DataOnlySpec<K, V>) -> Self {
+impl<'a, K, V> SortedMapWidget<'a, K, V> {
+    pub fn new(io_spec: &'a mut SortedMap<K, V>) -> Self {
         Self {
             value: io_spec,
             id_hash: egui::Id::new("data only io spec"),
@@ -24,7 +24,7 @@ impl<'a, K, V> DataOnlySpecWidget<'a, K, V> {
     }
 }
 
-impl<'a, K, V> DataOnlySpecWidget<'a, K, V>
+impl<'a, K, V> SortedMapWidget<'a, K, V>
 where
     K: Default + Clone + Eq + std::hash::Hash + Send + Sync + 'static,
     V: Default + Clone + PartialEq + Send + Sync + 'static,
@@ -46,7 +46,7 @@ where
 }
 
 struct ValueWrapper<'a, K, V, F, G> {
-    value: &'a mut DataOnlySpec<K, V>,
+    value: &'a mut SortedMap<K, V>,
     show_k: F,
     show_v: G,
 }

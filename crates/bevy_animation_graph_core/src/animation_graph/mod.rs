@@ -812,6 +812,7 @@ impl AnimationGraph {
         Ok(time_update)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn query(
         &self,
         time_update: TimeUpdate,

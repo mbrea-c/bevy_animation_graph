@@ -40,6 +40,7 @@ pub struct GraphContext<'a> {
 }
 
 impl<'a> GraphContext<'a> {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         context_id: GraphContextId,
         context_arena: &mut GraphContextArena,
