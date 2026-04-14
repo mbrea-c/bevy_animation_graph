@@ -2,7 +2,10 @@ use std::{any::Any, collections::VecDeque};
 
 use bevy::platform::collections::HashSet;
 
-use crate::ui::core::BufferType;
+use crate::ui::utils::{
+    IndexTransform,
+    ui_buffer::{CloneBuffer, ErasedCloneBuffer, SelfContainedBuffer},
+};
 
 pub struct ListLikeWidget<'a, L> {
     pub value: &'a mut L,
@@ -87,6 +90,8 @@ where
                                 .into_iter()
                                 .filter_map(|i| itf.adjusted(i))
                                 .collect();
+
+                            itf.apply_vec(&mut list_buffer.item_buffers);
                         }
 
                         CloneBuffer::<L, ()>::save_back(&list_buffer, ui);
@@ -109,33 +114,35 @@ where
         list_buffer: &mut ListBuffer,
         pending_events: &mut VecDeque<ListWidgetEvent>,
     ) -> egui::Response {
-        let ListBuffer {
-            item_buffers,
-            wants_update,
-        } = list_buffer;
+        ui.push_id(index, |ui| {
+            let ListBuffer {
+                item_buffers,
+                wants_update,
+            } = list_buffer;
 
-        let buffer = item_buffers
-            .get_mut(index)
-            .and_then(|b| b.any_mut().downcast_mut::<L::ItemBuffer>())
-            .unwrap();
+            let b: &mut dyn Any = item_buffers.get_mut(index).unwrap().as_mut();
+            let buffer = b.downcast_mut::<L::ItemBuffer>().unwrap();
 
-        ui.horizontal(|ui| {
-            let controls_response = self.item_controls(ui, index, self.value.len(), pending_events);
+            ui.horizontal(|ui| {
+                let controls_response =
+                    self.item_controls(ui, index, self.value.len(), pending_events);
 
-            let item_response = self.value.edit_item(ui, buffer);
+                let item_response = self.value.edit_item(ui, buffer);
 
-            if item_response.changed() {
-                wants_update.insert(index);
-            }
-
-            if wants_update.contains(&index) {
-                if self.value.update(index, buffer) {
-                    wants_update.remove(&index);
-                    *buffer = L::ItemBuffer::new(ui, &(), &buffer.value());
+                if item_response.changed() {
+                    wants_update.insert(index);
                 }
-            }
 
-            controls_response | item_response
+                if wants_update.contains(&index) {
+                    if self.value.update(index, buffer) {
+                        wants_update.remove(&index);
+                        *buffer = L::ItemBuffer::new(ui, &(), &buffer.value());
+                    }
+                }
+
+                controls_response | item_response
+            })
+            .inner
         })
         .inner
     }
@@ -256,56 +263,11 @@ where
     fn is_still_valid(&self, (): &(), value: &L) -> bool {
         self.item_buffers.len() == value.len()
             && self.item_buffers.iter().zip(value.iter()).all(|(b, v)| {
-                b.any_ref()
-                    .downcast_ref::<L::ItemBuffer>()
+                let b: &dyn Any = b.as_ref();
+                b.downcast_ref::<L::ItemBuffer>()
                     .is_some_and(|b| b.is_still_valid(&(), v))
             })
     }
-}
-
-pub trait CloneBuffer<V, M>: Clone + Send + Sync + 'static
-where
-    V: ?Sized,
-{
-    fn new(ui: &egui::Ui, meta: &M, value: &V) -> Self;
-    fn id(&self, ui: &egui::Ui) -> egui::Id;
-    fn is_still_valid(&self, meta: &M, value: &V) -> bool;
-
-    fn id_static(ui: &egui::Ui, meta: &M, value: &V) -> egui::Id {
-        Self::new(ui, meta, value).id(ui)
-    }
-    fn from_ui(ui: &mut egui::Ui, meta: &M, value: &V) -> Self {
-        let id = Self::id_static(ui, meta, value);
-
-        if let Some(buffer) = ui.memory_mut(|mem| mem.data.get_temp::<Self>(id))
-            && buffer.is_still_valid(meta, value)
-        {
-            buffer
-        } else {
-            Self::new(ui, meta, value)
-        }
-    }
-
-    fn save_back(&self, ui: &mut egui::Ui) {
-        let id = self.id(ui);
-        ui.memory_mut(|mem| {
-            mem.data.insert_temp(id, self.clone());
-        });
-    }
-}
-
-pub trait ErasedCloneBuffer: Send + Sync + Any {
-    fn clone_box(&self) -> Box<dyn ErasedCloneBuffer>;
-}
-
-impl<S: Clone + Send + Sync + 'static> ErasedCloneBuffer for S {
-    fn clone_box(&self) -> Box<dyn ErasedCloneBuffer> {
-        Box::new(self.clone())
-    }
-}
-
-pub trait SelfContainedBuffer<V: ?Sized, M>: CloneBuffer<V, M> {
-    fn value(&self) -> Box<V>;
 }
 
 enum ListWidgetEvent {
@@ -327,52 +289,6 @@ impl ListWidgetEvent {
                 .adjusted(*index)
                 .map(|i| ListWidgetEvent::Removal { index: i }),
             ListWidgetEvent::AppendDefault => Some(ListWidgetEvent::AppendDefault),
-        }
-    }
-}
-
-pub enum IndexTransform {
-    Shift { index: usize, new_index: usize },
-    Removal { index: usize },
-    Noop,
-}
-
-impl IndexTransform {
-    pub fn adjusted(&self, i: usize) -> Option<usize> {
-        match self {
-            IndexTransform::Shift { index, new_index } => {
-                if index == new_index {
-                    Some(i)
-                } else if index < new_index {
-                    // shift forwards / down
-                    if i == *index {
-                        Some(*new_index)
-                    } else if i > *index && i <= *new_index {
-                        Some(i - 1)
-                    } else {
-                        Some(i)
-                    }
-                } else {
-                    // shift backwards / up
-                    if i == *index {
-                        Some(*new_index)
-                    } else if i < *index && i >= *new_index {
-                        Some(i + 1)
-                    } else {
-                        Some(i)
-                    }
-                }
-            }
-            IndexTransform::Removal { index } => {
-                if i == *index {
-                    None
-                } else if i > *index {
-                    Some(i - 1)
-                } else {
-                    Some(i)
-                }
-            }
-            IndexTransform::Noop => Some(i),
         }
     }
 }

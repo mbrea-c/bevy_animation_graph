@@ -3,8 +3,9 @@ use std::any::TypeId;
 use bevy::reflect::{List, ListInfo, PartialReflect, Reflect, prelude::ReflectDefault};
 
 use crate::ui::{
-    generic_widgets::list_like::{CloneBuffer, ListLike, ListLikeWidget, SelfContainedBuffer},
+    generic_widgets::list_like::{ListLike, ListLikeWidget},
     reflect_lib::ReflectWidgetContext,
+    utils::ui_buffer::{CloneBuffer, SelfContainedBuffer},
 };
 
 pub fn handle_list(

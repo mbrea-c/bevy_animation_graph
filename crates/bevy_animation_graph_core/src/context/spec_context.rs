@@ -525,19 +525,22 @@ struct IoSpecSerial<I: Eq + std::hash::Hash> {
 }
 
 #[derive(Reflect, Debug, Clone)]
-pub struct DataOnlySpec<K, V> {
-    specs: HashMap<K, V>,
-    order: HashMap<K, i32>,
+pub struct SpecEntry<K, V> {
+    key: K,
+    value: V,
+}
 
-    next_order: i32,
+#[derive(Reflect, Debug, Clone)]
+pub struct DataOnlySpec<K, V> {
+    entries: Vec<(K, V)>,
+    index: HashMap<K, usize>,
 }
 
 impl<K, V> Default for DataOnlySpec<K, V> {
     fn default() -> Self {
         Self {
-            specs: Default::default(),
-            order: Default::default(),
-            next_order: Default::default(),
+            entries: Default::default(),
+            index: Default::default(),
         }
     }
 }
@@ -546,75 +549,63 @@ impl<K, V> DataOnlySpec<K, V>
 where
     K: Clone + Eq + std::hash::Hash,
 {
-    pub fn add_data(&mut self, pin_id: K, data_spec: V) {
-        self.specs.insert(pin_id.clone(), data_spec);
-        self.order.insert(pin_id, self.next_order);
-        self.next_order += 1;
+    pub fn push(&mut self, key: K, value: V) -> bool {
+        if self.index.contains_key(&key) {
+            return false;
+        }
+        let entry = (key.clone(), value);
+        self.entries.push(entry);
+        self.index.insert(key, self.entries.len() - 1);
+        true
     }
 
-    pub fn input_compare_key(&self, input: &K) -> i32 {
-        self.order.get(input).copied().unwrap_or(i32::MAX)
+    pub fn input_compare_key(&self, key: &K) -> i32 {
+        self.index.get(key).copied().map_or(i32::MAX, |i| i as i32)
     }
 
-    pub fn get_input_data(&self, pin_id: &K) -> Option<&V> {
-        self.specs.get(pin_id)
+    pub fn get(&self, key: &K) -> Option<&V> {
+        self.index.get(key).map(|i| &self.entries[*i].1)
     }
 
-    /// Unsorted iterator over keys
     pub fn keys(&self) -> impl Iterator<Item = &K> {
-        self.specs.keys()
+        self.entries.iter().map(|entry| &entry.0)
     }
 
-    /// Unsorted iterator over values
     pub fn values(&self) -> impl Iterator<Item = &V> {
-        self.specs.values()
+        self.entries.iter().map(|entry| &entry.1)
     }
 
-    /// Unsorted iterator
-    pub fn iter(&self) -> impl Iterator<Item = (&K, &V)> {
-        self.specs.iter()
-    }
-
-    /// Sorted vector of inputs
-    pub fn sorted(&self) -> Vec<(&K, &V)>
-    where
-        K: Clone + Eq + std::hash::Hash,
-    {
-        let mut inputs: Vec<_> = self
-            .specs
-            .iter()
-            .map(|(pin_id, data_spec)| (pin_id, data_spec))
-            .collect();
-
-        inputs.sort_by_key(|(k, _)| self.order.get(*k));
-        inputs
+    pub fn iter(&self) -> impl Iterator<Item = &(K, V)> {
+        self.entries.iter()
     }
 
     pub fn len(&self) -> usize {
-        self.order.len()
+        self.entries.len()
     }
 
-    pub fn shift_index(&mut self, key: &K, idx_delta: i32)
+    pub fn shift_key(&mut self, key: &K, idx_delta: i32)
     where
         K: Clone + Eq + std::hash::Hash,
     {
-        let Some(&current_idx) = self.order.get(key) else {
+        let Some(&current_idx) = self.index.get(key) else {
             return;
         };
 
-        let target_idx = current_idx + idx_delta;
+        self.shift_index(current_idx, idx_delta);
+    }
 
-        for idx in self.order.values_mut() {
-            if *idx == target_idx {
-                *idx = current_idx;
-            }
+    pub fn shift_index(&mut self, current_idx: usize, idx_delta: i32) -> usize {
+        let mut target_idx = (current_idx as i32 + idx_delta) as usize;
+        if target_idx > current_idx {
+            target_idx -= 1;
         }
 
-        let Some(idx) = self.order.get_mut(key) else {
-            return;
-        };
-        *idx = target_idx;
-        self.reset_ordering();
+        let current_entry = self.entries.remove(current_idx);
+        self.entries.insert(target_idx, current_entry);
+
+        self.reindex();
+
+        target_idx
     }
 
     /// Returns false if the update could not be completed (e.g. if the new key already
@@ -623,44 +614,54 @@ where
     where
         K: Clone + Eq + std::hash::Hash,
     {
-        if &new_key != prev_key && self.order.contains_key(&new_key) {
-            return false;
-        }
-
-        let Some(idx) = self.order.remove(prev_key) else {
+        let Some(&index) = self.index.get(prev_key) else {
             return false;
         };
 
-        self.specs.remove(prev_key);
+        self.update_index(index, new_key, new_value)
+    }
 
-        self.order.insert(new_key.clone(), idx);
+    /// Returns false if the update could not be completed (e.g. if the new key already
+    /// exists!)
+    pub fn update_index(&mut self, index: usize, new_key: K, new_value: V) -> bool
+    where
+        K: Clone + Eq + std::hash::Hash,
+    {
+        let prev_key = &self.entries[index].0;
 
-        self.specs.insert(new_key, new_value);
+        if &new_key != prev_key && self.index.contains_key(&new_key) {
+            return false;
+        }
+
+        self.index.remove(prev_key);
+        self.entries.remove(index);
+        self.entries.insert(index, (new_key.clone(), new_value));
+        self.index.insert(new_key, index);
 
         true
     }
 
-    pub fn remove(&mut self, key: &K)
+    pub fn remove_key(&mut self, key: &K)
     where
         K: Clone + Eq + std::hash::Hash,
     {
-        self.order.remove(key);
-        self.specs.remove(key);
-        self.reset_ordering();
+        if let Some(i) = self.index.remove(key) {
+            self.entries.remove(i);
+        }
+
+        self.reindex();
     }
 
-    pub fn reset_ordering(&mut self)
-    where
-        K: Clone + std::hash::Hash + Eq,
-    {
-        let mut sorted_inputs: Vec<_> = self.order.iter().collect();
-        sorted_inputs.sort_by_key(|(_, idx)| **idx);
-        self.order = sorted_inputs
-            .into_iter()
-            .enumerate()
-            .map(|(idx, (key, _))| (key.clone(), idx as i32))
-            .collect();
-        self.next_order = self.order.len() as i32;
+    pub fn remove_index(&mut self, index: usize) {
+        self.entries.remove(index);
+        self.reindex();
+    }
+
+    fn reindex(&mut self) {
+        self.index.clear();
+        self.entries.iter().enumerate().for_each(|(i, (k, _))| {
+            self.index.insert(k.clone(), i);
+        });
     }
 }
 
@@ -674,16 +675,15 @@ where
         S: serde::Serializer,
     {
         DataOnlySpecSerial {
-            data: self.specs.clone(),
-            order: self.order.clone(),
+            entries: self.entries.clone(),
         }
         .serialize(serializer)
     }
 }
 
-impl<'de, I, V> Deserialize<'de> for DataOnlySpec<I, V>
+impl<'de, K, V> Deserialize<'de> for DataOnlySpec<K, V>
 where
-    I: Deserialize<'de> + Eq + std::hash::Hash,
+    K: Deserialize<'de> + Eq + std::hash::Hash + Clone,
     V: Deserialize<'de>,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -692,18 +692,18 @@ where
     {
         let serial = DataOnlySpecSerial::deserialize(deserializer)?;
 
-        let next_input_order = serial.order.values().max().copied().unwrap_or(-1) + 1;
+        let mut val = Self {
+            entries: serial.entries,
+            index: HashMap::new(),
+        };
 
-        Ok(Self {
-            specs: serial.data,
-            order: serial.order,
-            next_order: next_input_order,
-        })
+        val.reindex();
+
+        Ok(val)
     }
 }
 
 #[derive(Serialize, Deserialize)]
 struct DataOnlySpecSerial<K: Eq + std::hash::Hash, V> {
-    data: HashMap<K, V>,
-    order: HashMap<K, i32>,
+    entries: Vec<(K, V)>,
 }

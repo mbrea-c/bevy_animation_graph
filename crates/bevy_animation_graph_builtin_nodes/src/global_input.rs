@@ -41,7 +41,7 @@ impl NodeLike for GlobalInput {
     }
 
     fn spec(&self, mut ctx: SpecContext) -> Result<(), GraphError> {
-        for (pin, val) in self.values.sorted() {
+        for (pin, val) in self.values.iter() {
             ctx.add_output_data(pin, val.spec);
         }
 

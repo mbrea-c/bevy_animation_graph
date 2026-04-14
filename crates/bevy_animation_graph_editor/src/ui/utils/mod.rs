@@ -34,6 +34,7 @@ use crate::{
 
 pub mod collapsing;
 pub mod popup;
+pub mod ui_buffer;
 
 pub fn asset_sort_key<T: Asset>(asset_id: AssetId<T>, asset_server: &AssetServer) -> String {
     format!(
@@ -385,4 +386,63 @@ pub fn with_assets_all<A: Asset, T, const N: usize>(
 
 pub fn dummy_node() -> AnimationNode {
     AnimationNode::new("New node", DummyNode)
+}
+
+pub enum IndexTransform {
+    Shift { index: usize, new_index: usize },
+    Removal { index: usize },
+    Noop,
+}
+
+impl IndexTransform {
+    pub fn apply_vec<T>(&self, v: &mut Vec<T>) {
+        match self {
+            IndexTransform::Shift { index, new_index } => {
+                let val = v.remove(*index);
+                v.insert(*new_index, val);
+            }
+            IndexTransform::Removal { index } => {
+                v.remove(*index);
+            }
+            IndexTransform::Noop => {}
+        }
+    }
+
+    pub fn adjusted(&self, i: usize) -> Option<usize> {
+        match self {
+            IndexTransform::Shift { index, new_index } => {
+                if index == new_index {
+                    Some(i)
+                } else if index < new_index {
+                    // shift forwards / down
+                    if i == *index {
+                        Some(*new_index)
+                    } else if i > *index && i <= *new_index {
+                        Some(i - 1)
+                    } else {
+                        Some(i)
+                    }
+                } else {
+                    // shift backwards / up
+                    if i == *index {
+                        Some(*new_index)
+                    } else if i < *index && i >= *new_index {
+                        Some(i + 1)
+                    } else {
+                        Some(i)
+                    }
+                }
+            }
+            IndexTransform::Removal { index } => {
+                if i == *index {
+                    None
+                } else if i > *index {
+                    Some(i - 1)
+                } else {
+                    Some(i)
+                }
+            }
+            IndexTransform::Noop => Some(i),
+        }
+    }
 }
