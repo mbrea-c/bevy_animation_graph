@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{animation_clip::EntityPath, pose::BoneId};
 
-#[derive(Reflect, Clone, Debug, Default)]
+#[derive(Reflect, Clone, Debug, Default, PartialEq)]
 #[reflect(Default)]
 pub struct BoneMask {
     paths: HashMap<BoneId, EntityPath>,

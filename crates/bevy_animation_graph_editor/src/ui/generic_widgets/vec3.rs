@@ -41,7 +41,7 @@ impl<'a> egui::Widget for Vec3Widget<'a> {
                 let x_response = ui
                     .push_id(x_id, |ui| {
                         ui.add_sized(
-                            egui::Vec2::new(total_size.x / 3.1, total_size.y),
+                            egui::Vec2::new(total_size.x / 3.1, 20.),
                             egui::DragValue::new(&mut self.vec3.x).speed(self.slider_step_size),
                         )
                     })
@@ -49,7 +49,7 @@ impl<'a> egui::Widget for Vec3Widget<'a> {
                 let y_response = ui
                     .push_id(y_id, |ui| {
                         ui.add_sized(
-                            egui::Vec2::new(total_size.x / 3.1, total_size.y),
+                            egui::Vec2::new(total_size.x / 3.1, 20.),
                             egui::DragValue::new(&mut self.vec3.y).speed(self.slider_step_size),
                         )
                     })
@@ -57,7 +57,7 @@ impl<'a> egui::Widget for Vec3Widget<'a> {
                 let z_response = ui
                     .push_id(z_id, |ui| {
                         ui.add_sized(
-                            egui::Vec2::new(total_size.x / 3.1, total_size.y),
+                            egui::Vec2::new(total_size.x / 3.1, 20.),
                             egui::DragValue::new(&mut self.vec3.z).speed(self.slider_step_size),
                         )
                     })

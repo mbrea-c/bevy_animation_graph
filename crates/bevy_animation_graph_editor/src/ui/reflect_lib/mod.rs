@@ -11,9 +11,10 @@ use bevy::{
     },
 };
 
-use crate::ui::generic_widgets::picker::PickerWidget;
+use crate::ui::{generic_widgets::picker::PickerWidget, reflect_lib::list_handler::handle_list};
 
 pub mod default_registry;
+pub mod list_handler;
 
 #[derive(Default, Resource)]
 pub struct WidgetRegistry {
@@ -120,7 +121,8 @@ impl<'a> ReflectWidgetContext<'a> {
                 TypeInfo::Tuple(_tuple_info) => {
                     response |= ui.label("Tuples not implemented yet");
                 }
-                TypeInfo::List(_list_info) => {
+                TypeInfo::List(list_info) => {
+                    response |= handle_list(self, ui, value, list_info);
                     response |= ui.label("Lists not implemented yet");
                 }
                 TypeInfo::Array(_array_info) => {

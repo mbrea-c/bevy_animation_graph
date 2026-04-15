@@ -36,9 +36,11 @@ pub struct GraphContext<'a> {
 
     pub resources: &'a SystemResources<'a, 'a>,
     pub entity_map: &'a HashMap<BoneId, Entity>,
+    pub global_input_data: &'a HashMap<PinId, DataValue>,
 }
 
 impl<'a> GraphContext<'a> {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         context_id: GraphContextId,
         context_arena: &mut GraphContextArena,
@@ -47,6 +49,7 @@ impl<'a> GraphContext<'a> {
         root_entity: Entity,
         entity_map: &'a HashMap<BoneId, Entity>,
         deferred_gizmos: impl Into<DeferredGizmoRef>,
+        global_input_data: &'a HashMap<PinId, DataValue>,
     ) -> Self {
         Self {
             context_id,
@@ -58,6 +61,7 @@ impl<'a> GraphContext<'a> {
             deferred_gizmos: deferred_gizmos.into(),
             resources,
             entity_map,
+            global_input_data,
         }
     }
 

@@ -41,6 +41,7 @@ pub mod event_queue;
 pub mod f32;
 pub mod flip_lr_node;
 pub mod fsm_node;
+pub mod global_input;
 pub mod graph_node;
 pub mod loop_node;
 pub mod padding;

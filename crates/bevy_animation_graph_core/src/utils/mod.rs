@@ -1,6 +1,7 @@
 pub mod delaunay;
 pub mod geometry;
 pub mod loading;
+pub mod sorted_map;
 
 use std::path::PathBuf;
 
