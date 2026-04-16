@@ -541,7 +541,7 @@ impl EventTrackEditorState {
             let path_shape = egui::epaint::PathShape::convex_polygon(
                 points,
                 egui::Color32::RED, // fill color for the triangle
-                egui::Stroke::new(0.0, egui::Color32::TRANSPARENT),
+                egui::Stroke::new(0.0_f32, egui::Color32::TRANSPARENT),
             );
 
             ui.painter().add(egui::Shape::Path(path_shape));

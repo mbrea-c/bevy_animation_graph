@@ -606,7 +606,7 @@ impl NodesContext {
                         .inner_margin(egui::vec2(1.5, 1.5))
                         .corner_radius(3.0)
                         .stroke(egui::Stroke::new(
-                            1.0,
+                            1.0_f32,
                             self.settings.style.colors[if node.spec.active {
                                 ColorStyle::NodeOutlineActive
                             } else {

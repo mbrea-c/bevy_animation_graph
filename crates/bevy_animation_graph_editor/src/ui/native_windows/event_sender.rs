@@ -23,7 +23,7 @@ impl NativeEditorWindowExtension for EventSenderWindow {
         ui.horizontal_wrapped(|ui| {
             buffer.events.retain(|ev| {
                 egui::Frame::NONE
-                    .stroke(egui::Stroke::new(1., egui::Color32::WHITE))
+                    .stroke(egui::Stroke::new(1.0_f32, egui::Color32::WHITE))
                     .show(ui, |ui| {
                         ui.horizontal(|ui| {
                             if ui.button(format!("{ev:?}")).clicked() {
