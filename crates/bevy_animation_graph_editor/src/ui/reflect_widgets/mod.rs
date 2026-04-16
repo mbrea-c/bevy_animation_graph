@@ -1,4 +1,7 @@
-use bevy_animation_graph::core::{animation_graph::PinId, edge_data::DataSpecWithOptionalDefault};
+use bevy_animation_graph::core::{
+    animation_graph::PinId,
+    edge_data::{DataSpecWithOptionalDefault, DataValue},
+};
 
 use crate::ui::{
     reflect_lib::WidgetRegistry,
@@ -19,6 +22,7 @@ pub fn register_reflect_widgets(registry: &mut WidgetRegistry) {
     registry
         .add(HashMapReflectWidget::<String, String>::default())
         .add(SortedMapReflectWidget::<PinId, DataSpecWithOptionalDefault>::default())
+        .add(SortedMapReflectWidget::<PinId, DataValue>::default())
         .add(DataValueReflectWidget)
         .add(Vec3ReflectWidget)
         .add(RagdollConfigReflectWidget);

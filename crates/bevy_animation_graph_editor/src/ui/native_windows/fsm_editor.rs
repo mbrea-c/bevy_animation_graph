@@ -703,7 +703,7 @@ impl FsmEditorWindowState {
             ],
             closed: true,
             fill: style.bg.unwrap_or_default(),
-            stroke: egui::epaint::PathStroke::new(0., egui::Color32::TRANSPARENT),
+            stroke: egui::epaint::PathStroke::new(0.0_f32, egui::Color32::TRANSPARENT),
         });
 
         ui.painter().add(egui::epaint::PathShape {
@@ -714,7 +714,7 @@ impl FsmEditorWindowState {
             ],
             closed: true,
             fill: style.bg.unwrap_or_default(),
-            stroke: egui::epaint::PathStroke::new(0., egui::Color32::TRANSPARENT),
+            stroke: egui::epaint::PathStroke::new(0.0_f32, egui::Color32::TRANSPARENT),
         });
 
         // arrow outline

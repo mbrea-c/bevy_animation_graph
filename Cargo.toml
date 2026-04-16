@@ -26,4 +26,5 @@ bevy_egui = { version = "0.39" }
 bevy-inspector-egui = { version = "0.36" }
 
 ron = "0.10.1"
-serde = { version = "1.0" }
+serde = "1.0"
+rand = "0.10"

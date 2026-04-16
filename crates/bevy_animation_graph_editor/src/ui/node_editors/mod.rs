@@ -3,7 +3,7 @@ use std::any::Any;
 use bevy::{app::App, ecs::world::World, reflect::FromType};
 use bevy_animation_graph::{
     builtin_nodes::{
-        blend_space_node::BlendSpaceNode, global_input::GlobalInput,
+        blend_space_node::BlendSpaceNode, constants::Constants, global_input::GlobalInput,
         ragdoll::const_ragdoll_config::ConstRagdollConfig,
     },
     core::animation_node::NodeLike,
@@ -86,8 +86,18 @@ impl Editable for GlobalInput {
         NewReflectNodeEditor
     }
 }
+
+impl Editable for Constants {
+    type Editor = NewReflectNodeEditor;
+
+    fn get_editor(&self) -> Self::Editor {
+        NewReflectNodeEditor
+    }
+}
+
 pub fn register_node_editables(app: &mut App) {
     app.register_type_data::<ConstRagdollConfig, ReflectEditable>();
     app.register_type_data::<BlendSpaceNode, ReflectEditable>();
     app.register_type_data::<GlobalInput, ReflectEditable>();
+    app.register_type_data::<Constants, ReflectEditable>();
 }
