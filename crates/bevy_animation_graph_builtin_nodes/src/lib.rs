@@ -7,6 +7,7 @@ use crate::{
     bool::{and_bool::AndBool, const_bool::ConstBool, not_bool::NotBool, or_bool::OrBool},
     chain_node::ChainNode,
     clip_node::ClipNode,
+    constants::Constants,
     dummy_node::DummyNode,
     event_queue::{
         fire_event::FireEventNode, map_events::MapEventsNode, merge_event_queues::MergeEventQueues,
@@ -35,6 +36,7 @@ pub mod bool;
 pub mod chain_node;
 pub mod clip_node;
 pub mod const_entity_path;
+pub mod constants;
 pub mod dummy_node;
 pub mod event_markup_node;
 pub mod event_queue;
@@ -80,6 +82,7 @@ impl BuiltinNodesPlugin {
             .register_type::<SpeedNode>()
             .register_type::<FsmNode>()
             .register_type::<TwoBoneIKNode>()
+            .register_type::<Constants>()
             // bool
             .register_type::<AndBool>()
             .register_type::<ConstBool>()
