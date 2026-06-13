@@ -1,3 +1,35 @@
+
+<div align="right">
+  <details>
+    <summary >🌐 Language</summary>
+    <div>
+      <div align="center">
+        <a href="https://openaitx.github.io/view.html?user=mbrea-c&project=bevy_animation_graph&lang=en">English</a>
+        | <a href="https://openaitx.github.io/view.html?user=mbrea-c&project=bevy_animation_graph&lang=zh-CN">简体中文</a>
+        | <a href="https://openaitx.github.io/view.html?user=mbrea-c&project=bevy_animation_graph&lang=zh-TW">繁體中文</a>
+        | <a href="https://openaitx.github.io/view.html?user=mbrea-c&project=bevy_animation_graph&lang=ja">日本語</a>
+        | <a href="https://openaitx.github.io/view.html?user=mbrea-c&project=bevy_animation_graph&lang=ko">한국어</a>
+        | <a href="https://openaitx.github.io/view.html?user=mbrea-c&project=bevy_animation_graph&lang=hi">हिन्दी</a>
+        | <a href="https://openaitx.github.io/view.html?user=mbrea-c&project=bevy_animation_graph&lang=th">ไทย</a>
+        | <a href="https://openaitx.github.io/view.html?user=mbrea-c&project=bevy_animation_graph&lang=fr">Français</a>
+        | <a href="https://openaitx.github.io/view.html?user=mbrea-c&project=bevy_animation_graph&lang=de">Deutsch</a>
+        | <a href="https://openaitx.github.io/view.html?user=mbrea-c&project=bevy_animation_graph&lang=es">Español</a>
+        | <a href="https://openaitx.github.io/view.html?user=mbrea-c&project=bevy_animation_graph&lang=it">Italiano</a>
+        | <a href="https://openaitx.github.io/view.html?user=mbrea-c&project=bevy_animation_graph&lang=ru">Русский</a>
+        | <a href="https://openaitx.github.io/view.html?user=mbrea-c&project=bevy_animation_graph&lang=pt">Português</a>
+        | <a href="https://openaitx.github.io/view.html?user=mbrea-c&project=bevy_animation_graph&lang=nl">Nederlands</a>
+        | <a href="https://openaitx.github.io/view.html?user=mbrea-c&project=bevy_animation_graph&lang=pl">Polski</a>
+        | <a href="https://openaitx.github.io/view.html?user=mbrea-c&project=bevy_animation_graph&lang=ar">العربية</a>
+        | <a href="https://openaitx.github.io/view.html?user=mbrea-c&project=bevy_animation_graph&lang=fa">فارسی</a>
+        | <a href="https://openaitx.github.io/view.html?user=mbrea-c&project=bevy_animation_graph&lang=tr">Türkçe</a>
+        | <a href="https://openaitx.github.io/view.html?user=mbrea-c&project=bevy_animation_graph&lang=vi">Tiếng Việt</a>
+        | <a href="https://openaitx.github.io/view.html?user=mbrea-c&project=bevy_animation_graph&lang=id">Bahasa Indonesia</a>
+        | <a href="https://openaitx.github.io/view.html?user=mbrea-c&project=bevy_animation_graph&lang=as">অসমীয়া</
+      </div>
+    </div>
+  </details>
+</div>
+
 _Library crate:_
 [![Crates.io](https://img.shields.io/crates/v/bevy_animation_graph)](https://crates.io/crates/bevy_animation_graph)
 [![Crates.io](https://img.shields.io/crates/d/bevy_animation_graph)](https://crates.io/crates/bevy_animation_graph)
