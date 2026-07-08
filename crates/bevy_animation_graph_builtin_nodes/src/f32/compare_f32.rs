@@ -58,8 +58,26 @@ impl NodeLike for CompareF32 {
     fn spec(&self, mut ctx: SpecContext) -> Result<(), GraphError> {
         ctx.add_input_data(Self::INPUT_1, DataSpec::F32)
             .add_input_data(Self::INPUT_2, DataSpec::F32)
-            .add_output_data(Self::OUTPUT, DataSpec::F32);
+            .add_output_data(Self::OUTPUT, DataSpec::Bool);
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use bevy_animation_graph_core::{
+        animation_graph::GraphInputPin, utils::testing::GraphTestHarness,
+    };
+
+    use crate::f32::compare_f32::{CompareF32, CompareOp::Less};
+
+    #[test]
+    fn compare_test() {
+        GraphTestHarness::node(CompareF32 { op: Less })
+            .with_const_input_data(GraphInputPin::passthrough(CompareF32::INPUT_1), 3.)
+            .with_const_input_data(GraphInputPin::passthrough(CompareF32::INPUT_2), 5.)
+            .when_queried()
+            .then_output_is(CompareF32::OUTPUT, true);
     }
 }
