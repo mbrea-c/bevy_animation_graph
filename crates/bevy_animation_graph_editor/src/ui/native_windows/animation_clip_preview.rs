@@ -37,9 +37,9 @@ impl NativeEditorWindowExtension for ClipPreviewWindow {
     fn ui(&self, ui: &mut egui::Ui, world: &mut World, ctx: &mut EditorWindowContext) {
         let timeline_height = 30.;
 
-        egui::TopBottomPanel::top("Clip preview base scene selector")
+        egui::Panel::top("Clip preview base scene selector")
             .resizable(false)
-            .exact_height(timeline_height)
+            .exact_size(timeline_height)
             .frame(egui::Frame::NONE)
             .show_inside(ui, |ui| {
                 self.draw_base_scene_selector(ui, world, ctx);

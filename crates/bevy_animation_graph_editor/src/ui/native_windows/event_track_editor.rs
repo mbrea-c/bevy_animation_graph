@@ -142,10 +142,10 @@ impl NativeEditorWindowExtension for EventTrackEditorWindow {
             return;
         };
 
-        egui::SidePanel::left("Track names")
+        egui::Panel::left("Track names")
             .resizable(true)
-            .default_width(200.)
-            .min_width(100.)
+            .default_size(200.)
+            .min_size(100.)
             .show_inside(ui, |ui| {
                 EventTrackEditorState::with_tracks(
                     ui,
@@ -160,10 +160,10 @@ impl NativeEditorWindowExtension for EventTrackEditorWindow {
                 );
             });
 
-        egui::SidePanel::right("Event details")
+        egui::Panel::right("Event details")
             .resizable(true)
-            .default_width(200.)
-            .min_width(100.)
+            .default_size(200.)
+            .min_size(100.)
             .show_inside(ui, |ui| {
                 EventTrackEditorState::with_event(
                     ui,
@@ -178,17 +178,17 @@ impl NativeEditorWindowExtension for EventTrackEditorWindow {
                 );
             });
 
-        egui::TopBottomPanel::top("Asset selector")
+        egui::Panel::top("Asset selector")
             .resizable(false)
-            .exact_height(timeline_height)
+            .exact_size(timeline_height)
             .frame(egui::Frame::NONE)
             .show_inside(ui, |ui| {
                 state.draw_track_source_selector(ui, world, ctx);
             });
 
-        egui::TopBottomPanel::top("Timeline")
+        egui::Panel::top("Timeline")
             .resizable(false)
-            .exact_height(timeline_height)
+            .exact_size(timeline_height)
             .frame(egui::Frame::NONE)
             .show_inside(ui, |ui| {
                 state.draw_timeline(

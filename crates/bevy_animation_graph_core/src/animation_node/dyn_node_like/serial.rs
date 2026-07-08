@@ -78,9 +78,8 @@ impl ReflectDeserializerProcessor for HandleDeserializeProcessor<'_, '_> {
         let asset_path = deserializer.deserialize_str(AssetPathVisitor)?;
         let untyped_handle = self
             .load_context
-            .loader()
-            .with_dynamic_type(asset_type_id)
-            .load(asset_path);
+            .load_builder()
+            .load_erased(asset_type_id, asset_path);
         let typed_handle = handle_info.typed(untyped_handle);
         Ok(Ok(typed_handle.into_partial_reflect()))
     }

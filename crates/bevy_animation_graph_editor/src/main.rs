@@ -1,3 +1,5 @@
+#![allow(linker_messages)]
+
 use bevy::prelude::*;
 use bevy_animation_graph_editor::AnimationGraphEditorPlugin;
 

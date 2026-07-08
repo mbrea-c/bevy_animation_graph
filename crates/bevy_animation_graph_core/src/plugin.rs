@@ -201,7 +201,7 @@ impl AnimationGraphCorePlugin {
     fn register_component_hooks(&self, app: &mut App) {
         app.world_mut()
             .register_component_hooks::<AnimationGraphPlayer>()
-            .on_replace(|mut world, context| {
+            .on_discard(|mut world, context| {
                 if let Some(spawned_ragdoll) = world
                     .entity(context.entity)
                     .get::<AnimationGraphPlayer>()

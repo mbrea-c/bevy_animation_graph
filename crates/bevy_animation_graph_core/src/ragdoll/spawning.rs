@@ -52,7 +52,10 @@ pub fn spawn_ragdoll_avian(
     simulated_parent: Option<Entity>,
     commands: &mut Commands,
 ) -> SpawnedRagdoll {
-    use avian3d::prelude::{AngleLimit, CollisionLayers, RevoluteJoint, RigidBody, SphericalJoint};
+    use avian3d::prelude::{
+        AngleLimit, AngularMotor, CollisionLayers, MotorModel, RevoluteJoint, RigidBody,
+        SphericalJoint,
+    };
     use bevy::{ecs::name::Name, math::Vec3, transform::components::Transform, utils::default};
 
     let root = commands
@@ -223,6 +226,7 @@ pub fn spawn_ragdoll_avian(
                         point_compliance: revolute_joint.point_compliance,
                         align_compliance: revolute_joint.align_compliance,
                         limit_compliance: revolute_joint.limit_compliance,
+                        motor: AngularMotor::new_disabled(MotorModel::DEFAULT),
                     },
                 ))
                 .id(),

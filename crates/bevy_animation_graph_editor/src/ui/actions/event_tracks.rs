@@ -142,19 +142,15 @@ where
     match target {
         TargetTracks::Clip(handle) => {
             dirty_assets.add(handle.clone());
-            graph_clip_assets
-                .get_mut(handle.id())
-                .map(|c| c.event_tracks_mut())
-                .map(f)
+            let mut clip = graph_clip_assets.get_mut(handle.id())?;
+            Some(f(clip.event_tracks_mut()))
         }
         TargetTracks::GraphNode { graph, node } => {
             dirty_assets.add(graph.clone());
-            animation_graph_assets
-                .get_mut(graph.id())
-                .and_then(|g| g.nodes.get_mut(node))
-                .and_then(|n| n.inner.as_any_mut().downcast_mut::<EventMarkupNode>())
-                .map(|n| &mut n.event_tracks)
-                .map(f)
+            let mut graph = animation_graph_assets.get_mut(graph.id())?;
+            let node = graph.nodes.get_mut(node)?;
+            let node = node.inner.as_any_mut().downcast_mut::<EventMarkupNode>()?;
+            Some(f(&mut node.event_tracks))
         }
     }
 }

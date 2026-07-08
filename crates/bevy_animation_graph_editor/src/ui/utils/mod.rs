@@ -187,7 +187,7 @@ pub fn render_image(ui: &mut egui::Ui, world: &mut World, image: &Handle<Image>)
         ..default()
     };
     world.resource_scope::<Assets<Image>, ()>(|_, mut images| {
-        let image = images.get_mut(image).unwrap();
+        let mut image = images.get_mut(image).unwrap();
         image.texture_descriptor.size = e3d_size;
         image.resize(e3d_size);
     });

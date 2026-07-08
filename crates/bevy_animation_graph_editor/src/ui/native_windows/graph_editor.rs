@@ -156,7 +156,7 @@ impl NativeEditorWindowExtension for GraphEditorWindow {
                         // Update selection for node inspector.
                         // And enable debug render for latest node selected only
 
-                        let graph = graph_assets.get_mut(&active_graph.handle).unwrap();
+                        let mut graph = graph_assets.get_mut(&active_graph.handle).unwrap();
                         for (_, node) in graph.nodes.iter_mut() {
                             node.should_debug = false;
                         }
@@ -287,10 +287,10 @@ impl GraphEditorWindow {
         let original_type_id = buffer.node.inner.type_id();
         let mut new_type_id = original_type_id;
 
-        egui::SidePanel::left("Node type selector")
+        egui::Panel::left("Node type selector")
             .resizable(true)
-            .default_width(175.)
-            .min_width(150.)
+            .default_size(175.)
+            .min_size(150.)
             .show_inside(ui, |ui| {
                 ui.text_edit_singleline(&mut buffer.node_type_search);
                 egui::ScrollArea::vertical()

@@ -310,11 +310,11 @@ impl GraphAndContext<'_> {
             fsm_assets: &self.fsm_assets,
         };
 
-        let Some(graph) = self.graph_assets.get_mut(graph_handle) else {
+        let Some(mut graph) = self.graph_assets.get_mut(graph_handle) else {
             return;
         };
 
-        f(graph, ctx)
+        f(&mut graph, ctx)
     }
 
     pub fn provide_ref<F, T>(

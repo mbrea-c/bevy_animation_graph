@@ -181,8 +181,8 @@ impl<T: SystemExtractor> GraphTestHarness<T> {
         ),
         mut animation_graph_assets: ResMut<Assets<AnimationGraph>>,
     ) {
-        let graph = animation_graph_assets.get_mut(&graph_handle).unwrap();
-        setup.graph_setup(graph, meta)
+        let mut graph = animation_graph_assets.get_mut(&graph_handle).unwrap();
+        setup.graph_setup(&mut graph, meta)
     }
 }
 

@@ -79,14 +79,9 @@ where
             max: pointer_pos + egui::Vec2::new(80., 0.),
         };
 
-        Self::custom_popup(
-            ui,
-            popup_id,
-            egui::AboveOrBelow::Below,
-            self.default_size,
-            new_rect,
-            |ui| ui_builder(ui, saved_on_click),
-        )
+        Self::custom_popup(ui, popup_id, self.default_size, new_rect, |ui| {
+            ui_builder(ui, saved_on_click)
+        })
     }
 
     fn is_open(ui: &mut egui::Ui, id: egui::Id) -> bool {
@@ -105,7 +100,6 @@ where
     fn custom_popup<R>(
         parent_ui: &mut egui::Ui,
         popup_id: egui::Id,
-        above_or_below: egui::AboveOrBelow,
         default_size: egui::Vec2,
         rect: egui::Rect,
         add_contents: impl FnOnce(&mut egui::Ui) -> R,
@@ -114,10 +108,8 @@ where
             return None;
         }
 
-        let (mut pos, pivot) = match above_or_below {
-            egui::AboveOrBelow::Above => (rect.left_top(), egui::Align2::LEFT_BOTTOM),
-            egui::AboveOrBelow::Below => (rect.left_bottom(), egui::Align2::LEFT_TOP),
-        };
+        let mut pos = rect.left_bottom();
+        let pivot = egui::Align2::LEFT_TOP;
 
         if let Some(to_global) = parent_ui
             .ctx()

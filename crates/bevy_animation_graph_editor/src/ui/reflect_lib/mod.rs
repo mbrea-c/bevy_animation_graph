@@ -6,8 +6,11 @@ use bevy::{
     ecs::{reflect::AppTypeRegistry, resource::Resource, world::World},
     platform::collections::HashMap,
     reflect::{
-        DynamicEnum, DynamicStruct, DynamicTuple, DynamicVariant, EnumInfo, Reflect, TypeInfo,
-        TypeRegistry, VariantType, prelude::ReflectDefault,
+        Reflect, TypeInfo, TypeRegistry,
+        enums::{DynamicEnum, DynamicVariant, EnumInfo, VariantType},
+        prelude::ReflectDefault,
+        structs::DynamicStruct,
+        tuple::DynamicTuple,
     },
 };
 

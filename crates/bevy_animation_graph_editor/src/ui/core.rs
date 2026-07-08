@@ -1,11 +1,7 @@
 use core::any::TypeId;
 use std::any::Any;
 
-use bevy::{
-    ecs::{system::command::trigger, world::CommandQueue},
-    platform::collections::HashMap,
-    prelude::*,
-};
+use bevy::{ecs::world::CommandQueue, platform::collections::HashMap, prelude::*};
 use bevy_egui::{EguiContext, PrimaryEguiContext};
 use egui_dock::egui::Color32;
 use egui_notify::{Anchor, Toasts};
@@ -111,64 +107,90 @@ impl UiState {
         queue: &mut PendingActions,
         command_queue: &mut CommandQueue,
     ) {
-        menu_bar(ctx, command_queue);
-
-        if let Some(view_action) = view_selection_bar(world, ctx, self) {
-            queue.actions.push(EditorAction::View(view_action));
-        }
-
         if ctx.input(|i| i.modifiers.ctrl && i.key_pressed(egui::Key::S)) {
             queue
                 .actions
                 .push(EditorAction::Save(SaveAction::RequestMultiple));
         }
 
-        if let Some(active_view_idx) = self.active_view {
-            let view_state = &mut self.views[active_view_idx];
-            let view_context = EditorViewContext {
-                windows: &mut self.windows,
-                notifications: &mut self.notifications,
-                buffers: &mut self.buffers,
+        let mut root_ui = egui::Ui::new(
+            ctx.clone(),
+            egui::Id::new((ctx.viewport_id(), "editor_root_ui")),
+            egui::UiBuilder::new()
+                .layer_id(egui::LayerId::background())
+                .max_rect(ctx.content_rect()),
+        );
+        root_ui.set_clip_rect(ctx.content_rect());
 
-                editor_actions: &mut queue.actions,
-                view_entity: view_state.entity,
-                command_queue,
-            };
-            view_state.ui(ctx, world, view_context);
-        }
+        egui::CentralPanel::default()
+            .frame(
+                egui::Frame::central_panel(&ctx.global_style())
+                    .inner_margin(0.)
+                    .fill(Color32::TRANSPARENT),
+            )
+            .show_inside(&mut root_ui, |ui| {
+                menu_bar(ui, command_queue);
+
+                if let Some(view_action) = view_selection_bar(world, ui, self) {
+                    queue.actions.push(EditorAction::View(view_action));
+                }
+
+                if let Some(active_view_idx) = self.active_view {
+                    let view_state = &mut self.views[active_view_idx];
+                    let view_context = EditorViewContext {
+                        windows: &mut self.windows,
+                        notifications: &mut self.notifications,
+                        buffers: &mut self.buffers,
+
+                        editor_actions: &mut queue.actions,
+                        view_entity: view_state.entity,
+                        command_queue,
+                    };
+                    view_state.ui(ui, world, view_context);
+                }
+            });
 
         self.notifications.show(ctx);
     }
 }
 
-fn menu_bar(ctx: &mut egui::Context, command_queue: &mut CommandQueue) {
-    egui::TopBottomPanel::top("Application menu bar").show(ctx, |ui| {
+fn menu_bar(ui: &mut egui::Ui, command_queue: &mut CommandQueue) {
+    egui::Panel::top("Application menu bar").show_inside(ui, |ui| {
         egui::MenuBar::new().ui(ui, |ui| {
             ui.menu_button("Assets", |ui| {
                 ui.menu_button("Create", |ui| {
                     if ui.button("Skeleton").clicked() {
-                        command_queue.push(trigger(RequestCreateSkeleton));
+                        queue_trigger(command_queue, RequestCreateSkeleton);
                     }
                     if ui.button("Animation").clicked() {
-                        command_queue.push(trigger(RequestCreateClip));
+                        queue_trigger(command_queue, RequestCreateClip);
                     }
                     if ui.button("Animation graph").clicked() {
-                        command_queue.push(trigger(RequestCreateAnimationGraph));
+                        queue_trigger(command_queue, RequestCreateAnimationGraph);
                     }
                     if ui.button("State machine").clicked() {
-                        command_queue.push(trigger(RequestCreateFsm));
+                        queue_trigger(command_queue, RequestCreateFsm);
                     }
                     if ui.button("Ragdoll").clicked() {
-                        command_queue.push(trigger(RequestCreateRagdoll));
+                        queue_trigger(command_queue, RequestCreateRagdoll);
                     }
                     if ui.button("Ragdoll bone map").clicked() {
-                        command_queue.push(trigger(RequestCreateRagdollBoneMap));
+                        queue_trigger(command_queue, RequestCreateRagdollBoneMap);
                     }
                     ui.disable();
                     if ui.button("Animated scene").clicked() {}
                 });
             })
         });
+    });
+}
+
+fn queue_trigger<'a, E>(command_queue: &mut CommandQueue, event: E)
+where
+    E: Event<Trigger<'a>: Default>,
+{
+    command_queue.push(move |world: &mut World| {
+        world.trigger(event);
     });
 }
 
@@ -221,11 +243,11 @@ pub enum ViewAction {
 
 fn view_selection_bar(
     world: &mut World,
-    ctx: &mut egui::Context,
+    ui: &mut egui::Ui,
     ui_state: &UiState,
 ) -> Option<ViewAction> {
-    egui::TopBottomPanel::top("View selector")
-        .show(ctx, |ui| {
+    egui::Panel::top("View selector")
+        .show_inside(ui, |ui| {
             ui.horizontal(|ui| {
                 let mut action = None;
                 for (i, view) in ui_state.views.iter().enumerate() {

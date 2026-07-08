@@ -254,10 +254,10 @@ impl FsmContext<'_> {
     {
         self.dirty_asets.add(fsm_handle.clone().untyped());
 
-        let Some(fsm) = self.fsm_assets.get_mut(fsm_handle) else {
+        let Some(mut fsm) = self.fsm_assets.get_mut(fsm_handle) else {
             return;
         };
 
-        f(fsm)
+        f(&mut fsm)
     }
 }
