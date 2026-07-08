@@ -3,7 +3,7 @@ use bevy::ecs::{
     entity::Entity,
     event::Event,
     query::With,
-    system::{Commands, command::trigger},
+    system::{Command, Commands, command::trigger},
     world::{CommandQueue, World},
 };
 use egui_dock::egui;
@@ -71,7 +71,7 @@ pub struct OwnedQueue {
 
 impl OwnedQueue {
     pub fn trigger<'b>(&mut self, event: impl Event<Trigger<'b>: Default>) {
-        self.command_queue.push(trigger(event));
+        self.command_queue.push(trigger(event).handle_error());
     }
 }
 
@@ -80,7 +80,7 @@ pub struct WindowState;
 
 impl<'a> EditorWindowContext<'a> {
     pub fn trigger<'b>(&mut self, event: impl Event<Trigger<'b>: Default>) {
-        self.command_queue.push(trigger(event));
+        self.command_queue.push(trigger(event).handle_error());
     }
 
     pub fn get_window_state<'w, T: Component>(&self, world: &'w World) -> Option<&'w T> {

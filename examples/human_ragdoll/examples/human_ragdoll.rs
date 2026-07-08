@@ -175,7 +175,7 @@ fn setup(
     commands.spawn((
         Transform::from_rotation(Quat::from_euler(EulerRot::ZYX, 0.0, 1.0, -PI / 4.)),
         DirectionalLight {
-            shadows_enabled: true,
+            shadow_maps_enabled: true,
             ..default()
         },
         CascadeShadowConfigBuilder {
@@ -198,7 +198,7 @@ fn setup(
     commands.spawn((
         Text("test".into()),
         TextFont {
-            font_size: 55.,
+            font_size: FontSize::Px(55.),
             ..default()
         },
         Label,

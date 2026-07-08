@@ -142,27 +142,27 @@ impl UiState {
 }
 
 fn menu_bar(ctx: &mut egui::Context, command_queue: &mut CommandQueue) {
-    egui::TopBottomPanel::top("Application menu bar").show(ctx, |ui| {
+    egui::Panel::top("Application menu bar").show(ctx, |ui| {
         egui::MenuBar::new().ui(ui, |ui| {
             ui.menu_button("Assets", |ui| {
                 ui.menu_button("Create", |ui| {
                     if ui.button("Skeleton").clicked() {
-                        command_queue.push(trigger(RequestCreateSkeleton));
+                        command_queue.push(trigger(RequestCreateSkeleton).handle_error());
                     }
                     if ui.button("Animation").clicked() {
-                        command_queue.push(trigger(RequestCreateClip));
+                        command_queue.push(trigger(RequestCreateClip).handle_error());
                     }
                     if ui.button("Animation graph").clicked() {
-                        command_queue.push(trigger(RequestCreateAnimationGraph));
+                        command_queue.push(trigger(RequestCreateAnimationGraph).handle_error());
                     }
                     if ui.button("State machine").clicked() {
-                        command_queue.push(trigger(RequestCreateFsm));
+                        command_queue.push(trigger(RequestCreateFsm).handle_error());
                     }
                     if ui.button("Ragdoll").clicked() {
-                        command_queue.push(trigger(RequestCreateRagdoll));
+                        command_queue.push(trigger(RequestCreateRagdoll).handle_error());
                     }
                     if ui.button("Ragdoll bone map").clicked() {
-                        command_queue.push(trigger(RequestCreateRagdollBoneMap));
+                        command_queue.push(trigger(RequestCreateRagdollBoneMap).handle_error());
                     }
                     ui.disable();
                     if ui.button("Animated scene").clicked() {}
@@ -224,7 +224,7 @@ fn view_selection_bar(
     ctx: &mut egui::Context,
     ui_state: &UiState,
 ) -> Option<ViewAction> {
-    egui::TopBottomPanel::top("View selector")
+    egui::Panel::top("View selector")
         .show(ctx, |ui| {
             ui.horizontal(|ui| {
                 let mut action = None;

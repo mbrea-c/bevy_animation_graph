@@ -1,4 +1,6 @@
 #[cfg(feature = "physics_avian")]
+use avian3d::dynamics::joints::AngularMotor;
+#[cfg(feature = "physics_avian")]
 use bevy::{ecs::system::Commands, math::Isometry3d};
 use bevy::{
     ecs::{entity::Entity, event::EntityEvent},
@@ -220,6 +222,7 @@ pub fn spawn_ragdoll_avian(
                             min: limit.min,
                             max: limit.max,
                         }),
+                        motor: AngularMotor::default(),
                         point_compliance: revolute_joint.point_compliance,
                         align_compliance: revolute_joint.align_compliance,
                         limit_compliance: revolute_joint.limit_compliance,

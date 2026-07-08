@@ -13,6 +13,7 @@ use bevy_animation_graph::core::{
     },
     skeleton::Skeleton,
 };
+use egui::Panel;
 use egui_dock::egui;
 
 use crate::ui::{
@@ -195,9 +196,9 @@ impl RagdollEditorWindow {
     ) {
         let timeline_height = 30.;
 
-        egui::TopBottomPanel::top("Top panel")
+        Panel::top("Top panel")
             .resizable(false)
-            .exact_height(timeline_height)
+            .exact_size(timeline_height)
             .frame(egui::Frame::NONE.inner_margin(5.))
             .show_inside(ui, |ui| {
                 TopPanel {
@@ -217,9 +218,9 @@ impl RagdollEditorWindow {
         world: &mut World,
         ctx: &mut LegacyEditorWindowContext,
     ) {
-        egui::SidePanel::left("Hierarchical tree view")
+        Panel::left("Hierarchical tree view")
             .resizable(true)
-            .default_width(300.)
+            .default_size(300.)
             .show_inside(ui, |ui| {
                 ui.checkbox(&mut self.show_bone_tree, "Show skeleton tree");
                 egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
@@ -271,9 +272,9 @@ impl RagdollEditorWindow {
         world: &mut World,
         ctx: &mut LegacyEditorWindowContext,
     ) {
-        egui::SidePanel::right("Inspector panel")
+        Panel::right("Inspector panel")
             .resizable(true)
-            .default_width(350.)
+            .default_size(350.)
             .show_inside(ui, |ui| {
                 egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
                     match self.selected_item {

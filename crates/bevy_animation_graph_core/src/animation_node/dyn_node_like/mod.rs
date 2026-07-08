@@ -41,11 +41,11 @@ impl ::bevy::reflect::Typed for DynNodeLike {
         static CELL: ::bevy::reflect::utility::NonGenericTypeInfoCell =
             ::bevy::reflect::utility::NonGenericTypeInfoCell::new();
         CELL.get_or_set(|| {
-            ::bevy::reflect::TypeInfo::TupleStruct(::bevy::reflect::TupleStructInfo::new::<Self>(
-                &[
+            ::bevy::reflect::TypeInfo::TupleStruct(
+                ::bevy::reflect::tuple_struct::TupleStructInfo::new::<Self>(&[
                         // ::bevy::reflect::UnnamedField::new::<Box<dyn NodeLike>>(0usize),
-                    ],
-            ))
+                    ]),
+            )
         })
     }
 }
@@ -103,7 +103,7 @@ impl ::bevy::reflect::Reflect for DynNodeLike {
 ::bevy::reflect::__macro_exports::auto_register::inventory::submit! {
     ::bevy::reflect::__macro_exports::auto_register::AutomaticReflectRegistrations(<DynNodeLike as ::bevy::reflect::__macro_exports::auto_register::RegisterForReflection> ::__register)
 }
-impl ::bevy::reflect::TupleStruct for DynNodeLike {
+impl ::bevy::reflect::tuple_struct::TupleStruct for DynNodeLike {
     fn field(&self, index: usize) -> Option<&dyn ::bevy::reflect::PartialReflect> {
         match index {
             0usize => Some(self.0.as_partial_reflect()),
@@ -121,8 +121,8 @@ impl ::bevy::reflect::TupleStruct for DynNodeLike {
         1usize
     }
     #[inline]
-    fn iter_fields(&'_ self) -> ::bevy::reflect::TupleStructFieldIter<'_> {
-        ::bevy::reflect::TupleStructFieldIter::new(self)
+    fn iter_fields(&'_ self) -> ::bevy::reflect::tuple_struct::TupleStructFieldIter<'_> {
+        ::bevy::reflect::tuple_struct::TupleStructFieldIter::new(self)
     }
 }
 impl ::bevy::reflect::PartialReflect for DynNodeLike {
@@ -139,10 +139,10 @@ impl ::bevy::reflect::PartialReflect for DynNodeLike {
             ::bevy::reflect::PartialReflect::reflect_ref(value)
         {
             for (i, value) in ::core::iter::Iterator::enumerate(
-                ::bevy::reflect::TupleStruct::iter_fields(struct_value),
+                ::bevy::reflect::tuple_struct::TupleStruct::iter_fields(struct_value),
             ) {
                 if let ::core::option::Option::Some(v) =
-                    ::bevy::reflect::TupleStruct::field_mut(self, i)
+                    ::bevy::reflect::tuple_struct::TupleStruct::field_mut(self, i)
                 {
                     ::bevy::reflect::PartialReflect::try_apply(v, value)?;
                 }
@@ -201,7 +201,7 @@ impl ::bevy::reflect::PartialReflect for DynNodeLike {
         self
     }
     fn reflect_partial_eq(&self, value: &dyn ::bevy::reflect::PartialReflect) -> Option<bool> {
-        (::bevy::reflect::tuple_struct_partial_eq)(self, value)
+        (::bevy::reflect::tuple_struct::tuple_struct_partial_eq)(self, value)
     }
     #[inline]
     fn reflect_clone(

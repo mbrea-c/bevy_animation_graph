@@ -48,12 +48,8 @@ impl AssetLoader for GraphClipLoader {
                 path,
                 animation_name,
             } => {
-                let gltf_loaded_asset = load_context
-                    .loader()
-                    .immediate()
-                    .with_unknown_type()
-                    .load(path)
-                    .await?;
+                let gltf_loaded_asset =
+                    load_context.load_builder().load_untyped_value(path).await?;
                 let gltf: &Gltf = gltf_loaded_asset.get().unwrap();
 
                 let Some(clip_handle) = gltf
@@ -78,7 +74,7 @@ impl AssetLoader for GraphClipLoader {
             }
         };
 
-        let skeleton = load_context.loader().load(serial.skeleton);
+        let skeleton = load_context.load_builder().load(serial.skeleton);
 
         let clip_mine = GraphClip::from_bevy_clip(
             bevy_clip,

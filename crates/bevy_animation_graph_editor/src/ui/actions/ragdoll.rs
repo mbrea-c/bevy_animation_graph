@@ -40,7 +40,7 @@ impl EditRagdollBody {
         mut ragdoll_assets: ResMut<Assets<Ragdoll>>,
         mut dirty_assets: ResMut<DirtyAssets>,
     ) {
-        let Some(ragdoll) = ragdoll_assets.get_mut(&input.ragdoll) else {
+        let Some(mut ragdoll) = ragdoll_assets.get_mut(&input.ragdoll) else {
             return;
         };
 
@@ -69,7 +69,7 @@ impl CreateRagdollBody {
         mut ragdoll_assets: ResMut<Assets<Ragdoll>>,
         mut dirty_assets: ResMut<DirtyAssets>,
     ) {
-        let Some(ragdoll) = ragdoll_assets.get_mut(&input.ragdoll) else {
+        let Some(mut ragdoll) = ragdoll_assets.get_mut(&input.ragdoll) else {
             return;
         };
 
@@ -97,7 +97,7 @@ impl CreateRagdollCollider {
         mut ragdoll_assets: ResMut<Assets<Ragdoll>>,
         mut dirty_assets: ResMut<DirtyAssets>,
     ) {
-        let Some(ragdoll) = ragdoll_assets.get_mut(&input.ragdoll) else {
+        let Some(mut ragdoll) = ragdoll_assets.get_mut(&input.ragdoll) else {
             return;
         };
 
@@ -130,7 +130,7 @@ impl CreateRagdollJoint {
         mut ragdoll_assets: ResMut<Assets<Ragdoll>>,
         mut dirty_assets: ResMut<DirtyAssets>,
     ) {
-        let Some(ragdoll) = ragdoll_assets.get_mut(&input.ragdoll) else {
+        let Some(mut ragdoll) = ragdoll_assets.get_mut(&input.ragdoll) else {
             return;
         };
 
@@ -157,7 +157,7 @@ impl DeleteRagdollBody {
         mut ragdoll_assets: ResMut<Assets<Ragdoll>>,
         mut dirty_assets: ResMut<DirtyAssets>,
     ) {
-        let Some(ragdoll) = ragdoll_assets.get_mut(&input.ragdoll) else {
+        let Some(mut ragdoll) = ragdoll_assets.get_mut(&input.ragdoll) else {
             return;
         };
 
@@ -184,7 +184,7 @@ impl DeleteRagdollCollider {
         mut ragdoll_assets: ResMut<Assets<Ragdoll>>,
         mut dirty_assets: ResMut<DirtyAssets>,
     ) {
-        let Some(ragdoll) = ragdoll_assets.get_mut(&input.ragdoll) else {
+        let Some(mut ragdoll) = ragdoll_assets.get_mut(&input.ragdoll) else {
             return;
         };
 
@@ -211,7 +211,7 @@ impl DeleteRagdollJoint {
         mut ragdoll_assets: ResMut<Assets<Ragdoll>>,
         mut dirty_assets: ResMut<DirtyAssets>,
     ) {
-        let Some(ragdoll) = ragdoll_assets.get_mut(&input.ragdoll) else {
+        let Some(mut ragdoll) = ragdoll_assets.get_mut(&input.ragdoll) else {
             return;
         };
 
@@ -238,7 +238,7 @@ impl EditRagdollCollider {
         mut ragdoll_assets: ResMut<Assets<Ragdoll>>,
         mut dirty_assets: ResMut<DirtyAssets>,
     ) {
-        let Some(ragdoll) = ragdoll_assets.get_mut(&input.ragdoll) else {
+        let Some(mut ragdoll) = ragdoll_assets.get_mut(&input.ragdoll) else {
             return;
         };
 
@@ -267,7 +267,7 @@ impl EditRagdollJoint {
         mut ragdoll_assets: ResMut<Assets<Ragdoll>>,
         mut dirty_assets: ResMut<DirtyAssets>,
     ) {
-        let Some(ragdoll) = ragdoll_assets.get_mut(&input.ragdoll) else {
+        let Some(mut ragdoll) = ragdoll_assets.get_mut(&input.ragdoll) else {
             return;
         };
 
@@ -296,7 +296,7 @@ impl CreateOrEditBodyMapping {
         mut ragdoll_bone_map_assets: ResMut<Assets<RagdollBoneMap>>,
         mut dirty_assets: ResMut<DirtyAssets>,
     ) {
-        let Some(ragdoll_bone_map) = ragdoll_bone_map_assets.get_mut(&input.ragdoll_bone_map)
+        let Some(mut ragdoll_bone_map) = ragdoll_bone_map_assets.get_mut(&input.ragdoll_bone_map)
         else {
             return;
         };
@@ -326,7 +326,7 @@ impl CreateOrEditBoneMapping {
         mut ragdoll_bone_map_assets: ResMut<Assets<RagdollBoneMap>>,
         mut dirty_assets: ResMut<DirtyAssets>,
     ) {
-        let Some(ragdoll_bone_map) = ragdoll_bone_map_assets.get_mut(&input.ragdoll_bone_map)
+        let Some(mut ragdoll_bone_map) = ragdoll_bone_map_assets.get_mut(&input.ragdoll_bone_map)
         else {
             return;
         };
@@ -357,7 +357,7 @@ impl RecomputeMappingOffsets {
         mut ragdoll_bone_map_assets: ResMut<Assets<RagdollBoneMap>>,
         mut dirty_assets: ResMut<DirtyAssets>,
     ) {
-        let Some(ragdoll_bone_map) = ragdoll_bone_map_assets.get_mut(&input.ragdoll_bone_map)
+        let Some(mut ragdoll_bone_map) = ragdoll_bone_map_assets.get_mut(&input.ragdoll_bone_map)
         else {
             return;
         };
@@ -440,11 +440,11 @@ impl RecomputeRagdollSymmetry {
         mut ragdoll_bone_map_assets: ResMut<Assets<RagdollBoneMap>>,
         mut dirty_assets: ResMut<DirtyAssets>,
     ) {
-        let Some(ragdoll_bone_map) = ragdoll_bone_map_assets.get_mut(&input.ragdoll_bone_map)
+        let Some(mut ragdoll_bone_map) = ragdoll_bone_map_assets.get_mut(&input.ragdoll_bone_map)
         else {
             return;
         };
-        let Some(ragdoll) = ragdoll_assets.get_mut(&ragdoll_bone_map.ragdoll) else {
+        let Some(mut ragdoll) = ragdoll_assets.get_mut(&ragdoll_bone_map.ragdoll) else {
             return;
         };
 
@@ -533,7 +533,7 @@ impl RecomputeRagdollSymmetry {
                         mirror_collider(
                             cid,
                             &mut reverse_collider_index,
-                            ragdoll,
+                            &mut ragdoll,
                             &suffixes,
                             &SymmertryMode::MirrorX,
                         )
@@ -564,7 +564,7 @@ impl RecomputeRagdollSymmetry {
                 joint_id,
                 &mut reverse_body_index,
                 &mut reverse_joint_index,
-                ragdoll,
+                &mut ragdoll,
             )
             .expect("Failed to mirror joint");
         }
@@ -579,7 +579,7 @@ impl RecomputeRagdollSymmetry {
                 continue;
             }
 
-            mirror_body_mapping(body_id, &mut reverse_body_index, ragdoll_bone_map)
+            mirror_body_mapping(body_id, &mut reverse_body_index, &mut ragdoll_bone_map)
                 .expect("Failed to mirror body mapping");
         }
 
@@ -593,7 +593,7 @@ impl RecomputeRagdollSymmetry {
             if mapping.created_from.is_some() {
                 continue;
             };
-            mirror_bone_mapping(bone_path, &mut reverse_body_index, ragdoll_bone_map);
+            mirror_bone_mapping(bone_path, &mut reverse_body_index, &mut ragdoll_bone_map);
         }
 
         // Cleanup section

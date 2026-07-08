@@ -46,7 +46,7 @@ impl ::bevy::reflect::Typed for NodeStateBox {
         static CELL: ::bevy::reflect::utility::NonGenericTypeInfoCell =
             ::bevy::reflect::utility::NonGenericTypeInfoCell::new();
         CELL.get_or_set(|| {
-            ::bevy::reflect::TypeInfo::Struct(::bevy::reflect::StructInfo::new::<Self>(&[
+            ::bevy::reflect::TypeInfo::Struct(::bevy::reflect::structs::StructInfo::new::<Self>(&[
                 ::bevy::reflect::NamedField::new::<String>("value"),
             ]))
         })
@@ -116,7 +116,7 @@ impl ::bevy::reflect::Reflect for NodeStateBox {
 ::bevy::reflect::__macro_exports::auto_register::inventory::submit! {
     ::bevy::reflect::__macro_exports::auto_register::AutomaticReflectRegistrations(<NodeStateBox as ::bevy::reflect::__macro_exports::auto_register::RegisterForReflection> ::__register)
 }
-impl ::bevy::reflect::Struct for NodeStateBox {
+impl ::bevy::reflect::structs::Struct for NodeStateBox {
     fn field(&self, name: &str) -> ::core::option::Option<&dyn ::bevy::reflect::PartialReflect> {
         match name {
             "value" => ::core::option::Option::Some(self.value.as_reflect()),
@@ -159,11 +159,12 @@ impl ::bevy::reflect::Struct for NodeStateBox {
     fn field_len(&self) -> usize {
         1usize
     }
-    fn iter_fields(&'_ self) -> ::bevy::reflect::FieldIter<'_> {
-        ::bevy::reflect::FieldIter::new(self)
+    fn iter_fields(&'_ self) -> ::bevy::reflect::structs::FieldIter<'_> {
+        ::bevy::reflect::structs::FieldIter::new(self)
     }
-    fn to_dynamic_struct(&self) -> ::bevy::reflect::DynamicStruct {
-        let mut dynamic: ::bevy::reflect::DynamicStruct = ::core::default::Default::default();
+    fn to_dynamic_struct(&self) -> ::bevy::reflect::structs::DynamicStruct {
+        let mut dynamic: ::bevy::reflect::structs::DynamicStruct =
+            ::core::default::Default::default();
         dynamic.set_represented_type(::bevy::reflect::PartialReflect::get_represented_type_info(
             self,
         ));
@@ -172,6 +173,13 @@ impl ::bevy::reflect::Struct for NodeStateBox {
             ::bevy::reflect::PartialReflect::to_dynamic(self.value.as_reflect()),
         );
         dynamic
+    }
+
+    fn index_of_name(&self, name: &str) -> Option<usize> {
+        match name {
+            "value" => ::core::option::Option::Some(0usize),
+            _ => ::core::option::Option::None,
+        }
     }
 }
 impl ::bevy::reflect::PartialReflect for NodeStateBox {
@@ -189,12 +197,9 @@ impl ::bevy::reflect::PartialReflect for NodeStateBox {
         if let ::bevy::reflect::ReflectRef::Struct(struct_value) =
             ::bevy::reflect::PartialReflect::reflect_ref(value)
         {
-            for (i, value) in ::core::iter::Iterator::enumerate(
-                ::bevy::reflect::Struct::iter_fields(struct_value),
-            ) {
-                let name = ::bevy::reflect::Struct::name_at(struct_value, i).unwrap();
+            for (name, value) in ::bevy::reflect::structs::Struct::iter_fields(struct_value) {
                 if let ::core::option::Option::Some(v) =
-                    ::bevy::reflect::Struct::field_mut(self, name)
+                    ::bevy::reflect::structs::Struct::field_mut(self, name)
                 {
                     ::bevy::reflect::PartialReflect::try_apply(v, value)?;
                 }
@@ -261,7 +266,7 @@ impl ::bevy::reflect::PartialReflect for NodeStateBox {
         &self,
         value: &dyn ::bevy::reflect::PartialReflect,
     ) -> ::core::option::Option<bool> {
-        (::bevy::reflect::struct_partial_eq)(self, value)
+        (::bevy::reflect::structs::struct_partial_eq)(self, value)
     }
     #[inline]
     fn reflect_clone(

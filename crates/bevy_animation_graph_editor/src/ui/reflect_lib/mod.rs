@@ -6,8 +6,11 @@ use bevy::{
     ecs::{reflect::AppTypeRegistry, resource::Resource, world::World},
     platform::collections::HashMap,
     reflect::{
-        DynamicEnum, DynamicStruct, DynamicTuple, DynamicVariant, EnumInfo, Reflect, TypeInfo,
-        TypeRegistry, VariantType, prelude::ReflectDefault,
+        Reflect, TypeInfo, TypeRegistry,
+        enums::{DynamicEnum, DynamicVariant, EnumInfo, VariantType},
+        prelude::ReflectDefault,
+        structs::DynamicStruct,
+        tuple::DynamicTuple,
     },
 };
 
@@ -265,7 +268,6 @@ impl<'a> ReflectWidgetContext<'a> {
 
     pub fn scope<T>(world: &'a World, scoped: impl FnOnce(&ReflectWidgetContext) -> T) -> T {
         let contexts = ExternalContexts::default();
-
         Self::scope_with_context(world, &contexts, scoped)
     }
 

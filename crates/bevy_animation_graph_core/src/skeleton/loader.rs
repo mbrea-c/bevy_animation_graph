@@ -5,8 +5,8 @@ use bevy::{
     gltf::Gltf,
     prelude::{Entity, With, World},
     reflect::TypePath,
-    scene::Scene,
     transform::components::Transform,
+    world_serialization::WorldAsset,
 };
 
 use super::{
@@ -35,8 +35,12 @@ impl AssetLoader for SkeletonLoader {
         let skeleton: Skeleton = match serial.source {
             SkeletonSource::Gltf { source, label } => {
                 let gltf: LoadedAsset<Gltf> =
-                    load_context.loader().immediate().load(source).await?;
-                let scn = gltf.get_labeled(label).unwrap().get::<Scene>().unwrap();
+                    load_context.load_builder().load_value(source).await?;
+                let scn = gltf
+                    .get_labeled(label)
+                    .unwrap()
+                    .get::<WorldAsset>()
+                    .unwrap();
                 build_skeleton(&scn.world)?
             }
         };

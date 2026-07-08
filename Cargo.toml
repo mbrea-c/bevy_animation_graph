@@ -3,27 +3,27 @@ members = ["crates/*", "examples/*"]
 resolver = "2"
 
 [workspace.package]
-version = "0.10.0"
+version = "0.11.0"
 license = "MIT OR Apache-2.0"
 readme = "README.md"
 edition = "2024"
 repository = "https://github.com/mbrea-c/bevy_animation_graph"
 
 [workspace.dependencies]
-bevy_animation_graph_proc_macros = { version = "0.10.0", path = "./crates/bevy_animation_graph_proc_macros" }
-bevy_animation_graph = { version = "0.10.0", path = "./crates/bevy_animation_graph" }
-bevy_animation_graph_core = { version = "0.10.0", path = "./crates/bevy_animation_graph_core" }
-bevy_animation_graph_builtin_nodes = { version = "0.10.0", path = "./crates/bevy_animation_graph_builtin_nodes" }
+bevy_animation_graph_proc_macros = { version = "0.11.0", path = "./crates/bevy_animation_graph_proc_macros" }
+bevy_animation_graph = { version = "0.11.0", path = "./crates/bevy_animation_graph" }
+bevy_animation_graph_core = { version = "0.11.0", path = "./crates/bevy_animation_graph_core" }
+bevy_animation_graph_builtin_nodes = { version = "0.11.0", path = "./crates/bevy_animation_graph_builtin_nodes" }
 
-bevy = { version = "0.18" }
-avian3d = { version = "0.5" }
+bevy = { version = "0.19" }
+avian3d = { version = "0.7" }
 
-egui_dock = "0.18"
-egui-notify = { version = "0.21" }
-egui = { version = "0.33" }
-egui_extras = { version = "0.33", features = ["all_loaders"] }
-bevy_egui = { version = "0.39" }
-bevy-inspector-egui = { version = "0.36" }
+egui_dock = "0.19"
+egui-notify = { version = "0.22" }
+egui = { version = "0.34" }
+egui_extras = { version = "0.34", features = ["all_loaders"] }
+bevy_egui = { version = "0.40.0" }
+bevy-inspector-egui = { version = "0.37" }
 
 ron = "0.10.1"
 serde = "1.0"

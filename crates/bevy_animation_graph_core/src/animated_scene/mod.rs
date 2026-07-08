@@ -15,8 +15,8 @@ use bevy::{
     },
     platform::collections::HashMap,
     reflect::Reflect,
-    scene::{Scene, SceneInstanceReady, SceneRoot},
     transform::components::Transform,
+    world_serialization::{WorldAsset, WorldAssetRoot, WorldInstanceReady},
 };
 
 use super::{animation_clip::EntityPath, errors::AssetLoaderError, id::BoneId, skeleton::Skeleton};
@@ -29,8 +29,8 @@ use crate::{
 #[derive(Clone, Asset, Reflect)]
 #[reflect(Asset)]
 pub struct AnimatedScene {
-    pub source: Handle<Scene>,
-    pub processed_scene: Option<Handle<Scene>>,
+    pub source: Handle<WorldAsset>,
+    pub processed_scene: Option<Handle<WorldAsset>>,
     pub animation_graph: Handle<AnimationGraph>,
     pub retargeting: Option<Retargeting>,
     /// Skeleton of the animations we want to play on the source scene.
@@ -84,20 +84,20 @@ impl AnimatedSceneHandle {
 /// Processed animated scenes are "cached".
 pub(crate) fn spawn_animated_scenes(
     mut commands: Commands,
-    unloaded_scenes: Query<(Entity, &AnimatedSceneHandle), Without<SceneRoot>>,
+    unloaded_scenes: Query<(Entity, &AnimatedSceneHandle), Without<WorldAssetRoot>>,
     mut animated_scene_assets: ResMut<Assets<AnimatedScene>>,
-    mut scenes: ResMut<Assets<Scene>>,
+    mut scenes: ResMut<Assets<WorldAsset>>,
     skeletons: Res<Assets<Skeleton>>,
     app_type_registry: Res<AppTypeRegistry>,
 ) {
     for (entity, animscn_handle) in &unloaded_scenes {
-        let Some(animscn) = animated_scene_assets.get_mut(&animscn_handle.handle) else {
+        let Some(mut animscn) = animated_scene_assets.get_mut(&animscn_handle.handle) else {
             continue;
         };
 
         let processed_scene = if let Some(val) = animscn.processed_scene.as_ref() {
             val
-        } else if is_scene_ready_to_process(animscn, &scenes, &skeletons) {
+        } else if is_scene_ready_to_process(&animscn, &scenes, &skeletons) {
             let Some(scene) = scenes
                 .get(&animscn.source)
                 .and_then(|scn| scn.clone_with(&app_type_registry).ok())
@@ -124,14 +124,14 @@ pub(crate) fn spawn_animated_scenes(
 
         commands
             .entity(entity)
-            .insert(SceneRoot(processed_scene.clone()));
+            .insert(WorldAssetRoot(processed_scene.clone()));
     }
 }
 
 /// Checks whether the scene can be processed
 fn is_scene_ready_to_process(
     animscn: &AnimatedScene,
-    scenes: &Assets<Scene>,
+    scenes: &Assets<WorldAsset>,
     skeletons: &Assets<Skeleton>,
 ) -> bool {
     scenes.contains(&animscn.source) && skeletons.contains(&animscn.skeleton)
@@ -142,14 +142,14 @@ fn is_scene_ready_to_process(
 /// It also applies retargeting if necessary.
 #[allow(clippy::result_large_err, clippy::too_many_arguments)]
 fn process_scene_into_animscn(
-    mut scene: Scene,
+    mut scene: WorldAsset,
     skeleton_handle: Handle<Skeleton>,
     ragdoll_handle: Option<Handle<Ragdoll>>,
     ragdoll_bone_map_handle: Option<Handle<RagdollBoneMap>>,
     graph: Handle<AnimationGraph>,
     skeletons: &Assets<Skeleton>,
     retargeting: Option<&Retargeting>,
-) -> Result<Scene, AssetLoaderError> {
+) -> Result<WorldAsset, AssetLoaderError> {
     let mut query = scene
         .world
         .query_filtered::<Entity, With<bevy::animation::AnimationPlayer>>();
@@ -219,7 +219,7 @@ fn apply_bone_path_overrides(
 /// Adds an `AnimatedSceneInstance` pointing to the animation graph player when the scene is
 /// spawned
 pub(crate) fn locate_animated_scene_player(
-    trigger: On<SceneInstanceReady>,
+    trigger: On<WorldInstanceReady>,
     handle_query: Query<&AnimatedSceneHandle>,
     mut player_query: Query<&mut AnimationGraphPlayer>,
     children_query: Query<&Children>,

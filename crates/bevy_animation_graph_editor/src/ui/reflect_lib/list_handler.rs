@@ -1,6 +1,10 @@
 use std::any::TypeId;
 
-use bevy::reflect::{List, ListInfo, PartialReflect, Reflect, prelude::ReflectDefault};
+use bevy::reflect::{
+    PartialReflect, Reflect,
+    list::{List, ListInfo},
+    prelude::ReflectDefault,
+};
 
 use crate::ui::{
     generic_widgets::list_like::{ListLike, ListLikeWidget},

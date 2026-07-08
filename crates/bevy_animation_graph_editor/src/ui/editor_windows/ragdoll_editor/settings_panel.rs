@@ -23,7 +23,7 @@ impl Widget for SettingsPanel<'_> {
         let mut response = ui.heading("Ragdoll settings");
         self.world
             .resource_scope::<Assets<Ragdoll>, _>(|world, mut ragdoll_assets| {
-                let Some(ragdoll) = ragdoll_assets.get_mut(&self.target) else {
+                let Some(mut ragdoll) = ragdoll_assets.get_mut(&self.target) else {
                     return;
                 };
                 response |=
