@@ -43,7 +43,7 @@ pub fn asset_reload(
 ) {
     visit_dirs(&cli.asset_source, &mut |path| {
         let relative_path = path.strip_prefix(&cli.asset_source).unwrap().to_owned();
-        let loaded = asset_server.load_untyped(relative_path);
+        let loaded = asset_server.load_builder().load_untyped(relative_path);
         persisted_asset_handles.loaded_paths.insert(loaded);
     })
     .unwrap_or_else(|err| {
