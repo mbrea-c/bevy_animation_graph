@@ -142,6 +142,7 @@ impl UiState {
 }
 
 fn menu_bar(ctx: &mut egui::Context, command_queue: &mut CommandQueue) {
+    #[allow(deprecated)]
     egui::Panel::top("Application menu bar").show(ctx, |ui| {
         egui::MenuBar::new().ui(ui, |ui| {
             ui.menu_button("Assets", |ui| {
@@ -224,6 +225,7 @@ fn view_selection_bar(
     ctx: &mut egui::Context,
     ui_state: &UiState,
 ) -> Option<ViewAction> {
+    #[allow(deprecated)]
     egui::Panel::top("View selector")
         .show(ctx, |ui| {
             ui.horizontal(|ui| {

@@ -126,6 +126,7 @@ impl EditorViewUiState {
     pub fn ui(&mut self, ctx: &mut egui::Context, world: &mut World, context: EditorViewContext) {
         let mut tab_viewer = TabViewer { world, context };
 
+        #[allow(deprecated)]
         DockArea::new(&mut self.dock_state)
             .style(egui_dock::Style::from_egui(ctx.global_style().as_ref()))
             .id(egui::Id::new(self.entity))
