@@ -12,17 +12,14 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 #[derive(Asset, Debug, Clone, Reflect, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Ragdoll {
     pub bodies: HashMap<BodyId, Body>,
     pub colliders: HashMap<ColliderId, Collider>,
     pub joints: HashMap<JointId, Joint>,
-
-    #[serde(default)]
     pub suffixes: SymmetrySuffixes,
-
     /// Total mass will be divided among all colliders according to the volume of their attached
     /// colliders.
-    #[serde(default)]
     pub total_mass: f32,
 }
 
