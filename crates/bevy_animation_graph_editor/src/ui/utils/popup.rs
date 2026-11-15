@@ -162,6 +162,7 @@ struct PopupState {
     open: bool,
 }
 
+#[allow(dead_code)]
 pub enum AboveOrBelow {
     Above,
     Below,

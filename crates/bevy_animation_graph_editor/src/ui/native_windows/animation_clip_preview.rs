@@ -41,7 +41,7 @@ impl NativeEditorWindowExtension for ClipPreviewWindow {
             .resizable(false)
             .exact_size(timeline_height)
             .frame(egui::Frame::NONE)
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 self.draw_base_scene_selector(ui, world, ctx);
             });
 

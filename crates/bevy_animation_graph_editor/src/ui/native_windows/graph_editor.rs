@@ -291,7 +291,7 @@ impl GraphEditorWindow {
             .resizable(true)
             .default_size(175.)
             .min_size(150.)
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 ui.text_edit_singleline(&mut buffer.node_type_search);
                 egui::ScrollArea::vertical()
                     .auto_shrink(false)

@@ -146,7 +146,7 @@ impl NativeEditorWindowExtension for EventTrackEditorWindow {
             .resizable(true)
             .default_size(200.)
             .min_size(100.)
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 EventTrackEditorState::with_tracks(
                     ui,
                     &state.target_tracks,
@@ -164,7 +164,7 @@ impl NativeEditorWindowExtension for EventTrackEditorWindow {
             .resizable(true)
             .default_size(200.)
             .min_size(100.)
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 EventTrackEditorState::with_event(
                     ui,
                     &state.target_tracks,
@@ -182,7 +182,7 @@ impl NativeEditorWindowExtension for EventTrackEditorWindow {
             .resizable(false)
             .exact_size(timeline_height)
             .frame(egui::Frame::NONE)
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 state.draw_track_source_selector(ui, world, ctx);
             });
 
@@ -190,7 +190,7 @@ impl NativeEditorWindowExtension for EventTrackEditorWindow {
             .resizable(false)
             .exact_size(timeline_height)
             .frame(egui::Frame::NONE)
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 state.draw_timeline(
                     ui,
                     ctx.get_view_state::<ClipPreviewViewState>(world)
