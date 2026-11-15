@@ -41,8 +41,8 @@ impl NodeCaches {
 
         self.caches
             .get(&node_id)
-            .ok_or_else(&error)
-            .and_then(|c| c.duration.get(&key).ok_or_else(&error))
+            .ok_or_else(error)
+            .and_then(|c| c.duration.get(&key).ok_or_else(error))
             .cloned()
     }
 
@@ -70,8 +70,8 @@ impl NodeCaches {
 
         self.caches
             .get(&node_id)
-            .ok_or_else(&error)
-            .and_then(|c| c.output_time_update.get(&key).ok_or_else(&error))
+            .ok_or_else(error)
+            .and_then(|c| c.output_time_update.get(&key).ok_or_else(error))
             .cloned()
     }
 
@@ -91,11 +91,11 @@ impl NodeCaches {
 
         self.caches
             .get(&node_id)
-            .ok_or_else(&error)
+            .ok_or_else(error)
             .and_then(|c| {
                 c.input_time_updates
                     .get(&(key, pin.clone()))
-                    .ok_or_else(&error)
+                    .ok_or_else(error)
             })
             .cloned()
     }
