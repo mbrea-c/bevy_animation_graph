@@ -123,14 +123,14 @@ impl EditorViewUiState {
         Self { entity, dock_state }
     }
 
-    pub fn ui(&mut self, ctx: &mut egui::Context, world: &mut World, context: EditorViewContext) {
+    pub fn ui(&mut self, ui: &mut egui::Ui, world: &mut World, context: EditorViewContext) {
         let mut tab_viewer = TabViewer { world, context };
 
         #[allow(deprecated)]
         DockArea::new(&mut self.dock_state)
-            .style(egui_dock::Style::from_egui(ctx.global_style().as_ref()))
+            .style(egui_dock::Style::from_egui(ui.global_style().as_ref()))
             .id(egui::Id::new(self.entity))
-            .show(ctx, &mut tab_viewer);
+            .show_inside(ui, &mut tab_viewer);
     }
 
     pub fn empty(world: &mut World, name: impl Into<String>) -> Self {
@@ -218,5 +218,9 @@ impl egui_dock::TabViewer for TabViewer<'_> {
                 .is_some_and(|w| w.closeable()),
             EguiWindow::EntityWindow(window) => window.closeable(),
         }
+    }
+
+    fn id(&mut self, tab: &mut Self::Tab) -> egui::Id {
+        egui::Id::new(egui::IdSalt::new(tab))
     }
 }

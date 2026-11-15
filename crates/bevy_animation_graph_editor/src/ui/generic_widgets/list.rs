@@ -4,10 +4,10 @@ pub struct ListWidget<'a, I> {
 }
 
 impl<'a, I> ListWidget<'a, I> {
-    pub fn new_salted(list: &'a mut Vec<I>, salt: impl std::hash::Hash) -> Self {
+    pub fn new_salted(list: &'a mut Vec<I>, salt: impl std::hash::Hash + std::fmt::Debug) -> Self {
         Self {
             list,
-            id_hash: egui::Id::new(salt),
+            id_hash: egui::Id::new(egui::IdSalt::new(salt)),
         }
     }
 }

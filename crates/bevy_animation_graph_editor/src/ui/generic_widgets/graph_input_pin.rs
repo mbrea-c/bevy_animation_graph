@@ -11,10 +11,13 @@ pub struct GraphInputPinWidget<'a> {
 }
 
 impl<'a> GraphInputPinWidget<'a> {
-    pub fn new_salted(graph_input_pin: &'a mut GraphInputPin, salt: impl std::hash::Hash) -> Self {
+    pub fn new_salted(
+        graph_input_pin: &'a mut GraphInputPin,
+        salt: impl std::hash::Hash + std::fmt::Debug,
+    ) -> Self {
         Self {
             graph_input_pin,
-            id_hash: egui::Id::new(salt),
+            id_hash: egui::Id::new(egui::IdSalt::new(salt)),
         }
     }
 }

@@ -8,10 +8,13 @@ pub struct BodyModeWidget<'a> {
 }
 
 impl<'a> BodyModeWidget<'a> {
-    pub fn new_salted(body_mode: &'a mut BodyMode, salt: impl std::hash::Hash) -> Self {
+    pub fn new_salted(
+        body_mode: &'a mut BodyMode,
+        salt: impl std::hash::Hash + std::fmt::Debug,
+    ) -> Self {
         Self {
             body_mode,
-            id_hash: egui::Id::new(salt),
+            id_hash: egui::Id::new(egui::IdSalt::new(salt)),
         }
     }
 }

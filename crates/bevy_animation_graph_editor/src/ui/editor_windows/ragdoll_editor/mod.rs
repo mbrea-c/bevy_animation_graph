@@ -200,7 +200,7 @@ impl RagdollEditorWindow {
             .resizable(false)
             .exact_size(timeline_height)
             .frame(egui::Frame::NONE.inner_margin(5.))
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 TopPanel {
                     ragdoll: self.ragdoll.clone(),
                     scene: self.scene.clone(),
@@ -221,7 +221,7 @@ impl RagdollEditorWindow {
         Panel::left("Hierarchical tree view")
             .resizable(true)
             .default_size(300.)
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 ui.checkbox(&mut self.show_bone_tree, "Show skeleton tree");
                 egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
                     if self.show_bone_tree {
@@ -275,7 +275,7 @@ impl RagdollEditorWindow {
         Panel::right("Inspector panel")
             .resizable(true)
             .default_size(350.)
-            .show_inside(ui, |ui| {
+            .show(ui, |ui| {
                 egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
                     match self.selected_item {
                         Some(SelectedItem::Body(body_id)) => {

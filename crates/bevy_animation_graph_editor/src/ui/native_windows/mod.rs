@@ -1,3 +1,5 @@
+use std::hash::Hash;
+
 use bevy::ecs::{
     component::Component,
     entity::Entity,
@@ -116,6 +118,12 @@ pub trait NativeEditorWindowExtension: std::fmt::Debug + Send + Sync + 'static {
 pub struct NativeEditorWindow {
     window: Box<dyn NativeEditorWindowExtension>,
     pub entity: Entity,
+}
+
+impl Hash for NativeEditorWindow {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.entity.hash(state);
+    }
 }
 
 impl NativeEditorWindowExtension for NativeEditorWindow {

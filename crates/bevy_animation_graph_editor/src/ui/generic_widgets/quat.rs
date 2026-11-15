@@ -10,11 +10,11 @@ pub struct QuatWidget<'a> {
 }
 
 impl<'a> QuatWidget<'a> {
-    pub fn new_salted(quat: &'a mut Quat, salt: impl std::hash::Hash) -> Self {
+    pub fn new_salted(quat: &'a mut Quat, salt: impl std::hash::Hash + std::fmt::Debug) -> Self {
         Self {
             quat,
             slider_step_size: 0.1,
-            id_hash: egui::Id::new(salt),
+            id_hash: egui::Id::new(egui::IdSalt::new(salt)),
             width: 300.,
         }
     }

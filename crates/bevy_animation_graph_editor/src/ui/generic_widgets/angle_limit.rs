@@ -33,12 +33,15 @@ pub struct AngleLimitWidget<'a> {
 }
 
 impl<'a> AngleLimitWidget<'a> {
-    pub fn new_salted(angle_limit: &'a mut AngleLimit, salt: impl std::hash::Hash) -> Self {
+    pub fn new_salted(
+        angle_limit: &'a mut AngleLimit,
+        salt: impl std::hash::Hash + std::fmt::Debug,
+    ) -> Self {
         Self {
             angle_limit,
             angle_unit: AngleUnit::Deg,
             slider_step_size: 0.01,
-            id_hash: egui::Id::new(salt),
+            id_hash: egui::Id::new(egui::IdSalt::new(salt)),
             width: 300.,
         }
     }

@@ -5,10 +5,13 @@ pub struct CheapOptionWidget<'a, T> {
 }
 
 impl<'a, T> CheapOptionWidget<'a, T> {
-    pub fn new_salted(value: &'a mut Option<T>, salt: impl std::hash::Hash) -> Self {
+    pub fn new_salted(
+        value: &'a mut Option<T>,
+        salt: impl std::hash::Hash + std::fmt::Debug,
+    ) -> Self {
         Self {
             value,
-            id_hash: egui::Id::new(salt),
+            id_hash: egui::Id::new(egui::IdSalt::new(salt)),
             checkbox_label: None,
         }
     }

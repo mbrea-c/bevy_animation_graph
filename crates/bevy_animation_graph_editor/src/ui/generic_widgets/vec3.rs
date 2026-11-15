@@ -8,11 +8,11 @@ pub struct Vec3Widget<'a> {
 }
 
 impl<'a> Vec3Widget<'a> {
-    pub fn new_salted(vec3: &'a mut Vec3, salt: impl std::hash::Hash) -> Self {
+    pub fn new_salted(vec3: &'a mut Vec3, salt: impl std::hash::Hash + std::fmt::Debug) -> Self {
         Self {
             vec3,
             slider_step_size: 0.01,
-            id_hash: egui::Id::new(salt),
+            id_hash: egui::Id::new(egui::IdSalt::new(salt)),
             width: 300.,
         }
     }

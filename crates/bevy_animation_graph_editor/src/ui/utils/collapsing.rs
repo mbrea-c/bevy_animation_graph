@@ -21,8 +21,8 @@ impl Collapser {
         self
     }
 
-    pub fn with_id_salt(mut self, salt: impl std::hash::Hash) -> Self {
-        self.id_salt = egui::Id::new(salt);
+    pub fn with_id_salt(mut self, salt: impl std::hash::Hash + std::fmt::Debug) -> Self {
+        self.id_salt = egui::Id::new(egui::IdSalt::new(salt));
         self
     }
 
