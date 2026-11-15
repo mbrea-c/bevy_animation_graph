@@ -7,10 +7,13 @@ pub struct EntityPathWidget<'a> {
 }
 
 impl<'a> EntityPathWidget<'a> {
-    pub fn new_salted(entity_path: &'a mut EntityPath, salt: impl std::hash::Hash) -> Self {
+    pub fn new_salted(
+        entity_path: &'a mut EntityPath,
+        salt: impl std::hash::Hash + std::fmt::Debug,
+    ) -> Self {
         Self {
             entity_path,
-            id_hash: egui::Id::new(salt),
+            id_hash: egui::Id::new(egui::IdSalt::new(salt)),
             options: Vec::new(),
         }
     }

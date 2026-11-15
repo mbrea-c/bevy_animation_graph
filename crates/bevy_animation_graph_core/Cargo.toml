@@ -9,7 +9,7 @@ description = "Animation graph library for the Bevy game engine"
 keywords = ["bevy", "animation", "gamedev"]
 
 [dependencies]
-bevy = { workspace = true }
+bevy = { workspace = true, features = ["serialize"] }
 thiserror = "1.0.58"
 ron = { workspace = true }
 serde = { workspace = true, features = ["derive", "rc"] }

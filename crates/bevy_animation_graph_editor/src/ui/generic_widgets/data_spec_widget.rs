@@ -8,10 +8,13 @@ pub struct DataSpecWidget<'a> {
 }
 
 impl<'a> DataSpecWidget<'a> {
-    pub fn new_salted(data_spec: &'a mut DataSpec, salt: impl std::hash::Hash) -> Self {
+    pub fn new_salted(
+        data_spec: &'a mut DataSpec,
+        salt: impl std::hash::Hash + std::fmt::Debug,
+    ) -> Self {
         Self {
             data_spec,
-            id_hash: egui::Id::new(salt),
+            id_hash: egui::Id::new(egui::IdSalt::new(salt)),
         }
     }
 }

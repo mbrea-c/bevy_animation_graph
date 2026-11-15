@@ -6,10 +6,10 @@ pub struct UuidWidget<'a> {
 }
 
 impl<'a> UuidWidget<'a> {
-    pub fn new_salted(uuid: &'a mut Uuid, salt: impl std::hash::Hash) -> Self {
+    pub fn new_salted(uuid: &'a mut Uuid, salt: impl std::hash::Hash + std::fmt::Debug) -> Self {
         Self {
             uuid,
-            id_hash: egui::Id::new(salt),
+            id_hash: egui::Id::new(egui::IdSalt::new(salt)),
         }
     }
 }

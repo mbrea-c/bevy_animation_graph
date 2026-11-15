@@ -21,8 +21,8 @@ impl<'a, L> ListLikeWidget<'a, L> {
     }
 
     #[allow(dead_code)]
-    pub fn salted(mut self, salt: impl std::hash::Hash) -> Self {
-        self.id_hash = self.id_hash.with(salt);
+    pub fn salted(mut self, salt: impl std::hash::Hash + std::fmt::Debug) -> Self {
+        self.id_hash = self.id_hash.with(egui::IdSalt::new(salt));
         self
     }
 }

@@ -15,12 +15,12 @@ impl<'a> TransitionDataWidget<'a> {
     pub fn new_salted(
         transition_data: &'a mut TransitionData,
         world: &'a mut World,
-        salt: impl std::hash::Hash,
+        salt: impl std::hash::Hash + std::fmt::Debug,
     ) -> Self {
         Self {
             transition_data,
             world,
-            id_hash: egui::Id::new(salt),
+            id_hash: egui::Id::new(egui::IdSalt::new(salt)),
         }
     }
 }

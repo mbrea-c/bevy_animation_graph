@@ -6,10 +6,10 @@ pub struct U32Flags<'a> {
 }
 
 impl<'a> U32Flags<'a> {
-    pub fn new_salted(flags: &'a mut u32, salt: impl std::hash::Hash) -> Self {
+    pub fn new_salted(flags: &'a mut u32, salt: impl std::hash::Hash + std::fmt::Debug) -> Self {
         Self {
             flags,
-            id_hash: egui::Id::new(salt),
+            id_hash: egui::Id::new(egui::IdSalt::new(salt)),
         }
     }
 }

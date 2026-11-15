@@ -27,11 +27,11 @@ impl Clone for NodeStateBox {
 impl ::bevy::reflect::GetTypeRegistration for NodeStateBox {
     fn get_type_registration() -> ::bevy::reflect::TypeRegistration {
         let mut registration = ::bevy::reflect::TypeRegistration::of::<Self>();
-        registration.insert::<::bevy::reflect::ReflectFromPtr>(
-            ::bevy::reflect::FromType::<Self>::from_type(),
-        );
+        registration.insert::<::bevy::reflect::ReflectFromPtr>(::bevy::reflect::CreateTypeData::<
+            Self,
+        >::create_type_data(()));
         registration.insert::<::bevy::reflect::ReflectFromReflect>(
-            ::bevy::reflect::FromType::<Self>::from_type(),
+            ::bevy::reflect::CreateTypeData::<Self>::create_type_data(()),
         );
         registration
     }
@@ -162,7 +162,9 @@ impl ::bevy::reflect::structs::Struct for NodeStateBox {
     fn iter_fields(&'_ self) -> ::bevy::reflect::structs::FieldIter<'_> {
         ::bevy::reflect::structs::FieldIter::new(self)
     }
-    fn to_dynamic_struct(&self) -> ::bevy::reflect::structs::DynamicStruct {
+    fn to_dynamic_struct(
+        &self,
+    ) -> Result<::bevy::reflect::structs::DynamicStruct, ::bevy::reflect::ReflectCloneError> {
         let mut dynamic: ::bevy::reflect::structs::DynamicStruct =
             ::core::default::Default::default();
         dynamic.set_represented_type(::bevy::reflect::PartialReflect::get_represented_type_info(
@@ -170,9 +172,9 @@ impl ::bevy::reflect::structs::Struct for NodeStateBox {
         ));
         dynamic.insert_boxed(
             "value",
-            ::bevy::reflect::PartialReflect::to_dynamic(self.value.as_reflect()),
+            ::bevy::reflect::PartialReflect::to_dynamic(self.value.as_reflect())?,
         );
-        dynamic
+        Ok(dynamic)
     }
 
     fn index_of_name(&self, name: &str) -> Option<usize> {

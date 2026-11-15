@@ -7,10 +7,14 @@ pub struct TreeWidget<I, L, R> {
 }
 
 impl<I, L, R> TreeWidget<I, L, R> {
-    pub fn new_salted(tree: Tree<I, L>, renderer: R, salt: impl std::hash::Hash) -> Self {
+    pub fn new_salted(
+        tree: Tree<I, L>,
+        renderer: R,
+        salt: impl std::hash::Hash + std::fmt::Debug,
+    ) -> Self {
         Self {
             tree,
-            id_hash: egui::Id::new(salt),
+            id_hash: egui::Id::new(egui::IdSalt::new(salt)),
             renderer,
         }
     }

@@ -26,11 +26,11 @@ impl Clone for DynNodeLike {
 impl ::bevy::reflect::GetTypeRegistration for DynNodeLike {
     fn get_type_registration() -> ::bevy::reflect::TypeRegistration {
         let mut registration = ::bevy::reflect::TypeRegistration::of::<Self>();
-        registration.insert::<::bevy::reflect::ReflectFromPtr>(
-            ::bevy::reflect::FromType::<Self>::from_type(),
-        );
+        registration.insert::<::bevy::reflect::ReflectFromPtr>(::bevy::reflect::CreateTypeData::<
+            Self,
+        >::create_type_data(()));
         registration.insert::<::bevy::reflect::ReflectFromReflect>(
-            ::bevy::reflect::FromType::<Self>::from_type(),
+            ::bevy::reflect::CreateTypeData::<Self>::create_type_data(()),
         );
         registration
     }

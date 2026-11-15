@@ -13,11 +13,11 @@ impl<'a> AnimationNodeWidget<'a> {
     pub fn new_salted(
         node: &'a mut AnimationNode,
         world: &'a mut World,
-        salt: impl std::hash::Hash,
+        salt: impl std::hash::Hash + std::fmt::Debug,
     ) -> Self {
         Self {
             node,
-            id_hash: egui::Id::new(salt),
+            id_hash: egui::Id::new(egui::IdSalt::new(salt)),
             world,
         }
     }

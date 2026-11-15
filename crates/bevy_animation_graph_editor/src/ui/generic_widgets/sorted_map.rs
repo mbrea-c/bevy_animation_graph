@@ -18,8 +18,8 @@ impl<'a, K, V> SortedMapWidget<'a, K, V> {
         }
     }
 
-    pub fn salted(mut self, salt: impl std::hash::Hash) -> Self {
-        self.id_hash = self.id_hash.with(salt);
+    pub fn salted(mut self, salt: impl std::hash::Hash + std::fmt::Debug) -> Self {
+        self.id_hash = self.id_hash.with(egui::IdSalt::new(salt));
         self
     }
 }

@@ -82,7 +82,7 @@ where
         Self::custom_popup(
             ui,
             popup_id,
-            egui::AboveOrBelow::Below,
+            AboveOrBelow::Below,
             self.default_size,
             new_rect,
             |ui| ui_builder(ui, saved_on_click),
@@ -105,7 +105,7 @@ where
     fn custom_popup<R>(
         parent_ui: &mut egui::Ui,
         popup_id: egui::Id,
-        above_or_below: egui::AboveOrBelow,
+        above_or_below: AboveOrBelow,
         default_size: egui::Vec2,
         rect: egui::Rect,
         add_contents: impl FnOnce(&mut egui::Ui) -> R,
@@ -115,8 +115,8 @@ where
         }
 
         let (mut pos, pivot) = match above_or_below {
-            egui::AboveOrBelow::Above => (rect.left_top(), egui::Align2::LEFT_BOTTOM),
-            egui::AboveOrBelow::Below => (rect.left_bottom(), egui::Align2::LEFT_TOP),
+            AboveOrBelow::Above => (rect.left_top(), egui::Align2::LEFT_BOTTOM),
+            AboveOrBelow::Below => (rect.left_bottom(), egui::Align2::LEFT_TOP),
         };
 
         if let Some(to_global) = parent_ui
@@ -160,4 +160,9 @@ where
 #[derive(Debug, Clone, Default)]
 struct PopupState {
     open: bool,
+}
+
+pub enum AboveOrBelow {
+    Above,
+    Below,
 }

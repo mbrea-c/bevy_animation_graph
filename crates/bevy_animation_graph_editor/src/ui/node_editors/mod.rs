@@ -1,6 +1,6 @@
 use std::any::Any;
 
-use bevy::{app::App, ecs::world::World, reflect::FromType};
+use bevy::{app::App, ecs::world::World, reflect::CreateTypeData};
 use bevy_animation_graph::{
     builtin_nodes::{
         blend_space_node::BlendSpaceNode, constants::Constants, flip_lr_node::FlipLRNode,
@@ -65,11 +65,11 @@ pub struct ReflectEditable {
     pub get_editor: fn(&dyn Any) -> Box<dyn DynNodeEditor>,
 }
 
-impl<T> FromType<T> for ReflectEditable
+impl<T> CreateTypeData<T> for ReflectEditable
 where
     T: Editable,
 {
-    fn from_type() -> Self {
+    fn create_type_data(_: ()) -> Self {
         Self {
             get_editor: reflect_get_editor::<T>,
         }

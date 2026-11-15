@@ -28,8 +28,8 @@ impl<'a> BoneMaskWidget<'a> {
     }
 
     #[allow(dead_code)]
-    pub fn salted(mut self, salt: impl std::hash::Hash) -> Self {
-        self.id_hash = egui::Id::new(salt);
+    pub fn salted(mut self, salt: impl std::hash::Hash + std::fmt::Debug) -> Self {
+        self.id_hash = egui::Id::new(egui::IdSalt::new(salt));
         self
     }
 
